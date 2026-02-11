@@ -13,9 +13,11 @@ header("Expires: 0"); // Proxies
         $result = mysqli_query($conn, $query);
 
     $data = mysqli_fetch_assoc($result);
-        $name = $data['name'];
-        $phone = $data['phone'];
-        $email = $data['email'];
+       $name = $data['name'];
+    $phone = $data['phone'];
+    $email = $data['email'];
+    $user_id = $data['user_id'];
+    $role = $data['role']; 
 	}else{
 		header("Location: login.php");
 	}
@@ -27,7 +29,7 @@ header("Expires: 0"); // Proxies
 <html>
   <head>
       <meta charset='utf-8'>
-      <meta name='viewport' content='width=device-width, initial-scale=1'>
+      <meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>
       <title>Graphicafix - Dashboard</title>
       <style>
           
@@ -83,47 +85,56 @@ header("Expires: 0"); // Proxies
             <span class="nav_logo-name"><img src="images/logo-secondary.png" width='100px'></span> 
             </a>
             <div class="nav_list">
-            <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'dashboard.php') ? 'active' : ''; ?>" href="dashboard.php">
-            <i class='fas fa-tachometer-alt nav_icon'></i> 
-            <span class="nav_name">Dashboard</span>
-            </a>
-            <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'manage_projects.php') ? 'active' : ''; ?>" href="manage_projects.php">
-            <i class='fas fa-tasks nav_icon'></i> 
-            <span class="nav_name">Projects</span>
-            </a>
-             <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'tasks.php') ? 'active' : ''; ?>" href="tasks.php">
-            <i class='fas fa-check-square nav_icon'></i> 
-            <span class="nav_name">Tasks</span>
-            </a>
-            <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'manage_clients.php') ? 'active' : ''; ?>" href="manage_clients.php">
-            <i class='fas fa-users nav_icon'></i> 
-            <span class="nav_name">Manage Clients</span>
-            </a>
-            <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'manage_services.php') ? 'active' : ''; ?>" href="manage_services.php">
-            <i class='fas fa-cogs nav_icon'></i> 
-            <span class="nav_name">Manage Services</span>
-            </a>
-            <!-- <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'invoices.php') ? 'active' : ''; ?>" href="invoices.php">
-            <i class='fas fa-file-invoice nav_icon'></i> 
-            <span class="nav_name">Invoices</span>
-            </a> -->
-            <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'reviews.php') ? 'active' : ''; ?>" href="reviews.php">
-            <i class='fas fa-star nav_icon'></i> 
-            <span class="nav_name">Reviews</span>
-            </a>
-            <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'manage_users.php') ? 'active' : ''; ?>" href="manage_users.php">
-            <i class='fas fa-users nav_icon'></i> 
-            <span class="nav_name">Manage Users</span>
-            </a>
-            <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'profile.php') ? 'active' : ''; ?>" href="profile.php">
-            <i class='fas fa-cog nav_icon'></i> 
-            <span class="nav_name">Settings</span>
-            </a>
+                <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'dashboard.php') ? 'active' : ''; ?>" href="dashboard.php">
+                <i class='fas fa-tachometer-alt nav_icon'></i> 
+                <span class="nav_name">Dashboard</span>
+                </a>
+                <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'manage_projects.php') ? 'active' : ''; ?>" href="manage_projects.php">
+                <i class='fas fa-tasks nav_icon'></i> 
+                <span class="nav_name">Projects</span>
+                </a>
+                <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'tasks.php') ? 'active' : ''; ?>" href="tasks.php">
+                <i class='fas fa-check-square nav_icon'></i> 
+                <span class="nav_name">Tasks</span>
+                </a>
+                <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'manage_clients.php') ? 'active' : ''; ?>" href="manage_clients.php">
+                <i class='fas fa-users nav_icon'></i> 
+                <span class="nav_name">Manage Clients</span>
+                </a>
+                <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'manage_services.php') ? 'active' : ''; ?>" href="manage_services.php">
+                <i class='fas fa-cogs nav_icon'></i> 
+                <span class="nav_name">Manage Services</span>
+                </a>
+                <!-- <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'invoices.php') ? 'active' : ''; ?>" href="invoices.php">
+                <i class='fas fa-file-invoice nav_icon'></i> 
+                <span class="nav_name">Invoices</span>
+                </a> -->
+                <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'reviews.php') ? 'active' : ''; ?>" href="reviews.php">
+                <i class='fas fa-star nav_icon'></i> 
+                <span class="nav_name">Reviews</span>
+                </a>
+                <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'messages.php') ? 'active' : ''; ?>" href="messages.php">
+                <i class='fas fa-envelope nav_icon'></i> 
+                <span class="nav_name">Messages</span>
+                </a>
+                <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'manage_users.php') ? 'active' : ''; ?>" href="manage_users.php">
+                <i class='fas fa-users nav_icon'></i> 
+                <span class="nav_name">Manage Users</span>
+                </a>
+                <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'manage_applications.php') ? 'active' : ''; ?>" href="manage_applications.php">
+                <i class='fas fa-file-alt nav_icon'></i> 
+                <span class="nav_name">Manage Applications</span>
+                </a>
+                <a class="nav_link <?php echo (basename($_SERVER['PHP_SELF']) == 'profile.php') ? 'active' : ''; ?>" href="profile.php">
+                <i class='fas fa-cog nav_icon'></i> 
+                <span class="nav_name">Settings</span>
+                </a>
+                <a href="logout.php" class="nav_link"> 
+                <i class='fas fa-sign-out-alt nav_icon'></i> 
+                <span class="nav_name">Sign Out</span> 
+                </a>
             </div>  
             </div> 
-            <a href="logout.php" class="nav_link"> 
-            <i class='fas fa-sign-out-alt nav_icon'></i> 
-            <span class="nav_name">Sign Out</span> 
-            </a>
+            
         </nav>
     </div>

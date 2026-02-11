@@ -1,6 +1,7 @@
 <?php
-    include('dashboard_header.php');
+    
 
+include('dashboard_header.php');
    
 // Make sure user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -99,5 +100,6 @@ $conn->close();
 </div>
 
 <?php
-    include('dashboard_footer.php');
+   
+include('dashboard_footer.php');
 ?>

@@ -1,6 +1,7 @@
 <?php
-    require_once('config.php');
-    include('dashboard_header.php');
+
+    
+include('dashboard_header.php');
     if(isset($_SESSION['username'])){
 		$username = $_SESSION['username'];
         $query = "SELECT * FROM users WHERE username = '$username'";
@@ -32,7 +33,7 @@
 ?>
 
     <!-- Page content-->
-    <div class="height-100">
+    <div class="height-100" >
         <div class="profile-card">
     <div class="profile-header">
         <h3>✏️ Edit Profile</h3>
@@ -123,4 +124,6 @@
 
 
     </style>
-<?php include('dashboard_footer.php'); ?>
+<?php 
+include('dashboard_footer.php');
+?>

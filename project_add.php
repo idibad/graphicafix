@@ -1,12 +1,9 @@
 <?php
-require_once('config.php');
 
+include('dashboard_header.php');
 
-// Get project ID from URL
-$id = $_GET['id'] ?? 0;
-
-// Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
     $project_name = $_POST['project_name'];
     $client_id = $_POST['client_id'];
     $description = $_POST['description'];
@@ -17,11 +14,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $start_date = $_POST['start_date'];
     $end_date = $_POST['end_date'];
     $visibility = $_POST['visibility'];
-    $team_members = $_POST['team_members'] ?? [];
+    $team_members = $_POST['team_members'] ?? []; // array
     $slug = strtolower(str_replace(' ', '-', $project_name));
 
-    // Upload new thumbnail if provided
-    $thumbPath = $_POST['existing_thumbnail'] ?? '';
+    // Upload thumbnail
+    $thumbPath = "";
     if (!empty($_FILES['thumbnail']['name'])) {
         $thumbDir = "uploads/projects/" . time();
         mkdir($thumbDir, 0777, true);
@@ -29,84 +26,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         move_uploaded_file($_FILES['thumbnail']['tmp_name'], $thumbPath);
     }
 
-    // Update project
-    $stmt = $conn->prepare("UPDATE projects SET 
-        client_id = ?, project_name = ?, description = ?, public_description = ?, 
-        internal_notes = ?, status = ?, priority = ?, start_date = ?, end_date = ?, 
-        thumbnail = ?, slug = ?, visibility = ?
-        WHERE id = ?");
+    // Insert into projects
+    $stmt = $conn->prepare("INSERT INTO projects 
+        (client_id, project_name, description, public_description, internal_notes, 
+         status, priority, start_date, end_date, thumbnail, slug, visibility) 
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
 
     $stmt->bind_param(
-        "isssssssssssi",
-        $client_id, $project_name, $description, $public_description,
-        $internal_notes, $status, $priority, $start_date, $end_date,
-        $thumbPath, $slug, $visibility, $id
+        "isssssssssss",
+        $client_id,
+        $project_name,
+        $description,
+        $public_description,
+        $internal_notes,
+        $status,
+        $priority,
+        $start_date,
+        $end_date,
+        $thumbPath,
+        $slug,
+        $visibility
     );
 
     $stmt->execute();
+    $project_id = $stmt->insert_id;
 
-    // Update team members
-    $conn->query("DELETE FROM project_team WHERE id = $id");
+    // Insert team members
     foreach ($team_members as $uid) {
-        $conn->query("INSERT INTO project_team (id, user_id) VALUES ($id, $uid)");
+        $conn->query("INSERT INTO project_team (project_id, user_id) VALUES ($project_id, $uid)");
     }
 
-    // Upload new gallery images if provided
-    if (!empty($_FILES['gallery']['tmp_name'][0])) {
+    // Upload gallery images
+    if (!empty($_FILES['gallery']['tmp_name'])) {
         foreach ($_FILES['gallery']['tmp_name'] as $key => $tmp) {
             if (!empty($tmp)) {
                 $imgPath = $thumbDir . "/img_" . $_FILES['gallery']['name'][$key];
                 move_uploaded_file($tmp, $imgPath);
 
-                $conn->query("INSERT INTO project_gallery (id, image_path, sort_order) 
-                              VALUES ($id, '$imgPath', $key)");
+                $conn->query("INSERT INTO project_gallery (project_id, image_path, sort_order) 
+                              VALUES ($project_id, '$imgPath', $key)");
 
-                $conn->query("INSERT INTO project_files (id, file_path, file_type) 
-                              VALUES ($id, '$imgPath', 'image')");
+                $conn->query("INSERT INTO project_files (project_id, file_path, file_type) 
+                              VALUES ($project_id, '$imgPath', 'image')");
             }
         }
     }
 
-    echo "<script>alert('Project Updated Successfully!');window.location='project_details.php?id=$id';</script>";
+    // Insert thumbnail into project_files
+    if ($thumbPath) {
+        $conn->query("INSERT INTO project_files (project_id, file_path, file_type) 
+                      VALUES ($project_id, '$thumbPath', 'thumbnail')");
+    }
+
+    echo "<script>alert('Project Added Successfully!');window.location='projects.php';</script>";
 }
-
-// Fetch project details
-$project_query = "SELECT p.* FROM projects p WHERE p.id = ?";
-$stmt = $conn->prepare($project_query);
-$stmt->bind_param("i", $id);
-$stmt->execute();
-$project = $stmt->get_result()->fetch_assoc();
-
-if (!$project) {
-    echo "<script>alert('Project not found');window.location='projects.php';</script>";
-    exit;
-}
-
-// Fetch assigned team members
-$team_query = "SELECT user_id FROM project_team WHERE id = ?";
-$stmt = $conn->prepare($team_query);
-$stmt->bind_param("i", $id);
-$stmt->execute();
-$result = $stmt->get_result();
-$assigned_members = [];
-while ($row = $result->fetch_assoc()) {
-    $assigned_members[] = $row['user_id'];
-}
-
-// Fetch existing gallery images
-$gallery_query = "SELECT * FROM project_gallery WHERE id = ? ORDER BY sort_order";
-$stmt = $conn->prepare($gallery_query);
-$stmt->bind_param("i", $id);
-$stmt->execute();
-$gallery = $stmt->get_result();
 ?>
 
 
 <div class="dashboard">
     <!-- Page Header -->
     <div class="page-header">
-        <h1>✏️ Edit Project</h1>
-        <p>Update project information and settings</p>
+        <h1>📋 Create New Project</h1>
+        <p>Fill in the details below to add a new project to your workspace</p>
     </div>
 
     <!-- Tabs Navigation -->
@@ -130,7 +111,6 @@ $gallery = $stmt->get_result();
     <!-- Form Container -->
     <div class="form-container">
         <form method="POST" enctype="multipart/form-data" id="projectForm">
-            <input type="hidden" name="existing_thumbnail" value="<?= htmlspecialchars($project['thumbnail']) ?>">
 
             <!-- Basic Info Tab -->
             <div id="basic" class="tab active">
@@ -139,7 +119,7 @@ $gallery = $stmt->get_result();
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Project Name <span class="required">*</span></label>
-                        <input type="text" name="project_name" value="<?= htmlspecialchars($project['project_name']) ?>" placeholder="Enter project name" required>
+                        <input type="text" name="project_name" placeholder="Enter project name" required>
                     </div>
 
                     <div class="form-group">
@@ -149,8 +129,7 @@ $gallery = $stmt->get_result();
                             <?php
                             $res = $conn->query("SELECT id, client_name FROM clients");
                             while($row=$res->fetch_assoc()){
-                                $selected = ($row['id'] == $project['client_id']) ? 'selected' : '';
-                                echo "<option value='{$row['id']}' $selected>{$row['client_name']}</option>";
+                                echo "<option value='{$row['id']}'>{$row['client_name']}</option>";
                             }
                             ?>
                         </select>
@@ -160,12 +139,12 @@ $gallery = $stmt->get_result();
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Start Date</label>
-                        <input type="date" name="start_date" value="<?= htmlspecialchars($project['start_date']) ?>">
+                        <input type="date" name="start_date">
                     </div>
 
                     <div class="form-group">
                         <label>End Date</label>
-                        <input type="date" name="end_date" value="<?= htmlspecialchars($project['end_date']) ?>">
+                        <input type="date" name="end_date">
                     </div>
                 </div>
 
@@ -173,19 +152,19 @@ $gallery = $stmt->get_result();
                     <div class="form-group">
                         <label>Status <span class="required">*</span></label>
                         <select name="status" required>
-                            <option value="Not Started" <?= $project['status'] == 'Not Started' ? 'selected' : '' ?>>Not Started</option>
-                            <option value="In Progress" <?= $project['status'] == 'In Progress' ? 'selected' : '' ?>>In Progress</option>
-                            <option value="Completed" <?= $project['status'] == 'Completed' ? 'selected' : '' ?>>Completed</option>
-                            <option value="On Hold" <?= $project['status'] == 'On Hold' ? 'selected' : '' ?>>On Hold</option>
+                            <option value="Not Started">Not Started</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Completed">Completed</option>
+                            <option value="On Hold">On Hold</option>
                         </select>
                     </div>
 
                     <div class="form-group">
                         <label>Priority <span class="required">*</span></label>
                         <select name="priority" required>
-                            <option value="Low" <?= $project['priority'] == 'Low' ? 'selected' : '' ?>>Low</option>
-                            <option value="Medium" <?= $project['priority'] == 'Medium' ? 'selected' : '' ?>>Medium</option>
-                            <option value="High" <?= $project['priority'] == 'High' ? 'selected' : '' ?>>High</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
                         </select>
                     </div>
                 </div>
@@ -193,9 +172,9 @@ $gallery = $stmt->get_result();
                 <div class="form-group">
                     <label>Visibility <span class="required">*</span></label>
                     <select name="visibility" required>
-                        <option value="private" <?= $project['visibility'] == 'private' ? 'selected' : '' ?>>Private (Team Only)</option>
-                        <option value="client" <?= $project['visibility'] == 'client' ? 'selected' : '' ?>>Client Visible</option>
-                        <option value="public" <?= $project['visibility'] == 'public' ? 'selected' : '' ?>>Public</option>
+                        <option value="private">Private (Team Only)</option>
+                        <option value="client">Client Visible</option>
+                        <option value="public">Public</option>
                     </select>
                 </div>
             </div>
@@ -211,17 +190,17 @@ $gallery = $stmt->get_result();
 
                 <div class="form-group">
                     <label>Team Description</label>
-                    <textarea name="description" placeholder="Internal project description for team members..."><?= htmlspecialchars($project['description']) ?></textarea>
+                    <textarea name="description" placeholder="Internal project description for team members..."></textarea>
                 </div>
 
                 <div class="form-group">
                     <label>Public Description</label>
-                    <textarea name="public_description" placeholder="Client-facing project description..."><?= htmlspecialchars($project['public_description']) ?></textarea>
+                    <textarea name="public_description" placeholder="Client-facing project description..."></textarea>
                 </div>
 
                 <div class="form-group">
                     <label>Internal Notes</label>
-                    <textarea name="internal_notes" placeholder="Private notes, instructions, or important information..."><?= htmlspecialchars($project['internal_notes']) ?></textarea>
+                    <textarea name="internal_notes" placeholder="Private notes, instructions, or important information..."></textarea>
                 </div>
             </div>
 
@@ -231,47 +210,23 @@ $gallery = $stmt->get_result();
 
                 <div class="form-group">
                     <label>Project Thumbnail</label>
-                    
-                    <?php if (!empty($project['thumbnail'])): ?>
-                    <div class="current-thumbnail">
-                        <div class="current-thumbnail-label">Current Thumbnail:</div>
-                        <div class="thumbnail-preview">
-                            <img src="<?= htmlspecialchars($project['thumbnail']) ?>" alt="Current thumbnail">
-                        </div>
-                    </div>
-                    <?php endif; ?>
-
                     <div class="upload-area" onclick="document.getElementById('thumbnail').click()">
                         <div class="upload-icon">🖼️</div>
                         <div class="upload-text">
-                            <strong>Click to upload new thumbnail</strong> or drag and drop<br>
+                            <strong>Click to upload</strong> or drag and drop<br>
                             <small>PNG, JPG, GIF up to 10MB</small>
                         </div>
                         <input type="file" name="thumbnail" id="thumbnail" accept="image/*">
                     </div>
                 </div>
 
-                <?php if ($gallery->num_rows > 0): ?>
                 <div class="form-group">
-                    <label>Current Gallery Images</label>
-                    <div class="gallery-preview">
-                        <?php while ($img = $gallery->fetch_assoc()): ?>
-                        <div class="gallery-item">
-                            <img src="<?= htmlspecialchars($img['image_path']) ?>" alt="Gallery image">
-                            <button type="button" class="remove-btn" onclick="removeGalleryImage(<?= $img['id'] ?>)" title="Remove image">×</button>
-                        </div>
-                        <?php endwhile; ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <div class="form-group">
-                    <label>Add New Gallery Images</label>
+                    <label>Gallery Images</label>
                     <div class="upload-area" onclick="document.getElementById('gallery').click()">
                         <div class="upload-icon">📸</div>
                         <div class="upload-text">
-                            <strong>Click to upload additional images</strong><br>
-                            <small>Select multiple files to add to gallery</small>
+                            <strong>Click to upload multiple images</strong><br>
+                            <small>Select multiple files for project gallery</small>
                         </div>
                         <input type="file" name="gallery[]" id="gallery" multiple accept="image/*">
                     </div>
@@ -292,11 +247,9 @@ $gallery = $stmt->get_result();
                     $users = $conn->query("SELECT user_id, name FROM users");
                     while($u=$users->fetch_assoc()){
                         $initial = strtoupper(substr($u['name'], 0, 1));
-                        $checked = in_array($u['user_id'], $assigned_members) ? 'checked' : '';
-                        $selected = in_array($u['user_id'], $assigned_members) ? 'selected' : '';
                         echo "
-                        <div class='team-member $selected'>
-                            <input type='checkbox' name='team_members[]' value='{$u['user_id']}' id='user_{$u['user_id']}' $checked onchange='toggleTeamMember(this)'>
+                        <div class='team-member'>
+                            <input type='checkbox' name='team_members[]' value='{$u['user_id']}' id='user_{$u['user_id']}'>
                             <div class='team-avatar'>{$initial}</div>
                             <label for='user_{$u['user_id']}'>{$u['name']}</label>
                         </div>
@@ -308,42 +261,43 @@ $gallery = $stmt->get_result();
 
             <!-- Form Actions -->
             <div class="form-actions">
-                <div style="display: flex; gap: 12px;">
-                    <button type="button" class="btn btn-secondary" id="prevBtn" onclick="previousTab()" style="display: none;">
-                        <span>←</span> Previous
-                    </button>
-                </div>
-                <div style="display: flex; gap: 12px;">
-                    <button type="button" class="btn btn-secondary" onclick="window.location='project_details.php?id=<?= $id ?>'">
-                        Cancel
-                    </button>
-                    <button type="button" class="btn btn-primary" id="nextBtn" onclick="nextTab()">
-                        Next <span>→</span>
-                    </button>
-                    <button type="submit" class="btn btn-primary" id="submitBtn" style="display: none;">
-                        <span>✓</span> Save Changes
-                    </button>
-                </div>
+                <button type="button" class="btn btn-secondary" id="prevBtn" onclick="previousTab()" style="display: none;">
+                    <span>←</span> Previous
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="window.location='projects.php'">
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="nextBtn" onclick="nextTab()">
+                    Next <span>→</span>
+                </button>
+                <button type="submit" class="btn btn-primary" id="submitBtn" style="display: none;">
+                    <span>✓</span> Create Project
+                </button>
             </div>
 
         </form>
     </div>
 </div>
+
 <script>
 const tabs = ['basic', 'details', 'media', 'team'];
 let currentTabIndex = 0;
 
 function showTab(tabId) {
+    // Hide all tabs
     document.querySelectorAll('.tab').forEach(tab => {
         tab.classList.remove('active');
     });
     
+    // Remove active class from all buttons
     document.querySelectorAll('.tab-buttons button').forEach(btn => {
         btn.classList.remove('active');
     });
     
+    // Show selected tab
     document.getElementById(tabId).classList.add('active');
     
+    // Add active class to clicked button
     const buttons = document.querySelectorAll('.tab-buttons button');
     currentTabIndex = tabs.indexOf(tabId);
     buttons[currentTabIndex].classList.add('active');
@@ -368,16 +322,20 @@ function previousTab() {
 function showTabByIndex(index) {
     const tabId = tabs[index];
     
+    // Hide all tabs
     document.querySelectorAll('.tab').forEach(tab => {
         tab.classList.remove('active');
     });
     
+    // Remove active class from all buttons
     document.querySelectorAll('.tab-buttons button').forEach(btn => {
         btn.classList.remove('active');
     });
     
+    // Show selected tab
     document.getElementById(tabId).classList.add('active');
     
+    // Add active class to corresponding button
     const buttons = document.querySelectorAll('.tab-buttons button');
     buttons[index].classList.add('active');
     
@@ -389,46 +347,20 @@ function updateButtons() {
     const nextBtn = document.getElementById('nextBtn');
     const submitBtn = document.getElementById('submitBtn');
     
+    // Show/hide previous button
     if (currentTabIndex === 0) {
         prevBtn.style.display = 'none';
     } else {
         prevBtn.style.display = 'inline-flex';
     }
     
+    // Show/hide next and submit buttons
     if (currentTabIndex === tabs.length - 1) {
         nextBtn.style.display = 'none';
         submitBtn.style.display = 'inline-flex';
     } else {
         nextBtn.style.display = 'inline-flex';
         submitBtn.style.display = 'none';
-    }
-}
-
-// Toggle team member selection visual feedback
-function toggleTeamMember(checkbox) {
-    const teamMember = checkbox.closest('.team-member');
-    if (checkbox.checked) {
-        teamMember.classList.add('selected');
-    } else {
-        teamMember.classList.remove('selected');
-    }
-}
-
-// Remove gallery image
-function removeGalleryImage(imageId) {
-    if (confirm('Are you sure you want to remove this image?')) {
-        fetch('remove_gallery_image.php?id=' + imageId)
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert(data.message || 'Failed to remove image');
-            }
-        })
-        .catch(error => {
-            alert('An error occurred. Please try again.');
-        });
     }
 }
 
@@ -467,11 +399,8 @@ document.getElementById('projectForm').addEventListener('submit', function(e) {
         return false;
     }
 });
-
-// Initialize button states on load
-updateButtons();
 </script>
 
-<?php
-   
+<?php 
+include('dashboard_footer.php');
 ?>

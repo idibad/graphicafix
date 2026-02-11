@@ -1,5 +1,36 @@
 <?php
     include('header.php');
+
+
+    if (isset($_POST['submit_contact'])) {
+    $name = trim($_POST['name']);
+    $email = trim($_POST['email']);
+    $message = trim($_POST['message']);
+
+    // Optional: basic validation
+    if (!empty($name) && !empty($email) && !empty($message)) {
+        $stmt = $conn->prepare("INSERT INTO contacts (name, email, message) VALUES (?, ?, ?)");
+        $stmt->bind_param("sss", $name, $email, $message);
+
+        if ($stmt->execute()) {
+            echo "<script>alert('Message sent successfully!');window.location='contact.php';</script>";
+        } else {
+            echo "<script>alert('Failed to send message. Please try again.');</script>";
+        }
+
+        $stmt->close();
+    } else {
+        echo "<script>alert('Please fill all fields.');</script>";
+    }
+}
+
+    $logoFolder = 'images/client_logo/';
+    $logos = glob($logoFolder . '*.png'); // get all logos
+
+
+    $projectQuery = "SELECT id, project_name, thumbnail FROM projects ORDER BY created_at DESC";
+    $result = $conn->query($projectQuery);
+    $counter = 0;
 ?>
 
    <div class="hero">
@@ -31,66 +62,18 @@
     <div class="text-center">
         <div class="logo-slider">
             <div class="logo-track">
-
-                <!-- client logos -->
-                <img src="images/client_logo/1-01.png" alt="Client Logo">
-                <img src="images/client_logo/1-02.png" alt="Client Logo">
-                <img src="images/client_logo/1-03.png" alt="Client Logo">
-                <img src="images/client_logo/1-04.png" alt="Client Logo">
-                <img src="images/client_logo/1-05.png" alt="Client Logo">
-                <img src="images/client_logo/1-06.png" alt="Client Logo">
-                <img src="images/client_logo/1-07.png" alt="Client Logo">
-
-                <!-- Duplicated logos to make the scrolling infinite -->
-               <img src="images/client_logo/1-01.png" alt="Client Logo">
-                <img src="images/client_logo/1-02.png" alt="Client Logo">
-                <img src="images/client_logo/1-03.png" alt="Client Logo">
-                <img src="images/client_logo/1-04.png" alt="Client Logo">
-                <img src="images/client_logo/1-05.png" alt="Client Logo">
-                <img src="images/client_logo/1-06.png" alt="Client Logo">
-                <img src="images/client_logo/1-07.png" alt="Client Logo">
-
+               <?php
+                   // Loop twice
+                for ($repeat = 0; $repeat < 2; $repeat++) {
+                    foreach ($logos as $index => $logoPath) {
+                        echo '<img src="' . htmlspecialchars($logoPath) . '" alt="Client Logo ' . ($index + 1) . '" class="client-logo">';
+                    }
+                }
+                ?>
             </div>
         </div>
     </div>
 </section>
-
-
-
-
-            <!-- <div class="header-cont row">
-                <div class="col-lg-6">
-                    <div class="left-cont">
-                    <h1>Transform Your Brand with Stunning Visuals</h1>
-                    <p>
-                        Graphicafix is a creative agency dedicated to delivering 
-                        exceptional graphic design solutions that 
-                        elevate brands. We believe in the power of 
-                        visuals to tell stories, create connections,
-                        and drive impact.
-                    </p>
-                    <div class="d-flex justiyfy-content-center  mt-4">
-                        <a href="#" class="main-btn bg-primary-clr" data-bs-toggle="modal" data-bs-target="#projectRequestModal">Request Project</a>
-                        <a href="work.php" class="main-btn-o">See Projects</a>
-                    </div>
-                </div>
-                </div>
-                <div class="col-lg-6">
-                    <div class="right-cont">
-                <div class="swiper mySwiper">
-                    <div class="swiper-wrapper">
-                        <div class="swiper-slide"><img src="images/sample1.jpg" alt="Image 1"></div>
-                        <div class="swiper-slide"><img src="images/sample2.jpg" alt="Image 2"></div>
-                        <div class="swiper-slide"><img src="images/sample3.jpg" alt="Image 3"></div>
-                </div>
-                 Pagination Dots
-                <div class="swiper-pagination"></div>
-                 </div> -->
-                
-            <!-- </div>
-            </div>
-
-                </div> -->
           
     <!-- Header ends -->
 
@@ -178,78 +161,23 @@
                                 <a href="#" class="main-btn bg-primary-clr" data-bs-toggle="modal" data-bs-target="#projectRequestModal">Request Project</a>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <a href="#" class="work-card-link">
-                                <div class="work-card-single">
-                                    <img src="images/sample2.jpg" alt="Project image">
-                                    <div class="overlay">
-                                        <h3>Project Title</h3>
+                        <?php
+                        while ($project = $result->fetch_assoc()): ?>
+                            <div class="col-md-3">
+                                <a href="project_details.php?id=<?= intval($project['id']) ?>" class="work-card-link">
+                                    <div class="work-card-single">
+                                        <img src="<?= htmlspecialchars($project['thumbnail'] ?: 'images/default-project.jpg') ?>" 
+                                            alt="<?= htmlspecialchars($project['project_name']) ?>">
+                                        <div class="overlay">
+                                            <h3><?= htmlspecialchars($project['project_name']) ?></h3>
+                                        </div>
                                     </div>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="#" class="work-card-link">
-                                <div class="work-card-single">
-                                    <img src="images/sample1.jpg" alt="Project image">
-                                    <div class="overlay">
-                                        <h3>Project Title</h3>
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="#" class="work-card-link">
-                                <div class="work-card-single">
-                                    <img src="images/sample1.jpg" alt="Project image">
-                                    <div class="overlay">
-                                        <h3>Project Title</h3>
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
-</div>
-                    <div class="row">
-                        <div class="col-md-3">
-                            <a href="#" class="work-card-link">
-                                <div class="work-card-single">
-                                    <img src="images/sample2.jpg" alt="Project image">
-                                    <div class="overlay">
-                                        <h3>Project Title</h3>
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="#" class="work-card-link">
-                                <div class="work-card-single">
-                                    <img src="images/sample2.jpg" alt="Project image">
-                                    <div class="overlay">
-                                        <h3>Project Title</h3>
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="#" class="work-card-link">
-                                <div class="work-card-single">
-                                    <img src="images/sample2.jpg" alt="Project image">
-                                    <div class="overlay">
-                                        <h3>Project Title</h3>
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="#" class="work-card-link">
-                                <div class="work-card-single">
-                                    <img src="images/sample2.jpg" alt="Project image">
-                                    <div class="overlay">
-                                        <h3>Project Title</h3>
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
+                                </a>
+                            </div>
+
+                            
+                        <?php $counter++; if ($counter >= 7) break; endwhile; ?>
+                        
                     </div>
                 </div>
             </div>
@@ -367,44 +295,43 @@
     </div>
 </section>
 
-<!-- GRID PROJECTS SHOWCASE -->
 <section class="project-grid">
+<?php
+// Fetch the 4 projects you want to show (latest 4 for example)
+$projectQuery = "SELECT id, project_name, public_description, thumbnail FROM projects ORDER BY created_at LIMIT 4";
+$result = $conn->query($projectQuery);
 
-    <!-- Big Project -->
-    <div class="project-item project-large">
-        <img src="images/sample3.jpg" alt="">
-        <div class="project-info">
-            <h3>Premium Packaging Design</h3>
-            <p>Brand Identity</p>
-            <a href="#" class="project-link">View Project ></a>
-        </div>
+// Predefined layout classes in order
+$layoutClasses = ['project-large', 'project-card', 'project-card', 'project-wide'];
+
+$index = 0;
+while ($project = $result->fetch_assoc()):
+    $projectName = htmlspecialchars($project['project_name']);
+    $projectDesc = htmlspecialchars($project['public_description']);
+    $projectThumb = htmlspecialchars($project['thumbnail'] ?: 'images/sample3.jpg');
+    $projectID = intval($project['id']);
+    $class = $layoutClasses[$index] ?? 'project-card'; // fallback
+?>
+    <div class="project-item <?= $class ?>">
+        <?php if ($class === 'project-card'): ?>
+            <h2 class="project-title"><?= $projectName ?></h2>
+            <p class="project-sub"><?= $projectDesc ?></p>
+            <a href="project_details.php?id=<?= $projectID ?>" class="project-link dark">View Project ></a>
+        <?php else: ?>
+            <img src="<?= $projectThumb ?>" alt="<?= $projectName ?>">
+            <div class="project-info">
+                <h3><?= $projectName ?></h3>
+                <p><?= $projectDesc ?></p>
+                <a href="project_details.php?id=<?= $projectID ?>" class="project-link">View Project ></a>
+            </div>
+        <?php endif; ?>
     </div>
-
-    <!-- Small Project 1 -->
-    <div class="project-item project-card">
-        <h2 class="project-title">Flyer</h2>
-        <p class="project-sub">Flyer Design</p>
-        <a href="#" class="project-link dark">View Project ></a>
-    </div>
-
-    <!-- Small Project 2 -->
-    <div class="project-item project-card">
-        <h2 class="project-title">Card</h2>
-        <p class="project-sub">Design and print</p>
-        <a href="#" class="project-link dark">View Project ></a>
-    </div>
-
-    <!-- Wide Project -->
-    <div class="project-item project-wide">
-        <img src="images/sample3.jpg" alt="">
-        <div class="project-info">
-            <h3>Fast Delivery Campaign</h3>
-            <p>Marketing Design</p>
-            <a href="#" class="project-link">View Project ></a>
-        </div>
-    </div>
-
+<?php
+    $index++;
+endwhile;
+?>
 </section>
+
 <!-- testemonial section  -->
 
 <!-- Contact Form Section -->
@@ -422,25 +349,26 @@
 
 
       <!-- Form -->
-      <form class="p-4 rounded shadow-sm" style="background-color: #fff;">
+      <form class="p-4 rounded shadow-sm" style="background-color: #fff;" action="" method="POST">
         <div class="mb-3">
-          <label for="name" class="form-label fw-semibold">Name</label>
-          <input type="text" class="form-control" id="name" placeholder="Your Name" required>
+        <label for="name" class="form-label fw-semibold">Name</label>
+        <input type="text" class="form-control" id="name" name="name" placeholder="Your Name" required>
         </div>
         <div class="mb-3">
-          <label for="email" class="form-label fw-semibold">Email</label>
-          <input type="email" class="form-control" id="email" placeholder="you@example.com" required>
+        <label for="email" class="form-label fw-semibold">Email</label>
+        <input type="email" class="form-control" id="email" name="email" placeholder="you@example.com" required>
         </div>
         <div class="mb-3">
-          <label for="message" class="form-label fw-semibold">Message</label>
-          <textarea class="form-control" id="message" rows="5" placeholder="Your Message" required></textarea>
+        <label for="message" class="form-label fw-semibold">Message</label>
+        <textarea class="form-control" id="message" name="message" rows="5" placeholder="Your Message" required></textarea>
         </div>
         <div class="text-center">
-          <button type="submit" class="main-btn px-4 py-2 fw-semibold">
+        <button type="submit" name="submit_contact" class="main-btn px-4 py-2 fw-semibold">
             Send Message
-          </button>
+        </button>
         </div>
-      </form>
+    </form>
+
 
     </div>
   </div>
@@ -453,101 +381,29 @@
         </div>
 
         <div class="faq-container">
-            <div class="faq-item">
-                <div class="faq-question">
-                    <div class="faq-question-text">What services does Graphicafix provide?</div>
-                    <div class="faq-icon"></div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-text">
-                        Graphicafix offers a comprehensive range of services including web design and development, graphic design, logo creation, branding, UI/UX design, mobile app development, and digital marketing solutions. We work with businesses of all sizes to create stunning visual identities and digital experiences.
-                    </div>
-                </div>
-            </div>
+            <?php
+            // Fetch all FAQs
+            $faqQuery = "SELECT id, question, answer FROM faqs ORDER BY created_at DESC";
+            $result = $conn->query($faqQuery);
 
-            <div class="faq-item">
+            while ($faq = $result->fetch_assoc()):
+                $faqQuestion = htmlspecialchars($faq['question']);
+                $faqAnswer = htmlspecialchars($faq['answer']);
+            ?>
+               
+                <div class="faq-item">
                 <div class="faq-question">
-                    <div class="faq-question-text">How long does a typical project take?</div>
+                    <div class="faq-question-text"><?= $faqQuestion ?></div>
                     <div class="faq-icon"></div>
                 </div>
                 <div class="faq-answer">
                     <div class="faq-answer-text">
-                        Project timelines vary depending on scope and complexity. A simple logo design might take 1-2 weeks, while a complete website design and development can take 4-8 weeks. We'll provide you with a detailed timeline during our initial consultation and keep you updated throughout the entire process.
+                        <?= $faqAnswer ?>
                     </div>
                 </div>
             </div>
-
-            <div class="faq-item">
-                <div class="faq-question">
-                    <div class="faq-question-text">What is your design process?</div>
-                    <div class="faq-icon"></div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-text">
-                        Our process follows six key steps: Planning (understanding your requirements), Design (creating mockups and prototypes), Development (building your solution), Testing (ensuring quality), Launch (deploying your project), and Support (ongoing maintenance). This ensures every project is completed carefully and meets your expectations.
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">
-                    <div class="faq-question-text">Do you offer revisions?</div>
-                    <div class="faq-icon"></div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-text">
-                        Yes! We include multiple revision rounds in all our packages. The exact number depends on your chosen package, but we typically offer 2-3 rounds of revisions for design projects. Our goal is to ensure you're completely satisfied with the final result.
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">
-                    <div class="faq-question-text">What are your pricing options?</div>
-                    <div class="faq-icon"></div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-text">
-                        We offer flexible pricing tailored to your specific needs and budget. Pricing depends on project scope, complexity, and timeline. Contact us for a free consultation and custom quote. We believe in transparent pricing with no hidden fees.
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">
-                    <div class="faq-question-text">Do you provide ongoing support after project completion?</div>
-                    <div class="faq-icon"></div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-text">
-                        Absolutely! We offer various support and maintenance packages to keep your website or application running smoothly. This includes updates, security patches, content changes, and technical support. We're here to help even after your project launches.
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">
-                    <div class="faq-question-text">Can you work with my existing brand guidelines?</div>
-                    <div class="faq-icon"></div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-text">
-                        Yes! If you have existing brand guidelines, we'll work within them to ensure consistency across all your materials. If you don't have brand guidelines yet, we can help create comprehensive ones as part of our branding services.
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question">
-                    <div class="faq-question-text">What file formats will I receive?</div>
-                    <div class="faq-icon"></div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-text">
-                        You'll receive all source files in industry-standard formats. For logos and graphics, this includes AI, EPS, PDF, PNG, and JPG files. For websites, you'll receive all design files and complete source code. We ensure you have everything needed for future use and modifications.
-                    </div>
-                </div>
-            </div>
+            <?php endwhile; ?>
+            
         </div>
     </section>
 

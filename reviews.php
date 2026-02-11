@@ -1,91 +1,69 @@
 <?php
-    require_once('config.php');
-    include('dashboard_header.php');
+
+include('dashboard_header.php');
+
+// Fetch reviews
+$reviews = [];
+$result = mysqli_query($conn, "SELECT * FROM reviews ORDER BY created_at DESC");
+while ($row = mysqli_fetch_assoc($result)) {
+    $reviews[] = $row;
+}
+
+// Function to render star rating
+function renderStars($rating) {
+    $fullStars = str_repeat('★', $rating);
+    $emptyStars = str_repeat('☆', 5 - $rating);
+    return $fullStars . $emptyStars;
+}
 ?>
-        <!-- Page content-->
-        <div class="height-100">
-         <div class="main-card">
-    <div class="main-header">
-        <h3>⭐ Reviews</h3>
-        <button class="add-client">+ Add Review</button>
-    </div>
 
-    <div class="main-table">
-        <div class="table-head">
-            <span>Client</span>
-            <span>Company</span>
-            <span>Rating</span>
-            <span>Visible</span>
-            <span>Date</span>
-            <span></span>
+<div class="height-100" >
+    <div class="main-card">
+        <div class="main-header">
+            <h3>⭐ Reviews</h3>
+            <button class="add-client">+ Add Review</button>
         </div>
 
-        <div class="table-row">
-            <div class="client">
-                <div class="avatar">A</div>
-                <div>
-                    <strong>Ali Khan</strong>
-                    <small>ali@techvibe.com</small>
-                </div>
+        <div class="main-table">
+            <div class="table-head">
+                <span>Client</span>
+                <span>Company</span>
+                <span>Rating</span>
+                <span>Visible</span>
+                <span>Date</span>
+                <span></span>
             </div>
-            <span>TechVibe</span>
-            <span>★★★★★</span>
 
-            <!-- Toggle -->
-            <label class="switch">
-                <input type="checkbox" checked>
-                <span class="slider"></span>
-            </label>
-
-            <span>2h ago</span>
-            <button class="dots">⋮</button>
-        </div>
-
-        <div class="table-row">
-            <div class="client">
-                <div class="avatar pink">S</div>
-                <div>
-                    <strong>Sara Malik</strong>
-                    <small>sara@zarmall.com</small>
+            <?php foreach($reviews as $review): ?>
+            <div class="table-row">
+                <div class="client">
+                    <div class="avatar"><?php echo strtoupper($review['client_name'][0]); ?></div>
+                    <div>
+                        <strong><?php echo htmlspecialchars($review['client_name']); ?></strong>
+                        <small><?php echo htmlspecialchars($review['email']); ?></small>
+                    </div>
                 </div>
+                <span><?php echo htmlspecialchars($review['company']); ?></span>
+                <span><?php echo renderStars($review['rating']); ?></span>
+
+                <!-- Toggle -->
+                <label class="switch">
+                    <input type="checkbox" <?php echo $review['visible'] ? 'checked' : ''; ?>>
+                    <span class="slider"></span>
+                </label>
+
+                <span><?php 
+                    $date = new DateTime($review['created_at']);
+                    echo $date->format('M d, Y H:i');
+                ?></span>
+
+                <button class="dots">⋮</button>
             </div>
-            <span>Zarmall</span>
-            <span>★★★★☆</span>
-
-            <label class="switch">
-                <input type="checkbox">
-                <span class="slider"></span>
-            </label>
-
-            <span>Yesterday</span>
-            <button class="dots">⋮</button>
-        </div>
-
-        <div class="table-row">
-            <div class="client">
-                <div class="avatar blue">R</div>
-                <div>
-                    <strong>Rizwan</strong>
-                    <small>riz@matacon.pk</small>
-                </div>
-            </div>
-            <span>Matacon</span>
-            <span>★★★☆☆</span>
-
-            <label class="switch">
-                <input type="checkbox" checked>
-                <span class="slider"></span>
-            </label>
-
-            <span>3 days ago</span>
-            <button class="dots">⋮</button>
+            <?php endforeach; ?>
         </div>
     </div>
 </div>
 
-</div>
-
-       
-    </div>
-
-<?php include('dashboard_footer.php');?>
+<?php 
+include('dashboard_footer.php');
+?>

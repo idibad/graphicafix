@@ -1,6 +1,5 @@
 <?php
-require_once 'config.php';
-
+include('dashboard_header.php');
 if (!isset($_GET['id'])) {
     die("Project not found");
 }

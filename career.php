@@ -1,8 +1,48 @@
 <?php
     include("header.php");
   
+$keyword = $_GET['keyword'] ?? '';
+
+$sql = "SELECT * FROM career_positions 
+        WHERE position LIKE '%$keyword%' 
+        OR department LIKE '%$keyword%' 
+        OR location LIKE '%$keyword%'";
+
+$result = mysqli_query($conn, $sql);
+
+
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+
+    $name = $_POST['name'];
+    $email = $_POST['email'];
+    $phone = $_POST['phone'];
+    $position = $_POST['position'];
+    $skills = $_POST['skills'];
+    $portfolio = $_POST['portfolio'];
+    $experience = $_POST['experience'];
+    $bio = $_POST['bio'];
+
+    // CV upload
+    $cvName = $_FILES['cv']['name'];
+    $cvTmp = $_FILES['cv']['tmp_name'];
+    $cvPath = "uploads/cvs/" . time() . "_" . $cvName;
+
+    move_uploaded_file($cvTmp, $cvPath);
+
+    $sql = "INSERT INTO career_applications 
+            (name, email, phone, position, skills, portfolio, experience, cv, bio)
+            VALUES
+            ('$name','$email','$phone','$position','$skills','$portfolio','$experience','$cvPath','$bio')";
+
+   $result =  mysqli_query($conn, $sql);
+    if($result)
+        echo "<script>alert('Application submitted successfully!');</script>";
+    else
+        echo "<script>alert('Error submitting application. Please try again.');</script>";
+
+}
 ?>
-<!-- <link rel="stylesheet" href="css/dashboard.css"> -->
 
 <style>
 
@@ -58,8 +98,7 @@
     transform:scale(1.01);
 }
 </style>
-<!-- <body style="background: url('images/doodles-bg.png') center/cover fixed;"> -->
-<!-- Header -->
+
 <section class="career-header">
   <div class="container">
     <h1>Join Our Team</h1>
@@ -76,35 +115,26 @@
             <input type="submit" name="search" class="main-btn ms-2" value="Search">
         </form>
     </div>
-    
     <div class="main-table">
-    <div class="table-head">
-        <span>Position</span>
-        <span>Department</span>
-        <span>Location</span>
-        <span>Type</span>
+      <div class="table-head">
+          <span>Position</span>
+          <span>Department</span>
+          <span>Location</span>
+          <span>Type</span>
+      </div>
+
+        <?php while($row = mysqli_fetch_assoc($result)) { ?>
+            <div class="table-row">
+                <span><?= $row['position'] ?></span>
+                <span><?= $row['department'] ?></span>
+                <span><?= $row['location'] ?></span>
+                <span><?= $row['job_type'] ?></span>
+            </div>
+        <?php } ?>
     </div>
 
-    <div class="table-row">
-        <span>Manager</span>
-        <span>Engineering</span>
-        <span>Rawalpindi</span>
-        <span>Full-time</span>
-    </div>
 
-    <div class="table-row">
-        <span>Designer</span>
-        <span>Creative</span>
-        <span>Islamabad</span>
-        <span>Part-time</span>
-    </div>
 
-    <div class="table-row">
-        <span>Engineer</span>
-        <span>Operations</span>
-        <span>Rawalpindi</span>
-        <span>Full-time</span>
-    </div>
 </div>
 
   </div>
@@ -153,7 +183,7 @@
     <h2 class="text-center mb-3">Submit Your Application</h2>
     <p class="text-center text-muted mb-4">Fill in your details and we’ll get back to you soon.</p>
 
-    <form method="POST" action="submit_career.php" enctype="multipart/form-data">
+    <form method="POST" action="" enctype="multipart/form-data">
       <div class="row g-4">
 
         <div class="col-lg-4 col-md-6">

@@ -1,5 +1,9 @@
 <?php
     include('header.php');
+
+    // Fetch all team members
+    $query = "SELECT * FROM team ORDER BY created_at ASC";
+    $result = $conn->query($query);
 ?>
     <!-- ABOUT PAGE START -->
     <div class="about-wrapper">
@@ -103,76 +107,30 @@
         
         <div class="team-cards-cont">
         <div class="row g-4 justify-content-center">
-            <div class="col-lg-3 col-md-6">
-                <div class="member-card">
-                    
-                    <div class="member-avatar">👨‍💼</div>
-                    <h3 class="member-name">Alex Johnson</h3>
-                    <div class="member-role">Creative Director</div>
-                    <p class="member-bio">
-                        Visionary leader with 10+ years of experience in digital design and branding.
-                    </p>
-                    
-                </div>
-            </div>
+            <div class="row">
 
-            <div class="col-lg-3 col-md-6">
+
+            <?php
+            while ($member = $result->fetch_assoc()):
+                $name = htmlspecialchars($member['member_name']);
+                $role = htmlspecialchars($member['role']);
+                $bio = "Experienced in " . htmlspecialchars($role); // or you can have a separate 'bio' column
+            ?>
+                <div class="col-lg-3 col-md-6">
                 <div class="member-card">
                     <div class="member-avatar">👩‍🎨</div>
-                    <h3 class="member-name">Sarah Mitchell</h3>
-                    <div class="member-role">Lead Designer</div>
+                    <h3 class="member-name"><?= $name ?></h3>
+                    <div class="member-role"><?= $role?></div>
                     <p class="member-bio">
-                        Award-winning designer specializing in UI/UX and brand identity creation.
+                        <?= $bio ?>
                     </p>
                     
                 </div>
+            </div>
+            <?php endwhile; ?>
             </div>
 
-            <div class="col-lg-3 col-md-6">
-                <div class="member-card">
-                    <div class="member-avatar">👨‍💻</div>
-                    <h3 class="member-name">Mike Chen</h3>
-                    <div class="member-role">Senior Developer</div>
-                    <p class="member-bio">
-                        Full-stack developer bringing designs to life with clean, efficient code.
-                    </p>
-                    
-                </div>
-            </div>
 
-            <div class="col-lg-3 col-md-6">
-                <div class="member-card">
-                    <div class="member-avatar">👩‍💼</div>
-                    <h3 class="member-name">Emma Davis</h3>
-                    <div class="member-role">Marketing Lead</div>
-                    <p class="member-bio">
-                        Strategic thinker driving growth through innovative digital campaigns.
-                    </p>
-                    
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="member-card">
-                    <div class="member-avatar">👩‍💼</div>
-                    <h3 class="member-name">Emma Davis</h3>
-                    <div class="member-role">Marketing Lead</div>
-                    <p class="member-bio">
-                        Strategic thinker driving growth through innovative digital campaigns.
-                    </p>
-                    
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="member-card">
-                    <div class="member-avatar">👩‍💼</div>
-                    <h3 class="member-name">Emma Davis</h3>
-                    <div class="member-role">Marketing Lead</div>
-                    <p class="member-bio">
-                        Strategic thinker driving growth through innovative digital campaigns.
-                    </p>
-                    
-                </div>
-            </div>
             </div>
             
         </div>

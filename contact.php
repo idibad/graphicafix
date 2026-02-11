@@ -1,5 +1,27 @@
 <?php
     include('header.php');
+
+    if (isset($_POST['submit_contact'])) {
+    $name = trim($_POST['name']);
+    $email = trim($_POST['email']);
+    $message = trim($_POST['message']);
+
+    // Optional: basic validation
+    if (!empty($name) && !empty($email) && !empty($message)) {
+        $stmt = $conn->prepare("INSERT INTO contacts (name, email, message) VALUES (?, ?, ?)");
+        $stmt->bind_param("sss", $name, $email, $message);
+
+        if ($stmt->execute()) {
+            echo "<script>alert('Message sent successfully!');window.location='contact.php';</script>";
+        } else {
+            echo "<script>alert('Failed to send message. Please try again.');</script>";
+        }
+
+        $stmt->close();
+    } else {
+        echo "<script>alert('Please fill all fields.');</script>";
+    }
+}
 ?>
 
 <section class="contact-header text-center py-5" data-aos="fade-up">
@@ -23,33 +45,27 @@
                 <div id="success-msg" class="msg msg-success">Message sent successfully.</div>
                 <div id="error-msg" class="msg msg-error">Please fill all required fields.</div>
 
-                <form id="contactForm">
-
+                 <!-- Form -->
+                <form class="p-4 rounded shadow-sm" style="background-color: #fff;" action="" method="POST">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Name</label>
-                        <input type="text" id="name" class="form-control" placeholder="Your Name">
+                    <label for="name" class="form-label fw-semibold">Name</label>
+                    <input type="text" class="form-control" id="name" name="name" placeholder="Your Name" required>
                     </div>
-
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Email</label>
-                        <input type="email" id="email" class="form-control" placeholder="Email Address">
+                    <label for="email" class="form-label fw-semibold">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" placeholder="you@example.com" required>
                     </div>
-
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Subject</label>
-                        <input type="text" id="subject" class="form-control" placeholder="Subject">
+                    <label for="message" class="form-label fw-semibold">Message</label>
+                    <textarea class="form-control" id="message" name="message" rows="5" placeholder="Your Message" required></textarea>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Message</label>
-                        <textarea id="message" class="form-control" rows="5" placeholder="Your Message"></textarea>
-                    </div>
-
-                    <button type="submit" class="btn btn-dark w-100 fw-semibold">
+                    <div class="text-center">
+                    <button type="submit" name="submit_contact" class="main-btn px-4 py-2 fw-semibold">
                         Send Message
                     </button>
-
+                    </div>
                 </form>
+
             </div>
         </div>
 
