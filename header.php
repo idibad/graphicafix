@@ -1,5 +1,6 @@
 <?php
-    require_once('config.php');
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/config.php';
+
 ?>
 <!DOCTYPE html>
 
@@ -31,61 +32,89 @@
 
 
     <!-- Linked Files -->
-    <link rel="stylesheet" href="css/all.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>css/all.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
-    <link rel="stylesheet" href="css/bootstrap.css">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>css/bootstrap.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>css/style.css">
     <link rel="icon" type="image/png" href="images/icon.png">
+    
 
 
     <!-- Swiper CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+<script>
+    
+// Highlight active link
+document.addEventListener("DOMContentLoaded", function () {
+    const links = document.querySelectorAll(".navbar-menu .nav-link");
+    const currentPage = window.location.pathname.split("/").pop();
+
+    links.forEach(link => {
+        const linkPage = link.getAttribute("href");
+
+        if (linkPage === currentPage) {
+            link.classList.add("active");
+        } else {
+            link.classList.remove("active");
+        }
+    });
+});
+</script>
+
 
 </head>
 <body>
 
-
-
-<nav class="navbar navbar-expand-lg">
+<nav class="modern-navbar">
     <div class="container">
+        <div class="navbar-content">
+            <!-- Logo -->
+            <a class="navbar-logo" href="index.php">
+                <img src="<?= BASE_URL ?>images/logo.png" alt="Graphicafix">
+            </a>
 
-        <!-- Logo -->
-        <a class="navbar-brand fw-bold" href="index.php">
-            <img src="images/logo.png" width="160px">
-        </a>
-
-        <!-- Toggle -->
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <i class="fas fa-bars"></i>
-        </button>
-
-        <!-- Menu -->
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto">
-
-                <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
-                <li class="nav-item"><a class="nav-link" href="services.php">Services</a></li>
-                <li class="nav-item"><a class="nav-link" href="portfolio.php">Portfolio</a></li>
-                <li class="nav-item"><a class="nav-link" href="career.php">Career</a></li>
-                <li class="nav-item"><a class="nav-link" href="about.php">About</a></li>
-                <li class="nav-item"><a class="nav-link" href="contact.php">Contact</a></li>
-
-                <!-- Action Buttons -->
-                <li class="nav-item">
-                    <a class="nav-link main-btn" href="#" data-bs-toggle="modal" data-bs-target="#projectRequestModal">
-                        Request Project
-                    </a>
-                </li>
-
-                <li class="nav-item">
-                    <a class="nav-link main-btn" href="login.php">
-                        Login
-                    </a>
-                </li>
-
+            <!-- Desktop Menu -->
+            <ul class="navbar-menu">
+                <li><a href="index.php" class="nav-link active">Home</a></li>
+                <li><a href="services.php" class="nav-link">Services</a></li>
+                <li><a href="portfolio.php" class="nav-link">Portfolio</a></li>
+                <li><a href="career.php" class="nav-link">Career</a></li>
+                <li><a href="about.php" class="nav-link">About</a></li>
+                <li><a href="contact.php" class="nav-link">Contact</a></li>
             </ul>
+
+            <!-- Action Buttons -->
+            <div class="navbar-actions">
+                <a href="#" data-bs-toggle="modal" data-bs-target="#projectRequestModal" class="btn-primary">
+                    <span>✨</span> Request Project
+                </a>
+                <a href="admin/login.php" class="btn-secondary">
+                    Login
+                </a>
+            </div>
+
+            <!-- Mobile Toggle -->
+            <button class="mobile-toggle" id="mobileToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
         </div>
 
+        <!-- Mobile Menu -->
+        <div class="mobile-menu" id="mobileMenu">
+            <ul>
+                <li><a href="index.php">Home</a></li>
+                <li><a href="services.php">Services</a></li>
+                <li><a href="portfolio.php">Portfolio</a></li>
+                <li><a href="career.php">Career</a></li>
+                <li><a href="about.php">About</a></li>
+                <li><a href="contact.php">Contact</a></li>
+                <li class="mobile-divider"></li>
+                <li><a href="#" data-bs-toggle="modal" data-bs-target="#projectRequestModal">Request Project</a></li>
+                <li><a href="admin/login.php">Login</a></li>
+            </ul>
+        </div>
     </div>
 </nav>
    <div class="wp-btn-cont">
@@ -204,4 +233,5 @@ document.addEventListener("scroll", function () {
         navbar.classList.remove("scrolled");
     }
 });
+
 </script>

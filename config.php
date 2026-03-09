@@ -1,7 +1,8 @@
 
-<link href="css/bootstrap.css" rel="stylesheet">
-<link rel="icon" type="image/png" href="images/icon.png">
+
 <?php
+
+    define('BASE_URL', 'http://localhost/graphicafix/');
     $server = "localhost";
     $username = "root";
     $password = "";
@@ -19,3 +20,6 @@
     }    
 
 ?>
+
+<link href="<?= BASE_URL ?>css/bootstrap.css" rel="stylesheet">
+<link rel="icon" type="image/png" href="<?= BASE_URL ?>images/icon.png">

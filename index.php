@@ -80,68 +80,89 @@
     <div class="services text-center">
         <div class="container mt-5">
             <div class="section-title color-primary">
-                <h1>Creative Solutions</h1>
+                <h1>Creative <span >Solutions</span></h1>
             </div>
             <div class="row cards-cont" data-aos="fade-up">
-                <!-- Graphic Design -->
-                <div class="col-lg-3">
-                    <div class="card-single">
-                    <div class="card-icon">
-                        <i class="fa fa-palette"></i>
-                    </div>
-                    <div class="card-info">
-                        <h3>Graphic Design</h3>
-                        <p>We craft visually stunning graphics that bring your brand to life, from logos to marketing materials.</p>
-                    </div>
-                    </div>
+    <!-- Graphic Design -->
+    <div class="col-lg-3 col-md-6">
+        <div class="card-single">
+            <div class="card-icon-wrapper">
+                <div class="card-icon">
+                    <i class="fa fa-palette"></i>
                 </div>
-
-                <!-- Web Development -->
-                <div class="col-lg-3">
-                    <div class="card-single">
-                    <div class="card-icon">
-                        <i class="fa fa-code"></i>
-                    </div>
-                    <div class="card-info">
-                        <h3>Web Development</h3>
-                        <p>We build fast, responsive, and SEO-friendly websites that engage your audience and drive growth.</p>
-                    </div>
-                    </div>
-                </div>
-
-                <!-- Content Writing -->
-                <div class="col-lg-3">
-                <div class="card-single">
-                    <div class="card-icon">
-                        <i class="fa fa-pen-nib"></i>
-                    </div>
-                    <div class="card-info">
-                        <h3>Content Writing</h3>
-                        <p>We create compelling, SEO-optimized content for blogs, websites, and social media to engage your audience.</p>
-                    </div>
-                    </div>
-                </div>
-
-
-                <!-- Branding & Identity -->
-                <div class="col-lg-3">
-                <div class="card-single">
-                    <div class="card-icon">
-                        <i class="fa fa-lightbulb"></i>
-                    </div>
-                    <div class="card-info">
-                        <h3>Branding</h3>
-                        <p>We develop unique brand identities, including logos, color schemes, and brand guidelines.</p>
-                    </div>
-                </div>
-                </div>
-             <div class="action-btn mt-3 mb-5">
-                <a href="services.php" class="main-btn p-3">See All Services</a>
             </div>
-            </div>
-           
+            <div class="card-info">
+                <h3>Graphic Design</h3>
+                <p>We craft visually stunning graphics that bring your brand to life, from logos to marketing materials.</p>
+                <div class="card-learn-more">
+                    <span>Learn More <i class="fa fa-arrow-right"></i></span>
+                </div>
             </div>
         </div>
+    </div>
+
+    <!-- Web Development -->
+    <div class="col-lg-3 col-md-6">
+        <div class="card-single">
+            <div class="card-icon-wrapper">
+                <div class="card-icon">
+                    <i class="fa fa-code"></i>
+                </div>
+            </div>
+            <div class="card-info">
+                <h3>Web Development</h3>
+                <p>We build fast, responsive, and SEO-friendly websites that engage your audience and drive growth.</p>
+                <div class="card-learn-more">
+                    <span>Learn More <i class="fa fa-arrow-right"></i></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Writing -->
+    <div class="col-lg-3 col-md-6">
+        <div class="card-single">
+            <div class="card-icon-wrapper">
+                <div class="card-icon">
+                    <i class="fa fa-pen-nib"></i>
+                </div>
+            </div>
+            <div class="card-info">
+                <h3>Content Writing</h3>
+                <p>We create compelling, SEO-optimized content for blogs, websites, and social media to engage your audience.</p>
+                <div class="card-learn-more">
+                    <span>Learn More <i class="fa fa-arrow-right"></i></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Branding & Identity -->
+    <div class="col-lg-3 col-md-6">
+        <div class="card-single">
+            <div class="card-icon-wrapper">
+                <div class="card-icon">
+                    <i class="fa fa-lightbulb"></i>
+                </div>
+            </div>
+            <div class="card-info">
+                <h3>Branding</h3>
+                <p>We develop unique brand identities, including logos, color schemes, and brand guidelines.</p>
+                <div class="card-learn-more">
+                    <span>Learn More <i class="fa fa-arrow-right"></i></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="action-btn mt-4 mb-5">
+            <a href="services.php" class="main-btn p-3">See All Services</a>
+        </div>
+    </div>
+</div>
+</div>
+</div>
         <!-- Services section ends -->
 
         <!-- work section start -->
@@ -149,7 +170,7 @@
         <div class="work-cards">
             <div class="container">        
                 <div class="row">
-                        <div class="col-md-3">
+                        <div class="col-md-3 mb-1">
                             <div class="work-card-single">
                                 <h4>
                                 Creative Portfolio
@@ -166,8 +187,7 @@
                             <div class="col-md-3">
                                 <a href="project_details.php?id=<?= intval($project['id']) ?>" class="work-card-link">
                                     <div class="work-card-single">
-                                        <img src="<?= htmlspecialchars($project['thumbnail'] ?: 'images/default-project.jpg') ?>" 
-                                            alt="<?= htmlspecialchars($project['project_name']) ?>">
+<img src="admin/<?= htmlspecialchars(!empty($project['thumbnail']) ? $project['thumbnail'] : 'images/placeholder.png') ?>" alt="Project Thumbnail">                                            alt="<?= htmlspecialchars($project['project_name']) ?>">
                                         <div class="overlay">
                                             <h3><?= htmlspecialchars($project['project_name']) ?></h3>
                                         </div>
@@ -176,7 +196,10 @@
                             </div>
 
                             
-                        <?php $counter++; if ($counter >= 7) break; endwhile; ?>
+                        <?php $counter++; 
+                        
+                        if ($counter >= 7) break; 
+                    endwhile; ?>
                         
                     </div>
                 </div>
@@ -308,20 +331,20 @@ $index = 0;
 while ($project = $result->fetch_assoc()):
     $projectName = htmlspecialchars($project['project_name']);
     $projectDesc = htmlspecialchars($project['public_description']);
-    $projectThumb = htmlspecialchars($project['thumbnail'] ?: 'images/sample3.jpg');
+    $projectThumb = htmlspecialchars($project['thumbnail'] ?: 'images/placeholder.png');
     $projectID = intval($project['id']);
     $class = $layoutClasses[$index] ?? 'project-card'; // fallback
 ?>
     <div class="project-item <?= $class ?>">
         <?php if ($class === 'project-card'): ?>
             <h2 class="project-title"><?= $projectName ?></h2>
-            <p class="project-sub"><?= $projectDesc ?></p>
+            <!-- <p class="project-sub"><?= $projectDesc ?></p> -->
             <a href="project_details.php?id=<?= $projectID ?>" class="project-link dark">View Project ></a>
         <?php else: ?>
-            <img src="<?= $projectThumb ?>" alt="<?= $projectName ?>">
+            <img src="admin/<?= $projectThumb ?>" alt="<?= $projectName ?>">
             <div class="project-info">
                 <h3><?= $projectName ?></h3>
-                <p><?= $projectDesc ?></p>
+                <!-- <p><?= $projectDesc ?></p> -->
                 <a href="project_details.php?id=<?= $projectID ?>" class="project-link">View Project ></a>
             </div>
         <?php endif; ?>
@@ -372,6 +395,73 @@ endwhile;
 
     </div>
   </div>
+
+
+
+
+  <!-- Reviews Section -->
+<section class="reviews-section">
+    <div class="reviews-header">
+        <div class="faq-header-small">TESTIMONIALS</div>
+        <h1 class="faq-header-title">What Our <span>Clients Say</span></h1>
+    </div>
+
+    <?php
+    $reviewsQuery  = "SELECT client_name, company, rating, review FROM reviews WHERE visible = 1 ORDER BY created_at DESC";
+    $reviewsResult = $conn->query($reviewsQuery);
+    $allReviews    = $reviewsResult ? $reviewsResult->fetch_all(MYSQLI_ASSOC) : [];
+    $totalReviews  = count($allReviews);
+    $initialShow   = 6;
+    ?>
+
+    <?php if ($totalReviews > 0): ?>
+    <div class="container">
+        <div class="row g-4" id="reviewsGrid">
+            <?php foreach ($allReviews as $index => $review):
+                $stars    = intval($review['rating']);
+                $initials = strtoupper(substr($review['client_name'], 0, 1));
+                $hidden   = $index >= $initialShow ? 'review-hidden' : '';
+            ?>
+            <div class="col-12 col-md-6 col-lg-4 review-col <?= $hidden ?>">
+                <div class="review-card">
+                    <div class="review-stars">
+                        <?php for ($i = 1; $i <= 5; $i++): ?>
+                            <span class="review-star <?= $i <= $stars ? 'filled' : 'empty' ?>">★</span>
+                        <?php endfor; ?>
+                    </div>
+                    <p class="review-text">"<?= htmlspecialchars($review['review']) ?>"</p>
+                    <div class="review-author">
+                        <div class="review-avatar"><?= $initials ?></div>
+                        <div class="review-author-info">
+                            <div class="review-author-name"><?= htmlspecialchars($review['client_name']) ?></div>
+                            <?php if (!empty($review['company'])): ?>
+                                <div class="review-author-company"><?= htmlspecialchars($review['company']) ?></div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Show More / Show Less button — only if more than 6 reviews -->
+        <?php if ($totalReviews > $initialShow): ?>
+        <div class="reviews-toggle-wrap">
+            <button class="reviews-toggle-btn" id="reviewsToggleBtn" onclick="toggleReviews()">
+                <span id="reviewsToggleText">Show All <?= $totalReviews ?> Reviews</span>
+                <span class="reviews-toggle-icon" id="reviewsToggleIcon">↓</span>
+            </button>
+        </div>
+        <?php endif; ?>
+
+    </div>
+    <?php else: ?>
+    <div class="container">
+        <p class="faq-empty text-center">No reviews available yet.</p>
+    </div>
+    <?php endif; ?>
+</section>
+
 </section>
     <!--FAQs section-->
     <section class="faq-section">
@@ -385,7 +475,7 @@ endwhile;
             // Fetch all FAQs
             $faqQuery = "SELECT id, question, answer FROM faqs ORDER BY created_at DESC";
             $result = $conn->query($faqQuery);
-
+            if ($result && $result->num_rows > 0): 
             while ($faq = $result->fetch_assoc()):
                 $faqQuestion = htmlspecialchars($faq['question']);
                 $faqAnswer = htmlspecialchars($faq['answer']);
@@ -403,12 +493,68 @@ endwhile;
                 </div>
             </div>
             <?php endwhile; ?>
-            
+            <?php else: ?>
+              <p class="faq-empty">No FAQs available yet.</p>
+            <?php endif; ?>
         </div>
     </section>
 
+
+    <script>
+        
+let reviewsExpanded = false;
+
+function toggleReviews() {
+    const hiddenCols = document.querySelectorAll('.review-col.review-hidden');
+    const visibleExtra = document.querySelectorAll('.review-col.review-visible');
+    const btn        = document.getElementById('reviewsToggleBtn');
+    const btnText    = document.getElementById('reviewsToggleText');
+    const btnIcon    = document.getElementById('reviewsToggleIcon');
+    const total      = <?= $totalReviews ?>;
+
+    if (!reviewsExpanded) {
+        // Show all hidden cards
+        hiddenCols.forEach(col => {
+            col.classList.remove('review-hidden');
+            col.classList.add('review-visible');
+        });
+        btnText.textContent = 'Show Less';
+        btnIcon.classList.add('rotated');
+        reviewsExpanded = true;
+    } else {
+        // Hide cards beyond the initial 6
+        visibleExtra.forEach(col => {
+            col.classList.remove('review-visible');
+            col.classList.add('review-hidden');
+        });
+        btnText.textContent = 'Show All ' + total + ' Reviews';
+        btnIcon.classList.remove('rotated');
+        reviewsExpanded = false;
+
+        // Scroll back up to the section smoothly
+        document.querySelector('.reviews-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+    </script>
 <?php
 
     include('footer.php');
 ?>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Select all images
+    const images = document.querySelectorAll('img');
 
+    images.forEach(img => {
+        // If image fails to load, replace with placeholder
+        img.addEventListener('error', () => {
+            img.src = 'images/placeholder.png';
+        });
+
+        // Optional: if src is empty/null, replace immediately
+        if (!img.src || img.src.trim() === '') {
+            img.src = 'images/placeholder.png';
+        }
+    });
+});
+</script>

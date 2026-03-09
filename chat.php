@@ -1,5 +1,6 @@
 <?php
-require_once('config.php');
+require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/config.php';
+
 session_start();
 if (!isset($_SESSION['username'])) {
     header("Location: login.php");
@@ -20,8 +21,8 @@ $email = $data['email'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <link href="css/style.css" rel="stylesheet">
-    <link href="css/bootstrap.css" rel="stylesheet">
+    <link href="<?= BASE_URL ?>/css/style.css" rel="stylesheet">
+    <link href="<?= BASE_URL ?>/css/bootstrap.css" rel="stylesheet">
     <link href="css/all.min.css" rel="stylesheet">
     <title>Group Chat</title>
     <style>

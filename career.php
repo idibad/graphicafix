@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // CV upload
     $cvName = $_FILES['cv']['name'];
     $cvTmp = $_FILES['cv']['tmp_name'];
-    $cvPath = "uploads/cvs/" . time() . "_" . $cvName;
+    $cvPath = "images/uploads/cvs/" . time() . "_" . $cvName;
 
     move_uploaded_file($cvTmp, $cvPath);
 

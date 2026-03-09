@@ -52,7 +52,7 @@
                 <div class="row align-items-center">
 
                     <div class="col-md-6 mb-4 mb-md-0">
-                        <img src="images/gfix_bg.png" class="w-100 rounded shadow" alt="Our Story">
+                        <img src="<?= BASE_URL ?>images/gfix_bg.png" class="w-100 rounded shadow" alt="Our Story">
                     </div>
 
                     <div class="col-md-6">

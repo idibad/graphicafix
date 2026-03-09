@@ -1,3 +1,4 @@
+
  // navbar togler
  document.addEventListener("DOMContentLoaded", function () {
         const toggleButton = document.getElementById("navToggle");
@@ -63,17 +64,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
 
-  //DASHBOARD JS SCRIPTS
-
-  /*!
-* Start Bootstrap - Simple Sidebar v6.0.6 (https://startbootstrap.com/template/simple-sidebar)
-* Copyright 2013-2023 Start Bootstrap
-* Licensed under MIT (https://github.com/StartBootstrap/startbootstrap-simple-sidebar/blob/master/LICENSE)
-*/
-// 
-// Scripts
-// 
-
 window.addEventListener('DOMContentLoaded', event => {
 
     // Toggle the side navigation
@@ -112,27 +102,104 @@ function filterTable() {
 }
 
 
-// FAQs
-      const faqItems = document.querySelectorAll('.faq-item');
+document.addEventListener('DOMContentLoaded', () => {
+  const faqItems = document.querySelectorAll('.faq-item');
 
-        faqItems.forEach(item => {
-            const question = item.querySelector('.faq-question');
-            
-            question.addEventListener('click', () => {
-                const isActive = item.classList.contains('active');
-                
-                // Close all other items
-                faqItems.forEach(otherItem => {
-                    if (otherItem !== item) {
-                        otherItem.classList.remove('active');
-                    }
-                });
-                
-                // Toggle current item
-                if (isActive) {
-                    item.classList.remove('active');
-                } else {
-                    item.classList.add('active');
-                }
-            });
-        });
+  faqItems.forEach(item => {
+    const question = item.querySelector('.faq-question');
+
+    question.addEventListener('click', () => {
+      const isActive = item.classList.contains('active');
+
+      faqItems.forEach(otherItem => {
+        if (otherItem !== item) {
+          otherItem.classList.remove('active');
+        }
+      });
+
+      item.classList.toggle('active', !isActive);
+    });
+  });
+});
+
+
+
+        ///////////
+
+
+
+
+
+
+
+        // Enhanced File Upload
+document.getElementById('attachment')?.addEventListener('change', function(e) {
+    const fileName = e.target.files[0]?.name;
+    const fileText = this.nextElementSibling.querySelector('.file-text');
+    
+    if (fileName) {
+        fileText.textContent = fileName;
+        fileText.style.color = '#024442';
+    } else {
+        fileText.textContent = 'Choose file';
+        fileText.style.color = '#64748b';
+    }
+});
+
+// Form Submission
+document.getElementById('projectRequestForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const submitBtn = this.querySelector('.btn-primary');
+    const originalText = submitBtn.innerHTML;
+    
+    // Show loading state
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Submitting...';
+    
+    // Simulate form submission (replace with actual AJAX call)
+    setTimeout(() => {
+        // Reset button
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        
+        // Show success message
+        alert('Thank you! Your project request has been submitted successfully.');
+        
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('projectRequestModal'));
+        modal.hide();
+        
+        // Reset form
+        this.reset();
+        document.querySelector('.file-text').textContent = 'Choose file';
+    }, 2000);
+});
+
+
+// PROJECT DETAILS FIELD JS
+ 
+    // 1. Initialize the Editor
+    var publicEditor = new Quill('#public-editor', {
+        modules: {
+            toolbar: [
+                [{ 'header': [2, 3, false] }],
+                ['bold', 'italic', 'underline', 'blockquote'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['link', 'clean']
+            ]
+        },
+        placeholder: 'Write a compelling narrative for this project...',
+        theme: 'snow'
+    });
+
+    // 2. Sync with the Hidden Input
+    var publicInput = document.getElementById('public_description_input');
+    
+    // Set initial value on load
+    publicInput.value = publicEditor.root.innerHTML;
+
+    // Update hidden input on every keystroke
+    publicEditor.on('text-change', function() {
+        publicInput.value = publicEditor.root.innerHTML;
+    });

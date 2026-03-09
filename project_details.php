@@ -1,332 +1,174 @@
 <?php
-include('dashboard_header.php');
-// Get project ID from URL
-$project_id = $_GET['id'] ?? 0;
+require_once('header.php');
 
-// Fetch project details
-$project_query = "SELECT p.*, c.client_name 
-                  FROM projects p 
-                  LEFT JOIN clients c ON p.client_id = c.id 
-                  WHERE p.id = ?";
-$stmt = $conn->prepare($project_query);
+/* =========================
+   1. Data Fetching Logic
+========================= */
+$project_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+if ($project_id <= 0) { header("Location: projects.php"); exit; }
+
+$stmt = $conn->prepare("SELECT p.* FROM projects p WHERE p.id = ? AND p.visibility = 'public' LIMIT 1");
 $stmt->bind_param("i", $project_id);
 $stmt->execute();
 $project = $stmt->get_result()->fetch_assoc();
+$stmt->close();
 
-if (!$project) {
-    echo "<script>alert('Project not found');window.location='manage_projects.php';</script>";
-    exit;
-}
+if (!$project) { header("Location: projects.php"); exit; }
 
-// Fetch team members
-$team_query = "SELECT u.user_id, u.name, u.email, u.role 
-               FROM project_team pt 
-               JOIN users u ON pt.user_id = u.user_id 
-               WHERE pt.project_id = ?";
-$stmt = $conn->prepare($team_query);
-$stmt->bind_param("i", $project_id);
-$stmt->execute();
-$team_members = $stmt->get_result();
+$gallery_stmt = $conn->prepare("SELECT image_path FROM project_gallery WHERE project_id = ? ORDER BY sort_order ASC");
+$gallery_stmt->bind_param("i", $project_id);
+$gallery_stmt->execute();
+$gallery_res = $gallery_stmt->get_result();
+$gallery_images = [];
+while ($row = $gallery_res->fetch_assoc()) { $gallery_images[] = $row['image_path']; }
+$gallery_stmt->close();
 
-// Fetch gallery images
-$gallery_query = "SELECT * FROM project_gallery WHERE project_id = ? ORDER BY sort_order";
-$stmt = $conn->prepare($gallery_query);
-$stmt->bind_param("i", $project_id);
-$stmt->execute();
-$gallery = $stmt->get_result();
-
-// Fetch project files
-$files_query = "SELECT * FROM project_files WHERE project_id = ? AND file_type != 'thumbnail' ORDER BY uploaded_at DESC";
-$stmt = $conn->prepare($files_query);
-$stmt->bind_param("i", $project_id);
-$stmt->execute();
-$files = $stmt->get_result();
-
-// Status and Priority styling
-function getStatusClass($status) {
-    $classes = [
-        'Not Started' => 'status-not-started',
-        'In Progress' => 'status-in-progress',
-        'Completed' => 'status-completed',
-        'On Hold' => 'status-on-hold'
-    ];
-    return $classes[$status] ?? 'status-default';
-}
-
-function getPriorityClass($priority) {
-    $classes = [
-        'Low' => 'priority-low',
-        'Medium' => 'priority-medium',
-        'High' => 'priority-high'
-    ];
-    return $classes[$priority] ?? 'priority-medium';
-}
+$page_title = htmlspecialchars($project['project_name']);
+$current_url = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
 ?>
 
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-<div class="height-100" >
-    <!-- Project Header -->
-    <div class="project-details-header">
-        <div class="header-details-top">
-            <div class="header-content">
-                <h1><?= htmlspecialchars($project['project_name']) ?></h1>
-                <div class="client-name">
-                    <span>🏢</span> <?= htmlspecialchars($project['client_name']) ?>
-                </div>
-            </div>
-            <div class="header-actions">
-                <button class="btn btn-secondary" onclick="window.location='manage_projects.php'">
-                    <span>←</span> Back
-                </button>
-                <button class="btn btn-secondary" onclick="window.location='edit_project.php?id=<?= $project_id ?>'">
-                    <span>✏️</span> Edit
-                </button>
-                <button class="btn btn-primary">
-                    <span>📤</span> Share
-                </button>
-            </div>
-        </div>
+<style>
+    :root {
+        --bg-paper: #FDFCFB;
+        --text-primary: var(--accent);
+        --text-secondary: #333333;
+        --font-head: 'DM Serif Display', serif;
+        --font-body: 'Outfit', sans-serif;
+    }
 
-        <div class="meta-grid">
-            <div class="meta-item">
-                <span class="meta-label">Status</span>
-                <span class="badge <?= getStatusClass($project['status']) ?>">
-                    <?= htmlspecialchars($project['status']) ?>
-                </span>
-            </div>
-            <div class="meta-item">
-                <span class="meta-label">Priority</span>
-                <span class="badge <?= getPriorityClass($project['priority']) ?>">
-                    <?= htmlspecialchars($project['priority']) ?>
-                </span>
-            </div>
-            <div class="meta-item">
-                <span class="meta-label">Start Date</span>
-                <span class="meta-value">
-                    <?= !empty($project['start_date']) ? date('M d, Y', strtotime($project['start_date'])) : 'Not set' ?>
-                </span>
-            </div>
-            <div class="meta-item">
-                <span class="meta-label">End Date</span>
-                <span class="meta-value">
-                    <?= !empty($project['end_date']) ? date('M d, Y', strtotime($project['end_date'])) : 'Not set' ?>
-                </span>
-            </div>
-            <div class="meta-item">
-                <span class="meta-label">Visibility</span>
-                <span class="meta-value" style="text-transform: capitalize;">
-                    <?= htmlspecialchars($project['visibility']) ?>
-                </span>
-            </div>
-        </div>
+    body { background-color: var(--bg-paper); color: var(--text-primary); font-family: var(--font-body); }
 
-        <?php if (!empty($project['start_date']) && !empty($project['end_date'])): 
-            $start = strtotime($project['start_date']);
-            $end = strtotime($project['end_date']);
-            $now = time();
-            $total_days = max(1, ($end - $start) / 86400);
-            $elapsed_days = max(0, min($total_days, ($now - $start) / 86400));
-            $progress = min(100, ($elapsed_days / $total_days) * 100);
-        ?>
-        <div class="progress-section">
-            <div class="progress-header">
-                <span class="progress-label">Project Timeline</span>
-                <span class="progress-percent"><?= round($progress) ?>%</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: <?= $progress ?>%"></div>
-            </div>
-        </div>
-        <?php endif; ?>
-    </div>
+    /* === HEADER & TRIO === */
+    .project-header { padding: 120px 0 60px; }
+    h1 { font-family: var(--font-head); font-size: clamp(3rem, 10vw, 6rem); font-weight: 400; line-height: 0.9; }
+    
+    .meta-box { border-top: 1px solid #eee; border-bottom: 1px solid #eee; padding: 30px 0; margin-top: 50px; }
+    .meta-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-secondary); display: block; }
+    .meta-value { font-weight: 500; font-size: 1rem; }
 
-    <!-- Content Grid -->
-    <div class="content-grid">
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Description -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">📝 Project Description</h2>
-                </div>
-                <?php if (!empty($project['description'])): ?>
-                    <div class="description-text">
-                        <?= nl2br(htmlspecialchars($project['description'])) ?>
-                    </div>
-                <?php else: ?>
-                    <div class="empty-state">
-                        <div class="empty-icon">📄</div>
-                        <div>No description provided</div>
-                    </div>
-                <?php endif; ?>
-            </div>
+    .trio-wrapper { margin-top: -30px; margin-bottom: 100px; }
+    .trio-card { overflow: hidden; border-radius: 4px; position: relative; }
+    .trio-img { width: 100%; aspect-ratio: 3/4; object-fit: cover; transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1); }
+    .trio-card:hover .trio-img { transform: scale(1.08); }
 
-            <?php if (!empty($project['public_description'])): ?>
-            <!-- Public Description -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">👁️ Public Description</h2>
-                </div>
-                <div class="description-text">
-                    <?= nl2br(htmlspecialchars($project['public_description'])) ?>
-                </div>
-            </div>
-            <?php endif; ?>
+    /* === DESCRIPTION === */
+    .description-container { max-width: 700px; margin: 0 auto 120px; }
+    .desc-text { font-size: 1.25rem; font-weight: 300; color: var(--text-secondary); line-height: 1.8; max-height: 220px; overflow: hidden; transition: max-height 0.8s ease; position: relative; }
+    .desc-text.expanded { max-height: 3000px; }
+    .desc-text:not(.expanded)::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 100px; background: linear-gradient(transparent, var(--bg-paper)); }
+    #readMoreBtn { background: none; border: none; color: var(--accent); font-weight: 600; text-transform: uppercase; cursor: pointer; display: block; margin: 25px auto 0; }
 
-            <?php if (!empty($project['internal_notes'])): ?>
-            <!-- Internal Notes -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">🔒 Internal Notes</h2>
-                </div>
-                <div class="description-text" style="background: var(--warning-light); padding: 16px; border-radius: var(--radius);">
-                    <?= nl2br(htmlspecialchars($project['internal_notes'])) ?>
-                </div>
-            </div>
-            <?php endif; ?>
+    /* === ASYMMETRIC GALLERY === */
+    .art-gallery { padding-bottom: 150px; }
+    .gallery-item { margin-bottom: 60px; position: relative; }
+    .gallery-img-wrapper { overflow: hidden; border-radius: 14px;border: 1px solid #e0e0e0; background: #f0f0f0; box-shadow: 0 20px 50px rgba(0,0,0,0.09); }
+    .gallery-img { width: 100%; height: auto; display: block; transition: transform 1.5s ease; }
+    .gallery-item:hover .gallery-img { transform: scale(1.03); }
+    
+    /* Offset classes for a curated look */
+    @media (min-width: 768px) {
+        .offset-lg-down { transform: translateY(80px); }
+        .offset-lg-up { transform: translateY(-80px); }
+    }
 
-            <!-- Gallery -->
-            <?php if ($gallery->num_rows > 0): ?>
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">🖼️ Project Gallery</h2>
-                    <button class="card-action">⋮</button>
-                </div>
-                <div class="gallery-grid">
-                    <?php while ($img = $gallery->fetch_assoc()): ?>
-                        <div class="gallery-item">
-                            <img src="<?= htmlspecialchars($img['image_path']) ?>" alt="Gallery image">
-                        </div>
-                    <?php endwhile; ?>
-                </div>
-            </div>
-            <?php endif; ?>
+    /* === FOOTER SHARE === */
+    .share-footer { background: #121212; color: #fff; padding: 100px 0; }
+    .share-link { width: 60px; height: 60px; border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin: 0 10px; color: #fff; transition: 0.4s; text-decoration: none; font-weight: 300; }
+    .share-link:hover { background: #fff; color: #000; border-color: #fff; transform: translateY(-5px); }
 
-            <!-- Files -->
-            <?php if ($files->num_rows > 0): ?>
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">📎 Project Files</h2>
-                    <button class="card-action">⋮</button>
-                </div>
-                <div class="file-list">
-                    <?php while ($file = $files->fetch_assoc()): 
-                        $file_ext = pathinfo($file['file_path'], PATHINFO_EXTENSION);
-                        $file_name = basename($file['file_path']);
-                    ?>
-                        <div class="file-item">
-                            <div class="file-icon">📄</div>
-                            <div class="file-info">
-                                <div class="file-name"><?= htmlspecialchars($file_name) ?></div>
-                                <div class="file-meta">
-                                    <?= strtoupper($file_ext) ?> • 
-                                    <?= !empty($file['uploaded_at']) ? date('M d, Y', strtotime($file['uploaded_at'])) : 'Unknown' ?>
-                                </div>
-                            </div>
-                            <button class="file-download" onclick="window.open('<?= htmlspecialchars($file['file_path']) ?>', '_blank')">
-                                ⬇️
-                            </button>
-                        </div>
-                    <?php endwhile; ?>
-                </div>
-            </div>
-            <?php endif; ?>
-        </div>
+    .reveal { opacity: 0; transform: translateY(40px); transition: all 1s cubic-bezier(0.2, 1, 0.3, 1); }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+</style>
 
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <!-- Team Members -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">👥 Team Members</h2>
-                    <button class="card-action">+</button>
-                </div>
-                <?php if ($team_members->num_rows > 0): ?>
-                    <div class="team-list">
-                        <?php while ($member = $team_members->fetch_assoc()): 
-                            $initial = strtoupper(substr($member['name'], 0, 1));
-                        ?>
-                            <div class="team-member">
-                                <div class="team-avatar"><?= $initial ?></div>
-                                <div class="team-info">
-                                    <div class="team-name"><?= htmlspecialchars($member['name']) ?></div>
-                                    <div class="team-role"><?= htmlspecialchars($member['role']) ?></div>
-                                </div>
-                            </div>
-                        <?php endwhile; ?>
-                    </div>
-                <?php else: ?>
-                    <div class="empty-state">
-                        <div class="empty-icon">👤</div>
-                        <div>No team members assigned</div>
-                    </div>
-                <?php endif; ?>
-            </div>
-
-            <!-- Project Timeline -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">📅 Timeline</h2>
-                </div>
-                <div class="timeline">
-                    <div class="timeline-item">
-                        <div class="timeline-dot" style="background: var(--success);"></div>
-                        <div class="timeline-content">
-                            <div class="timeline-title">Project Created</div>
-                            <div class="timeline-date">
-                                <?= date('M d, Y', strtotime($project['created_at'])) ?>
-                            </div>
-                        </div>
-                    </div>
-                    <?php if (!empty($project['start_date'])): ?>
-                    <div class="timeline-item">
-                        <div class="timeline-dot" style="background: var(--info);"></div>
-                        <div class="timeline-content">
-                            <div class="timeline-title">Start Date</div>
-                            <div class="timeline-date">
-                                <?= date('M d, Y', strtotime($project['start_date'])) ?>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-                    <?php if (!empty($project['end_date'])): ?>
-                    <div class="timeline-item">
-                        <div class="timeline-dot" style="background: var(--warning);"></div>
-                        <div class="timeline-content">
-                            <div class="timeline-title">Target End Date</div>
-                            <div class="timeline-date">
-                                <?= date('M d, Y', strtotime($project['end_date'])) ?>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">⚡ Quick Actions</h2>
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <button class="btn btn-secondary" style="width: 100%; justify-content: center;">
-                        📤 Upload Files
-                    </button>
-                    <button class="btn btn-secondary" style="width: 100%; justify-content: center;">
-                        💬 Add Comment
-                    </button>
-                    <button class="btn btn-secondary" style="width: 100%; justify-content: center;">
-                        📊 View Reports
-                    </button>
-                    <button class="btn btn-danger" style="width: 100%; justify-content: center;">
-                        🗑️ Delete Project
-                    </button>
-                </div>
-            </div>
+<div class="container project-header text-center">
+    <h1 class="reveal text-capitalize"><?= $page_title ?></h1>
+    <div class="container d-flex justify-content-center">
+        <div class="row meta-box w-100 reveal" style="max-width: 800px;">
+            <div class="col-4"><span class="meta-label">Year</span><span class="meta-value"><?= date('Y', strtotime($project['start_date'] ?? 'now')) ?></span></div>
+            <div class="col-4"><span class="meta-label">Discipline</span><span class="meta-value">Visual Arts</span></div>
+            <div class="col-4"><span class="meta-label">Current</span><span class="meta-value"><?= htmlspecialchars($project['status']) ?></span></div>
         </div>
     </div>
 </div>
 
-<?php 
-include('dashboard_footer.php');
-?>
+<div class="container trio-wrapper">
+    <div class="row g-3">
+        <?php for($i=0; $i<3; $i++): if(isset($gallery_images[$i])): ?>
+            <div class="col-md-4">
+                <div class="trio-card reveal">
+                    <img src="admin/<?= htmlspecialchars($gallery_images[$i]) ?>" class="trio-img" alt="Focus">
+                </div>
+            </div>
+        <?php endif; endfor; ?>
+    </div>
+</div>
+
+<div class="container description-container reveal">
+    <div class="desc-text" id="descText">
+        <?= $project['public_description'] ?>
+    </div>
+    <button id="readMoreBtn">Details &plus;</button>
+</div>
+
+<div class="container art-gallery">
+    <div class="row align-items-center">
+        <?php 
+        $remaining = array_slice($gallery_images, 0); 
+        foreach($remaining as $index => $img): 
+            // Cycle through layout patterns: Full, 2-col Offset, 1-col Narrow centered
+            $pattern = $index % 4; 
+            
+            if ($pattern == 0): // Full Width
+                echo '<div class="col-12 gallery-item reveal"><div class="gallery-img-wrapper"><img src="admin/'.htmlspecialchars($img).'" class="gallery-img"></div></div>';
+            
+            elseif ($pattern == 1): // Left Side Offset
+                echo '<div class="col-md-7 gallery-item reveal"><div class="gallery-img-wrapper"><img src="admin/'.htmlspecialchars($img).'" class="gallery-img"></div></div>';
+            
+            elseif ($pattern == 2): // Right Side Offset Small
+                echo '<div class="col-md-4 offset-md-1 gallery-item reveal offset-lg-down"><div class="gallery-img-wrapper"><img src="admin/'.htmlspecialchars($img).'" class="gallery-img"></div></div>';
+            
+            elseif ($pattern == 3): // Narrow Center
+                echo '<div class="col-md-8 offset-md-2 gallery-item reveal"><div class="gallery-img-wrapper"><img src="admin/'.htmlspecialchars($img).'" class="gallery-img"></div></div>';
+            
+            endif;
+        endforeach; ?>
+    </div>
+</div>
+
+<footer class="share-footer text-center">
+    <div class="container">
+        <p class="meta-label mb-4" style="color: #888;">Share Perspective</p>
+        <div class="d-flex justify-content-center mb-5">
+            <a href="https://twitter.com/intent/tweet?url=<?= urlencode($current_url) ?>" class="share-link">TW</a>
+            <a href="https://www.linkedin.com/sharing/share-offsite/?url=<?= urlencode($current_url) ?>" class="share-link">LI</a>
+            <a href="mailto:?body=<?= $current_url ?>" class="share-link">EM</a>
+        </div>
+        <a href="contact.php" class="text-white text-decoration-none" style="font-size: 1.5rem; font-family: var(--font-head);">Start a Project &rarr;</a>
+    </div>
+</footer>
+
+<script>
+    // Read More Logic
+    const descText = document.getElementById('descText');
+    const readBtn = document.getElementById('readMoreBtn');
+    if (descText.scrollHeight <= 220) readBtn.style.display = 'none';
+
+    readBtn.addEventListener('click', () => {
+        descText.classList.toggle('expanded');
+        readBtn.innerHTML = descText.classList.contains('expanded') ? 'Collapse &minus;' : 'Details &plus;';
+    });
+
+    // Intersection Observer
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) entry.target.classList.add('visible');
+        });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+
+<?php require_once('footer.php'); ?>
