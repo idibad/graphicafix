@@ -6,21 +6,21 @@
             <div class="footer-grid">
                 <!-- Brand Section -->
                 <div class="footer-brand">
-                    <img src="images/logo.png" alt="Graphicafix Logo">
+                    <img src="<?= BASE_URL ?>images/logo.png" alt="Graphicafix Logo">
                     <p>With a diverse skill set and experience across hundreds of branding and design projects, we can take on your creative needs—whether it's a single project or your entire design pipeline.</p>
                     <h5>Follow Us</h5>
                     <div class="social-links">
                         <a href="https://facebook.com/graphicafix" target="_blank" aria-label="Facebook">
-                            <i class="fa-brands fa-facebook-f"></i>
+                            <i class="fab fa-facebook"></i>
                         </a>
                         <a href="https://instagram.com/graphicafix" target="_blank" aria-label="Instagram">
-                            <i class="fa-brands fa-instagram"></i>
+                            <i class="fab fa-instagram"></i>
                         </a>
                         <a href="https://youtube.com/@graphicafix" target="_blank" aria-label="YouTube">
-                            <i class="fa-brands fa-youtube"></i>
+                            <i class="fab fa-youtube"></i>
                         </a>
                         <a href="https://linkedin.com/company/graphicafix" target="_blank" aria-label="LinkedIn">
-                            <i class="fa-brands fa-linkedin-in"></i>
+                            <i class="fab fa-linkedin-in"></i>
                         </a>
                     </div>
                 </div>
@@ -29,11 +29,11 @@
                 <div class="footer-section">
                     <h5>Quick Links</h5>
                     <ul>
-                        <li><a href="index.php"><i class="fa-solid fa-chevron-right"></i> Home</a></li>
-                        <li><a href="services.php"><i class="fa-solid fa-chevron-right"></i> Services</a></li>
-                        <li><a href="portfolio.php"><i class="fa-solid fa-chevron-right"></i> Portfolio</a></li>
-                        <li><a href="about.php"><i class="fa-solid fa-chevron-right"></i> About</a></li>
-                        <li><a href="contact_us.php"><i class="fa-solid fa-chevron-right"></i> Contact Us</a></li>
+                        <li><a href="index.php"><i class="fas fa-chevron-right"></i> Home</a></li>
+                        <li><a href="services.php"><i class="fas fa-chevron-right"></i> Services</a></li>
+                        <li><a href="portfolio.php"><i class="fas fa-chevron-right"></i> Portfolio</a></li>
+                        <li><a href="about.php"><i class="fas fa-chevron-right"></i> About</a></li>
+                        <li><a href="contact_us.php"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
                     </ul>
                 </div>
 
@@ -41,11 +41,11 @@
                 <div class="footer-section">
                     <h5>Our Services</h5>
                     <ul>
-                        <li><a href="services.php#branding"><i class="fa-solid fa-chevron-right"></i> Branding</a></li>
-                        <li><a href="services.php#web-design"><i class="fa-solid fa-chevron-right"></i> Web Design</a></li>
-                        <li><a href="services.php#graphic-design"><i class="fa-solid fa-chevron-right"></i> Graphic Design</a></li>
-                        <li><a href="services.php#social-media"><i class="fa-solid fa-chevron-right"></i> Social Media</a></li>
-                        <li><a href="career.php"><i class="fa-solid fa-chevron-right"></i> Career</a></li>
+                        <li><a href="services.php#branding"><i class="fas fa-chevron-right"></i> Branding</a></li>
+                        <li><a href="services.php#web-design"><i class="fas fa-chevron-right"></i> Web Design</a></li>
+                        <li><a href="services.php#graphic-design"><i class="fas fa-chevron-right"></i> Graphic Design</a></li>
+                        <li><a href="services.php#social-media"><i class="fas fa-chevron-right"></i> Social Media</a></li>
+                        <li><a href="career.php"><i class="fas fa-chevron-right"></i> Career</a></li>
                     </ul>
                 </div>
 
@@ -53,16 +53,16 @@
                 <div class="footer-section">
                     <h5>Get In Touch</h5>
                     <div class="contact-item">
-                        <i class="fa-solid fa-envelope"></i>
+                        <i class="fas fa-envelope"></i>
                         <a href="mailto:contact@graphicafix.com">contact@graphicafix.com</a>
                     </div>
                     <div class="contact-item">
-                        <i class="fa-brands fa-whatsapp"></i>
+                        <i class="fab fa-whatsapp"></i>
                         <a href="https://wa.me/923454568986" target="_blank">+92 345 4568986</a>
                     </div>
                     <div class="contact-item">
-                        <i class="fa-solid fa-location-dot"></i>
-                        <span style="color: #a1a1aa;">Lahore, Pakistan</span>
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span style="color: #a1a1aa;">Islamabad, Pakistan</span>
                     </div>
                 </div>
             </div>
@@ -75,7 +75,7 @@
                 <div class="copyright-links">
                     <a href="privacy-policy.php">Privacy Policy</a>
                     <a href="terms.php">Terms of Service</a>
-                    <a href="sitemap.php">Sitemap</a>
+                    <a href="sitemap.xml">Sitemap</a>
                 </div>
             </div>
         </div>
@@ -86,7 +86,7 @@
     <!-- Scripts -->
     <script src="js/scripts.js"></script>
     <script src="js/bootstrap.js"></script>
-    <script src="js/bootstrap.bundle.min.js"></script>
+    <script src="js/bootstrap.bundle.js"></script>
 
     <!-- Animation -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
@@ -96,24 +96,117 @@
     <!-- Swiper JS -->
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
-    <!-- Back to Top Script -->
+    <!--MENU -->
     <script>
-        const backToTop = document.getElementById('backToTop');
+       
 
-        window.addEventListener('scroll', () => {
-            if (window.pageYOffset > 300) {
-                backToTop.classList.add('show');
+
+
+
+
+
+// Mobile Menu Toggle
+const mobileToggle = document.getElementById('mobileToggle');
+const mobileMenu = document.getElementById('mobileMenu');
+
+mobileToggle.addEventListener('click', () => {
+    mobileToggle.classList.toggle('active');
+    mobileMenu.classList.toggle('active');
+});
+
+// Navbar Scroll Effect
+window.addEventListener('scroll', () => {
+    const navbar = document.querySelector('.modern-navbar');
+    if (window.scrollY > 50) {
+        navbar.classList.add('scrolled');
+    } else {
+        navbar.classList.remove('scrolled');
+    }
+});
+
+// Close mobile menu when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.modern-navbar')) {
+        mobileToggle.classList.remove('active');
+        mobileMenu.classList.remove('active');
+    }
+});
+    </script>
+
+<script>
+
+    // Typing Animation
+const words = ['Innovation', 'Creativity', 'Excellence', 'Quality', 'Design', 'Passion'];
+let wordIndex = 0;
+let charIndex = 0;
+let isDeleting = false;
+const typingElement = document.getElementById('changing-word');
+const typingSpeed = 120;
+const deletingSpeed = 80;
+const pauseTime = 2000;
+
+function type() {
+    const currentWord = words[wordIndex];
+    
+    if (isDeleting) {
+        typingElement.textContent = currentWord.substring(0, charIndex - 1);
+        charIndex--;
+    } else {
+        typingElement.textContent = currentWord.substring(0, charIndex + 1);
+        charIndex++;
+    }
+    
+    if (!isDeleting && charIndex === currentWord.length) {
+        isDeleting = true;
+        setTimeout(type, pauseTime);
+    } else if (isDeleting && charIndex === 0) {
+        isDeleting = false;
+        wordIndex = (wordIndex + 1) % words.length;
+        setTimeout(type, 500);
+    } else {
+        setTimeout(type, isDeleting ? deletingSpeed : typingSpeed);
+    }
+}
+
+// Start typing animation
+document.addEventListener('DOMContentLoaded', () => {
+    type();
+    animateCounters();
+});
+
+// Counter Animation
+function animateCounters() {
+    const counters = document.querySelectorAll('.stat-number');
+    
+    counters.forEach(counter => {
+        const target = parseInt(counter.getAttribute('data-count'));
+        const duration = 2000;
+        const increment = target / (duration / 16);
+        let current = 0;
+        
+        const updateCounter = () => {
+            current += increment;
+            if (current < target) {
+                counter.textContent = Math.ceil(current) + (target > 10 ? '+' : '');
+                requestAnimationFrame(updateCounter);
             } else {
-                backToTop.classList.remove('show');
+                counter.textContent = target + (target > 10 ? '+' : '');
             }
-        });
-
-        backToTop.addEventListener('click', () => {
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
+        };
+        
+        // Start animation when element is in view
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    updateCounter();
+                    observer.unobserve(entry.target);
+                }
             });
         });
-    </script>
+        
+        observer.observe(counter);
+    });
+}
+</script>
 </body>
 </html>

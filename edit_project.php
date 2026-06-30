@@ -1,5 +1,7 @@
 <?php
-require_once('config.php');
+require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/config.php';
+
+require_once('dashboard_header.php');
 
 
 // Get project ID from URL
@@ -17,13 +19,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $start_date = $_POST['start_date'];
     $end_date = $_POST['end_date'];
     $visibility = $_POST['visibility'];
+    $category = $_POST['category'] ?? '';
     $team_members = $_POST['team_members'] ?? [];
     $slug = strtolower(str_replace(' ', '-', $project_name));
 
+
+    $thumbDir = "images/uploads/projects";
     // Upload new thumbnail if provided
     $thumbPath = $_POST['existing_thumbnail'] ?? '';
     if (!empty($_FILES['thumbnail']['name'])) {
-        $thumbDir = "uploads/projects/" . time();
+        $thumbDir = "images/uploads/projects" . time();
         mkdir($thumbDir, 0777, true);
         $thumbPath = $thumbDir . "/thumb_" . $_FILES['thumbnail']['name'];
         move_uploaded_file($_FILES['thumbnail']['tmp_name'], $thumbPath);
@@ -33,23 +38,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $conn->prepare("UPDATE projects SET 
         client_id = ?, project_name = ?, description = ?, public_description = ?, 
         internal_notes = ?, status = ?, priority = ?, start_date = ?, end_date = ?, 
-        thumbnail = ?, slug = ?, visibility = ?
+        thumbnail = ?, slug = ?, visibility = ?, category = ?
         WHERE id = ?");
 
     $stmt->bind_param(
-        "isssssssssssi",
+        "issssssssssssi",
         $client_id, $project_name, $description, $public_description,
         $internal_notes, $status, $priority, $start_date, $end_date,
-        $thumbPath, $slug, $visibility, $id
+        $thumbPath, $slug, $visibility, $category, $id
     );
 
     $stmt->execute();
 
     // Update team members
-    $conn->query("DELETE FROM project_team WHERE id = $id");
-    foreach ($team_members as $uid) {
-        $conn->query("INSERT INTO project_team (id, user_id) VALUES ($id, $uid)");
-    }
+    $conn->query("DELETE FROM project_team WHERE project_id = $id");
+
+foreach ($team_members as $uid) {
+    $stmt = $conn->prepare("INSERT INTO project_team (project_id, user_id) VALUES (?, ?)");
+    $stmt->bind_param("ii", $id, $uid);
+    $stmt->execute();
+}
 
     // Upload new gallery images if provided
     if (!empty($_FILES['gallery']['tmp_name'][0])) {
@@ -58,17 +66,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $imgPath = $thumbDir . "/img_" . $_FILES['gallery']['name'][$key];
                 move_uploaded_file($tmp, $imgPath);
 
-                $conn->query("INSERT INTO project_gallery (id, image_path, sort_order) 
-                              VALUES ($id, '$imgPath', $key)");
+                $conn->query("INSERT INTO project_gallery (project_id, image_path, sort_order) 
+                    VALUES ($id, '$imgPath', $key)");
 
-                $conn->query("INSERT INTO project_files (id, file_path, file_type) 
-                              VALUES ($id, '$imgPath', 'image')");
+                $conn->query("INSERT INTO project_files (project_id, file_path, file_type) 
+                            VALUES ($id, '$imgPath', 'image')");
             }
         }
     }
 
     echo "<script>alert('Project Updated Successfully!');window.location='project_details.php?id=$id';</script>";
 }
+
 
 // Fetch project details
 $project_query = "SELECT p.* FROM projects p WHERE p.id = ?";
@@ -83,7 +92,8 @@ if (!$project) {
 }
 
 // Fetch assigned team members
-$team_query = "SELECT user_id FROM project_team WHERE id = ?";
+$team_query = "SELECT user_id FROM project_team WHERE project_id = ?";
+
 $stmt = $conn->prepare($team_query);
 $stmt->bind_param("i", $id);
 $stmt->execute();
@@ -101,7 +111,6 @@ $stmt->execute();
 $gallery = $stmt->get_result();
 ?>
 
-
 <div class="dashboard">
     <!-- Page Header -->
     <div class="page-header">
@@ -110,19 +119,19 @@ $gallery = $stmt->get_result();
     </div>
 
     <!-- Tabs Navigation -->
-    <div class="tabs-container">
-        <div class="tab-buttons">
+    <div class="mp-tabs-container">
+        <div class="mp-tab-buttons">
             <button type="button" class="active" onclick="showTab('basic')">
-                <span class="tab-icon">📝</span> Basic Info
+                <span class="mp-tab-icon">📝</span> Basic Info
             </button>
             <button type="button" onclick="showTab('details')">
-                <span class="tab-icon">📄</span> Details
+                <span class="mp-tab-icon">📄</span> Details
             </button>
             <button type="button" onclick="showTab('media')">
-                <span class="tab-icon">🖼️</span> Media
+                <span class="mp-tab-icon">🖼️</span> Media
             </button>
             <button type="button" onclick="showTab('team')">
-                <span class="tab-icon">👥</span> Team
+                <span class="mp-tab-icon">👥</span> Team
             </button>
         </div>
     </div>
@@ -190,13 +199,27 @@ $gallery = $stmt->get_result();
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Visibility <span class="required">*</span></label>
-                    <select name="visibility" required>
-                        <option value="private" <?= $project['visibility'] == 'private' ? 'selected' : '' ?>>Private (Team Only)</option>
-                        <option value="client" <?= $project['visibility'] == 'client' ? 'selected' : '' ?>>Client Visible</option>
-                        <option value="public" <?= $project['visibility'] == 'public' ? 'selected' : '' ?>>Public</option>
-                    </select>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Visibility <span class="required">*</span></label>
+                        <select name="visibility" required>
+                            <option value="private" <?= $project['visibility'] == 'private' ? 'selected' : '' ?>>Private (Team Only)</option>
+                            <option value="client" <?= $project['visibility'] == 'client' ? 'selected' : '' ?>>Client Visible</option>
+                            <option value="public" <?= $project['visibility'] == 'public' ? 'selected' : '' ?>>Public</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Category <span class="required">*</span></label>
+                        <select name="category" required>
+                            <option value="">Select a category</option>
+                            <option value="branding" <?= isset($project['category']) && $project['category'] == 'branding' ? 'selected' : '' ?>>Branding</option>
+                            <option value="web-design" <?= isset($project['category']) && $project['category'] == 'web-design' ? 'selected' : '' ?>>Web Design</option>
+                            <option value="social-media" <?= isset($project['category']) && $project['category'] == 'social-media' ? 'selected' : '' ?>>Social Media</option>
+                            <option value="marketing" <?= isset($project['category']) && $project['category'] == 'marketing' ? 'selected' : '' ?>>Marketing</option>
+                            <option value="packaging" <?= isset($project['category']) && $project['category'] == 'packaging' ? 'selected' : '' ?>>Packaging</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -214,14 +237,28 @@ $gallery = $stmt->get_result();
                     <textarea name="description" placeholder="Internal project description for team members..."><?= htmlspecialchars($project['description']) ?></textarea>
                 </div>
 
-                <div class="form-group">
+                <!-- <div class="form-group">
                     <label>Public Description</label>
                     <textarea name="public_description" placeholder="Client-facing project description..."><?= htmlspecialchars($project['public_description']) ?></textarea>
-                </div>
+                </div> -->
 
                 <div class="form-group">
                     <label>Internal Notes</label>
                     <textarea name="internal_notes" placeholder="Private notes, instructions, or important information..."><?= htmlspecialchars($project['internal_notes']) ?></textarea>
+                </div>
+
+                <div class="form-group mb-4">
+                <label class="form-label fw-bold text-secondary" style="letter-spacing: 1px; font-size: 0.85rem; text-transform: uppercase;">
+                    Public Description
+                </label>
+                
+                <div id="public-editor-wrapper" style="background: #fff; border-radius: 8px;">
+                    <div id="public-editor" style="height: 350px; font-family: 'Outfit', sans-serif; font-size: 1.1rem;">
+                        <?= isset($project['public_description']) ? $project['public_description'] : '' ?>
+                    </div>
+                </div>
+
+                <input type="hidden" name="public_description" id="public_description_input">
                 </div>
             </div>
 
@@ -338,13 +375,13 @@ function showTab(tabId) {
         tab.classList.remove('active');
     });
     
-    document.querySelectorAll('.tab-buttons button').forEach(btn => {
+    document.querySelectorAll('.mp-tab-buttons button').forEach(btn => {
         btn.classList.remove('active');
     });
     
     document.getElementById(tabId).classList.add('active');
     
-    const buttons = document.querySelectorAll('.tab-buttons button');
+    const buttons = document.querySelectorAll('.mp-tab-buttons button');
     currentTabIndex = tabs.indexOf(tabId);
     buttons[currentTabIndex].classList.add('active');
     
@@ -372,13 +409,13 @@ function showTabByIndex(index) {
         tab.classList.remove('active');
     });
     
-    document.querySelectorAll('.tab-buttons button').forEach(btn => {
+    document.querySelectorAll('.mp-tab-buttons button').forEach(btn => {
         btn.classList.remove('active');
     });
     
     document.getElementById(tabId).classList.add('active');
     
-    const buttons = document.querySelectorAll('.tab-buttons button');
+    const buttons = document.querySelectorAll('.mp-tab-buttons button');
     buttons[index].classList.add('active');
     
     updateButtons();
@@ -471,7 +508,32 @@ document.getElementById('projectForm').addEventListener('submit', function(e) {
 // Initialize button states on load
 updateButtons();
 </script>
+<script>
+    // 1. Initialize the Editor
+    var publicEditor = new Quill('#public-editor', {
+        modules: {
+            toolbar: [
+                [{ 'header': [2, 3, false] }],
+                ['bold', 'italic', 'underline', 'blockquote'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['link', 'clean']
+            ]
+        },
+        placeholder: 'Write a compelling narrative for this project...',
+        theme: 'snow'
+    });
 
+    // 2. Sync with the Hidden Input
+    var publicInput = document.getElementById('public_description_input');
+    
+    // Set initial value on load
+    publicInput.value = publicEditor.root.innerHTML;
+
+    // Update hidden input on every keystroke
+    publicEditor.on('text-change', function() {
+        publicInput.value = publicEditor.root.innerHTML;
+    });
+</script>
 <?php
-   
+   include('dashboard_footer.php');
 ?>

@@ -1,0 +1,17 @@
+{
+    "name": "personal/graphicafix",
+    "autoload": {
+        "psr-4": {
+            "Personal\\Graphicafix\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "ibad",
+            "email": "idibad5321@gmail.com"
+        }
+    ],
+    "require": {
+        "mpdf/mpdf": "^8.2"
+    }
+}

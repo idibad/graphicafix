@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $start_date = $_POST['start_date'];
     $end_date = $_POST['end_date'];
     $visibility = $_POST['visibility'];
+    $category = $_POST['category'] ?? '';
     $team_members = $_POST['team_members'] ?? []; // array
     $slug = strtolower(str_replace(' ', '-', $project_name));
 
@@ -29,11 +30,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Insert into projects
     $stmt = $conn->prepare("INSERT INTO projects 
         (client_id, project_name, description, public_description, internal_notes, 
-         status, priority, start_date, end_date, thumbnail, slug, visibility) 
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+         status, priority, start_date, end_date, thumbnail, slug, visibility, category) 
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
 
     $stmt->bind_param(
-        "isssssssssss",
+        "issssssssssss",
         $client_id,
         $project_name,
         $description,
@@ -45,7 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $end_date,
         $thumbPath,
         $slug,
-        $visibility
+        $visibility,
+        $category
     );
 
     $stmt->execute();
@@ -81,7 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     echo "<script>alert('Project Added Successfully!');window.location='projects.php';</script>";
 }
 ?>
-
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
 
 <div class="dashboard">
     <!-- Page Header -->
@@ -91,19 +94,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <!-- Tabs Navigation -->
-    <div class="tabs-container">
-        <div class="tab-buttons">
+    <div class="mp-tabs-container">
+        <div class="mp-tab-buttons">
             <button type="button" class="active" onclick="showTab('basic')">
-                <span class="tab-icon">📝</span> Basic Info
+                <span class="mp-tab-icon">📝</span> Basic Info
             </button>
             <button type="button" onclick="showTab('details')">
-                <span class="tab-icon">📄</span> Details
+                <span class="mp-tab-icon">📄</span> Details
             </button>
             <button type="button" onclick="showTab('media')">
-                <span class="tab-icon">🖼️</span> Media
+                <span class="mp-tab-icon">🖼️</span> Media
             </button>
             <button type="button" onclick="showTab('team')">
-                <span class="tab-icon">👥</span> Team
+                <span class="mp-tab-icon">👥</span> Team
             </button>
         </div>
     </div>
@@ -169,13 +172,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Visibility <span class="required">*</span></label>
-                    <select name="visibility" required>
-                        <option value="private">Private (Team Only)</option>
-                        <option value="client">Client Visible</option>
-                        <option value="public">Public</option>
-                    </select>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Visibility <span class="required">*</span></label>
+                        <select name="visibility" required>
+                            <option value="private">Private (Team Only)</option>
+                            <option value="client">Client Visible</option>
+                            <option value="public">Public</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Category <span class="required">*</span></label>
+                        <select name="category" required>
+                            <option value="">Select a category</option>
+                            <option value="branding">Branding</option>
+                            <option value="web-design">Web Design</option>
+                            <option value="social-media">Social Media</option>
+                            <option value="marketing">Marketing</option>
+                            <option value="packaging">Packaging</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -193,15 +210,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <textarea name="description" placeholder="Internal project description for team members..."></textarea>
                 </div>
 
-                <div class="form-group">
-                    <label>Public Description</label>
-                    <textarea name="public_description" placeholder="Client-facing project description..."></textarea>
-                </div>
+                
 
                 <div class="form-group">
                     <label>Internal Notes</label>
                     <textarea name="internal_notes" placeholder="Private notes, instructions, or important information..."></textarea>
                 </div>
+
+                <div class="form-group mb-4">
+    <label class="form-label fw-bold text-secondary" style="letter-spacing: 1px; font-size: 0.85rem; text-transform: uppercase;">
+        Public Description
+    </label>
+    
+    <div id="public-editor-wrapper" style="background: #fff; border-radius: 8px;">
+        <div id="public-editor" style="height: 350px; font-family: 'Outfit', sans-serif; font-size: 1.1rem;">
+            <?= isset($project['public_description']) ? $project['public_description'] : '' ?>
+        </div>
+    </div>
+
+    <input type="hidden" name="public_description" id="public_description_input">
+</div>
             </div>
 
             <!-- Media Tab -->
@@ -290,7 +318,7 @@ function showTab(tabId) {
     });
     
     // Remove active class from all buttons
-    document.querySelectorAll('.tab-buttons button').forEach(btn => {
+    document.querySelectorAll('.mp-tab-buttons button').forEach(btn => {
         btn.classList.remove('active');
     });
     
@@ -298,7 +326,7 @@ function showTab(tabId) {
     document.getElementById(tabId).classList.add('active');
     
     // Add active class to clicked button
-    const buttons = document.querySelectorAll('.tab-buttons button');
+    const buttons = document.querySelectorAll('.mp-tab-buttons button');
     currentTabIndex = tabs.indexOf(tabId);
     buttons[currentTabIndex].classList.add('active');
     
@@ -328,7 +356,7 @@ function showTabByIndex(index) {
     });
     
     // Remove active class from all buttons
-    document.querySelectorAll('.tab-buttons button').forEach(btn => {
+    document.querySelectorAll('.mp-tab-buttons button').forEach(btn => {
         btn.classList.remove('active');
     });
     
@@ -336,7 +364,7 @@ function showTabByIndex(index) {
     document.getElementById(tabId).classList.add('active');
     
     // Add active class to corresponding button
-    const buttons = document.querySelectorAll('.tab-buttons button');
+    const buttons = document.querySelectorAll('.mp-tab-buttons button');
     buttons[index].classList.add('active');
     
     updateButtons();
@@ -400,7 +428,32 @@ document.getElementById('projectForm').addEventListener('submit', function(e) {
     }
 });
 </script>
+<script>
+    // 1. Initialize the Editor
+    var publicEditor = new Quill('#public-editor', {
+        modules: {
+            toolbar: [
+                [{ 'header': [2, 3, false] }],
+                ['bold', 'italic', 'underline', 'blockquote'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['link', 'clean']
+            ]
+        },
+        placeholder: 'Write a compelling narrative for this project...',
+        theme: 'snow'
+    });
 
+    // 2. Sync with the Hidden Input
+    var publicInput = document.getElementById('public_description_input');
+    
+    // Set initial value on load
+    publicInput.value = publicEditor.root.innerHTML;
+
+    // Update hidden input on every keystroke
+    publicEditor.on('text-change', function() {
+        publicInput.value = publicEditor.root.innerHTML;
+    });
+</script>
 <?php 
 include('dashboard_footer.php');
 ?>

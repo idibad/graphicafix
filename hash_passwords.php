@@ -1,5 +1,6 @@
 <?php
-include('config.php');
+require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/config.php';
+
 // User data to insert
 $name = "test user";
 $phone = "user";
