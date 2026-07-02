@@ -54,9 +54,9 @@ define('SAFEPAY_API_URL', SAFEPAY_ENVIRONMENT === 'sandbox' ? 'https://sandbox.a
 
 // JazzCash Configuration (Sandbox)
 define('JAZZCASH_ENVIRONMENT', 'sandbox');
-define('JAZZCASH_MERCHANT_ID', 'YOUR_JAZZCASH_MERCHANT_ID');
-define('JAZZCASH_PASSWORD', 'YOUR_JAZZCASH_PASSWORD');
-define('JAZZCASH_INTEGRITY_SALT', 'YOUR_JAZZCASH_INTEGRITY_SALT');
+define('JAZZCASH_MERCHANT_ID', 'MC825531');
+define('JAZZCASH_PASSWORD', 'z00e0w54u0');
+define('JAZZCASH_INTEGRITY_SALT', '918y9whxcw');
 define('JAZZCASH_POST_URL', JAZZCASH_ENVIRONMENT === 'sandbox' ? 'https://sandbox.jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform/' : 'https://jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform/');
 ?>
 
