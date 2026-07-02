@@ -10,8 +10,10 @@ session_start();
 $timeout_duration = 1800; // 15 minutes
 
 // Check if session has timed out
-if (isset($_SESSION['LAST_ACTIVITY']) && 
-    (time() - $_SESSION['LAST_ACTIVITY']) > $timeout_duration) {
+if (
+    isset($_SESSION['LAST_ACTIVITY']) &&
+    (time() - $_SESSION['LAST_ACTIVITY']) > $timeout_duration
+) {
 
     session_unset();   // remove all session variables
     session_destroy(); // destroy the session
@@ -25,35 +27,32 @@ if (isset($_SESSION['LAST_ACTIVITY']) &&
 $_SESSION['LAST_ACTIVITY'] = time();
 
 
-    define('BASE_URL', 'http://localhost/graphicafix/');
-    
-    $server = "localhost";
-    $username = "root";
-    $password = "";
-    $db = "graphica_fix_db";
+define('BASE_URL', 'http://localhost:8000/graphicafix/');
+
+$server = "localhost";
+$username = "root";
+$password = "root";
+$db = "graphica_fix_db";
 
 
-    $conn = @mysqli_connect($server, $username,$password, $db);
-    
-    if(!$conn){
 
-       echo "<div class='alert alert-danger alert-dismissible fade show' role='alert'>
+$conn = @mysqli_connect($server, $username, $password, $db);
+
+if (!$conn) {
+
+    echo "<div class='alert alert-danger alert-dismissible fade show' role='alert'>
   Connection unsuccesful
   <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button>
 </div>";
-    }    
-    date_default_timezone_set('Asia/Karachi');
-    $conn->query("SET time_zone = '+05:00'");
-    
-// SAFEPAY CONFIGURATION
-define('SAFEPAY_ENVIRONMENT', 'sandbox'); // Change to 'production' when live
-define('SAFEPAY_API_KEY', 'sec_xxxxx_YOUR_SECRET_KEY_HERE_xxxxx'); // Your Secret Key
+}
+date_default_timezone_set('Asia/Karachi');
+$conn->query("SET time_zone = '+05:00'");
 
-// Safepay URLs
+define('SAFEPAY_ENVIRONMENT', 'sandbox');
+define('SAFEPAY_API_KEY', 'sec_34f28f5b-da25-439c-bdee-ed067cc9eded');
 define('SAFEPAY_API_URL', SAFEPAY_ENVIRONMENT === 'sandbox' ? 'https://sandbox.api.getsafepay.com' : 'https://api.getsafepay.com');
 ?>
 
 
- <link href="<?= BASE_URL ?>css/bootstrap.css" rel="stylesheet">
+<link href="<?= BASE_URL ?>css/bootstrap.css" rel="stylesheet">
 <link rel="icon" type="image/png" href="<?= BASE_URL ?>images/icon.png">
-

@@ -212,10 +212,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        $api_headers = ["Content-Type: application/json"];
-        if (strpos(SAFEPAY_API_KEY, 'sec_') === 0) {
-            $api_headers[] = "X-SFPY-MERCHANT-SECRET: " . SAFEPAY_API_KEY;
-        }
+        $api_headers = [
+            "Content-Type: application/json",
+            "X-SFPY-MERCHANT-SECRET: " . SAFEPAY_API_KEY
+        ];
         curl_setopt($ch, CURLOPT_HTTPHEADER, $api_headers);
         $response = curl_exec($ch);
         $curl_err = curl_error($ch);
@@ -338,72 +338,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
                                         <span>Processing & Gateway Fees</span>
                                         <span>Rs. 0 (Free)</span>
                                     </div>
-                                </div>
-
-                                <!-- Primary action button launching top-level secure card form without iframe restrictions -->
+                                <!-- Pay button: direct redirect to Safepay in same tab -->
                                 <div id="safepay-action-wrapper">
-                                    <button onclick="openSafepaySecureModal()" id="safepay-pay-btn" style="width: 100%; background: #024442; color: #ffffff; border: none; padding: 18px 24px; border-radius: 14px; font-weight: 700; font-size: 1.08rem; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 12px; box-shadow: 0 10px 25px -5px rgba(2, 68, 66, 0.35);">
-                                        <i class="fas fa-lock" style="color: #b8f35a;"></i>
-                                        <span>Enter Card & Pay Rs. <?php echo number_format($amount_paid); ?></span>
+                                    <button onclick="goToSafepay()" id="safepay-pay-btn" style="width:100%;background:linear-gradient(135deg,#024442 0%,#036b68 100%);color:#fff;border:none;padding:18px 24px;border-radius:14px;font-weight:700;font-size:1.08rem;cursor:pointer;transition:all 0.3s;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 10px 25px -5px rgba(2,68,66,0.45);">
+                                        <i class="fas fa-lock" style="color:#b8f35a;"></i>
+                                        <span>Pay Securely &mdash; Rs. <?php echo number_format($amount_paid); ?></span>
+                                        <i class="fas fa-arrow-right" style="margin-left:auto;color:rgba(255,255,255,0.6);"></i>
                                     </button>
                                 </div>
                             </div>
 
-                            <div style="text-align: center; font-size: 0.84rem; color: #94a3b8; line-height: 1.6;">
-                                <i class="fas fa-shield-alt" style="color: #10b981; font-size: 1rem; margin-right: 4px;"></i> 
-                                <strong>100% Secure Checkout.</strong> Clicking the button opens a clean, PCI-compliant authorization window where your card details are processed without browser cookie restrictions.
+                            <div style="text-align:center;font-size:0.84rem;color:#94a3b8;line-height:1.6;">
+                                <i class="fas fa-shield-alt" style="color:#10b981;font-size:1rem;margin-right:4px;"></i>
+                                <strong>100% Secure Checkout.</strong> You'll be taken to Safepay's payment page and returned here automatically after payment.
                             </div>
                         </div>
                     </div>
                     <script>
-    function openSafepaySecureModal() {
-        var wrapper = document.getElementById('safepay-action-wrapper');
-        
-        // Change UI to Loading State
-        wrapper.innerHTML = `
-            <button disabled style="width: 100%; background: #024442; color: #ffffff; border: none; padding: 18px 24px; border-radius: 14px; font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; justify-content: center; gap: 12px; box-shadow: 0 10px 25px -5px rgba(2, 68, 66, 0.35);">
-                <i class="fas fa-spinner fa-spin" style="color: #b8f35a;"></i>
-                <span>Processing in Secure Window...</span>
-            </button>
-            <div style="margin-top: 14px; font-size: 0.88rem; color: #024442; text-align: center; font-weight: 600; background: #f0fdf4; padding: 10px; border-radius: 10px; border: 1px solid #bbf7d0;">
-                <i class="fas fa-satellite-dish" style="color: #10b981;"></i> Waiting for payment confirmation. This page will update automatically.
-            </div>
-        `;
-        
-        var checkoutUrl = <?php echo json_encode($safepay_checkout_url); ?>;
-        var orderId = <?php echo json_encode($temp_order_id); ?>;
-        
-        // Open the Popup
-        var width = 650;
-        var height = 750;
-        var left = (screen.width - width) / 2;
-        var top = (screen.height - height) / 2;
-        var popup = window.open(checkoutUrl, 'SafepaySecurePayment', 'width=' + width + ',height=' + height + ',top=' + top + ',left=' + left + ',scrollbars=yes,resizable=yes');
-        
-        // The Bulletproof Polling Loop: Check database every 2 seconds
-        var pollTimer = setInterval(function() {
-            fetch('courses.php?check_order_status=' + orderId)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.paid) {
-                        // Payment found in DB! Stop checking.
-                        clearInterval(pollTimer);
-                        
-                        // Force close the popup if it's still open
-                        if (popup && !popup.closed) { popup.close(); }
-                        
-                        wrapper.innerHTML = '<button disabled style="width: 100%; background: #10b981; color: #ffffff; border: none; padding: 18px 24px; border-radius: 14px; font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; justify-content: center; gap: 12px;"><i class="fas fa-check-circle"></i> <span>Payment Successful! Redirecting...</span></button>';
-                        
-                        // Go to Thank You page
-                        window.location.href = data.redirectUrl;
-                    } else if (popup && popup.closed) {
-                        // User closed the window manually without paying
-                        clearInterval(pollTimer);
-                        wrapper.innerHTML = '<button onclick="openSafepaySecureModal()" style="width: 100%; background: #ef4444; color: #ffffff; border: none; padding: 18px 24px; border-radius: 14px; font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer; transition: 0.3s;"><i class="fas fa-redo"></i> <span>Payment Incomplete — Click to Try Again</span></button>';
-                    }
-                })
-                .catch(err => console.error("Polling error:", err));
-        }, 2000);
+    function goToSafepay() {
+        var btn = document.getElementById('safepay-pay-btn');
+        btn.disabled = true;
+        btn.style.background = 'linear-gradient(135deg,#036b68,#024442)';
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="color:#b8f35a;"></i><span>Redirecting to Secure Payment...</span>';
+        window.location.href = <?php echo json_encode($safepay_checkout_url); ?>;
     }
 </script>
                     <div style="padding: 18px 35px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
