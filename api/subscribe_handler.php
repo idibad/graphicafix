@@ -29,7 +29,7 @@ function buildEmailWrapper($icon, $heading, $body_html, $btn_text='', $btn_url='
 }
 
 function sendWelcomeEmail($email) {
-    $icon = 'images/logo.png';
+    $icon = 'assets/images/logo.png';
     $heading = 'Welcome to Graphicafix!';
     $siteUrl = 'https://graphicafix.com';
     

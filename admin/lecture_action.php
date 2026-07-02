@@ -1,6 +1,6 @@
 <?php
 session_start();
-include('../config.php');
+include '../core/config.php';
 
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);

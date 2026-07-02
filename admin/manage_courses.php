@@ -3,7 +3,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  AUTO-PATCH: ensure all columns exist before anything else runs

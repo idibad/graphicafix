@@ -1,4 +1,4 @@
-<?php include 'header.php'; ?>
+<?php include 'templates/header.php'; ?>
 
 <style>
 :root {
@@ -960,4 +960,4 @@ function filterPosts() {
 }
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include 'templates/footer.php'; ?>

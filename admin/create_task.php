@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php'); exit;

@@ -7,7 +7,7 @@
 
 // ── Require config if $conn not already set ───────────────────────────────────
 if (!isset($conn)) {
-    require_once 'config.php';
+    require_once 'core/config.php';
 }
 
 

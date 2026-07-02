@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 // ── Database Auto-Patch ──
 // Ensure the role column can accept 'teacher' and 'student' by changing it to a VARCHAR

@@ -3,7 +3,7 @@
 error_reporting(0);
 ini_set('display_errors', '0');
 
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'ms-applications';
 

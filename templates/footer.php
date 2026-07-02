@@ -84,9 +84,9 @@
     
 
     <!-- Scripts -->
-    <script src="js/scripts.js"></script>
-    <script src="js/bootstrap.js"></script>
-    <script src="js/bootstrap.bundle.js"></script>
+    <script src="assets/js/scripts.js"></script>
+    <script src="assets/js/bootstrap.js"></script>
+    <script src="assets/js/bootstrap.bundle.js"></script>
 
     <!-- Animation -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">

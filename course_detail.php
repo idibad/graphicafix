@@ -3,7 +3,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 
-include('header.php');
+include 'templates/header.php';
 
 $slug = $_GET['slug'] ?? '';
 $enrollment_id = intval($_GET['eid'] ?? 0); // passed after enrollment
@@ -607,4 +607,4 @@ if (vid) {
 }
 </script>
 
-<?php include('footer.php'); ?>
+<?php include 'templates/footer.php'; ?>

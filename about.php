@@ -3,7 +3,7 @@
     error_reporting(0);
     ini_set('display_errors', '0');
 
-    include('header.php');
+    include 'templates/header.php';
 
     $query = "
         SELECT * FROM team
@@ -459,7 +459,7 @@
 
 </div>
 
-<?php include('footer.php'); ?>
+<?php include 'templates/footer.php'; ?>
 
 <script>
 // Image Error Fallbacks
@@ -467,10 +467,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const images = document.querySelectorAll('img');
     images.forEach(img => {
         img.addEventListener('error', () => {
-            img.src = 'images/placeholder.png';
+            img.src = 'assets/images/placeholder.png';
         });
         if (!img.src || img.src.trim() === '') {
-            img.src = 'images/placeholder.png';
+            img.src = 'assets/images/placeholder.png';
         }
     });
 });

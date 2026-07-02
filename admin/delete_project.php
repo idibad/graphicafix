@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $project_id = intval($_GET['id'] ?? 0);
 

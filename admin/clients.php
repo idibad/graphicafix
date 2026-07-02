@@ -1,5 +1,5 @@
 <?php
-    include('dashboard_header.php'); 
+    include 'dashboard_header.php'; 
 
     $clients_query = "SELECT * FROM clients ORDER BY client_id";
     $clients_result = mysqli_query($conn, $clients_query);

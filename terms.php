@@ -1,4 +1,4 @@
-<?php include 'header.php'; ?>
+<?php include 'templates/header.php'; ?>
 
 <main class="terms-page">
     <style>
@@ -113,4 +113,4 @@
     </section>
 </main>
 
-<?php include 'footer.php'; ?>
+<?php include 'templates/footer.php'; ?>

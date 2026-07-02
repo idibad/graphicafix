@@ -9,7 +9,7 @@ ini_set('display_errors', '1');
 
 // Assuming this file is in the root directory alongside course_thank_you.php
 require_once 'vendor/autoload.php';
-require_once 'config.php';
+require_once 'core/config.php';
 
 $eid = intval($_GET['eid'] ?? 0);
 if (!$eid) die('Invalid Enrollment ID.');

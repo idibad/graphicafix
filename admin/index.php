@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php'); 
+include 'dashboard_header.php'; 
 
 // ── 1. Ensure Teacher/Student/Blogs Tables Exist ──
 $conn->query("CREATE TABLE IF NOT EXISTS live_sessions (

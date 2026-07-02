@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 // ------------------ HANDLE DISCOUNT CRUD ------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {

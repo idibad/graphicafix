@@ -3,7 +3,7 @@
 error_reporting(0);
 ini_set('display_errors', '0');
 
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $task_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $user_id = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;

@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 // ── Handle form submissions ───────────────────────────────────────────────────
 $toast_message = '';

@@ -1,5 +1,5 @@
 <?php
-    include('header.php');
+    include 'templates/header.php';
 
     if (isset($_POST['submit_contact'])) {
     $name = trim($_POST['name']);
@@ -23,7 +23,7 @@
     }
 }
 
-    $logoFolder = 'images/client_logo/';
+    $logoFolder = 'assets/images/client_logo/';
     $logos = glob($logoFolder . '*.png'); // get all logos
 
 
@@ -766,7 +766,7 @@ function closePromo() {
                             <div class="col-md-3">
                                 <a href="project_details.php?id=<?= intval($project['id']) ?>" class="work-card-link">
                                     <div class="work-card-single">
-<img src="admin/<?= htmlspecialchars(!empty($project['thumbnail']) ? $project['thumbnail'] : 'images/placeholder.png') ?>" alt="Project Thumbnail">                                            alt="<?= htmlspecialchars($project['project_name']) ?>">
+<img src="admin/<?= htmlspecialchars(!empty($project['thumbnail']) ? $project['thumbnail'] : 'assets/images/placeholder.png') ?>" alt="Project Thumbnail">                                            alt="<?= htmlspecialchars($project['project_name']) ?>">
                                         <div class="overlay">
                                             <h3><?= htmlspecialchars($project['project_name']) ?></h3>
                                         </div>
@@ -902,7 +902,7 @@ $index = 0;
 while ($project = $result->fetch_assoc()):
     $projectName = htmlspecialchars($project['project_name']);
     $projectDesc = htmlspecialchars($project['public_description']);
-    $projectThumb = htmlspecialchars($project['thumbnail'] ?: 'images/placeholder.png');
+    $projectThumb = htmlspecialchars($project['thumbnail'] ?: 'assets/images/placeholder.png');
     $projectID = intval($project['id']);
     $class = $layoutClasses[$index] ?? 'project-card'; // fallback
 ?>
@@ -1276,7 +1276,7 @@ document.getElementById('gfxSubscribeForm').addEventListener('submit', function(
     formData.append('email', email);
 
     // Keep this pointing to your standalone PHP file
-    fetch('subscribe_handler.php', {
+    fetch('api/subscribe_handler.php', {
         method: 'POST',
         body: formData
     })
@@ -1348,7 +1348,7 @@ function toggleReviews() {
     </script>
 <?php
 
-    include('footer.php');
+    include 'templates/footer.php';
 ?>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -1358,12 +1358,12 @@ document.addEventListener('DOMContentLoaded', () => {
     images.forEach(img => {
         // If image fails to load, replace with placeholder
         img.addEventListener('error', () => {
-            img.src = 'images/placeholder.png';
+            img.src = 'assets/images/placeholder.png';
         });
 
         // Optional: if src is empty/null, replace immediately
         if (!img.src || img.src.trim() === '') {
-            img.src = 'images/placeholder.png';
+            img.src = 'assets/images/placeholder.png';
         }
     });
 });

@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $id = intval($_GET['id'] ?? 0);
 if (!$id) { echo "<script>alert('Invalid invoice.');window.location='manage_invoices.php';</script>"; exit; }

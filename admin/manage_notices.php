@@ -1,6 +1,6 @@
 <?php
 
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $total_notices = $conn->query("SELECT COUNT(*) AS c FROM notices")->fetch_assoc()['c'] ?? 0;
 $today_notices = $conn->query("SELECT COUNT(*) AS c FROM notices WHERE DATE(`date`) = CURDATE()")->fetch_assoc()['c'] ?? 0;

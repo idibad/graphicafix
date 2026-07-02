@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $safe_email = mysqli_real_escape_string($conn, strtolower(trim($_SESSION['email'] ?? '')));
 $user_id = intval($_SESSION['user_id'] ?? 0);

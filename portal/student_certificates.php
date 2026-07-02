@@ -3,7 +3,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
 ob_start();
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $user_id = intval($_SESSION['user_id'] ?? 0);
 

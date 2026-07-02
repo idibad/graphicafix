@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 // Get project ID from URL
 $project_id = $_GET['id'] ?? 0;
 

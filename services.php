@@ -1,5 +1,5 @@
 <?php
-include('header.php');
+include 'templates/header.php';
 
 // ── Fetch services with packages + features ───────────────────────────────────
 $stmt = $conn->prepare("
@@ -773,4 +773,4 @@ function copyCode(code, el) {
 }
 </script>
 
-<?php include('footer.php'); ?>
+<?php include 'templates/footer.php'; ?>

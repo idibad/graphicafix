@@ -2,7 +2,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 // We REMOVED the $_SESSION['email'] and $_SESSION['user_id'] overrides here.
 // They are already safely loaded from the database inside dashboard_header.php!

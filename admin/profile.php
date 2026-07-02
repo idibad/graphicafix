@@ -1,6 +1,6 @@
 <?php
    
-include('dashboard_header.php');
+include 'dashboard_header.php';
     
     if(isset($_SESSION['username'])){
 		$username = $_SESSION['username'];

@@ -1,5 +1,5 @@
 <?php
-include_once('config.php');
+include_once 'core/config.php';
 $projects_query = "SELECT * FROM projects ORDER BY creation_date ";
 $projects_result = mysqli_query($conn, $projects_query);
 

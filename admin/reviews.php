@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $reviews = [];
 $result = mysqli_query($conn, "SELECT * FROM reviews ORDER BY created_at DESC");

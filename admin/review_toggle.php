@@ -2,7 +2,7 @@
 
 header('Content-Type: application/json');
 
-    require_once('../config.php');
+    require_once '../core/config.php';
 if (empty($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;

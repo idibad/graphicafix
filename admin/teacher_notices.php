@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $notices = $conn->query("SELECT * FROM notices ORDER BY `date` DESC");
 $total = $notices ? $notices->num_rows : 0;

@@ -1,5 +1,5 @@
 <?php 
-include 'header.php';
+include 'templates/header.php';
 
 $slug = isset($_GET['slug']) ? trim($_GET['slug']) : '';
 if (empty($slug)) {
@@ -18,7 +18,7 @@ if ($stmt) {
 
 if (!$blog) {
     echo "<div style='text-align:center; padding:100px 0; font-size:24px; color:#666;'>Blog post not found.</div>";
-    include 'footer.php';
+    include 'templates/footer.php';
     exit;
 }
 
@@ -880,4 +880,4 @@ function copyLink() {
 }
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include 'templates/footer.php'; ?>

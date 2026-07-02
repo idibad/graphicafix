@@ -2,7 +2,7 @@
 // ── AJAX handler — must be BEFORE any HTML output ─────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
     ob_start(); // buffer anything that leaks (e.g. from includes)
-    include('dashboard_header.php'); // needed for $conn and session
+    include 'dashboard_header.php'; // needed for $conn and session
     while (ob_get_level() > 0) ob_end_clean(); // discard ALL nested buffers
 
     $user_id  = intval($_SESSION['user_id'] ?? 0);
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
     exit;
 }
 
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 // Auth check
 if (!isset($_SESSION['user_id'])) {

@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $is_admin = $role === 'admin';
 if (!$is_admin) {

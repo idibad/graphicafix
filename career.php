@@ -1,5 +1,5 @@
 <?php
-include("header.php");
+include 'templates/header.php';
 
 // ── Handle application submission ─────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])) {
@@ -483,4 +483,4 @@ document.addEventListener('keydown', e => {
 });
 </script>
 
-<?php include("footer.php"); ?>
+<?php include 'templates/footer.php'; ?>

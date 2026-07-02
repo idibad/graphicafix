@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $is_admin = $role === 'admin';
 if (!$is_admin) {
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $target_file = $upload_dir . $filename;
         
         if (move_uploaded_file($_FILES['image']['tmp_name'], $target_file)) {
-            $image_path = 'images/uploads/blogs/' . $filename;
+            $image_path = 'assets/images/uploads/blogs/' . $filename;
             // Optionally delete old image here if needed
         }
     }

@@ -2,7 +2,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 // NO SESSION OVERRIDES HERE! We use the $email variable directly from dashboard_header.php
 

@@ -9,7 +9,7 @@ error_reporting(0);
 ini_set('display_errors', '0');
 
 require_once '../vendor/autoload.php';
-include('../config.php');
+include '../core/config.php';
 
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 if (!$id) die('Invalid ID.');

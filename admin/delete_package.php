@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $package_id = intval($_GET['id'] ?? 0);
 $service_id = intval($_GET['service_id'] ?? 0);

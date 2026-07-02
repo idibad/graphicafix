@@ -9,7 +9,7 @@
  */
 
 require_once '../vendor/autoload.php';
-include('../config.php');
+include '../core/config.php';
 
 $id = intval($_GET['id'] ?? 0);
 if (!$id) die('Invalid ID.');

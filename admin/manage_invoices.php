@@ -1,7 +1,7 @@
 <?php
 ob_start();
 
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 // ── Quick actions ─────────────────────────────────────────────────────────────
 if (isset($_GET['action'], $_GET['id'])) {

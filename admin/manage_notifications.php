@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 // Handle mark read / delete actions
 if (isset($_GET['action'])) {

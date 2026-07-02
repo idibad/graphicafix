@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 // ── Handle AJAX score save ────────────────────────────────────────────────────
 if (isset($_POST['ajax_save_score'])) {

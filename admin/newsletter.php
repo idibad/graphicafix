@@ -2,7 +2,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $admin_id   = $_SESSION['user_id'] ?? 0;
 $admin_name = $_SESSION['name'] ?? 'Admin';

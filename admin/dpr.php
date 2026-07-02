@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $is_manager = in_array($role, ['admin', 'pm', 'hrm']);
 

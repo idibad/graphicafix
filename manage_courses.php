@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'templates/dashboard_header.php';
 
 // ── Inline email helper functions ─────────────────────────────────────────────
 // (copy the sendStatusUpdateEmail + buildEmailWrapper functions inline here)

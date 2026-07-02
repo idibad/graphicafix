@@ -4,7 +4,7 @@ ini_set('display_errors', '1');
 
 // 1. Trap the dashboard header HTML so we can delete it if we are downloading a certificate
 ob_start();
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $user_id = intval($_SESSION['user_id'] ?? 0);
 

@@ -3,7 +3,7 @@
 error_reporting(0);
 ini_set('display_errors', '0');
 
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $is_admin = ($role === 'admin');
 $user_id  = $_SESSION['user_id'] ?? 0;

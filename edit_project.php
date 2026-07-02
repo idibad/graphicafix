@@ -1,7 +1,7 @@
 <?php
 require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/config.php';
 
-require_once('dashboard_header.php');
+require_once 'templates/dashboard_header.php';
 
 
 // Get project ID from URL
@@ -24,11 +24,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $slug = strtolower(str_replace(' ', '-', $project_name));
 
 
-    $thumbDir = "images/uploads/projects";
+    $thumbDir = "assets/images/uploads/projects";
     // Upload new thumbnail if provided
     $thumbPath = $_POST['existing_thumbnail'] ?? '';
     if (!empty($_FILES['thumbnail']['name'])) {
-        $thumbDir = "images/uploads/projects" . time();
+        $thumbDir = "assets/images/uploads/projects" . time();
         mkdir($thumbDir, 0777, true);
         $thumbPath = $thumbDir . "/thumb_" . $_FILES['thumbnail']['name'];
         move_uploaded_file($_FILES['thumbnail']['tmp_name'], $thumbPath);

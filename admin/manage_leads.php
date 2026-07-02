@@ -3,7 +3,7 @@
 error_reporting(0);
 ini_set('display_errors', '0');
 
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 // ── Auto-create tables & Apply New CRM Columns ────────────────────────────────
 $conn->query("CREATE TABLE IF NOT EXISTS leads (

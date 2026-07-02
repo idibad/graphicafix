@@ -7,7 +7,7 @@
 error_reporting(0);
 ini_set('display_errors', '0');
 
-require_once 'config.php';
+require_once 'core/config.php';
 
 function doTopRedirect($url) {
     echo "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'><title>Payment Successful</title></head>
@@ -166,12 +166,12 @@ if ($eid > 0 || !empty($ref)) {
 }
 
 // Fallback error if no pending enrollment found at all
-include('header.php');
+include 'templates/header.php';
 echo "<div style='text-align:center;padding:100px 20px;font-family:Poppins,sans-serif;'>
         <i class='fas fa-exclamation-triangle' style='font-size:48px;color:#ef4444;margin-bottom:20px;display:block;'></i>
         <h2>Enrollment Not Found</h2>
         <p style='color:#666;max-width:500px;margin:10px auto 25px;'>We could not verify your pending payment. If your payment was completed successfully, please contact support with your payment receipt so we can activate your access.</p>
         <a href='courses.php' style='background:#024442;color:#fff;padding:12px 28px;border-radius:50px;text-decoration:none;font-weight:700;'>Return to Courses</a>
       </div>";
-include('footer.php');
+include 'templates/footer.php';
 exit;

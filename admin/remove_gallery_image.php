@@ -3,7 +3,7 @@ ob_start();
 header('Content-Type: application/json');
 
 
-  require_once('../config.php');
+  require_once '../core/config.php';
 // ── Auth check ────────────────────────────────────────────────────────────────
 if (empty($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);

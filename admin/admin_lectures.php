@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 if ($role !== 'admin' && $role !== 'superadmin') {
     die("Access denied");

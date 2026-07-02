@@ -1,5 +1,5 @@
 <?php
-include('header.php');
+include 'templates/header.php';
 
 // Fetch all active, public projects
 $projects_stmt = $conn->prepare("
@@ -459,4 +459,4 @@ $featured_projects = array_values(array_filter($projects, fn($p) => $p['show_hom
             startAuto();
         })();
     </script>
-<?php include('footer.php'); ?>
+<?php include 'templates/footer.php'; ?>

@@ -1,5 +1,5 @@
 <?php
-include('dashboard_header.php');
+include 'dashboard_header.php';
 
 $user_id = intval($_SESSION['user_id'] ?? 0);
 

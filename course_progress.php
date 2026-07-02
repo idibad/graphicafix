@@ -1,5 +1,5 @@
 <?php
-require_once 'config.php';
+require_once 'core/config.php';
 header('Content-Type: application/json');
 
 $enrollment_id = intval($_POST['enrollment_id'] ?? 0);
