@@ -433,7 +433,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
 
         $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
         $base_url = $protocol . $_SERVER['HTTP_HOST'] . rtrim(dirname($_SERVER['PHP_SELF']), '/\\');
-        $raw_success = $base_url . "/jazzcash_callback.php?ref=" . urlencode($temp_order_id);
+        $raw_success = $base_url . "/jazzcash_callback.php?ref=" . $temp_order_id;
 
         $pp_Amount = round($amount_paid * 100); // JazzCash expects paisas
         $DateTime = date('YmdHis');
@@ -443,12 +443,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
         // Parameters array required for Hash Calculation
         $post_data = [
             "pp_Version"           => "1.1",
-            "pp_TxnType"           => "MWALLET",
+            "pp_TxnType"           => "",
             "pp_Language"          => "EN",
             "pp_MerchantID"        => JAZZCASH_MERCHANT_ID,
             "pp_SubMerchantID"     => "",
             "pp_Password"          => JAZZCASH_PASSWORD,
-            "pp_BankID"            => "TBK",
+            "pp_BankID"            => "",
             "pp_ProductID"         => "RETL",
             "pp_TxnRefNo"          => $TxnRefNo,
             "pp_Amount"            => $pp_Amount,
