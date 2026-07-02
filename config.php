@@ -27,12 +27,23 @@ if (
 $_SESSION['LAST_ACTIVITY'] = time();
 
 
+// Load .env variables
+$env_path = __DIR__ . '/.env';
+if (file_exists($env_path)) {
+    $lines = file($env_path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) continue;
+        list($name, $value) = explode('=', $line, 2);
+        $_ENV[trim($name)] = trim($value);
+    }
+}
+
 define('BASE_URL', 'http://localhost:8000/graphicafix/');
 
-$server = "localhost";
-$username = "root";
-$password = "root";
-$db = "graphica_fix_db";
+$server = $_ENV['DB_SERVER'] ?? "localhost";
+$username = $_ENV['DB_USERNAME'] ?? "root";
+$password = $_ENV['DB_PASSWORD'] ?? "root";
+$db = $_ENV['DB_DATABASE'] ?? "graphica_fix_db";
 
 
 
@@ -48,15 +59,15 @@ if (!$conn) {
 date_default_timezone_set('Asia/Karachi');
 $conn->query("SET time_zone = '+05:00'");
 
-define('SAFEPAY_ENVIRONMENT', 'sandbox');
-define('SAFEPAY_API_KEY', 'sec_34f28f5b-da25-439c-bdee-ed067cc9eded');
+define('SAFEPAY_ENVIRONMENT', $_ENV['SAFEPAY_ENVIRONMENT'] ?? 'sandbox');
+define('SAFEPAY_API_KEY', $_ENV['SAFEPAY_API_KEY'] ?? '');
 define('SAFEPAY_API_URL', SAFEPAY_ENVIRONMENT === 'sandbox' ? 'https://sandbox.api.getsafepay.com' : 'https://api.getsafepay.com');
 
-// JazzCash Configuration (Sandbox)
-define('JAZZCASH_ENVIRONMENT', 'sandbox');
-define('JAZZCASH_MERCHANT_ID', 'MC825531');
-define('JAZZCASH_PASSWORD', 'z00e0w54u0');
-define('JAZZCASH_INTEGRITY_SALT', '918y9whxcw');
+// JazzCash Configuration
+define('JAZZCASH_ENVIRONMENT', $_ENV['JAZZCASH_ENVIRONMENT'] ?? 'sandbox');
+define('JAZZCASH_MERCHANT_ID', $_ENV['JAZZCASH_MERCHANT_ID'] ?? '');
+define('JAZZCASH_PASSWORD', $_ENV['JAZZCASH_PASSWORD'] ?? '');
+define('JAZZCASH_INTEGRITY_SALT', $_ENV['JAZZCASH_INTEGRITY_SALT'] ?? '');
 define('JAZZCASH_POST_URL', JAZZCASH_ENVIRONMENT === 'sandbox' ? 'https://sandbox.jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform/' : 'https://jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform/');
 ?>
 
