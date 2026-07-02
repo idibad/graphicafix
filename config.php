@@ -51,6 +51,13 @@ $conn->query("SET time_zone = '+05:00'");
 define('SAFEPAY_ENVIRONMENT', 'sandbox');
 define('SAFEPAY_API_KEY', 'sec_34f28f5b-da25-439c-bdee-ed067cc9eded');
 define('SAFEPAY_API_URL', SAFEPAY_ENVIRONMENT === 'sandbox' ? 'https://sandbox.api.getsafepay.com' : 'https://api.getsafepay.com');
+
+// JazzCash Configuration (Sandbox)
+define('JAZZCASH_ENVIRONMENT', 'sandbox');
+define('JAZZCASH_MERCHANT_ID', 'YOUR_JAZZCASH_MERCHANT_ID');
+define('JAZZCASH_PASSWORD', 'YOUR_JAZZCASH_PASSWORD');
+define('JAZZCASH_INTEGRITY_SALT', 'YOUR_JAZZCASH_INTEGRITY_SALT');
+define('JAZZCASH_POST_URL', JAZZCASH_ENVIRONMENT === 'sandbox' ? 'https://sandbox.jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform/' : 'https://jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform/');
 ?>
 
 

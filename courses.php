@@ -385,7 +385,113 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
                 <p style='font-size:12px;color:#999;margin-top:15px;'>Debug: HTTP $http_code — " . htmlspecialchars(substr($err_detail, 0, 200)) . "</p>
                 <a href='courses.php?course_id=$course_id' style='display:inline-block;margin-top:20px;background:#024442;color:#fff;padding:12px 28px;border-radius:50px;text-decoration:none;font-weight:700;'>← Go Back & Try Again</a>
             </div>");
+    }
+
+    // SCENARIO: JAZZCASH ONLINE PAYMENT (DELAY DB ENROLLMENT UNTIL PAYMENT SUCCESS)
+    if ($amount_paid > 0 && ($_POST['payment_method'] ?? '') === 'jazzcash') {
+        if (!defined('JAZZCASH_POST_URL') || !defined('JAZZCASH_MERCHANT_ID')) {
+            die("JazzCash configuration missing in config.php.");
         }
+
+        @$conn->query("CREATE TABLE IF NOT EXISTS pending_jazzcash_orders (
+            order_id VARCHAR(100) PRIMARY KEY,
+            form_data LONGTEXT,
+            enrolled_id INT DEFAULT 0,
+            created_at DATETIME
+        )");
+
+        $form_data_json = json_encode([
+            'course_id' => $course_id,
+            'student_name' => $student_name,
+            'student_email' => $student_email,
+            'student_phone' => $student_phone,
+            'student_city' => $student_city,
+            'student_occ' => $student_occ,
+            'student_qual' => $student_qual,
+            'student_card_path' => $student_card_path,
+            'amount_paid' => $amount_paid,
+            'valid_code' => $valid_code,
+            'father_name' => $father_name,
+            'address' => $address,
+            'dob' => $dob,
+            'gender' => $gender,
+            'student_picture_path' => $student_picture_path,
+            'education_level' => $education_level,
+            'course_title' => $course['title'] ?? '',
+            'course_category' => $course['category'] ?? '',
+            'course_level' => $course['level'] ?? '',
+            'course_is_free' => $course['is_free'] ?? 0
+        ]);
+
+        $stmt_temp = @$conn->prepare("INSERT INTO pending_jazzcash_orders (order_id, form_data, created_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE form_data = VALUES(form_data)");
+        if ($stmt_temp) {
+            $stmt_temp->bind_param("ss", $temp_order_id, $form_data_json);
+            $stmt_temp->execute();
+            $stmt_temp->close();
+        }
+
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+        $base_url = $protocol . $_SERVER['HTTP_HOST'] . rtrim(dirname($_SERVER['PHP_SELF']), '/\\');
+        $raw_success = $base_url . "/jazzcash_callback.php?ref=" . urlencode($temp_order_id);
+
+        $pp_Amount = round($amount_paid * 100); // JazzCash expects paisas
+        $DateTime = date('YmdHis');
+        $ExpiryDateTime = date('YmdHis', strtotime("+1 days"));
+        $TxnRefNo = "T" . $DateTime . rand(10, 99);
+
+        // Parameters array required for Hash Calculation
+        $post_data = [
+            "pp_Version"           => "1.1",
+            "pp_TxnType"           => "MWALLET",
+            "pp_Language"          => "EN",
+            "pp_MerchantID"        => JAZZCASH_MERCHANT_ID,
+            "pp_SubMerchantID"     => "",
+            "pp_Password"          => JAZZCASH_PASSWORD,
+            "pp_BankID"            => "TBK",
+            "pp_ProductID"         => "RETL",
+            "pp_TxnRefNo"          => $TxnRefNo,
+            "pp_Amount"            => $pp_Amount,
+            "pp_TxnCurrency"       => "PKR",
+            "pp_TxnDateTime"       => $DateTime,
+            "pp_BillReference"     => "billRef",
+            "pp_Description"       => "Course Enrollment",
+            "pp_TxnExpiryDateTime" => $ExpiryDateTime,
+            "pp_ReturnURL"         => $raw_success,
+            "pp_SecureHash"        => ""
+        ];
+
+        // Hash generation logic
+        // Rule: Sort ascending by key, concatenate with '&', prepend with salt, and generate HMAC SHA256
+        $sorted_data = $post_data;
+        unset($sorted_data['pp_SecureHash']);
+        ksort($sorted_data);
+        $hash_string = JAZZCASH_INTEGRITY_SALT . '&';
+        foreach ($sorted_data as $key => $val) {
+            if (!empty($val)) {
+                $hash_string .= $val . '&';
+            }
+        }
+        $hash_string = rtrim($hash_string, '&');
+        $post_data['pp_SecureHash'] = hash_hmac('sha256', $hash_string, JAZZCASH_INTEGRITY_SALT);
+
+        // Output self-submitting form
+        include('header.php');
+        ?>
+        <div style="font-family:'Poppins', sans-serif; text-align:center; padding: 100px 20px;">
+            <div style="display:inline-block; width:60px; height:60px; border:4px solid #e2e8f0; border-top-color:#e02e2e; border-radius:50%; animation:spin 1s linear infinite;"></div>
+            <h2 style="margin-top:25px; color:#e02e2e;">Redirecting to JazzCash...</h2>
+            <p style="color:#64748b;">Please wait while we connect you to the secure payment portal.</p>
+        </div>
+        <form id="jcForm" method="POST" action="<?php echo JAZZCASH_POST_URL; ?>" style="display:none;">
+            <?php foreach($post_data as $key => $value): ?>
+                <input type="hidden" name="<?php echo $key; ?>" value="<?php echo htmlspecialchars($value); ?>">
+            <?php endforeach; ?>
+        </form>
+        <style>@keyframes spin { 100% { transform:rotate(360deg); } }</style>
+        <script>document.getElementById('jcForm').submit();</script>
+        <?php
+        include('footer.php');
+        exit;
     }
 
     // SCENARIO: MANUAL BANK TRANSFER / EASYPAISA (DEFAULT)
@@ -1003,6 +1109,12 @@ foreach ($courses as $c) {
                                     <div class="plan-title" style="color:#024442; font-weight:700;">Pay Online via Credit / Debit Card</div>
                                     <div style="font-size:12px; color:#666; margin-top:3px;">Safepay / Stripe Gateway</div>
                                 </label>
+                                <label class="plan-option" id="methodJazzLabel">
+                                    <input type="radio" name="payment_method" value="jazzcash" onchange="togglePaymentMethod()" style="display:none;">
+                                    <div style="font-size:1.1rem; color:#e02e2e; margin-bottom:4px;"><i class="fas fa-wallet"></i></div>
+                                    <div class="plan-title" style="color:#e02e2e; font-weight:700;">JazzCash Online Wallet</div>
+                                    <div style="font-size:12px; color:#666; margin-top:3px;">Secure mobile payment</div>
+                                </label>
                             </div>
 
                             <div id="bankDetailsPanel">
@@ -1261,19 +1373,28 @@ function togglePaymentMethod() {
     const method = document.querySelector('input[name="payment_method"]:checked')?.value || 'bank_transfer';
     const cardLbl = document.getElementById('methodCardLabel');
     const bankLbl = document.getElementById('methodBankLabel');
+    const jazzLbl = document.getElementById('methodJazzLabel');
     const bankPanel = document.getElementById('bankDetailsPanel');
     const tidInput = document.getElementById('paymentFile');
     const submitBtn = document.getElementById('finalSubmitBtn');
     
+    // Reset all
+    if (cardLbl) { cardLbl.style.borderColor = '#cbd5e1'; cardLbl.style.background = '#fff'; }
+    if (bankLbl) { bankLbl.style.borderColor = '#cbd5e1'; bankLbl.style.background = '#fff'; }
+    if (jazzLbl) { jazzLbl.style.borderColor = '#cbd5e1'; jazzLbl.style.background = '#fff'; }
+    
     if (method === 'bank_transfer') {
-        if (cardLbl) { cardLbl.style.borderColor = '#cbd5e1'; cardLbl.style.background = '#fff'; }
         if (bankLbl) { bankLbl.style.borderColor = '#10b981'; bankLbl.style.background = '#f0fdf4'; }
         if (bankPanel) bankPanel.style.display = 'block';
         if (tidInput) tidInput.required = true;
         if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Complete Enrollment';
+    } else if (method === 'jazzcash') {
+        if (jazzLbl) { jazzLbl.style.borderColor = '#e02e2e'; jazzLbl.style.background = '#fef2f2'; }
+        if (bankPanel) bankPanel.style.display = 'none';
+        if (tidInput) tidInput.required = false;
+        if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-wallet"></i> Proceed to JazzCash Checkout';
     } else {
         if (cardLbl) { cardLbl.style.borderColor = '#024442'; cardLbl.style.background = '#f8fafc'; }
-        if (bankLbl) { bankLbl.style.borderColor = '#cbd5e1'; bankLbl.style.background = '#fff'; }
         if (bankPanel) bankPanel.style.display = 'none';
         if (tidInput) tidInput.required = false;
         if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-lock"></i> Proceed to Secure Card Checkout';
