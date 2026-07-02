@@ -345,10 +345,12 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
 <script>
 document.addEventListener("scroll", function () {
     const navbar = document.querySelector(".navbar");
-    if (window.scrollY > 50) {
-        navbar.classList.add("scrolled");
-    } else {
-        navbar.classList.remove("scrolled");
+    if (navbar) {
+        if (window.scrollY > 50) {
+            navbar.classList.add("scrolled");
+        } else {
+            navbar.classList.remove("scrolled");
+        }
     }
 });
 

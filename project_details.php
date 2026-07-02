@@ -5,9 +5,7 @@
 if(!$conn){
     include('config.php');
 }
-/* =========================
-   1. Data Fetching Logic
-========================= */
+   
 $project_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($project_id <= 0) { header("Location: projects.php"); exit; }
 
@@ -205,7 +203,7 @@ function copyLink() {
 }
 </style>
 <script>
-    // Read More Logic
+
     const descText = document.getElementById('descText');
     const readBtn = document.getElementById('readMoreBtn');
     if (descText.scrollHeight <= 220) readBtn.style.display = 'none';

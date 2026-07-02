@@ -170,7 +170,9 @@ function type() {
 
 // Start typing animation
 document.addEventListener('DOMContentLoaded', () => {
-    type();
+    if (typingElement) {
+        type();
+    }
     animateCounters();
 });
 
