@@ -53,8 +53,8 @@ include('visitor_counter.php');
 
     <!-- Linked Files -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" referrerpolicy="no-referrer" />    
-    <link rel="stylesheet" href="<?= BASE_URL ?>css/bootstrap.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>css/style.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/bootstrap.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css?v=<?= time() ?>">
     <link rel="icon" type="image/png" href="assets/images/icon.png">
     <!-- iPhone / iPad home screen icon -->
     <link rel="apple-touch-icon" href="assets/images/icon2.png">
@@ -122,7 +122,7 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
         <div class="navbar-content">
             <!-- Logo -->
             <a class="navbar-logo" href="index.php">
-                <img src="<?= BASE_URL ?>images/logo.png" alt="Graphicafix">
+                <img src="<?= BASE_URL ?>assets/images/logo.png" alt="Graphicafix">
             </a>
 
             <!-- Desktop Menu -->

@@ -6,7 +6,7 @@
             <div class="footer-grid">
                 <!-- Brand Section -->
                 <div class="footer-brand">
-                    <img src="<?= BASE_URL ?>images/logo.png" alt="Graphicafix Logo">
+                    <img src="<?= BASE_URL ?>assets/images/logo.png" alt="Graphicafix Logo">
                     <p>With a diverse skill set and experience across hundreds of branding and design projects, we can take on your creative needs—whether it's a single project or your entire design pipeline.</p>
                     <h5>Follow Us</h5>
                     <div class="social-links">

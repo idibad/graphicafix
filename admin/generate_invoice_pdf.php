@@ -286,7 +286,7 @@ width:100%;
 <div class="header">
 
 <div class="company">
-<img src="<?= BASE_URL ?>images/letter_header.png" style="width:100%">
+<img src="<?= BASE_URL ?>assets/images/letter_header.png" style="width:100%">
 
 </div>
 
@@ -456,7 +456,7 @@ width:100%;
 
 
 <div class="footer">
-<img src="<?= BASE_URL ?>images/letter_footer.png" style="width:100%">
+<img src="<?= BASE_URL ?>assets/images/letter_footer.png" style="width:100%">
 </div>
 
 

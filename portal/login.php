@@ -63,11 +63,11 @@ if (isset($_POST['login'])) {
 <head>
 <meta charset="UTF-8">
 <title>LMS Portal Login | Graphicafix</title>
-<link rel="stylesheet" href="<?= BASE_URL ?>css/bootstrap.css">
+<link rel="stylesheet" href="<?= BASE_URL ?>assets/css/bootstrap.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" referrerpolicy="no-referrer">
-<link rel="stylesheet" href="<?= BASE_URL ?>css/style.css">
+<link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" type="image/png" href="<?= BASE_URL ?>images/icon.png">
+<link rel="icon" type="image/png" href="<?= BASE_URL ?>assets/images/icon.png">
 <style>
     /* Custom Alert Styles matching Graphicafix theme */
     .custom-alert {
@@ -207,7 +207,7 @@ if (isset($_POST['login'])) {
         <div class="col-lg-6 col-12 login-right">
             <div class="login-overlay"></div>
             <div class="form-cont">
-                <img src="<?= BASE_URL ?>images/logo.png" alt="Graphicafix">
+                <img src="<?= BASE_URL ?>assets/images/logo.png" alt="Graphicafix">
                 
                 <div class="text-center">
                     <span class="portal-badge"><i class="fas fa-graduation-cap me-1"></i> Classroom Portal</span>

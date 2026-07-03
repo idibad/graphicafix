@@ -72,5 +72,5 @@ define('JAZZCASH_POST_URL', JAZZCASH_ENVIRONMENT === 'sandbox' ? 'https://sandbo
 ?>
 
 
-<link href="<?= BASE_URL ?>css/bootstrap.css" rel="stylesheet">
-<link rel="icon" type="image/png" href="<?= BASE_URL ?>images/icon.png">
+<link href="<?= BASE_URL ?>assets/css/bootstrap.css" rel="stylesheet">
+<link rel="icon" type="image/png" href="<?= BASE_URL ?>assets/images/icon.png">

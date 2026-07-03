@@ -68,14 +68,14 @@ if ($role !== 'admin') {
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>
     <title>Graphicafix - Dashboard</title>
-    <link href="<?= BASE_URL ?>css/bootstrap.css" rel="stylesheet">
-    <link href="<?= BASE_URL ?>css/style.css" rel="stylesheet">
-    <link href="<?= BASE_URL ?>css/all.css" rel="stylesheet">
+    <link href="<?= BASE_URL ?>assets/css/bootstrap.css" rel="stylesheet">
+    <link href="<?= BASE_URL ?>assets/css/style.css" rel="stylesheet">
+    <link href="<?= BASE_URL ?>assets/css/all.css" rel="stylesheet">
     <link rel="icon" type="image/png" href="assets/images/icon.png">
     <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css' rel='stylesheet'>
     <link href='https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css' rel='stylesheet'>
     <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
-    <link href="<?= BASE_URL ?>/css/dashboard.css" rel="stylesheet">
+    <link href="<?= BASE_URL ?>assets/css/dashboard.css" rel="stylesheet">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
 </head>
@@ -112,7 +112,7 @@ if ($role !== 'admin') {
         <div>
             <a href="#" class="nav_logo">
                 <span class="nav_logo-name">
-                    <img src="<?= BASE_URL ?>images/logo-secondary.png" width='100px'>
+                    <img src="<?= BASE_URL ?>assets/images/logo-secondary.png" width='100px'>
                 </span>
             </a>
             <div class="nav_list">

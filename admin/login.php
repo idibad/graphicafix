@@ -55,9 +55,9 @@ if (isset($_POST['login'])) {
 <head>
 <meta charset="UTF-8">
 <title>Login | Graphicafix</title>
-<link rel="stylesheet" href="<?= BASE_URL ?>css/bootstrap.css">
+<link rel="stylesheet" href="<?= BASE_URL ?>assets/css/bootstrap.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" referrerpolicy="no-referrer">
-<link rel="stylesheet" href="<?= BASE_URL ?>css/style.css">
+<link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
     /* Custom Alert Styles */
@@ -185,7 +185,7 @@ if (isset($_POST['login'])) {
         <div class="col-lg-6 col-12 login-right">
             <div class="login-overlay"></div>
             <div class="form-cont">
-                <img src="<?= BASE_URL ?>images/logo.png" alt="Graphicafix">
+                <img src="<?= BASE_URL ?>assets/images/logo.png" alt="Graphicafix">
                 <h3>Sign In</h3>
                 <?php if (!empty($error_message)): ?>
                 <div class="custom-alert custom-alert-danger">
