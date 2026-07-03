@@ -1,6 +1,6 @@
 <?php 
-require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/config.php';
-require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/functions.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/config.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/functions.php';
 
 $login_input = '';
 $error_message = '';

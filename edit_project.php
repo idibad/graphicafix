@@ -1,5 +1,5 @@
 <?php
-require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/config.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/config.php';
 
 require_once 'templates/dashboard_header.php';
 

@@ -2,7 +2,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/config.php'; // DB connection
+require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/config.php'; // DB connection
 
 if(isset($_POST['id'], $_POST['status'])){
     $task_id = intval($_POST['id']);

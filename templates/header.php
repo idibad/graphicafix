@@ -1,5 +1,5 @@
 <?php
-    require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/config.php';
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/config.php';
 
 // Check if user is logged in
 $isLoggedIn = isset($_SESSION['user_id']); 

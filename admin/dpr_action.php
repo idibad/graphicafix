@@ -1,7 +1,7 @@
 <?php
 ob_start();
 session_start();
-require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/config.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/config.php';
 ob_clean();
 header('Content-Type: application/json');
 

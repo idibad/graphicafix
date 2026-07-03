@@ -3,7 +3,7 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/config.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/config.php';
 
 // Auth check
 if (!isset($_SESSION['username'])) {

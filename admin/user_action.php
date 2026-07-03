@@ -2,7 +2,7 @@
 // Prevent any output before JSON
 ob_start();
 
-require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/config.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/config.php';
 
 // Clear any previous output and set JSON header
 ob_clean();

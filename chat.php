@@ -1,5 +1,5 @@
 <?php
-require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/config.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/config.php';
 if (!isset($_SESSION['username'])) {
     header("Location: login.php");
     exit();

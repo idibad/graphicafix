@@ -1,5 +1,5 @@
 <?php
-require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/config.php';require_once 'dashboard_header.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/config.php';require_once 'dashboard_header.php';
 
 $id = intval($_GET['id'] ?? 0);
 
