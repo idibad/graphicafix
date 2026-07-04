@@ -1,5 +1,6 @@
 <?php
-include 'templates/header.php';
+require_once __DIR__ . '/../core/config.php';
+include __DIR__ . '/../templates/header.php';
 
 // ── Handle application submission ─────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])) {
@@ -483,4 +484,4 @@ document.addEventListener('keydown', e => {
 });
 </script>
 
-<?php include 'templates/footer.php'; ?>
+<?php include __DIR__ . '/../templates/footer.php'; ?>

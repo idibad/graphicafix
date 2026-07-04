@@ -38,7 +38,7 @@ if (file_exists($env_path)) {
     }
 }
 
-define('BASE_URL', 'http://localhost:8000/graphicafix/');
+define('BASE_URL', 'http://localhost/graphicafix/');
 
 $server = $_ENV['DB_SERVER'] ?? "localhost";
 $username = $_ENV['DB_USERNAME'] ?? "root";

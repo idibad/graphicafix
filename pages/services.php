@@ -1,5 +1,6 @@
 <?php
-include 'templates/header.php';
+require_once __DIR__ . '/../core/config.php';
+include __DIR__ . '/../templates/header.php';
 
 // ── Fetch services with packages + features ───────────────────────────────────
 $stmt = $conn->prepare("
@@ -773,4 +774,4 @@ function copyCode(code, el) {
 }
 </script>
 
-<?php include 'templates/footer.php'; ?>
+<?php include __DIR__ . '/../templates/footer.php'; ?>

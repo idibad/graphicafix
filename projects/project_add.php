@@ -1,6 +1,7 @@
 <?php
 
-include 'templates/dashboard_header.php';
+require_once __DIR__ . '/../core/config.php';
+include '../templates/dashboard_header.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 

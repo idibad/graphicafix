@@ -1,7 +1,7 @@
 <?php
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
-require_once 'core/config.php';
+require_once __DIR__ . '/../core/config.php';
 
 // ── Session must start before anything ───────────────────────────────────────
 // config.php may or may not start a session — we ensure it here safely

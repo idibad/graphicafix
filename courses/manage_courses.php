@@ -1,5 +1,6 @@
 <?php
-include 'templates/dashboard_header.php';
+require_once __DIR__ . '/../core/config.php';
+include '../templates/dashboard_header.php';
 
 // ── Inline email helper functions ─────────────────────────────────────────────
 // (copy the sendStatusUpdateEmail + buildEmailWrapper functions inline here)

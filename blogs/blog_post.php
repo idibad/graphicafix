@@ -1,5 +1,6 @@
 <?php 
-include 'templates/header.php';
+require_once __DIR__ . '/../core/config.php';
+include __DIR__ . '/../templates/header.php';
 
 $slug = isset($_GET['slug']) ? trim($_GET['slug']) : '';
 if (empty($slug)) {
@@ -18,7 +19,7 @@ if ($stmt) {
 
 if (!$blog) {
     echo "<div style='text-align:center; padding:100px 0; font-size:24px; color:#666;'>Blog post not found.</div>";
-    include 'templates/footer.php';
+    include __DIR__ . '/../templates/footer.php';
     exit;
 }
 
@@ -880,4 +881,4 @@ function copyLink() {
 }
 </script>
 
-<?php include 'templates/footer.php'; ?>
+<?php include __DIR__ . '/../templates/footer.php'; ?>

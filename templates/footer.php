@@ -29,11 +29,11 @@
                 <div class="footer-section">
                     <h5>Quick Links</h5>
                     <ul>
-                        <li><a href="index.php"><i class="fas fa-chevron-right"></i> Home</a></li>
-                        <li><a href="services.php"><i class="fas fa-chevron-right"></i> Services</a></li>
-                        <li><a href="portfolio.php"><i class="fas fa-chevron-right"></i> Portfolio</a></li>
-                        <li><a href="about.php"><i class="fas fa-chevron-right"></i> About</a></li>
-                        <li><a href="contact_us.php"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
+                        <li><a href="<?= BASE_URL ?>index"><i class="fas fa-chevron-right"></i> Home</a></li>
+                        <li><a href="<?= BASE_URL ?>services"><i class="fas fa-chevron-right"></i> Services</a></li>
+                        <li><a href="<?= BASE_URL ?>portfolio"><i class="fas fa-chevron-right"></i> Portfolio</a></li>
+                        <li><a href="<?= BASE_URL ?>about"><i class="fas fa-chevron-right"></i> About</a></li>
+                        <li><a href="<?= BASE_URL ?>contact_us"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
                     </ul>
                 </div>
 
@@ -41,11 +41,11 @@
                 <div class="footer-section">
                     <h5>Our Services</h5>
                     <ul>
-                        <li><a href="services.php#branding"><i class="fas fa-chevron-right"></i> Branding</a></li>
-                        <li><a href="services.php#web-design"><i class="fas fa-chevron-right"></i> Web Design</a></li>
-                        <li><a href="services.php#graphic-design"><i class="fas fa-chevron-right"></i> Graphic Design</a></li>
-                        <li><a href="services.php#social-media"><i class="fas fa-chevron-right"></i> Social Media</a></li>
-                        <li><a href="career.php"><i class="fas fa-chevron-right"></i> Career</a></li>
+                        <li><a href="<?= BASE_URL ?>services#branding"><i class="fas fa-chevron-right"></i> Branding</a></li>
+                        <li><a href="<?= BASE_URL ?>services#web-design"><i class="fas fa-chevron-right"></i> Web Design</a></li>
+                        <li><a href="<?= BASE_URL ?>services#graphic-design"><i class="fas fa-chevron-right"></i> Graphic Design</a></li>
+                        <li><a href="<?= BASE_URL ?>services#social-media"><i class="fas fa-chevron-right"></i> Social Media</a></li>
+                        <li><a href="<?= BASE_URL ?>career"><i class="fas fa-chevron-right"></i> Career</a></li>
                     </ul>
                 </div>
 
@@ -73,8 +73,8 @@
             <div class="copyright-content">
                 <p>© 2025 Graphicafix. Crafted with creativity and dedication.</p>
                 <div class="copyright-links">
-                    <a href="privacy-policy.php">Privacy Policy</a>
-                    <a href="terms.php">Terms of Service</a>
+                    <a href="<?= BASE_URL ?>privacy-policy">Privacy Policy</a>
+                    <a href="<?= BASE_URL ?>terms">Terms of Service</a>
                     <a href="sitemap.xml">Sitemap</a>
                 </div>
             </div>
@@ -84,9 +84,9 @@
     
 
     <!-- Scripts -->
-    <script src="assets/js/scripts.js"></script>
-    <script src="assets/js/bootstrap.js"></script>
-    <script src="assets/js/bootstrap.bundle.js"></script>
+    <script src="<?= BASE_URL ?>assets/js/scripts.js"></script>
+    <script src="<?= BASE_URL ?>assets/js/bootstrap.js"></script>
+    <script src="<?= BASE_URL ?>assets/js/bootstrap.bundle.js"></script>
 
     <!-- Animation -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">

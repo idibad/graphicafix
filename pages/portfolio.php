@@ -1,5 +1,6 @@
 <?php
-include 'templates/header.php';
+require_once __DIR__ . '/../core/config.php';
+include __DIR__ . '/../templates/header.php';
 
 // Fetch all active, public projects
 $projects_stmt = $conn->prepare("
@@ -459,4 +460,4 @@ $featured_projects = array_values(array_filter($projects, fn($p) => $p['show_hom
             startAuto();
         })();
     </script>
-<?php include 'templates/footer.php'; ?>
+<?php include __DIR__ . '/../templates/footer.php'; ?>

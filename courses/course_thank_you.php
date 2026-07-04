@@ -3,7 +3,8 @@
 error_reporting(0);
 ini_set('display_errors', '0');
 
-include 'templates/header.php';
+require_once __DIR__ . '/../core/config.php';
+include __DIR__ . '/../templates/header.php';
 
 $eid        = isset($_GET['eid']) ? intval($_GET['eid']) : 0;
 $courseName = isset($_GET['course']) ? htmlspecialchars($_GET['course']) : 'Your Course';
@@ -111,4 +112,4 @@ if (!empty($pay_url)) {
 
 
 
-<?php include 'templates/footer.php'; ?>
+<?php include __DIR__ . '/../templates/footer.php'; ?>

@@ -1,4 +1,5 @@
-<?php include 'templates/header.php'; ?>
+<?php require_once __DIR__ . '/../core/config.php';
+include __DIR__ . '/../templates/header.php'; ?>
 
 <style>
 :root {
@@ -960,4 +961,4 @@ function filterPosts() {
 }
 </script>
 
-<?php include 'templates/footer.php'; ?>
+<?php include __DIR__ . '/../templates/footer.php'; ?>

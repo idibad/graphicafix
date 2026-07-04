@@ -3,7 +3,8 @@
 error_reporting(0);
 ini_set('display_errors', '0');
 
-include 'templates/header.php';
+require_once __DIR__ . '/../core/config.php';
+include __DIR__ . '/../templates/header.php';
 
 // ── Auto-patch contacts table safely to support Phone and Subject ─────────────
 $cCols = array();
@@ -275,4 +276,4 @@ document.getElementById("contactForm").addEventListener("submit", function(e) {
 });
 </script>
 
-<?php include 'templates/footer.php'; ?>
+<?php include __DIR__ . '/../templates/footer.php'; ?>

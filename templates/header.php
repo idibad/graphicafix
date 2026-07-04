@@ -4,7 +4,7 @@
 // Check if user is logged in
 $isLoggedIn = isset($_SESSION['user_id']); 
 
-include('visitor_counter.php');
+include(__DIR__ . '/../visitor_counter.php');
 
 ?>
 <!DOCTYPE html>
@@ -47,6 +47,7 @@ include('visitor_counter.php');
     <meta property="og:type" content="website">
     <meta name="theme-color" content="#024442">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="canonical" href="https://graphicafix.com">
 
@@ -121,19 +122,19 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
     <div class="container">
         <div class="navbar-content">
             <!-- Logo -->
-            <a class="navbar-logo" href="index.php">
+            <a class="navbar-logo" href="<?= BASE_URL ?>">
                 <img src="<?= BASE_URL ?>assets/images/logo.png" alt="Graphicafix">
             </a>
 
             <!-- Desktop Menu -->
             <ul class="navbar-menu">
-                <li><a href="index.php" class="nav-link active">Home</a></li>
-                <li><a href="services.php" class="nav-link">Services</a></li>
-                <li><a href="portfolio.php" class="nav-link">Portfolio</a></li>
-                <li><a href="career.php" class="nav-link">Career</a></li>
-                <li class="animated-beat"><a href="courses.php" class="nav-link">Courses</a></li>
-                <li><a href="about.php" class="nav-link">About</a></li>
-                <li><a href="contact.php" class="nav-link">Contact</a></li>
+                <li><a href="<?= BASE_URL ?>" class="nav-link active">Home</a></li>
+                <li><a href="<?= BASE_URL ?>services" class="nav-link">Services</a></li>
+                <li><a href="<?= BASE_URL ?>portfolio" class="nav-link">Portfolio</a></li>
+                <li><a href="<?= BASE_URL ?>career" class="nav-link">Career</a></li>
+                <li class="animated-beat"><a href="<?= BASE_URL ?>courses" class="nav-link">Courses</a></li>
+                <li><a href="<?= BASE_URL ?>about" class="nav-link">About</a></li>
+                <li><a href="<?= BASE_URL ?>contact" class="nav-link">Contact</a></li>
             </ul>
 
             <!-- Action Buttons -->
@@ -141,7 +142,7 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
                 <a href="#" data-bs-toggle="modal" data-bs-target="#projectRequestModal" class="btn-primary">
                     <span><i class="fas fa-star" style="color: var(--accent);"></i></span> Request Project
                 </a>
-                <a href="<?= $isLoggedIn ? 'admin/' : 'admin/login.php'; ?>" 
+                <a href="<?= BASE_URL ?><?= $isLoggedIn ? 'admin/' : 'admin/login.php'; ?>" 
                    class="<?= $isLoggedIn ? 'btn-primary' : 'btn-secondary'; ?>">
                     <?= $isLoggedIn ? 'Dashboard' : 'Login'; ?>
                 </a>                                                            
@@ -158,20 +159,20 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
         <!-- Mobile Menu -->
         <div class="mobile-menu" id="mobileMenu">
             <ul>
-                <li><a href="index.php">Home</a></li>
-                <li><a href="services.php">Services</a></li>
-                <li><a href="portfolio.php">Portfolio</a></li>
-                <li><a href="career.php">Career</a></li>
-                <li><a href="courses.php" class="nav-link">Courses</a></li>
-                <li><a href="about.php">About</a></li>
-                <li><a href="contact.php">Contact</a></li>
+                <li><a href="<?= BASE_URL ?>">Home</a></li>
+                <li><a href="<?= BASE_URL ?>services">Services</a></li>
+                <li><a href="<?= BASE_URL ?>portfolio">Portfolio</a></li>
+                <li><a href="<?= BASE_URL ?>career">Career</a></li>
+                <li><a href="<?= BASE_URL ?>courses" class="nav-link">Courses</a></li>
+                <li><a href="<?= BASE_URL ?>about">About</a></li>
+                <li><a href="<?= BASE_URL ?>contact">Contact</a></li>
                 <li class="mobile-divider"></li>
                 <li>
-                <a href="<?= $isLoggedIn ? 'admin/' : 'admin/login.php'; ?>" 
+                <a href="<?= BASE_URL ?><?= $isLoggedIn ? 'admin/' : 'admin/login.php'; ?>" 
                    class="main-btn color-dark" style="color: var(--primary);">
                     <?= $isLoggedIn ? 'Dashboard' : 'Login'; ?>
                 </a>
-                <a href="courses.php" class="main-btn mt-2 color-dark" style="color: var(--primary);">
+                <a href="<?= BASE_URL ?>courses" class="main-btn mt-2 color-dark" style="color: var(--primary);">
                     Student Portal
                 </a>
                 </li>
@@ -187,7 +188,7 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
         </a>
     </div>
 
-    <a href="courses.php" class="enroll-float-btn">
+    <a href="<?= BASE_URL ?>courses" class="enroll-float-btn">
         <i class="fas fa-user-graduate"></i> Enroll to Courses
     </a>
 
@@ -337,7 +338,7 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
     }
 </style>
 <?php
-    include('project_request_popup.php');
+    include(__DIR__ . '/../projects/project_request_popup.php');
 ?>
 
 <!-- Navbar End -->

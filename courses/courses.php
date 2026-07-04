@@ -4,7 +4,7 @@ if (isset($_GET['verify_code'])) {
     // 1. Trap all output (stops config.php from leaking HTML)
     ob_start(); 
     
-    require_once 'core/config.php'; 
+    require_once __DIR__ . '/../core/config.php'; 
     
     $code = $conn->real_escape_string(trim($_GET['verify_code']));
     $chk = $conn->query("SELECT id FROM referral_codes WHERE code='$code' AND is_used=0");
@@ -24,7 +24,7 @@ if (isset($_GET['verify_code'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
     error_reporting(0);
     ini_set('display_errors', '0');
-    require_once 'core/config.php';
+    require_once __DIR__ . '/../core/config.php';
 
     function clean_reg($v) { 
         return trim(htmlspecialchars($v, ENT_QUOTES, 'UTF-8')); 
@@ -234,7 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
                 . "&success_url=" . urlencode($raw_success)
                 . "&cancel_url=" . urlencode($raw_cancel);
                 
-            include 'templates/header.php';
+            include __DIR__ . '/../templates/header.php';
             ?>
             <style>
                 .embedded-checkout-container {
@@ -374,7 +374,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
                 </div>
             </div>
             <?php
-            include 'templates/footer.php';
+            include __DIR__ . '/../templates/footer.php';
             exit;
         } else {
             $err_detail = $curl_err ?: ($safepay_data['message'] ?? $response);
@@ -476,7 +476,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
         $post_data['pp_SecureHash'] = hash_hmac('sha256', $hash_string, JAZZCASH_INTEGRITY_SALT);
 
         // Output self-submitting form
-        include 'templates/header.php';
+        include __DIR__ . '/../templates/header.php';
         ?>
         <div style="font-family:'Poppins', sans-serif; text-align:center; padding: 100px 20px;">
             <div style="display:inline-block; width:60px; height:60px; border:4px solid #e2e8f0; border-top-color:#e02e2e; border-radius:50%; animation:spin 1s linear infinite;"></div>
@@ -491,7 +491,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
         <style>@keyframes spin { 100% { transform:rotate(360deg); } }</style>
         <script>document.getElementById('jcForm').submit();</script>
         <?php
-        include 'templates/footer.php';
+        include __DIR__ . '/../templates/footer.php';
         exit;
     }
 
@@ -555,7 +555,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
 // ── AJAX ENDPOINT FOR SAFEPAY STATUS POLLING ──
 if (isset($_GET['check_order_status'])) {
     ob_start();
-    require_once 'core/config.php';
+    require_once __DIR__ . '/../core/config.php';
     
     $order_id = $conn->real_escape_string(trim($_GET['check_order_status']));
     $res = $conn->query("SELECT enrolled_id, form_data FROM pending_safepay_orders WHERE order_id = '$order_id' AND enrolled_id > 0 LIMIT 1");
@@ -606,7 +606,7 @@ if (isset($_GET['check_order_status'])) {
     header("Location: course_thank_you.php?eid=" . $raw_id . "&course=" . urlencode($course['title']));
     exit;
 }
-include 'templates/header.php';
+include __DIR__ . '/../templates/header.php';
 
 // Fetch all published courses
 $courses_result = $conn->query("
@@ -1478,4 +1478,4 @@ window.addEventListener('DOMContentLoaded', () => {
 <?php endif; ?>
 </script>
 
-<?php include 'templates/footer.php'; ?>
+<?php include __DIR__ . '/../templates/footer.php'; ?>

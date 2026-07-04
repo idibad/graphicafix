@@ -3,7 +3,7 @@
 // $page_title = $project_name . ' | test';//
 
 if(!$conn){
-    include 'core/config.php';
+    include __DIR__ . '/../core/config.php';
 }
    
 $project_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -29,7 +29,7 @@ $page_title = htmlspecialchars($project['project_name']) . " | Graphicafix";
 $project_title = htmlspecialchars($project['project_name']);
 $current_url = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
 
-require_once 'templates/header.php';
+require_once __DIR__ . '/../templates/header.php';
 ?>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -224,4 +224,4 @@ function copyLink() {
 </script>
 
 
-<?php require_once 'templates/footer.php'; ?>
+<?php require_once __DIR__ . '/../templates/footer.php'; ?>
