@@ -38,11 +38,22 @@ if (file_exists($env_path)) {
     }
 }
 
-define('BASE_URL', 'http://localhost:8000/graphicafix/');
+if (!defined('BASE_URL')) {
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $doc_root = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']), '/');
+    $app_root = rtrim(str_replace('\\', '/', realpath(__DIR__ . '/..')), '/');
+    $base_path = '';
+    if (strpos($app_root, $doc_root) === 0) {
+        $base_path = substr($app_root, strlen($doc_root));
+    }
+    $base_path = rtrim($base_path, '/') . '/';
+    define('BASE_URL', $protocol . $host . $base_path);
+}
 
 $server = $_ENV['DB_SERVER'] ?? "localhost";
 $username = $_ENV['DB_USERNAME'] ?? "root";
-$password = $_ENV['DB_PASSWORD'] ?? "root";
+$password = $_ENV['DB_PASSWORD'] ?? "";
 $db = $_ENV['DB_DATABASE'] ?? "graphica_fix_db";
 
 
@@ -70,7 +81,3 @@ define('JAZZCASH_PASSWORD', $_ENV['JAZZCASH_PASSWORD'] ?? '');
 define('JAZZCASH_INTEGRITY_SALT', $_ENV['JAZZCASH_INTEGRITY_SALT'] ?? '');
 define('JAZZCASH_POST_URL', JAZZCASH_ENVIRONMENT === 'sandbox' ? 'https://sandbox.jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform/' : 'https://jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform/');
 ?>
-
-
-<link href="<?= BASE_URL ?>assets/css/bootstrap.css" rel="stylesheet">
-<link rel="icon" type="image/png" href="<?= BASE_URL ?>assets/images/icon.png">

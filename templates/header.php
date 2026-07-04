@@ -42,7 +42,7 @@ include('visitor_counter.php');
     <!-- Open Graph (Facebook, LinkedIn, etc.) -->
     <meta property="og:title" content="Graphicafix | Graphic Design Agency ">
     <meta property="og:description" content="We create visually stunning graphics to enhance your brand identity.">
-    <meta property="og:image" content="assets/images/preview.jpg">
+    <meta property="og:image" content="<?= BASE_URL ?>assets/images/preview.jpg">
     <meta property="og:url" content="https://graphicafix.com">
     <meta property="og:type" content="website">
     <meta name="theme-color" content="#024442">
@@ -55,9 +55,9 @@ include('visitor_counter.php');
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" referrerpolicy="no-referrer" />    
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/bootstrap.css">
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css?v=<?= time() ?>">
-    <link rel="icon" type="image/png" href="assets/images/icon.png">
+    <link rel="icon" type="image/png" href="<?= BASE_URL ?>assets/images/icon.png">
     <!-- iPhone / iPad home screen icon -->
-    <link rel="apple-touch-icon" href="assets/images/icon2.png">
+    <link rel="apple-touch-icon" href="<?= BASE_URL ?>assets/images/icon2.png">
 
     <!-- Optional: make status bar match theme -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

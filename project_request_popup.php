@@ -89,7 +89,7 @@ textarea.pop-up-form-control { resize:vertical; min-height:120px; }
 }
 </style>
 
-<script src="assets/js/scripts.js"></script>
+<script src="<?= BASE_URL ?>assets/js/scripts.js"></script>
 
 <!-- Project Request Modal -->
 <div class="modal fade" id="projectRequestModal" tabindex="-1" aria-labelledby="projectRequestModalLabel" aria-hidden="true">

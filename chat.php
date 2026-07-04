@@ -21,7 +21,7 @@ $email = $data['email'];
     
     <link href="<?= BASE_URL ?>assets/css/style.css" rel="stylesheet">
     <link href="<?= BASE_URL ?>assets/css/bootstrap.css" rel="stylesheet">
-    <link href="assets/css/all.min.css" rel="stylesheet">
+    <link href="<?= BASE_URL ?>assets/css/all.min.css" rel="stylesheet">
     <title>Group Chat</title>
     <style>
     body {

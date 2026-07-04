@@ -1,0 +1,15 @@
+# Database Configuration
+DB_SERVER=localhost
+DB_USERNAME=root
+DB_PASSWORD=
+DB_DATABASE=graphica_fix_db
+
+# Safepay API (Sandbox)
+SAFEPAY_ENVIRONMENT=sandbox
+SAFEPAY_API_KEY=sec_34f28f5b-da25-439c-bdee-ed067cc9eded
+
+# JazzCash Sandbox Credentials
+JAZZCASH_ENVIRONMENT=sandbox
+JAZZCASH_MERCHANT_ID=MC825531
+JAZZCASH_PASSWORD=z00e0w54u0
+JAZZCASH_INTEGRITY_SALT=918y9whxcw
