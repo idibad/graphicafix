@@ -1,12 +1,13 @@
 <?php
-include 'dashboard_header.php';
+include('dashboard_header.php');
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php'); exit;
 }
 
 $user_id   = intval($_SESSION['user_id']);
-$is_admin  = ($role === 'admin' || $role === 'pm');
+$user_role = $role;
+$is_admin  = ($user_role === 'admin' || $user_role === 'pm' || $user_role === 'manager');
 
 // Edit mode?
 $edit_id = intval($_GET['edit'] ?? 0);
@@ -51,39 +52,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $conn->prepare("INSERT INTO tasks (title, description, priority, status, due_date, assigned_to, created_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,NOW(),NOW())");
             $stmt->bind_param("sssssii", $title, $description, $priority, $status, $due_date, $assigned_to, $user_id);
             $stmt->execute();
-            
-            // Send email to assigned user
-            if ($assigned_to) {
-                $u_stmt = $conn->prepare("SELECT name, email FROM users WHERE user_id = ?");
-                $u_stmt->bind_param("i", $assigned_to);
-                $u_stmt->execute();
-                $u_res = $u_stmt->get_result();
-                if ($u_res->num_rows > 0) {
-                    $assignee = $u_res->fetch_assoc();
-                    $to = $assignee['email'];
-                    $subject = "New Task Assigned: " . $title;
-                    $message = "
-                    <html>
-                    <head><title>New Task Assigned</title></head>
-                    <body>
-                        <h2>Hello " . htmlspecialchars($assignee['name']) . ",</h2>
-                        <p>A new task has been assigned to you.</p>
-                        <p><strong>Title:</strong> " . htmlspecialchars($title) . "</p>
-                        <p><strong>Priority:</strong> " . htmlspecialchars($priority) . "</p>
-                        <p><strong>Due Date:</strong> " . htmlspecialchars($due_date) . "</p>
-                        <p>Please log in to the dashboard to view more details.</p>
-                        <p>Best Regards,<br>Graphicafix Team</p>
-                    </body>
-                    </html>
-                    ";
-                    $headers = "MIME-Version: 1.0\r\n";
-                    $headers .= "Content-type:text/html;charset=UTF-8\r\n";
-                    $headers .= "From: Graphicafix Tasks <noreply@graphicafix.com>\r\n";
-                    
-                    mail($to, $subject, $message, $headers);
-                }
-            }
-            
             $msg = 'Task created successfully!';
         }
         echo "<script>alert('$msg'); window.location='tasks.php';</script>";
@@ -97,7 +65,7 @@ $users = [];
 while ($u = $users_result->fetch_assoc()) $users[] = $u;
 
 $page_title = $is_edit ? 'Edit Task' : 'Create New Task';
-$page_icon  = $is_edit ? '<i class="fas fa-pencil-alt"></i>️' : '<i class="fas fa-plus"></i>';
+$page_icon  = $is_edit ? '✏️' : '➕';
 ?>
 
 <div class="height-100">
@@ -111,7 +79,7 @@ $page_icon  = $is_edit ? '<i class="fas fa-pencil-alt"></i>️' : '<i class="fas
 
 <?php if (!empty($errors)): ?>
 <div class="alert-box error">
-    <?php foreach($errors as $e): ?><p><i class="fas fa-exclamation-triangle"></i>️ <?= htmlspecialchars($e) ?></p><?php endforeach; ?>
+    <?php foreach($errors as $e): ?><p>⚠️ <?= htmlspecialchars($e) ?></p><?php endforeach; ?>
 </div>
 <?php endif; ?>
 
@@ -135,7 +103,7 @@ $page_icon  = $is_edit ? '<i class="fas fa-pencil-alt"></i>️' : '<i class="fas
         <div class="form-group">
             <label>Priority <span class="required">*</span></label>
             <select name="priority" required>
-                <?php foreach (['Low' => '<i class="fas fa-circle text-success"></i> Low', 'Medium' => '<i class="fas fa-circle text-warning"></i> Medium', 'High' => '<i class="fas fa-circle text-danger"></i> High'] as $v => $l): ?>
+                <?php foreach (['Low' => '🟢 Low', 'Medium' => '🟡 Medium', 'High' => '🔴 High'] as $v => $l): ?>
                 <option value="<?= $v ?>" <?= ($task['priority'] ?? 'Medium') === $v ? 'selected' : '' ?>><?= $l ?></option>
                 <?php endforeach; ?>
             </select>
@@ -144,7 +112,7 @@ $page_icon  = $is_edit ? '<i class="fas fa-pencil-alt"></i>️' : '<i class="fas
         <div class="form-group">
             <label>Status</label>
             <select name="status">
-                <?php foreach (['Pending' => '<i class="fas fa-clipboard"></i> Pending', 'In Progress' => '<i class="fas fa-bolt"></i> In Progress', 'In Review' => '<i class="fas fa-search"></i> In Review', 'Completed' => '<i class="fas fa-check-circle"></i> Completed', 'Cancelled' => '<i class="fas fa-ban"></i> Cancelled'] as $v => $l): ?>
+                <?php foreach (['Pending' => '📋 Pending', 'In Progress' => '⚡ In Progress', 'In Review' => '🔍 In Review', 'Completed' => '✅ Completed', 'Cancelled' => '🚫 Cancelled'] as $v => $l): ?>
                 <option value="<?= $v ?>" <?= ($task['status'] ?? 'Pending') === $v ? 'selected' : '' ?>><?= $l ?></option>
                 <?php endforeach; ?>
             </select>
@@ -160,18 +128,19 @@ $page_icon  = $is_edit ? '<i class="fas fa-pencil-alt"></i>️' : '<i class="fas
         </div>
 
         <div class="form-group">
-            <label>Assign To <?= $is_admin ? '' : '<span style="color:#aaa;font-weight:400;">(Assigned to yourself)</span>' ?></label>
-            <select name="assigned_to" <?= !$is_admin ? 'disabled' : '' ?>>
+            <label>Assign To <?= $is_admin ? '' : '<span style="color:#aaa;font-weight:400;">(optional)</span>' ?></label>
+            <select name="assigned_to">
                 <?php if (!$is_admin): ?>
                 <option value="<?= $user_id ?>" selected>— Assign to myself —</option>
                 <?php else: ?>
                 <option value="">— Unassigned —</option>
+                <?php endif; ?>
                 <?php foreach ($users as $u): ?>
                 <option value="<?= $u['id'] ?>"
                     <?= isset($task['assigned_to']) && $task['assigned_to'] == $u['id'] ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($u['name']) ?></option>
+                    <?= htmlspecialchars($u['name']) ?>
+                </option>
                 <?php endforeach; ?>
-                <?php endif; ?>
             </select>
         </div>
     </div>
@@ -179,7 +148,7 @@ $page_icon  = $is_edit ? '<i class="fas fa-pencil-alt"></i>️' : '<i class="fas
     <div class="form-actions">
         <a href="tasks.php" class="btn btn-secondary">Cancel</a>
         <button type="submit" class="btn btn-primary">
-            <?= $is_edit ? '<i class="fas fa-check"></i> Update Task' : '<i class="fas fa-plus"></i> Create Task' ?>
+            <?= $is_edit ? '✓ Update Task' : '➕ Create Task' ?>
         </button>
     </div>
 

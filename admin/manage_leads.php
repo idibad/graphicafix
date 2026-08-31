@@ -5,6 +5,11 @@ ini_set('display_errors', '0');
 
 include 'dashboard_header.php';
 
+if ($role !== 'admin') {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 // ── Auto-create tables & Apply New CRM Columns ────────────────────────────────
 $conn->query("CREATE TABLE IF NOT EXISTS leads (
     id INT AUTO_INCREMENT PRIMARY KEY,

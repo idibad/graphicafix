@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+if ($role !== 'admin' && $role !== 'pm') {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 // ── Handle form submissions ───────────────────────────────────────────────────
 $toast_message = '';
 $toast_type    = '';
@@ -134,7 +139,7 @@ $total_projects = $conn->query("SELECT COUNT(*) AS c FROM projects")->fetch_asso
             <div class="table-row" style="grid-template-columns:2fr 1.5fr 1fr 0.8fr 1.2fr 1fr;">
                 <div class="client">
                     <?php if (!empty($client['logo'])): ?>
-                        <img src="<?= htmlspecialchars($client['logo']) ?>" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                        <img src="<?= BASE_URL . htmlspecialchars($client['logo']) ?>" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;">
                     <?php else: ?>
                         <div class="avatar <?= avatarColor($client['client_name']) ?>">
                             <?= strtoupper($client['client_name'][0]) ?>

@@ -1,7 +1,7 @@
 <?php
 include 'dashboard_header.php';
 
-$is_manager = in_array($role, ['admin', 'pm', 'hrm']);
+$is_manager = in_array($role, ['admin', 'pm', 'hrm', 'manager']);
 
 // Create table if it doesn't exist (safety fallback)
 $conn->query("CREATE TABLE IF NOT EXISTS daily_progress_reports (

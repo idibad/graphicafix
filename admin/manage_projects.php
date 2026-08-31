@@ -73,7 +73,7 @@ $due_week  = $stats['due_week']  ?? 0;
             </div>
             <div class="header-actions">
                 <button class="btn-secondary-custom">Export</button>
-                <button class="btn-primary-custom" <?php if(!$can_edit): ?>disabled<?php endif; ?>>+ New Project</button>
+                <button class="btn-primary-custom" <?php if(!$can_create_project): ?>disabled<?php endif; ?>>+ New Project</button>
 
             </div>
         </div>

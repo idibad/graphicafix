@@ -1,19 +1,34 @@
 <?php
 include 'dashboard_header.php';
 
+if ($role !== 'admin') {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 // ── Database Auto-Patch ──
 // Ensure the role column can accept 'teacher' and 'student' by changing it to a VARCHAR
 $conn->query("ALTER TABLE users MODIFY COLUMN role VARCHAR(50) NOT NULL DEFAULT 'student'");
 
+// Auto-patch status column
+$cols = array_column($conn->query("SHOW COLUMNS FROM users")->fetch_all(MYSQLI_ASSOC), 'Field');
+if (!in_array('status', $cols)) {
+    $conn->query("ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'");
+}
+
 // Fetch all users
-$sql = "SELECT user_id, name, email, username, role, last_login, created_at FROM users ORDER BY created_at DESC";
+$sql = "SELECT user_id, name, email, username, role, status, last_login, created_at FROM users ORDER BY created_at DESC";
 $result = $conn->query($sql);
 
-function getStatus($last_login) {
-    if (!empty($last_login) && strtotime($last_login) > strtotime('-7 days')) {
-        return ['class' => 'active', 'text' => 'Active'];
+function getStatus($last_login, $user_status = 'active') {
+    $u_stat = strtolower(trim($user_status ?? 'active'));
+    if ($u_stat === 'deactivated' || $u_stat === 'deactivate') {
+        return ['class' => 'deactivated', 'text' => 'Deactivated', 'style' => 'background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;'];
     }
-    return ['class' => 'inactive', 'text' => 'Inactive'];
+    if (!empty($last_login) && strtotime($last_login) > strtotime('-7 days')) {
+        return ['class' => 'active', 'text' => 'Active', 'style' => ''];
+    }
+    return ['class' => 'inactive', 'text' => 'Inactive', 'style' => ''];
 }
 
 // Role Badge Color Helper
@@ -21,6 +36,7 @@ function getRoleBadge($role) {
     $r = strtolower($role);
     if ($r === 'admin')   return ['bg' => '#fff4e5', 'text' => '#e17055']; // Orange
     if ($r === 'pm')      return ['bg' => '#fce7f3', 'text' => '#db2777']; // Pink
+    if ($r === 'manager') return ['bg' => '#e0f7fa', 'text' => '#00838f']; // Teal (Manager)
     if ($r === 'teacher') return ['bg' => '#e0f2fe', 'text' => '#0284c7']; // Blue
     if ($r === 'student') return ['bg' => '#d7f8b8', 'text' => '#2b7a2b']; // Green
     if ($r === 'user')    return ['bg' => '#f3e8ff', 'text' => '#7c3aed']; // Purple
@@ -30,11 +46,13 @@ function getRoleBadge($role) {
 // ── Group Users by Role & Count Stats ──
 $total_users = $result->num_rows;
 $active_users = 0;
+$deactivated_users = 0;
 $admin_count = 0;
 
 $users_grouped = [
     'admin'   => [],
     'pm'      => [],
+    'manager' => [],
     'teacher' => [],
     'student' => [],
     'hrm'     => [],
@@ -43,7 +61,12 @@ $users_grouped = [
 ];
 
 foreach($result as $row) {
-    if(getStatus($row['last_login'])['class'] === 'active') $active_users++;
+    $u_stat = strtolower(trim($row['status'] ?? 'active'));
+    if ($u_stat === 'deactivated' || $u_stat === 'deactivate') {
+        $deactivated_users++;
+    } else if(getStatus($row['last_login'], $u_stat)['class'] === 'active') {
+        $active_users++;
+    }
     if(strtolower($row['role']) === 'admin') $admin_count++;
     
     $r = strtolower($row['role']);
@@ -59,6 +82,7 @@ $result->data_seek(0); // Reset pointer
 $role_titles = [
     'admin'   => '<i class="fas fa-user-shield" style="color: var(--primary); margin-right: 6px;"></i> Administrators',
     'pm'      => '<i class="fas fa-project-diagram" style="color: var(--primary); margin-right: 6px;"></i> Project Managers',
+    'manager' => '<i class="fas fa-user-tie" style="color: var(--primary); margin-right: 6px;"></i> Managers',
     'teacher' => '<i class="fas fa-chalkboard-teacher" style="color: var(--primary); margin-right: 6px;"></i> Teachers',
     'student' => '<i class="fas fa-user-graduate" style="color: var(--primary); margin-right: 6px;"></i> Students',
     'hrm'     => '<i class="fas fa-briefcase" style="color: var(--primary); margin-right: 6px;"></i> HR Management',
@@ -86,9 +110,9 @@ $role_titles = [
             <div class="stat-label">Administrators</div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon"><i class="fas fa-user-clock" style="color: var(--primary);"></i></div>
-            <div class="stat-number"><?= $total_users - $active_users ?></div>
-            <div class="stat-label">Inactive</div>
+            <div class="stat-icon"><i class="fas fa-user-slash" style="color: #ef4444;"></i></div>
+            <div class="stat-number"><?= $deactivated_users ?></div>
+            <div class="stat-label">Deactivated</div>
         </div>
     </div>
 
@@ -116,7 +140,7 @@ $role_titles = [
                         </h4>
                         
                         <div class="main-table" style="border: 1px solid #f0f0f0; border-radius: 10px;">
-                            <div class="table-head" style="grid-template-columns:2fr 2fr 1fr 1fr 1.5fr 0.6fr; background: #f9fbfc; border-radius: 10px 10px 0 0; padding: 12px 20px;">
+                            <div class="table-head" style="grid-template-columns:2fr 2fr 1fr 1fr 1.5fr 0.8fr; background: #f9fbfc; border-radius: 10px 10px 0 0; padding: 12px 20px;">
                                 <span>User</span>
                                 <span>Email</span>
                                 <span>Role</span>
@@ -126,10 +150,13 @@ $role_titles = [
                             </div>
 
                             <?php foreach ($users_in_role as $row): 
-                                $status = getStatus($row['last_login']);
+                                $u_status_val = strtolower(trim($row['status'] ?? 'active'));
+                                $is_deactivated = ($u_status_val === 'deactivated' || $u_status_val === 'deactivate');
+                                $status = getStatus($row['last_login'], $u_status_val);
                                 $roleBadge = getRoleBadge($row['role']);
+                                $is_self = ($row['user_id'] == $_SESSION['user_id']);
                             ?>
-                            <div class="table-row user-data-row" style="grid-template-columns:2fr 2fr 1fr 1fr 1.5fr 0.6fr; padding: 12px 20px; border-bottom: 1px solid #f5f5f5;">
+                            <div class="table-row user-data-row" style="grid-template-columns:2fr 2fr 1fr 1fr 1.5fr 0.8fr; padding: 12px 20px; border-bottom: 1px solid #f5f5f5;">
                                 <div class="client">
                                     <div class="avatar"><?= strtoupper(substr($row['name'], 0, 1)) ?></div>
                                     <div>
@@ -144,15 +171,24 @@ $role_titles = [
                                     </span>
                                 </span>
                                 <span data-label="Status">
-                                    <span class="status <?= $status['class'] ?>"><?= $status['text'] ?></span>
+                                    <span class="status <?= $status['class'] ?>" style="<?= $status['style'] ?>"><?= $status['text'] ?></span>
                                 </span>
                                 <span data-label="Last Login" style="font-size:13px;color:#888;">
                                     <?= !empty($row['last_login']) ? date('M d, Y H:i', strtotime($row['last_login'])) : 'Never' ?>
                                 </span>
-                                <div style="display:flex;gap:6px;">
+                                <div style="display:flex;gap:6px;align-items:center;">
                                     <button class="dots" onclick="openUserModal('edit', <?= $row['user_id'] ?>)" title="Edit">
                                         <i class="fas fa-pen" style="color: var(--primary);"></i>
                                     </button>
+                                    <?php if ($is_deactivated): ?>
+                                        <button class="dots" onclick="toggleUserStatus(<?= $row['user_id'] ?>, 'activate')" title="Activate Account">
+                                            <i class="fas fa-user-check" style="color:#10b981;"></i>
+                                        </button>
+                                    <?php else: ?>
+                                        <button class="dots" <?= $is_self ? 'disabled style="opacity:0.4;cursor:not-allowed;" title="You cannot deactivate your own account"' : 'onclick="toggleUserStatus('.$row['user_id'].', \'deactivate\')" title="Deactivate Account"' ?>>
+                                            <i class="fas fa-user-slash" style="color:#e17055;"></i>
+                                        </button>
+                                    <?php endif; ?>
                                     <button class="dots" onclick="deleteUser(<?= $row['user_id'] ?>)" title="Delete">
                                         <i class="fas fa-trash" style="color:#ef4444;"></i>
                                     </button>
@@ -214,7 +250,31 @@ $role_titles = [
                             <option value="user">Staff / User</option>
                             <option value="pm">Project Manager</option>
                             <option value="hrm">HR Management</option>
+                            <option value="manager">Manager</option>
                             <option value="admin">Admin</option>
+                            <option value="client">Client Primary Contact</option>
+                            <option value="client_sub">Client Participant</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="clientFormGroup" style="display:none;">
+                        <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:7px;">Link to Client Company <span style="color:#ef4444;">*</span></label>
+                        <select name="client_id" id="f_client_id"
+                            style="width:100%;padding:11px 14px;border:2px solid #f0f0f0;border-radius:10px;font-size:14px;background:#f8f9fa;outline:none;box-sizing:border-box;font-family:inherit;">
+                            <option value="">-- Select Client Company --</option>
+                            <?php
+                            $clients_opt = $conn->query("SELECT id, client_name, company FROM clients ORDER BY client_name ASC");
+                            while ($c_opt = $clients_opt->fetch_assoc()) {
+                                echo "<option value='{$c_opt['id']}'>" . htmlspecialchars($c_opt['client_name']) . " (" . htmlspecialchars($c_opt['company']) . ")</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="form-group" id="statusFormGroup">
+                        <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:7px;">Account Status</label>
+                        <select name="status" id="f_status"
+                            style="width:100%;padding:11px 14px;border:2px solid #f0f0f0;border-radius:10px;font-size:14px;background:#f8f9fa;outline:none;box-sizing:border-box;font-family:inherit;">
+                            <option value="active">Active</option>
+                            <option value="deactivated">Deactivated</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -277,6 +337,7 @@ function openUserModal(type, id = null) {
         document.getElementById('f_password').required          = true;
         document.getElementById('f_username').disabled          = false;
         document.getElementById('f_role').value                 = 'student'; // Default to student
+        document.getElementById('f_status').value               = 'active';
         document.getElementById('passwordRequired').style.display = 'inline';
         document.getElementById('passwordHint').innerHTML       = '<i class="fas fa-lock" style="color: var(--primary);"></i> Minimum 8 characters required';
     } else {
@@ -303,6 +364,9 @@ function openUserModal(type, id = null) {
                         document.getElementById('f_email').value   = data.email    || '';
                         document.getElementById('f_username').value = data.username || '';
                         document.getElementById('f_role').value    = data.role      || 'student';
+                        document.getElementById('f_role').dispatchEvent(new Event('change'));
+                        document.getElementById('f_client_id').value = data.client_id || '';
+                        document.getElementById('f_status').value  = data.status    || 'active';
                     } else {
                         showToast(data.message || 'Failed to load user', 'error');
                         closeUserModal(); return;
@@ -314,6 +378,31 @@ function openUserModal(type, id = null) {
 
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
+}
+
+function toggleUserStatus(id, actionTarget) {
+    const confirmMsg = actionTarget === 'deactivate' ? 
+        'Are you sure you want to DEACTIVATE this user account? The user will be blocked from logging in.' : 
+        'Are you sure you want to ACTIVATE this user account?';
+    if (!confirm(confirmMsg)) return;
+
+    fetch(`user_action.php?action=toggle_status&id=${id}&target_status=${actionTarget}`)
+        .then(r => r.text())
+        .then(raw => {
+            const start = raw.lastIndexOf('{"');
+            try {
+                const data = JSON.parse(start !== -1 ? raw.slice(start) : raw);
+                if (data.success) {
+                    showToast(data.message);
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    showToast(data.message || 'Failed to update status', 'error');
+                }
+            } catch(e) {
+                showToast('Server response error', 'error');
+            }
+        })
+        .catch(() => showToast('Server connection error', 'error'));
 }
 
 function closeUserModal() {
@@ -359,6 +448,19 @@ function deleteUser(id) {
 
 document.addEventListener('DOMContentLoaded', () => {
     if (new URLSearchParams(window.location.search).get('add_user') === '1') openUserModal('add');
+    
+    // Bind role change event to toggle client company select group
+    document.getElementById('f_role').addEventListener('change', function() {
+        const cg = document.getElementById('clientFormGroup');
+        if (this.value === 'client' || this.value === 'client_sub') {
+            cg.style.display = 'block';
+            document.getElementById('f_client_id').required = true;
+        } else {
+            cg.style.display = 'none';
+            document.getElementById('f_client_id').required = false;
+            document.getElementById('f_client_id').value = '';
+        }
+    });
 });
 
 function showToast(msg, type = 'success') {

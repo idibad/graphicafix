@@ -5,6 +5,11 @@ ini_set('display_errors', '0');
 
 include 'dashboard_header.php';
 
+if ($role !== 'admin' && $role !== 'hrm') {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'ms-applications';
 
 // ── Handle actions ────────────────────────────────────────────────────────────

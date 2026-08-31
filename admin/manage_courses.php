@@ -5,6 +5,11 @@ ini_set('display_startup_errors', '1');
 
 include 'dashboard_header.php';
 
+if ($role !== 'admin' && $role !== 'teacher') {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  AUTO-PATCH: ensure all columns exist before anything else runs
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1253,13 +1258,11 @@ function showToast(msg, type='success') {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    <?php if (isset($_GET['updated'])):      ?> showToast('Updated successfully.');        <?php endif; ?>
-    <?php if (isset($_GET['deleted'])):      ?> showToast('Deleted.');                     <?php endif; ?>
-    <?php if (isset($_GET['course_added'])): ?> showToast('Course saved successfully!');   <?php endif; ?>
-    <?php if (isset($_GET['generated'])):    ?> showToast('Referral code generated!');     <?php endif; ?>
-});
-
-    <?php if (isset($_GET['assigned_direct'])): ?> showToast('Course directly assigned to student successfully!'); <?php endif; ?>
+    <?php if (isset($_GET['updated'])):         ?> showToast('Updated successfully.');                                         <?php endif; ?>
+    <?php if (isset($_GET['deleted'])):         ?> showToast('Deleted.');                                                      <?php endif; ?>
+    <?php if (isset($_GET['course_added'])):    ?> showToast('Course saved successfully!');                                    <?php endif; ?>
+    <?php if (isset($_GET['generated'])):       ?> showToast('Referral code generated!');                                      <?php endif; ?>
+    <?php if (isset($_GET['assigned_direct'])): ?> showToast('Course directly assigned to student successfully!');             <?php endif; ?>
 });
 
 function openDirectAssignModal() {

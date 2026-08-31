@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+if ($role !== 'admin' && $role !== 'pm') {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 $reviews = [];
 $result = mysqli_query($conn, "SELECT * FROM reviews ORDER BY created_at DESC");
 while ($row = mysqli_fetch_assoc($result)) {

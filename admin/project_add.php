@@ -2,6 +2,11 @@
 
 include 'dashboard_header.php';
 
+if ($role !== 'admin' && $role !== 'pm') {
+    header("Location: manage_projects.php?error=unauthorized");
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $project_name = $_POST['project_name'];
@@ -83,8 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     echo "<script>alert('Project Added Successfully!');window.location='manage_projects.php';</script>";
 }
 ?>
-<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js"></script>
 
 <div class="dashboard">
     <!-- Page Header -->
@@ -223,9 +227,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </label>
     
     <div id="public-editor-wrapper" style="background: #fff; border-radius: 8px;">
-        <div id="public-editor" style="height: 350px; font-family: 'Outfit', sans-serif; font-size: 1.1rem;">
+        <textarea id="public-editor" style="width: 100%; height: 350px; font-family: 'Outfit', sans-serif; font-size: 1.1rem;">
             <?= isset($project['public_description']) ? $project['public_description'] : '' ?>
-        </div>
+        </textarea>
     </div>
 
     <input type="hidden" name="public_description" id="public_description_input">
@@ -270,21 +274,115 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="info-text">Select team members who will be working on this project. They will receive notifications and have access based on their roles.</div>
                 </div>
 
-                <div class="team-grid">
+                <style>
+                /* Premium Team Member Card Grid */
+                .team-cards-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                    gap: 16px;
+                    margin-top: 20px;
+                }
+                .team-card {
+                    position: relative;
+                    background: #ffffff;
+                    border: 2px solid #e2e8f0;
+                    border-radius: 16px;
+                    padding: 20px;
+                    text-align: center;
+                    cursor: pointer;
+                    transition: all 0.25s ease;
+                    user-select: none;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 12px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+                }
+                .team-card:hover {
+                    transform: translateY(-3px);
+                    border-color: #cbd5e1;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                }
+                .team-card.selected {
+                    border-color: #024442;
+                    background: rgba(2, 68, 66, 0.02);
+                    box-shadow: 0 4px 12px rgba(2, 68, 66, 0.06);
+                }
+                .team-card-checkbox {
+                    position: absolute;
+                    top: 12px;
+                    right: 12px;
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    accent-color: #024442;
+                }
+                .team-card-avatar {
+                    width: 56px;
+                    height: 56px;
+                    border-radius: 50%;
+                    background: linear-gradient(135deg, #024442 0%, #036b68 100%);
+                    color: #ffffff;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 20px;
+                    font-weight: 700;
+                    box-shadow: 0 4px 10px rgba(2, 68, 66, 0.15);
+                    transition: transform 0.25s ease;
+                }
+                .team-card.selected .team-card-avatar {
+                    transform: scale(1.05);
+                    background: linear-gradient(135deg, #B6F763 0%, #87bd0a 100%);
+                    color: #024442;
+                    box-shadow: 0 4px 10px rgba(182, 247, 99, 0.25);
+                }
+                .team-card-name {
+                    font-size: 14px;
+                    font-weight: 700;
+                    color: #0f172a;
+                    margin: 0;
+                    line-height: 1.3;
+                    text-transform: capitalize;
+                }
+                .team-card-role {
+                    font-size: 11px;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    color: #64748b;
+                    font-weight: 600;
+                    margin-top: -6px;
+                }
+                </style>
+
+                <div class="team-cards-grid">
                     <?php
-                    $users = $conn->query("SELECT user_id, name FROM users");
+                    $users = $conn->query("SELECT user_id, name, role FROM users WHERE role != 'student' AND role != 'client' AND role != 'client_sub' AND status = 'active'");
                     while($u=$users->fetch_assoc()){
                         $initial = strtoupper(substr($u['name'], 0, 1));
                         echo "
-                        <div class='team-member'>
-                            <input type='checkbox' name='team_members[]' value='{$u['user_id']}' id='user_{$u['user_id']}'>
-                            <div class='team-avatar'>{$initial}</div>
-                            <label for='user_{$u['user_id']}'>{$u['name']}</label>
+                        <div class='team-card' onclick='selectTeamCard(this)'>
+                            <input type='checkbox' name='team_members[]' value='{$u['user_id']}' class='team-card-checkbox' onclick='event.stopPropagation(); toggleTeamCardState(this.parentElement, this.checked);'>
+                            <div class='team-card-avatar'>{$initial}</div>
+                            <div class='team-card-name'>{$u['name']}</div>
+                            <div class='team-card-role'>" . htmlspecialchars(ucfirst($u['role'])) . "</div>
                         </div>
                         ";
                     }
                     ?>
                 </div>
+
+                <script>
+                function selectTeamCard(card) {
+                    const checkbox = card.querySelector('.team-card-checkbox');
+                    checkbox.checked = !checkbox.checked;
+                    toggleTeamCardState(card, checkbox.checked);
+                }
+                function toggleTeamCardState(card, isChecked) {
+                    card.classList.toggle('selected', isChecked);
+                }
+                </script>
             </div>
 
             <!-- Form Actions -->
@@ -429,29 +527,20 @@ document.getElementById('projectForm').addEventListener('submit', function(e) {
 });
 </script>
 <script>
-    // 1. Initialize the Editor
-    var publicEditor = new Quill('#public-editor', {
-        modules: {
-            toolbar: [
-                [{ 'header': [2, 3, false] }],
-                ['bold', 'italic', 'underline', 'blockquote'],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                ['link', 'clean']
-            ]
-        },
-        placeholder: 'Write a compelling narrative for this project...',
-        theme: 'snow'
-    });
-
-    // 2. Sync with the Hidden Input
+    // Initialize TinyMCE
     var publicInput = document.getElementById('public_description_input');
     
-    // Set initial value on load
-    publicInput.value = publicEditor.root.innerHTML;
-
-    // Update hidden input on every keystroke
-    publicEditor.on('text-change', function() {
-        publicInput.value = publicEditor.root.innerHTML;
+    tinymce.init({
+        selector: '#public-editor',
+        height: 350,
+        menubar: false,
+        plugins: 'image table link lists',
+        toolbar: 'undo redo | blocks | bold italic underline blockquote | alignleft aligncenter alignright | bullist numlist | link image table | removeformat',
+        setup: function(editor) {
+            editor.on('init change keyup', function() {
+                publicInput.value = editor.getContent();
+            });
+        }
     });
 </script>
 <?php 

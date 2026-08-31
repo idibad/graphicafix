@@ -5,19 +5,11 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 header('Content-Type: application/json');
- $server = "localhost";
-    $username = "u935542951_graphicafix";
-    $password = "2025.Graphica_fix";
-    $db = "u935542951_graphicafix_db";
-// ── DB credentials — copy from your config.php ───────────────────────────────
-$conn = mysqli_connect($server, $username,$password, $db);
-if (!$conn) {
-    echo json_encode(['success' => false, 'message' => 'DB error']); exit;
-}
+require_once __DIR__ . '/../core/config.php';
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 $user_id  = intval($_SESSION['user_id'] ?? 0);
-$is_admin = (($_SESSION['role'] ?? '') === 'admin');
+$is_admin = (strtolower($_SESSION['role'] ?? '') === 'admin');
 $action   = $_POST['ajax_action'] ?? '';
 $task_id  = intval($_POST['task_id'] ?? 0);
 

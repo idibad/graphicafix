@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+if ($role !== 'admin' && $role !== 'pm') {
+    header("Location: manage_projects.php?error=unauthorized");
+    exit;
+}
+
 $project_id = intval($_GET['id'] ?? 0);
 
 if (!$project_id) {

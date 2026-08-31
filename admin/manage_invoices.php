@@ -5,12 +5,18 @@ include 'dashboard_header.php';
 
 // ── Quick actions ─────────────────────────────────────────────────────────────
 if (isset($_GET['action'], $_GET['id'])) {
+    if ($role === 'manager') {
+        header("Location: manage_invoices.php?error=unauthorized");
+        exit;
+    }
     $id = intval($_GET['id']);
     $type = $_GET['type'] ?? 'invoice';
 
     if ($type === 'invoice') {
         match($_GET['action']) {
             'mark_paid'   => $conn->query("UPDATE invoices SET status='paid', amount_paid=total_amount, amount_due=0, paid_at=NOW() WHERE id={$id}"),
+            'approve_payment' => $conn->query("UPDATE invoices SET status='paid', amount_paid=total_amount, amount_due=0, paid_at=NOW() WHERE id={$id}"),
+            'reject_payment' => $conn->query("UPDATE invoices SET status='sent', payment_screenshot=NULL, payment_uploaded_at=NULL WHERE id={$id}"),
             'mark_sent'   => $conn->query("UPDATE invoices SET status='sent' WHERE id={$id}"),
             'cancel'      => $conn->query("UPDATE invoices SET status='cancelled' WHERE id={$id}"),
             'delete'      => $conn->query("DELETE FROM invoices WHERE id={$id}"),
@@ -105,8 +111,10 @@ function quotBadge($s) {
         <p>Manage billing, track payments, and send professional quotations</p>
     </div>
     <div style="display:flex;gap:10px;">
+        <?php if ($role !== 'manager'): ?>
         <a href="create_quotation.php" class="btn btn-secondary"><i class="fas fa-file-alt"></i> New Quotation</a>
         <a href="create_invoice.php"   class="btn btn-primary"><i class="fas fa-plus"></i> New Invoice</a>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -144,6 +152,7 @@ function quotBadge($s) {
             <div class="inv-stat-sub">PKR <?= number_format($invStats['total_value'] ?? 0) ?> total</div>
         </div>
     </div>
+    <?php if ($role !== 'manager'): ?>
     <div class="inv-stat-card">
         <div class="inv-stat-icon" style="background:#f5f3ff;color:#7c3aed;"><i class="fas fa-file-alt"></i></div>
         <div>
@@ -152,6 +161,7 @@ function quotBadge($s) {
             <div class="inv-stat-sub"><?= $quotStats['accepted_count'] ?> accepted</div>
         </div>
     </div>
+    <?php endif; ?>
     <div class="inv-stat-card">
         <div class="inv-stat-icon" style="background:#eff6ff;color:#3b82f6;"><i class="fas fa-upload"></i></div>
         <div>
@@ -166,7 +176,9 @@ function quotBadge($s) {
 <div class="mp-tabs-container" style="margin-bottom:0;">
     <div class="mp-tab-buttons">
         <button type="button" onclick="switchMainTab('invoices')"   id="tabBtnInvoices"   class="<?= $activeTab==='invoices'   ? 'active' : '' ?>"><span class="mp-tab-icon"><i class="fas fa-file-invoice-dollar"></i></span> Invoices <span class="tab-count"><?= $invStats['total'] ?></span></button>
+        <?php if ($role !== 'manager'): ?>
         <button type="button" onclick="switchMainTab('quotations')" id="tabBtnQuotations" class="<?= $activeTab==='quotations' ? 'active' : '' ?>"><span class="mp-tab-icon"><i class="fas fa-file-alt"></i></span> Quotations <span class="tab-count"><?= $quotStats['total'] ?></span></button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -210,6 +222,7 @@ function quotBadge($s) {
                     <th>Paid</th>
                     <th>Outstanding</th>
                     <th>Status</th>
+                    <th>Payment Proof</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -217,9 +230,13 @@ function quotBadge($s) {
             <?php while ($inv = $invoices->fetch_assoc()): ?>
                 <tr>
                     <td>
+                        <?php if ($role !== 'manager'): ?>
                         <a href="invoice_details.php?id=<?= $inv['id'] ?>" class="inv-number-link">
                             <?= htmlspecialchars($inv['invoice_number']) ?>
                         </a>
+                        <?php else: ?>
+                        <?= htmlspecialchars($inv['invoice_number']) ?>
+                        <?php endif; ?>
                     </td>
                     <td>
                         <div class="client-cell-name"><?= htmlspecialchars($inv['client_name'] ?? '—') ?></div>
@@ -239,10 +256,28 @@ function quotBadge($s) {
                     </td>
                     <td><span class="badge <?= invBadge($inv['status']) ?>"><?= ucfirst($inv['status']) ?></span></td>
                     <td>
+                        <?php if ($inv['payment_screenshot']): ?>
+                            <a href="javascript:void(0)" onclick="showScreenshot('<?= htmlspecialchars($inv['payment_screenshot']) ?>')" style="color: #024442; font-weight: 700; text-decoration: underline;" title="Uploaded: <?= date('M d, H:i', strtotime($inv['payment_uploaded_at'])) ?>">
+                                <i class="fas fa-image"></i> View Screenshot
+                            </a>
+                        <?php else: ?>
+                            <span style="color:#aaa; font-style:italic; font-size:12px;">No proof</span>
+                        <?php endif; ?>
+                    </td>
+                    <td>
                         <div class="row-actions">
+                            <?php if ($role !== 'manager'): ?>
                             <a href="invoice_details.php?id=<?= $inv['id'] ?>" class="action-btn" title="View"><i class="fas fa-eye"></i>️</a>
                             <a href="edit_invoice.php?id=<?= $inv['id'] ?>"    class="action-btn" title="Edit"><i class="fas fa-pencil-alt"></i>️</a>
                             <a href="generate_invoice_pdf.php?id=<?= $inv['id'] ?>" class="action-btn" title="PDF" target="_blank"><i class="fas fa-inbox"></i></a>
+                            <?php if ($inv['payment_screenshot'] && $inv['status'] !== 'paid'): ?>
+                                <a href="?action=approve_payment&id=<?= $inv['id'] ?>&type=invoice&tab=invoices&filter=<?= $invFilter ?>"
+                                   class="action-btn" style="color:#22c55e;" title="Approve Payment"
+                                   onclick="return confirm('Approve this payment proof?')"><i class="fas fa-thumbs-up"></i></a>
+                                <a href="?action=reject_payment&id=<?= $inv['id'] ?>&type=invoice&tab=invoices&filter=<?= $invFilter ?>"
+                                   class="action-btn action-danger" style="color:#ef4444;" title="Reject Payment"
+                                   onclick="return confirm('Reject this payment proof?')"><i class="fas fa-thumbs-down"></i></a>
+                            <?php endif; ?>
                             <?php if (!in_array($inv['status'],['paid','cancelled'])): ?>
                             <a href="?action=mark_paid&id=<?= $inv['id'] ?>&type=invoice&tab=invoices&filter=<?= $invFilter ?>"
                                class="action-btn" title="Mark Paid"
@@ -251,6 +286,9 @@ function quotBadge($s) {
                             <a href="?action=delete&id=<?= $inv['id'] ?>&type=invoice&tab=invoices&filter=<?= $invFilter ?>"
                                class="action-btn action-danger" title="Delete"
                                onclick="return confirm('Delete invoice <?= htmlspecialchars($inv['invoice_number']) ?>?')"><i class="fas fa-trash"></i>️</a>
+                            <?php else: ?>
+                            <span style="color:#aaa; font-size:12px; font-style:italic;">No Actions</span>
+                            <?php endif; ?>
                         </div>
                     </td>
                 </tr>
@@ -269,6 +307,7 @@ function quotBadge($s) {
 </div>
 
 <!-- ════════════════════════════ QUOTATIONS TAB ══════════════════════════════ -->
+<?php if ($role !== 'manager'): ?>
 <div id="tabQuotations" class="main-tab-panel" style="display:<?= $activeTab==='quotations' ? 'block' : 'none' ?>;">
 
     <!-- Filter bar -->
@@ -367,6 +406,7 @@ function quotBadge($s) {
         <?php endif; ?>
     </div>
 </div>
+<?php endif; ?>
 
 </div><!-- /.height-100 -->
 
@@ -425,6 +465,33 @@ function switchMainTab(tab) {
     document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).style.display = 'block';
     document.getElementById('tabBtn' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
 }
+
+function showScreenshot(src) {
+    document.getElementById('screenshotImg').style.display = 'none';
+    document.getElementById('screenshotSpinner').style.display = 'flex';
+    document.getElementById('screenshotImg').src = src;
+    const modal = document.getElementById('screenshotModal');
+    modal.style.display = 'flex';
+}
+function closeScreenshotModal() {
+    document.getElementById('screenshotModal').style.display = 'none';
+}
 </script>
+
+<!-- Screenshot Preview Modal -->
+<div id="screenshotModal" class="modal-overlay" onclick="if(event.target===this)closeScreenshotModal()" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:12px; padding:16px; max-width:600px; width:90%; position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.2);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-bottom:12px;">
+            <h4 style="margin:0; color:#1e293b;"><i class="fas fa-image"></i> Payment Proof Screenshot</h4>
+            <span style="font-size:24px; font-weight:bold; cursor:pointer;" onclick="closeScreenshotModal()">&times;</span>
+        </div>
+        <div style="text-align:center; position:relative; min-height:150px; display:flex; align-items:center; justify-content:center;">
+            <div id="screenshotSpinner" style="display:flex; align-items:center; justify-content:center; position:absolute; left:0; right:0; top:0; bottom:0;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 32px; color: #024442;"></i>
+            </div>
+            <img id="screenshotImg" src="" alt="Screenshot Proof" style="max-width:100%; max-height:450px; object-fit:contain; border-radius:6px; border:1px solid #cbd5e1; display:none;" onload="document.getElementById('screenshotSpinner').style.display='none'; this.style.display='inline-block';">
+        </div>
+    </div>
+</div>
 
 <?php include('dashboard_footer.php'); ?>

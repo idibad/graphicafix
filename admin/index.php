@@ -128,10 +128,10 @@ $notice_result = mysqli_query($conn, $notice_query);
 $notice_cout = mysqli_num_rows($notice_result);
 
 // Fetch tasks based on role
-if ($role === 'admin' || $role === 'pm') {
+if ($role === 'admin') {
     $task_query = "SELECT * FROM tasks WHERE status NOT IN ('Completed', 'Cancelled') ORDER BY due_date ASC";
 } else {
-    $task_query = "SELECT * FROM tasks WHERE assigned_to = $user_id AND status NOT IN ('Completed', 'Cancelled') ORDER BY due_date ASC";
+    $task_query = "SELECT * FROM tasks WHERE (assigned_to = $user_id OR created_by = $user_id) AND status NOT IN ('Completed', 'Cancelled') ORDER BY due_date ASC";
 }
 $task_result = mysqli_query($conn, $task_query);
 $task_count  = mysqli_num_rows($task_result);
@@ -141,8 +141,13 @@ $resource_query  = "SELECT * FROM resources ORDER BY created_at DESC";
 $resource_result = mysqli_query($conn, $resource_query);
 $resource_count  = mysqli_num_rows($resource_result);
 
-// Admin/PM stats
-if ($role === 'admin' || $role === 'pm') {
+// Admin/PM/Manager stats
+if ($role === 'admin' || $role === 'pm' || $role === 'manager') {
+    $stats_filter = "1=1";
+    if ($role !== 'admin') {
+        $stats_filter = "(assigned_to = $user_id OR created_by = $user_id)";
+    }
+
     if ($role === 'admin') {
         $total_users_result     = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM users");
         $total_users            = mysqli_fetch_assoc($total_users_result)['cnt'];
@@ -150,23 +155,23 @@ if ($role === 'admin' || $role === 'pm') {
         $recent_users_result = mysqli_query($conn, "SELECT * FROM users WHERE role != 'student' ORDER BY created_at DESC LIMIT 5");
     }
 
-    $total_tasks_result     = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM tasks");
+    $total_tasks_result     = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM tasks WHERE $stats_filter");
     $total_tasks            = mysqli_fetch_assoc($total_tasks_result)['cnt'];
 
-    $completed_tasks_result = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM tasks WHERE status = 'Completed'");
+    $completed_tasks_result = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM tasks WHERE status = 'Completed' AND $stats_filter");
     $completed_tasks        = mysqli_fetch_assoc($completed_tasks_result)['cnt'];
 
-    $pending_tasks_result   = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM tasks WHERE status NOT IN ('Completed','Cancelled')");
+    $pending_tasks_result   = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM tasks WHERE status NOT IN ('Completed','Cancelled') AND $stats_filter");
     $pending_tasks          = mysqli_fetch_assoc($pending_tasks_result)['cnt'];
 
-    $overdue_tasks_result   = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM tasks WHERE due_date < CURDATE() AND status NOT IN ('Completed','Cancelled')");
+    $overdue_tasks_result   = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM tasks WHERE due_date < CURDATE() AND status NOT IN ('Completed','Cancelled') AND $stats_filter");
     $overdue_tasks          = mysqli_fetch_assoc($overdue_tasks_result)['cnt'];
 
-    $high_priority_result   = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM tasks WHERE priority = 'High' AND status NOT IN ('Completed','Cancelled')");
+    $high_priority_result   = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM tasks WHERE priority = 'High' AND status NOT IN ('Completed','Cancelled') AND $stats_filter");
     $high_priority_tasks    = mysqli_fetch_assoc($high_priority_result)['cnt'];
 
     // Tasks by priority
-    $priority_result = mysqli_query($conn, "SELECT priority, COUNT(*) as cnt FROM tasks WHERE status NOT IN ('Completed','Cancelled') GROUP BY priority");
+    $priority_result = mysqli_query($conn, "SELECT priority, COUNT(*) as cnt FROM tasks WHERE status NOT IN ('Completed','Cancelled') AND $stats_filter GROUP BY priority");
     $priority_data   = [];
     while ($row = mysqli_fetch_assoc($priority_result)) {
         $priority_data[$row['priority']] = $row['cnt'];
@@ -356,7 +361,7 @@ elseif ($role === 'student') {
         <p><?php echo $role === 'admin' ? "Here's your system overview for today." : "Here's what's happening with your projects today."; ?></p>
     </div>
 
-    <?php if ($role === 'admin' || $role === 'pm'): ?>
+    <?php if ($role === 'admin' || $role === 'pm' || $role === 'manager'): ?>
     <div class="admin-stats-grid">
         <?php if ($role === 'admin'): ?>
         <div class="stat-card">
@@ -403,8 +408,10 @@ elseif ($role === 'student') {
             <a href="manage_users.php"                     class="quick-action-btn"><span class="qa-icon"><i class="fas fa-users"></i></span> Manage Users</a>
             <?php endif; ?>
             <a href="tasks.php"                            class="quick-action-btn"><span class="qa-icon"><i class="fas fa-clipboard"></i></span> All Tasks</a>
+            <?php if ($role === 'admin' || $role === 'manager'): ?>
+            <a href="manage_notices.php?add_notice=1"      class="quick-action-btn"><span class="qa-icon"><i class="fas fa-bullhorn"></i></span> Post Notice</a>
+            <?php endif; ?>
             <?php if ($role === 'admin'): ?>
-            <a href="manage_manage_notices.php?add_notice=1"      class="quick-action-btn"><span class="qa-icon"><i class="fas fa-bullhorn"></i></span> Post Notice</a>
             <a href="manage_resources.php?add_resource=1"  class="quick-action-btn"><span class="qa-icon"><i class="fas fa-book"></i></span> Add Resource</a>
             <?php endif; ?>
             <a href="profile.php"                          class="quick-action-btn"><span class="qa-icon">⚙️</span> Settings</a>
@@ -481,9 +488,9 @@ elseif ($role === 'student') {
                 while($nd = mysqli_fetch_assoc($notice_result)):
                     if ($nc >= 3) break; $nc++;
             ?>
-            <div class="notice-item">
+            <a href="notice_details.php?id=<?= $nd['notice_id'] ?>" class="notice-item" style="display:block; text-decoration:none;">
                 <div class="notice-title"><?= htmlspecialchars($nd['notice_title']) ?></div>
-            </div>
+            </a>
             <?php endwhile; ?>
         </div>
     </div>
@@ -883,6 +890,116 @@ elseif ($role === 'student') {
                     <a href="student_certificates.php" class="btn btn-secondary-custom" style="width:100%; text-align:center;">View Certificates →</a>
                 </div>
             </div>
+    <?php elseif ($role === 'client' || $role === 'client_sub'): 
+        $client_id = intval($data['client_id'] ?? 0);
+        
+        $proj_stats = $conn->query("
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as active,
+                SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed
+            FROM projects 
+            WHERE client_id = {$client_id} AND visibility IN ('client', 'public')
+        ")->fetch_assoc();
+        
+        $inv_stats = $conn->query("
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid,
+                SUM(CASE WHEN status = 'sent' OR status = 'overdue' THEN 1 ELSE 0 END) as pending,
+                SUM(amount_due) as total_due
+            FROM invoices 
+            WHERE client_id = {$client_id} AND status != 'draft'
+        ")->fetch_assoc();
+    ?>
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="stat-card" style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0; display:flex; align-items:center; gap:16px;">
+                    <div style="width:50px; height:50px; background:#e0f2fe; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#0284c7; font-size:20px;"><i class="fas fa-tasks"></i></div>
+                    <div>
+                        <div style="font-size:24px; font-weight:800; color:#1e293b;"><?= intval($proj_stats['total']) ?></div>
+                        <div style="font-size:13px; color:#64748b; font-weight:600;">Total Projects</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card" style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0; display:flex; align-items:center; gap:16px;">
+                    <div style="width:50px; height:50px; background:#ecfdf5; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#10b981; font-size:20px;"><i class="fas fa-spinner"></i></div>
+                    <div>
+                        <div style="font-size:24px; font-weight:800; color:#1e293b;"><?= intval($proj_stats['active']) ?></div>
+                        <div style="font-size:13px; color:#64748b; font-weight:600;">In Progress</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card" style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0; display:flex; align-items:center; gap:16px;">
+                    <div style="width:50px; height:50px; background:#fef3c7; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#d97706; font-size:20px;"><i class="fas fa-check-double"></i></div>
+                    <div>
+                        <div style="font-size:24px; font-weight:800; color:#1e293b;"><?= intval($proj_stats['completed']) ?></div>
+                        <div style="font-size:13px; color:#64748b; font-weight:600;">Completed Projects</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Projects List -->
+            <div class="col-lg-8">
+                <div class="card" style="padding:24px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1e293b;"><i class="fas fa-folder-open" style="color:#024442;"></i> My Projects</h3>
+                    <?php
+                    $proj_query = $conn->query("SELECT * FROM projects WHERE client_id = {$client_id} AND visibility IN ('client', 'public') ORDER BY created_at DESC LIMIT 5");
+                    if ($proj_query && $proj_query->num_rows > 0):
+                    ?>
+                        <div style="display:flex; flex-direction:column; gap:16px;">
+                            <?php while ($proj = $proj_query->fetch_assoc()): ?>
+                                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:12px;">
+                                    <div>
+                                        <a href="client_projects.php?id=<?= $proj['id'] ?>" style="font-weight:700; color:#1e293b; text-decoration:none; font-size:14.5px;"><?= htmlspecialchars($proj['project_name']) ?></a>
+                                        <div style="font-size:12px; color:#64748b; margin-top:2px;">Status: <span style="font-weight:600; color:#334155;"><?= $proj['status'] ?></span></div>
+                                    </div>
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <div style="font-weight:700; color:#024442; font-size:14px;"><?= $proj['progress'] ?>%</div>
+                                        <div style="width:100px; background:#e2e8f0; height:8px; border-radius:4px; overflow:hidden;">
+                                            <div style="background:#024442; width:<?= $proj['progress'] ?>%; height:100%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endwhile; ?>
+                        </div>
+                        <a href="client_projects.php" class="btn btn-secondary-custom" style="display:block; width:100%; text-align:center; margin-top:12px; text-decoration:none;">View All Projects →</a>
+                    <?php else: ?>
+                        <div style="text-align:center; color:#94a3b8; padding:30px;">No projects associated with your account yet.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Invoices / Quick Links Sidebar -->
+            <div class="col-lg-4">
+                <?php if ($role === 'client'): ?>
+                <div class="card" style="padding:24px; margin-bottom:20px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1e293b;"><i class="fas fa-file-invoice-dollar" style="color:#d97706;"></i> Billing Summary</h3>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size:14px;">
+                        <span style="color:#64748b; font-weight:500;">Pending Invoices:</span>
+                        <strong style="color:#d97706;"><?= intval($inv_stats['pending']) ?></strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:16px; font-size:14px;">
+                        <span style="color:#64748b; font-weight:500;">Total Due:</span>
+                        <strong style="color:#ef4444;">PKR <?= number_format($inv_stats['total_due'] ?? 0, 2) ?></strong>
+                    </div>
+                    <a href="client_invoices.php" class="btn btn-primary" style="display:block; width:100%; text-align:center; background:#024442; border:none; text-decoration:none; padding:8px 0; border-radius:6px; color:white; font-weight:700;">Manage Invoices</a>
+                </div>
+                <?php endif; ?>
+
+                <div class="card" style="padding:24px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1e293b;"><i class="fas fa-info-circle" style="color:#0284c7;"></i> Account Info</h3>
+                    <div style="font-size:13.5px; color:#475569; line-height:1.6;">
+                        <strong>User:</strong> <?= htmlspecialchars($name) ?><br>
+                        <strong>Role:</strong> <span style="text-transform: capitalize;"><?= $role === 'client' ? 'Primary Contact' : 'Client Participant' ?></span><br>
+                        <strong>Email:</strong> <?= htmlspecialchars($email) ?><br>
+                    </div>
+                </div>
+            </div>
         </div>
 
     <?php else: ?>
@@ -901,11 +1018,13 @@ elseif ($role === 'student') {
                         <span class="badge-count"><?php echo $notice_cout; ?></span>
                     </div>
                     <div class="notices-body">
-                        <?php mysqli_data_seek($notice_result, 0); while($data = mysqli_fetch_assoc($notice_result)): ?>
-                        <div class="notice-item">
+                        <?php mysqli_data_seek($notice_result, 0); while($data = mysqli_fetch_assoc($notice_result)): 
+                            $notice_time = isset($data['created_at']) ? date('M d, g:i A', strtotime($data['created_at'])) : 'Today, 2:30 PM';
+                        ?>
+                        <a href="notice_details.php?id=<?= $data['notice_id'] ?>" class="notice-item" style="display:block; text-decoration:none;">
                             <div class="notice-title"><?= htmlspecialchars($data['notice_title']) ?></div>
-                            <div class="notice-time">Today, 2:30 PM</div>
-                        </div>
+                            <div class="notice-time"><?= $notice_time ?></div>
+                        </a>
                         <?php endwhile; ?>
                     </div>
                 </div>
