@@ -2,7 +2,7 @@
 include 'dashboard_header.php';
 
 // Admin only
-if ($role !== 'admin') {
+if ($role !== 'super_admin' && $role !== 'superadmin' && $role !== 'admin') {
     echo "<script>alert('Access denied');window.location='index.php';</script>";
     exit;
 }

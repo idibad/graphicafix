@@ -28,11 +28,15 @@ $name    = $data['name'];
 $phone   = $data['phone'];
 $email   = $data['email'];
 $user_id = $data['user_id'];
-$role    = strtolower($data['role']); // admin | user | client | teacher | student
+$role    = strtolower($data['role']); // super_admin | admin | user | client | teacher | student
 $_SESSION['role'] = $role;
 
-$can_edit = ($role === 'admin' || $role === 'pm' || $role === 'manager');
-$can_create_project = ($role === 'admin' || $role === 'pm');
+$is_super_admin   = ($role === 'super_admin' || $role === 'superadmin');
+$is_admin_officer = ($role === 'admin');
+$is_any_admin     = ($is_super_admin || $is_admin_officer);
+
+$can_edit = ($is_super_admin || $is_admin_officer || $role === 'pm' || $role === 'manager');
+$can_create_project = ($is_super_admin || $role === 'pm');
 
 // Auto-patch notices table schema
 $existing_not_cols = @array_column(
@@ -80,7 +84,7 @@ if (!function_exists('isMenuItemActive')) {
 
 // ── Role-based menus ──────────────────────────────────────────────────────────
 $menus = [
-    'admin' => [
+    'super_admin' => [
         [
             'title' => 'Dashboard',
             'link'  => 'index.php',
@@ -96,9 +100,10 @@ $menus = [
         [
             'title' => 'Users & Staff',
             'link'  => '#',
-            'icon'  => 'fas fa-users',
+            'icon'  => 'fas fa-users-cog',
             'submenus' => [
-                ['title' => 'Manage Users',     'link' => 'manage_users.php',        'icon' => 'fas fa-user-cog'],
+                ['title' => 'Manage Users',     'link' => 'manage_users.php',        'icon' => 'fas fa-user-shield'],
+                ['title' => 'Team & Staff',      'link' => 'manage_team.php',         'icon' => 'fas fa-id-badge'],
                 ['title' => 'Add User',         'link' => 'manage_users.php?action=add', 'icon' => 'fas fa-user-plus'],
                 ['title' => 'Login History',    'link' => 'login_history.php',       'icon' => 'fas fa-history'],
             ]
@@ -120,6 +125,7 @@ $menus = [
             'submenus' => [
                 ['title' => 'Task Board',       'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
                 ['title' => 'Create New Task',  'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
+                ['title' => 'Task Reports',     'link' => 'task_reports.php',        'icon' => 'fas fa-chart-pie'],
             ]
         ],
         [
@@ -131,7 +137,10 @@ $menus = [
                 ['title' => 'Add Client',       'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-plus-square'],
                 ['title' => 'CRM & Leads',      'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
                 ['title' => 'Add Lead',         'link' => 'manage_leads.php?action=add', 'icon' => 'fas fa-user-tag'],
+                ['title' => 'Client Inquiries', 'link' => 'contacts.php',            'icon' => 'fas fa-address-book'],
+                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
                 ['title' => 'Client Reviews',   'link' => 'reviews.php',             'icon' => 'fas fa-star'],
+                ['title' => 'Client Questionnaires', 'link' => 'client_questionnaires.php', 'icon' => 'fas fa-clipboard-check'],
             ]
         ],
         [
@@ -142,6 +151,7 @@ $menus = [
                 ['title' => 'Manage Invoices',  'link' => 'manage_invoices.php',     'icon' => 'fas fa-file-invoice'],
                 ['title' => 'Create Invoice',   'link' => 'create_invoice.php',      'icon' => 'fas fa-plus-circle'],
                 ['title' => 'Create Quotation', 'link' => 'create_quotation.php',    'icon' => 'fas fa-file-signature'],
+                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
                 ['title' => 'Bank Accounts',    'link' => 'manage_bank_accounts.php', 'icon' => 'fas fa-university'],
             ]
         ],
@@ -159,6 +169,7 @@ $menus = [
             'link'  => '#',
             'icon'  => 'fas fa-briefcase',
             'submenus' => [
+                ['title' => 'Team & Staff',      'link' => 'manage_team.php',         'icon' => 'fas fa-id-badge'],
                 ['title' => 'Job Applications', 'link' => 'manage_applications.php', 'icon' => 'fas fa-file-alt'],
                 ['title' => 'Staff Attendance', 'link' => 'attendance.php',          'icon' => 'fas fa-user-clock'],
                 ['title' => 'Teacher Documents','link' => 'admin_teacher_docs.php',  'icon' => 'fas fa-folder-open'],
@@ -204,6 +215,113 @@ $menus = [
             ]
         ],
     ],
+    'superadmin' => &$menus['super_admin'],
+    'admin' => [ // Admin Officer (Operations, Records, Attendance, Supplies, Invoices, CRM)
+        [
+            'title' => 'Dashboard',
+            'link'  => 'index.php',
+            'icon'  => 'fas fa-tachometer-alt',
+            'submenus' => [
+                ['title' => 'Overview',         'link' => 'index.php',               'icon' => 'fas fa-home'],
+                ['title' => 'Daily Reports (DPR)', 'link' => 'dpr.php',              'icon' => 'fas fa-calendar-check'],
+                ['title' => 'Notice Board',     'link' => 'manage_notices.php',      'icon' => 'fas fa-bullhorn'],
+                ['title' => 'Notifications',    'link' => 'manage_notifications.php', 'icon' => 'fas fa-bell'],
+                ['title' => 'Staff Attendance', 'link' => 'attendance.php',          'icon' => 'fas fa-clock'],
+            ]
+        ],
+        [
+            'title' => 'Documentation & Files',
+            'link'  => '#',
+            'icon'  => 'fas fa-folder-open',
+            'submenus' => [
+                ['title' => 'Official Correspondence', 'link' => 'correspondence.php', 'icon' => 'fas fa-envelope-open-text'],
+                ['title' => 'Office Resources & Files', 'link' => 'manage_resources.php', 'icon' => 'fas fa-archive'],
+                ['title' => 'Notice Board',            'link' => 'manage_notices.php',   'icon' => 'fas fa-bullhorn'],
+            ]
+        ],
+        [
+            'title' => 'Attendance & HR',
+            'link'  => '#',
+            'icon'  => 'fas fa-user-clock',
+            'submenus' => [
+                ['title' => 'Staff Attendance', 'link' => 'attendance.php',          'icon' => 'fas fa-clock'],
+                ['title' => 'Employee Records', 'link' => 'manage_team.php',         'icon' => 'fas fa-id-badge'],
+                ['title' => 'Job Applications', 'link' => 'manage_applications.php', 'icon' => 'fas fa-file-alt'],
+            ]
+        ],
+        [
+            'title' => 'Invoices & Quotes',
+            'link'  => '#',
+            'icon'  => 'fas fa-file-invoice-dollar',
+            'submenus' => [
+                ['title' => 'Manage Invoices',  'link' => 'manage_invoices.php',     'icon' => 'fas fa-file-invoice'],
+                ['title' => 'Create Invoice',   'link' => 'create_invoice.php',      'icon' => 'fas fa-plus-circle'],
+                ['title' => 'Create Quotation', 'link' => 'create_quotation.php',    'icon' => 'fas fa-file-signature'],
+                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+            ]
+        ],
+        [
+            'title' => 'Customer Relations',
+            'link'  => '#',
+            'icon'  => 'fas fa-user-friends',
+            'submenus' => [
+                ['title' => 'Clients Database', 'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
+                ['title' => 'Add Client',       'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-user-plus'],
+                ['title' => 'CRM & Leads',      'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
+                ['title' => 'Add Lead',         'link' => 'manage_leads.php?action=add', 'icon' => 'fas fa-user-tag'],
+                ['title' => 'Customer Inquiries', 'link' => 'contacts.php',          'icon' => 'fas fa-phone-alt'],
+                ['title' => 'Customer Reviews', 'link' => 'reviews.php',             'icon' => 'fas fa-star'],
+                ['title' => 'Questionnaires',   'link' => 'client_questionnaires.php', 'icon' => 'fas fa-clipboard-check'],
+            ]
+        ],
+        [
+            'title' => 'Tasks & Coordination',
+            'link'  => '#',
+            'icon'  => 'fas fa-tasks',
+            'submenus' => [
+                ['title' => 'Task Board',       'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
+                ['title' => 'Create Task',      'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
+                ['title' => 'Task Reports',     'link' => 'task_reports.php',        'icon' => 'fas fa-chart-bar'],
+            ]
+        ],
+        [
+            'title' => 'Office Communication',
+            'link'  => '#',
+            'icon'  => 'fas fa-comments',
+            'submenus' => [
+                ['title' => 'Internal Messages', 'link' => 'messages.php',           'icon' => 'fas fa-envelope'],
+                ['title' => 'Newsletter Broadcast', 'link' => 'newsletter.php',      'icon' => 'fas fa-paper-plane'],
+                ['title' => 'Supplies & Inventory', 'link' => 'manage_resources.php', 'icon' => 'fas fa-boxes'],
+            ]
+        ],
+        [
+            'title' => 'Projects & Services',
+            'link'  => '#',
+            'icon'  => 'fas fa-project-diagram',
+            'submenus' => [
+                ['title' => 'Manage Projects',  'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
+                ['title' => 'Project Requests', 'link' => 'project_requests.php',    'icon' => 'fas fa-inbox'],
+                ['title' => 'Services Catalog', 'link' => 'manage_services.php',     'icon' => 'fas fa-concierge-bell'],
+            ]
+        ],
+        [
+            'title' => 'Entertainment Hub',
+            'link'  => '#',
+            'icon'  => 'fas fa-gamepad',
+            'submenus' => [
+                ['title' => 'Entertainment',    'link' => 'entertainment.php',       'icon' => 'fas fa-dice'],
+            ]
+        ],
+        [
+            'title' => 'Settings',
+            'link'  => 'profile.php',
+            'icon'  => 'fas fa-cog',
+            'submenus' => [
+                ['title' => 'My Profile',       'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
+                ['title' => 'Login History',    'link' => 'login_history.php',       'icon' => 'fas fa-history'],
+            ]
+        ],
+    ],
     'user' => [ // Standard Staff
         [
             'title' => 'Dashboard',
@@ -228,6 +346,14 @@ $menus = [
             'icon'  => 'fas fa-check-square',
             'submenus' => [
                 ['title' => 'My Tasks',         'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
+            ]
+        ],
+        [
+            'title' => 'Sales & Quotes',
+            'link'  => '#',
+            'icon'  => 'fas fa-file-invoice-dollar',
+            'submenus' => [
+                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
             ]
         ],
         [
@@ -331,6 +457,7 @@ $menus = [
             'link'  => '#',
             'icon'  => 'fas fa-briefcase',
             'submenus' => [
+                ['title' => 'Team & Staff',      'link' => 'manage_team.php',         'icon' => 'fas fa-id-badge'],
                 ['title' => 'Job Applications', 'link' => 'manage_applications.php', 'icon' => 'fas fa-file-alt'],
                 ['title' => 'Staff Attendance', 'link' => 'attendance.php',          'icon' => 'fas fa-user-clock'],
             ]
@@ -386,6 +513,7 @@ $menus = [
             'icon'  => 'fas fa-user-tie',
             'submenus' => [
                 ['title' => 'Clients List',     'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
+                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
                 ['title' => 'Client Reviews',   'link' => 'reviews.php',             'icon' => 'fas fa-star'],
             ]
         ],
@@ -429,11 +557,12 @@ $menus = [
             ]
         ],
         [
-            'title' => 'Invoices',
+            'title' => 'Invoices & Sales',
             'link'  => '#',
             'icon'  => 'fas fa-file-invoice-dollar',
             'submenus' => [
                 ['title' => 'Manage Invoices',  'link' => 'manage_invoices.php',     'icon' => 'fas fa-file-invoice'],
+                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
             ]
         ],
         [
@@ -564,9 +693,24 @@ $notifications_html = ob_get_clean();
 
         <?= $notifications_html ?>
 
+        <?php
+        $role_badge_title = 'Member';
+        if ($is_super_admin) $role_badge_title = 'Super Admin';
+        elseif ($role === 'admin') $role_badge_title = 'Admin Officer';
+        elseif ($role === 'pm') $role_badge_title = 'Project Manager';
+        elseif ($role === 'manager') $role_badge_title = 'Manager';
+        elseif ($role === 'hrm') $role_badge_title = 'HR Officer';
+        elseif ($role === 'teacher') $role_badge_title = 'Teacher';
+        elseif ($role === 'student') $role_badge_title = 'Student';
+        else $role_badge_title = ucfirst($role ?? 'Member');
+
+        $avatar_style = $is_super_admin 
+            ? 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important; color: #fff !important; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);' 
+            : ($role === 'admin' ? 'background: linear-gradient(135deg, #024442 0%, #035e5b 100%) !important; color: #fff !important;' : '');
+        ?>
         <div class="header-profile-wrap" id="headerProfileWrap">
             <button type="button" class="header-profile-btn" onclick="toggleProfileMenu()">
-                <div class="header-avatar"><?= strtoupper(substr($name, 0, 1)) ?></div>
+                <div class="header-avatar" style="<?= $avatar_style ?>"><?= $is_super_admin ? '👑' : strtoupper(substr($name, 0, 1)) ?></div>
                 <span class="header-name"><?= htmlspecialchars($name) ?></span>
                 <svg class="header-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="6 9 12 15 18 9"/>
@@ -575,10 +719,10 @@ $notifications_html = ob_get_clean();
 
             <div class="header-dropdown">
                 <div class="header-dropdown-top">
-                    <div class="header-dropdown-avatar"><?= strtoupper(substr($name, 0, 1)) ?></div>
+                    <div class="header-dropdown-avatar" style="<?= $avatar_style ?>"><?= $is_super_admin ? '👑' : strtoupper(substr($name, 0, 1)) ?></div>
                     <div>
                         <div class="header-dropdown-name"><?= htmlspecialchars($name) ?></div>
-                        <div class="header-dropdown-role"><?= htmlspecialchars(ucfirst($role ?? 'Member')) ?></div>
+                        <div class="header-dropdown-role"><span style="<?= $is_super_admin ? 'color:#b45309;font-weight:700;' : '' ?>"><?= htmlspecialchars($role_badge_title) ?></span></div>
                     </div>
                 </div>
                 <div class="header-dropdown-divider"></div>

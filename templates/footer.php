@@ -29,11 +29,11 @@
                 <div class="footer-section">
                     <h5>Quick Links</h5>
                     <ul>
-                        <li><a href="index.php"><i class="fas fa-chevron-right"></i> Home</a></li>
-                        <li><a href="services.php"><i class="fas fa-chevron-right"></i> Services</a></li>
-                        <li><a href="portfolio.php"><i class="fas fa-chevron-right"></i> Portfolio</a></li>
-                        <li><a href="about.php"><i class="fas fa-chevron-right"></i> About</a></li>
-                        <li><a href="contact_us.php"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
+                        <li><a href="<?= BASE_URL ?>index"><i class="fas fa-chevron-right"></i> Home</a></li>
+                        <li><a href="<?= BASE_URL ?>services"><i class="fas fa-chevron-right"></i> Services</a></li>
+                        <li><a href="<?= BASE_URL ?>portfolio"><i class="fas fa-chevron-right"></i> Portfolio</a></li>
+                        <li><a href="<?= BASE_URL ?>about"><i class="fas fa-chevron-right"></i> About</a></li>
+                        <li><a href="<?= BASE_URL ?>contact_us"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
                     </ul>
                 </div>
 
@@ -41,11 +41,11 @@
                 <div class="footer-section">
                     <h5>Our Services</h5>
                     <ul>
-                        <li><a href="services.php#branding"><i class="fas fa-chevron-right"></i> Branding</a></li>
-                        <li><a href="services.php#web-design"><i class="fas fa-chevron-right"></i> Web Design</a></li>
-                        <li><a href="services.php#graphic-design"><i class="fas fa-chevron-right"></i> Graphic Design</a></li>
-                        <li><a href="services.php#social-media"><i class="fas fa-chevron-right"></i> Social Media</a></li>
-                        <li><a href="career.php"><i class="fas fa-chevron-right"></i> Career</a></li>
+                        <li><a href="<?= BASE_URL ?>services#branding"><i class="fas fa-chevron-right"></i> Branding</a></li>
+                        <li><a href="<?= BASE_URL ?>services#web-design"><i class="fas fa-chevron-right"></i> Web Design</a></li>
+                        <li><a href="<?= BASE_URL ?>services#graphic-design"><i class="fas fa-chevron-right"></i> Graphic Design</a></li>
+                        <li><a href="<?= BASE_URL ?>services#social-media"><i class="fas fa-chevron-right"></i> Social Media</a></li>
+                        <li><a href="<?= BASE_URL ?>career"><i class="fas fa-chevron-right"></i> Career</a></li>
                     </ul>
                 </div>
 
@@ -58,11 +58,21 @@
                     </div>
                     <div class="contact-item">
                         <i class="fab fa-whatsapp"></i>
-                        <a href="https://wa.me/923454568986" target="_blank">+92 345 4568986</a>
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                            <a href="https://wa.me/923454568986" target="_blank" style="display:inline-flex; align-items:center; gap:8px;">
+                                <img src="https://flagcdn.com/w20/pk.png" width="18" height="13" alt="PK Flag" style="border-radius:2px; object-fit:cover;"> +92 345 4568986
+                            </a>
+                            <a href="https://wa.me/447456328986" target="_blank" style="display:inline-flex; align-items:center; gap:8px;">
+                                <img src="https://flagcdn.com/w20/gb.png" width="18" height="13" alt="UK Flag" style="border-radius:2px; object-fit:cover;"> +44 745 6328986
+                            </a>
+                            <a href="https://wa.me/971504568986" target="_blank" style="display:inline-flex; align-items:center; gap:8px;">
+                                <img src="https://flagcdn.com/w20/ae.png" width="18" height="13" alt="UAE Flag" style="border-radius:2px; object-fit:cover;"> +971 50 4568986
+                            </a>
+                        </div>
                     </div>
                     <div class="contact-item">
                         <i class="fas fa-map-marker-alt"></i>
-                        <span style="color: #a1a1aa;">Islamabad, Pakistan</span>
+                        <span style="color: #a1a1aa;">Pakistan | UK | UAE</span>
                     </div>
                 </div>
             </div>
@@ -73,8 +83,8 @@
             <div class="copyright-content">
                 <p>© 2025 Graphicafix. Crafted with creativity and dedication.</p>
                 <div class="copyright-links">
-                    <a href="privacy-policy.php">Privacy Policy</a>
-                    <a href="terms.php">Terms of Service</a>
+                    <a href="<?= BASE_URL ?>privacy-policy">Privacy Policy</a>
+                    <a href="<?= BASE_URL ?>terms">Terms of Service</a>
                     <a href="sitemap.xml">Sitemap</a>
                 </div>
             </div>
@@ -92,9 +102,6 @@
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>AOS.init({ duration: 600, once: true });</script>
-
-    <!-- Swiper JS -->
-    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
     <!--MENU -->
     <script>
@@ -210,5 +217,7 @@ function animateCounters() {
     });
 }
 </script>
+
+<?php include_once __DIR__ . '/ai_chatbot.php'; ?>
 </body>
 </html>

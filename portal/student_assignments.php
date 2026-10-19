@@ -10,10 +10,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_assignment']))
     $notes = trim($_POST['notes']);
     
     if (!empty($_FILES['sub_file']['name'])) {
-        $upload_dir = '../admin/uploads/assignments/' . date('Y_m');
+        $upload_dir = PORTAL_UPLOADS_PATH . 'assignments/' . date('Y_m');
         if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
         $file_name = time() . '_' . basename($_FILES['sub_file']['name']);
-        $file_path = 'uploads/assignments/' . date('Y_m') . '/' . $file_name;
+        $file_path = 'assignments/' . date('Y_m') . '/' . $file_name;
         
         if (move_uploaded_file($_FILES['sub_file']['tmp_name'], $upload_dir . '/' . $file_name)) {
             $stmt = $conn->prepare("INSERT INTO assignment_submissions (assignment_id, student_id, file_path, notes, submitted_at) VALUES (?, ?, ?, ?, NOW())");
@@ -72,7 +72,7 @@ if (!empty($enrolled)) {
             $is_overdue = (!$sub && strtotime($a['due_date']) < time());
         ?>
             <div class="col-md-6 col-lg-4">
-                <div class="d-card" style="padding:24px; display:flex; flex-direction:column; height:100%; border:1px solid <?= $sub ? '#10b981' : ($is_overdue ? '#ef4444' : '#e2e8f0') ?>;">
+                <div class="d-card" style="display:flex; flex-direction:column; height:100%; border:1px solid <?= $sub ? '#10b981' : ($is_overdue ? '#ef4444' : 'var(--border-color)') ?>;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
                         <span class="badge bg-light text-dark border"><i class="fas fa-book"></i> <?= htmlspecialchars($a['course_title']) ?></span>
                         <?php if($sub): ?>
@@ -80,15 +80,15 @@ if (!empty($enrolled)) {
                         <?php elseif($is_overdue): ?>
                             <span class="badge bg-danger">Overdue</span>
                         <?php else: ?>
-                            <span class="badge" style="background:#fef9c3; color:#854d0e;">Pending</span>
+                            <span class="badge bg-warning text-dark">Pending</span>
                         <?php endif; ?>
                     </div>
 
-                    <h4 style="font-size:1.15rem; font-weight:800; color:#0f172a; margin:0 0 8px;"><?= htmlspecialchars($a['title']) ?></h4>
-                    <div style="font-size:12.5px; color:#64748b; margin-bottom:16px;">Due: <strong style="color:<?= $is_overdue ? '#dc2626' : '#334155' ?>;"><?= date('M d, Y', strtotime($a['due_date'])) ?></strong></div>
+                    <h4 style="font-size:1.15rem; font-weight:800; color:var(--text-dark); margin:0 0 8px;"><?= htmlspecialchars($a['title']) ?></h4>
+                    <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:16px;">Due: <strong style="color:<?= $is_overdue ? '#dc2626' : 'var(--text-dark)' ?>;"><?= date('M d, Y', strtotime($a['due_date'])) ?></strong></div>
                     
                     <?php if(!empty($a['description'])): ?>
-                        <div style="font-size:13.5px; color:#475569; margin-bottom:20px; line-height:1.6; flex:1;"><?= nl2br(htmlspecialchars($a['description'])) ?></div>
+                        <div style="font-size:13.5px; color:var(--text-muted); margin-bottom:20px; line-height:1.6; flex:1;"><?= nl2br(htmlspecialchars($a['description'])) ?></div>
                     <?php endif; ?>
 
                     <?php if($sub): ?>
@@ -96,12 +96,14 @@ if (!empty($enrolled)) {
                             <div style="font-size:12px; font-weight:800; color:#166534; margin-bottom:4px;"><i class="fas fa-file-check"></i> YOUR SUBMISSION</div>
                             <div style="font-size:12px; color:#15803d; margin-bottom:6px;">Submitted on <?= date('M d, Y H:i', strtotime($sub['submitted_at'])) ?></div>
                             <?php if(!empty($sub['grade'])): ?>
-                                <div style="font-size:13px; font-weight:800; color:#024442;">Grade: <span class="badge bg-success"><?= htmlspecialchars($sub['grade']) ?></span></div>
+                                <div style="font-size:13px; font-weight:800; color:var(--primary-color);">Grade: <span class="badge bg-success"><?= htmlspecialchars($sub['grade']) ?></span></div>
                                 <?php if(!empty($sub['feedback'])): ?>
-                                    <div style="font-size:12.5px; color:#334155; margin-top:4px;">Feedback: <?= htmlspecialchars($sub['feedback']) ?></div>
+                                    <div style="font-size:12.5px; color:var(--text-dark); margin-top:4px;">Feedback: <?= htmlspecialchars($sub['feedback']) ?></div>
+                                </div>
                                 <?php endif; ?>
                             <?php else: ?>
-                                <span style="font-size:12px; color:#64748b;">Awaiting instructor grading</span>
+                                </div>
+                                <span style="font-size:12px; color:var(--text-muted); margin-top: 8px; display: block;">Awaiting instructor grading</span>
                             <?php endif; ?>
                         </div>
                     <?php else: ?>

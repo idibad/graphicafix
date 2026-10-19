@@ -7,7 +7,7 @@
 error_reporting(0);
 ini_set('display_errors', '0');
 
-require_once 'core/config.php';
+require_once __DIR__ . '/config.php';
 
 function doTopRedirect($url) {
     echo "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'><title>Payment Processing</title></head>
@@ -24,7 +24,7 @@ function displayError($msg, $ref) {
         <div style='font-size:4rem; margin-bottom:15px; color:#ef4444;'>⚠️</div>
         <h2 style='color:#b91c1c; margin:0 0 10px;'>Payment Failed</h2>
         <p style='color:#991b1b; line-height:1.6; margin-bottom:20px; font-size:0.95rem;'>$msg</p>
-        <a href='courses.php' style='display:inline-block; padding:12px 24px; background:#b91c1c; color:#fff; text-decoration:none; border-radius:8px; font-weight:bold;'>Try Again</a>
+        <a href='" . rtrim(BASE_URL, '/') . "/courses' style='display:inline-block; padding:12px 24px; background:#b91c1c; color:#fff; text-decoration:none; border-radius:8px; font-weight:bold;'>Try Again</a>
     </div>
     </body></html>";
     exit;
@@ -64,7 +64,7 @@ $ref = $_GET['ref'] ?? ''; // We passed ref in ReturnURL
 if ($responseCode !== '000' && $responseCode !== '121' && $responseCode !== '200') {
     // 000 is success, 121 is also sometimes successful for MWALLET, 200 is successful for some cards in JC. Usually 000 is standard.
     // If it's a failure (like 157, 114, etc):
-    displayError("JazzCash: " . htmlspecialchars($responseMessage), $ref);
+    displayError("JazzCash (Code " . htmlspecialchars($responseCode) . "): " . htmlspecialchars($responseMessage), $ref);
 }
 
 // Ensure table exists
@@ -96,7 +96,7 @@ $course_title = $data['course_title'] ?? 'Course';
 
 // If already enrolled
 if (!empty($temp_row['enrolled_id']) && $temp_row['enrolled_id'] > 0) {
-    doTopRedirect("course_thank_you.php?eid=" . $temp_row['enrolled_id'] . "&course=" . urlencode($course_title));
+    doTopRedirect(rtrim(BASE_URL, '/') . "/course_thank_you?eid=" . $temp_row['enrolled_id'] . "&course=" . urlencode($course_title));
 }
 
 // Ensure table columns exist
@@ -174,7 +174,7 @@ if ($stmt) {
         $headers = "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nFrom: Graphicafix <noreply@graphicafix.com>\r\nReply-To: info@graphicafix.com\r\n";
         @mail($student_email, "🎓 Enrollment Confirmed — " . $course_title, $html, $headers);
 
-        doTopRedirect("course_thank_you.php?eid=" . $new_eid . "&course=" . urlencode($course_title));
+        doTopRedirect(rtrim(BASE_URL, '/') . "/course_thank_you?eid=" . $new_eid . "&course=" . urlencode($course_title));
     } else {
         displayError("Database Error: Could not create enrollment.", $ref);
     }

@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../core/config.php';require_once 'dashboard_header.php';
 
-if ($role !== 'admin' && $role !== 'pm' && $role !== 'manager') {
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager'])) {
     header("Location: manage_projects.php?error=unauthorized");
     exit;
 }
@@ -21,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $end_date           = $_POST['end_date'];
     $visibility         = $_POST['visibility'];
     $category           = $_POST['category'] ?? '';
+    $progress           = max(0, min(100, intval($_POST['progress'] ?? 0)));
     $team_members       = $_POST['team_members'] ?? [];
     $slug               = strtolower(str_replace(' ', '-', $project_name));
 
@@ -39,13 +40,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $conn->prepare("UPDATE projects SET 
         client_id=?, project_name=?, description=?, public_description=?, 
         internal_notes=?, status=?, priority=?, start_date=?, end_date=?, 
-        thumbnail=?, slug=?, visibility=?, category=?
+        thumbnail=?, slug=?, visibility=?, category=?, progress=?
         WHERE id=?");
     $stmt->bind_param(
-        "issssssssssssi",
+        "issssssssssssii",
         $client_id, $project_name, $description, $public_description,
         $internal_notes, $status, $priority, $start_date, $end_date,
-        $thumbPath, $slug, $visibility, $category, $id
+        $thumbPath, $slug, $visibility, $category, $progress, $id
     );
     $stmt->execute();
 
@@ -275,6 +276,11 @@ while ($img = $gallery->fetch_assoc()) {
                             <option value="Medium" <?= $project['priority'] == 'Medium' ? 'selected' : '' ?>>Medium</option>
                             <option value="High"   <?= $project['priority'] == 'High'   ? 'selected' : '' ?>>High</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Progress (%) <span class="required">*</span></label>
+                        <input type="number" name="progress" min="0" max="100" value="<?= intval($project['progress'] ?? 0) ?>" required placeholder="0-100">
+                        <small style="color:#64748b; font-size:11.5px;">Progress shown in client portal (0-100)</small>
                     </div>
                 </div>
                 <div class="form-grid">

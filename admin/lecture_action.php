@@ -35,7 +35,7 @@ if ($action === 'delete') {
 }
 
 if ($action === 'review') {
-    if ($role !== 'admin' && $role !== 'superadmin') {
+    if (!in_array($role, ['super_admin', 'superadmin'])) {
         echo json_encode(['success' => false, 'message' => 'Unauthorized']);
         exit;
     }

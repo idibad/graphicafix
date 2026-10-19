@@ -9,7 +9,7 @@ require_once __DIR__ . '/../core/config.php';
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 $user_id  = intval($_SESSION['user_id'] ?? 0);
-$is_admin = (strtolower($_SESSION['role'] ?? '') === 'admin');
+$is_admin = in_array(strtolower($_SESSION['role'] ?? ''), ['super_admin', 'superadmin', 'admin']);
 $action   = $_POST['ajax_action'] ?? '';
 $task_id  = intval($_POST['task_id'] ?? 0);
 

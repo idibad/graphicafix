@@ -55,22 +55,22 @@ $usr = $u_res ? $u_res->fetch_assoc() : null;
                     
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="fw-bold fs-6 mb-2">Username (Locked)</label>
+                            <label class="form-label">Username (Locked)</label>
                             <input type="text" class="form-control bg-light" disabled value="<?= htmlspecialchars($usr['username'] ?? '') ?>">
                         </div>
                         <div class="col-md-6">
-                            <label class="fw-bold fs-6 mb-2">Email Address (Locked)</label>
+                            <label class="form-label">Email Address (Locked)</label>
                             <input type="text" class="form-control bg-light" disabled value="<?= htmlspecialchars($usr['email'] ?? '') ?>">
                         </div>
                     </div>
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="fw-bold fs-6 mb-2">Full Name</label>
+                            <label class="form-label">Full Name</label>
                             <input type="text" name="name" class="form-control" required value="<?= htmlspecialchars($usr['name'] ?? '') ?>">
                         </div>
                         <div class="col-md-6">
-                            <label class="fw-bold fs-6 mb-2">Phone Contact</label>
+                            <label class="form-label">Phone Contact</label>
                             <input type="text" name="phone" class="form-control" required value="<?= htmlspecialchars($usr['phone'] ?? '') ?>">
                         </div>
                     </div>
@@ -78,17 +78,17 @@ $usr = $u_res ? $u_res->fetch_assoc() : null;
                     <hr class="my-4">
 
                     <?php if(strtolower($_SESSION['role'] ?? '') === 'teacher'): ?>
-                    <h5 style="font-weight:800; color:#024442; margin-bottom:16px;"><i class="fab fa-vimeo-v text-info me-2"></i> Cloud Video Integration</h5>
+                    <h5 style="font-weight:800; color:var(--primary-color); margin-bottom:16px;"><i class="fab fa-vimeo-v text-info me-2"></i> Cloud Video Integration</h5>
                     <div class="form-group mb-4 bg-light p-3 rounded-3 border">
-                        <label class="fw-bold fs-6 mb-1 text-dark">Vimeo Personal Access Token</label>
+                        <label class="form-label">Vimeo Personal Access Token</label>
                         <input type="password" name="vimeo_api_token" class="form-control" placeholder="Enter Vimeo access token..." value="<?= htmlspecialchars($usr['vimeo_api_token'] ?? '') ?>">
                         <small class="text-muted mt-2 d-block">Required for Direct 2-Way Vimeo Cloud upload on the lecture management page.</small>
                     </div>
                     <?php endif; ?>
 
-                    <h5 style="font-weight:800; color:#024442; margin-bottom:16px;"><i class="fas fa-lock me-2"></i> Security Password Update</h5>
+                    <h5 style="font-weight:800; color:var(--primary-color); margin-bottom:16px;"><i class="fas fa-lock me-2"></i> Security Password Update</h5>
                     <div class="form-group mb-4">
-                        <label class="fw-bold fs-6 mb-2">New Password (Leave blank to keep existing)</label>
+                        <label class="form-label">New Password (Leave blank to keep existing)</label>
                         <input type="password" name="new_password" class="form-control" placeholder="••••••••">
                     </div>
 

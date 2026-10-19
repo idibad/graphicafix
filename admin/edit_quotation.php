@@ -1,8 +1,35 @@
 <?php
-include 'dashboard_header.php';
+/**
+ * edit_quotation.php
+ * Simplified 3-Section Quotation Editing Form with Native Tabbed UI
+ */
 
-$id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-if (!$id) { header('Location: manage_invoices.php?tab=quotations'); exit; }
+require_once __DIR__ . '/../core/config.php';
+require_once __DIR__ . '/../core/functions.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header('location:login.php');
+    exit;
+}
+
+// Fetch current user role
+$username = $_SESSION['username'];
+$user_stmt = $conn->prepare("SELECT role FROM users WHERE username = ?");
+$user_stmt->bind_param("s", $username);
+$user_stmt->execute();
+$role_data = $user_stmt->get_result()->fetch_assoc();
+$role = strtolower($role_data['role'] ?? 'user');
+
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user'])) {
+    header('location:index.php');
+    exit;
+}
+
+$id = intval($_GET['id'] ?? 0);
+if (!$id) {
+    header('Location: manage_invoices.php?tab=quotations');
+    exit;
+}
 
 // ── Handle POST ───────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -19,407 +46,750 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $currency        = $_POST['currency'] ?? 'PKR';
     $tax_percent     = floatval($_POST['tax_percent']    ?? 0);
     $discount_amount = floatval($_POST['discount_amount'] ?? 0);
-    $notes           = trim($_POST['notes']   ?? '');
-    $terms           = trim($_POST['terms']   ?? '');
-    $sig_name        = trim($_POST['signature_name']  ?? '');
-    $sig_title       = trim($_POST['signature_title'] ?? '');
-    $sig_date        = $_POST['signature_date'] ?? date('Y-m-d');
+    $notes           = trim($_POST['notes']   ?? ''); // Project Overview
+    $terms           = trim($_POST['terms']   ?? ''); // Terms & Conditions Override
+    
+    // Fixed signatory block (moved out of form)
+    $sig_name        = 'Ibadullah';
+    $sig_title       = 'Managing Director';
+    $sig_date        = date('Y-m-d');
 
+    // Section 1 & 2 Meta Fields
+    $client_ref_rfq     = trim($_POST['client_ref_rfq'] ?? '');
+    $client_tax_id      = trim($_POST['client_tax_id'] ?? '');
+    $scope_project_name = trim($_POST['scope_project_name'] ?? '');
+    $scope_duration     = trim($_POST['scope_duration'] ?? '');
+    $delivery_time      = trim($_POST['delivery_time'] ?? '');
+    $amount_in_words    = trim($_POST['amount_in_words'] ?? '');
+
+    // Repeatable bullets imploded to newline-separated strings
+    $scope_included = implode("\n", array_filter(array_map('trim', $_POST['scope_included'] ?? [])));
+    $scope_excluded = implode("\n", array_filter(array_map('trim', $_POST['scope_excluded'] ?? [])));
+    $scope_notes    = implode("\n", array_filter(array_map('trim', $_POST['scope_notes'] ?? [])));
+
+    // Scope of Work Table JSON encoded
+    $scope_items = [];
+    foreach (($_POST['scope_desc'] ?? []) as $index => $desc) {
+        if (empty(trim($desc))) continue;
+        $scope_items[] = [
+            'description' => trim($desc),
+            'details' => trim($_POST['scope_details'][$index] ?? '')
+        ];
+    }
+    $scope_deliverables = json_encode($scope_items, JSON_UNESCAPED_UNICODE);
+
+    // Payment Schedule Table JSON encoded
+    $payment_schedule = [];
+    foreach (($_POST['payment_milestone'] ?? []) as $index => $milestone) {
+        if (empty(trim($milestone))) continue;
+        $payment_schedule[] = [
+            'milestone' => trim($milestone),
+            'amount' => trim($_POST['payment_amount'][$index] ?? '')
+        ];
+    }
+    $payment_terms = json_encode($payment_schedule, JSON_UNESCAPED_UNICODE);
+
+    // Calculate Totals
     $subtotal = 0;
     $items = [];
     foreach (($_POST['items'] ?? []) as $i => $item) {
         if (empty(trim($item['description'] ?? ''))) continue;
         $qty   = floatval($item['quantity']   ?? 1);
         $price = floatval($item['unit_price'] ?? 0);
+        $unit  = trim($item['unit'] ?? 'pcs');
+        $tax_p = floatval($item['tax_percent'] ?? 0);
+        $tax_a = round(($qty * $price) * ($tax_p / 100), 2);
         $tot   = round($qty * $price, 2);
         $subtotal += $tot;
-        $items[] = ['description'=>trim($item['description']),'quantity'=>$qty,'unit_price'=>$price,'total'=>$tot,'sort_order'=>(int)$i];
+        $items[] = [
+            'description' => trim($item['description']),
+            'quantity' => $qty,
+            'unit' => $unit,
+            'unit_price' => $price,
+            'tax_percent' => $tax_p,
+            'tax_amount' => $tax_a,
+            'total' => $tot,
+            'sort_order' => (int)$i
+        ];
     }
 
     $tax_amount   = round($subtotal * ($tax_percent / 100), 2);
     $total_amount = round($subtotal + $tax_amount - $discount_amount, 2);
 
+    // Update statement
     $stmt = $conn->prepare("UPDATE quotations SET
         quotation_number=?, client_id=?, client_name=?, client_email=?, client_phone=?,
         client_company=?, client_address=?, issue_date=?, valid_until=?, status=?,
         subtotal=?, tax_percent=?, tax_amount=?, discount_amount=?, total_amount=?,
         currency=?, notes=?, terms=?, signature_name=?, signature_title=?, signature_date=?,
+        client_ref_rfq=?, client_tax_id=?, scope_project_name=?, scope_deliverables=?, scope_duration=?,
+        scope_included=?, scope_excluded=?, payment_terms=?, delivery_time=?, amount_in_words=?, scope_notes=?,
         updated_at=NOW() WHERE id=?");
-        $stmt->bind_param(
-    "sissssssssdddddssssssi",
-    $quot_number, $client_id, $client_name, $client_email, $client_phone,
-    $client_company, $client_address, $issue_date, $valid_until, $status,
-    $subtotal, $tax_percent, $tax_amount, $discount_amount, $total_amount,
-    $currency, $notes, $terms, $sig_name, $sig_title, $sig_date, $id
-);
+    
+    $stmt->bind_param("sissssssssdddddsssssssssssssssssi",
+        $quot_number,$client_id,$client_name,$client_email,$client_phone,$client_company,$client_address,
+        $issue_date,$valid_until,$status,$subtotal,$tax_percent,$tax_amount,$discount_amount,$total_amount,
+        $currency,$notes,$terms,$sig_name,$sig_title,$sig_date,
+        $client_ref_rfq,$client_tax_id,$scope_project_name,$scope_deliverables,$scope_duration,
+        $scope_included,$scope_excluded,$payment_terms,$delivery_time,$amount_in_words,$scope_notes,
+        $id
+    );
     $stmt->execute();
 
     // Replace line items
     $conn->query("DELETE FROM quotation_items WHERE quotation_id={$id}");
-    $is = $conn->prepare("INSERT INTO quotation_items (quotation_id,description,quantity,unit_price,total,sort_order) VALUES (?,?,?,?,?,?)");
+    $is = $conn->prepare("INSERT INTO quotation_items (quotation_id,description,quantity,unit_price,total,sort_order,unit,tax_percent,tax_amount) VALUES (?,?,?,?,?,?,?,?,?)");
     foreach ($items as $it) {
-        $is->bind_param("isdddi", $id, $it['description'], $it['quantity'], $it['unit_price'], $it['total'], $it['sort_order']);
+        $is->bind_param("isdddisdd", $id, $it['description'], $it['quantity'], $it['unit_price'], $it['total'], $it['sort_order'], $it['unit'], $it['tax_percent'], $it['tax_amount']);
         $is->execute();
     }
 
-    echo "<script>alert('Quotation updated successfully!');window.location='quotation_details.php?id={$id}';</script>";
+    header("Location: quotation_details.php?id={$id}&gen=1");
     exit;
 }
 
 // ── Load existing data ────────────────────────────────────────────────────────
 $stmt = $conn->prepare("SELECT * FROM quotations WHERE id=?");
-$stmt->bind_param("i",$id); $stmt->execute();
+$stmt->bind_param("i",$id); 
+$stmt->execute();
 $q = $stmt->get_result()->fetch_assoc();
-if (!$q) { header('Location: manage_invoices.php?tab=quotations'); exit; }
+if (!$q) { 
+    header('Location: manage_invoices.php?tab=quotations'); 
+    exit; 
+}
 
 $stmt = $conn->prepare("SELECT * FROM quotation_items WHERE quotation_id=? ORDER BY sort_order");
-$stmt->bind_param("i",$id); $stmt->execute();
+$stmt->bind_param("i",$id); 
+$stmt->execute();
 $existingItems = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+// Decode Scope and Payment tables
+$scopeItemsJson = '[]';
+if (!empty($q['scope_deliverables'])) {
+    $decoded = json_decode($q['scope_deliverables'], true);
+    if (is_array($decoded)) {
+        $scopeItemsJson = json_encode($decoded);
+    } else {
+        $scopeItemsJson = json_encode([['description' => 'Scope of Work', 'details' => $q['scope_deliverables']]]);
+    }
+}
+
+$paymentScheduleJson = '[]';
+if (!empty($q['payment_terms'])) {
+    $decoded = json_decode($q['payment_terms'], true);
+    if (is_array($decoded)) {
+        $paymentScheduleJson = json_encode($decoded);
+    } else {
+        $paymentScheduleJson = json_encode([['milestone' => 'Payment terms', 'amount' => $q['payment_terms']]]);
+    }
+}
+
+// Load clients
 $clients = $conn->query("SELECT id,client_name,company,email,phone,address FROM clients ORDER BY client_name");
 $cData   = [];
 while ($c = $clients->fetch_assoc()) $cData[$c['id']] = $c;
-?>
 
-<link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet">
+include 'dashboard_header.php';
+?>
 
 <div class="height-100">
 <div class="page-header">
     <div>
-        <h1><i class="fas fa-pencil-alt"></i>️ Edit Quotation</h1>
-        <p>Editing <strong><?php echo htmlspecialchars($q['quotation_number']); ?></strong><?php echo $q['client_name'] ? ' · ' . htmlspecialchars($q['client_name']) : ''; ?></p>
+        <h1><i class="fas fa-pencil-alt"></i> Edit Quotation</h1>
+        <p>Editing Quotation <strong><?php echo htmlspecialchars($q['quotation_number']); ?></strong></p>
     </div>
-    <div style="display:flex;gap:8px;">
-        <a href="quotation_details.php?id=<?php echo $id; ?>" class="btn btn-secondary">← Cancel</a>
-    </div>
+    <a href="quotation_details.php?id=<?= $id ?>" class="btn btn-secondary">← Back</a>
 </div>
 
-<div class="mp-tabs-container">
+<!-- MP Navigation Tabs switcher -->
+<div class="mp-tabs-container" style="margin-bottom: 20px;">
     <div class="mp-tab-buttons">
-        <button type="button" class="active" onclick="showTab('cli')"><span class="mp-tab-icon"><i class="fas fa-building"></i></span> Client</button>
-        <button type="button"                onclick="showTab('pri')"><span class="mp-tab-icon"><i class="fas fa-dollar-sign"></i></span> Pricing</button>
-        <button type="button"                onclick="showTab('nts')"><span class="mp-tab-icon"><i class="fas fa-edit"></i></span> Notes & Terms</button>
-        <button type="button"                onclick="showTab('sig')"><span class="mp-tab-icon"><i class="fas fa-signature"></i>️</span> Signature</button>
+        <button type="button" class="active" onclick="showTab('cli')"><span class="mp-tab-icon"><i class="fas fa-building"></i></span> Client & Meta</button>
+        <button type="button"                onclick="showTab('sco')"><span class="mp-tab-icon"><i class="fas fa-clipboard"></i></span> Scope of Work</button>
+        <button type="button"                onclick="showTab('pri')"><span class="mp-tab-icon"><i class="fas fa-dollar-sign"></i></span> Pricing & Payment</button>
     </div>
 </div>
 
+<div class="form-container" style="max-width: 1000px; margin: 0 auto; padding-bottom: 50px;">
 <form method="POST" id="quotForm">
 
-<div id="cli" class="tab active">
-    <h3 style="margin-bottom:16px;">Client Information</h3>
-
-    <div class="form-group">
-        <label>Existing Client <span style="color:#aaa;font-weight:400;">(auto-fills fields below)</span></label>
-        <select onchange="autofill(this.value)">
-            <option value="">— Select to auto-fill —</option>
-            <?php foreach ($cData as $cid => $c): ?>
-            <option value="<?php echo $cid; ?>" <?php echo $q['client_id']==$cid ? 'selected':''; ?>>
-                <?php echo htmlspecialchars($c['client_name']); ?><?php echo $c['company'] ? ' — '.htmlspecialchars($c['company']):''; ?></option>
-            <?php endforeach; ?>
-        </select>
-        <input type="hidden" name="client_id" id="hidCid" value="<?php echo $q['client_id']; ?>">
-    </div>
-
-    <div class="form-grid">
-        <div class="form-group">
-            <label>Client Name <span class="required">*</span></label>
-            <input type="text" name="client_name" id="fName" value="<?php echo htmlspecialchars($q['client_name']); ?>" required>
-        </div>
-        <div class="form-group">
-            <label>Company</label>
-            <input type="text" name="client_company" id="fCompany" value="<?php echo htmlspecialchars($q['client_company'] ?? ''); ?>">
-        </div>
-    </div>
-    <div class="form-grid">
-        <div class="form-group">
-            <label>Email</label>
-            <input type="email" name="client_email" id="fEmail" value="<?php echo htmlspecialchars($q['client_email'] ?? ''); ?>">
-        </div>
-        <div class="form-group">
-            <label>Phone</label>
-            <input type="text" name="client_phone" id="fPhone" value="<?php echo htmlspecialchars($q['client_phone'] ?? ''); ?>">
-        </div>
-    </div>
-    <div class="form-group">
-        <label>Address</label>
-        <textarea name="client_address" id="fAddress" style="min-height:70px;"><?php echo htmlspecialchars($q['client_address'] ?? ''); ?></textarea>
-    </div>
-
-    <hr style="border:none;border-top:1px solid #f0f0f0;margin:20px 0;">
-    <h3 style="margin-bottom:16px;">Quotation Details</h3>
-
-    <div class="form-grid">
-        <div class="form-group">
-            <label>Quotation Number <span class="required">*</span></label>
-            <input type="text" name="quotation_number" value="<?php echo htmlspecialchars($q['quotation_number']); ?>" required>
-        </div>
-        <div class="form-group">
-            <label>Currency</label>
-            <select name="currency">
-                <?php foreach (['PKR'=>'PKR — Pakistani Rupee','USD'=>'USD — US Dollar','EUR'=>'EUR — Euro','GBP'=>'GBP — British Pound'] as $v=>$l): ?>
-                <option value="<?php echo $v; ?>" <?php echo $q['currency']===$v?'selected':''; ?>><?php echo $l; ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-    </div>
-    <div class="form-grid">
-        <div class="form-group">
-            <label>Issue Date <span class="required">*</span></label>
-            <input type="date" name="issue_date" value="<?php echo $q['issue_date']; ?>" required>
-        </div>
-        <div class="form-group">
-            <label>Valid Until <span class="required">*</span></label>
-            <input type="date" name="valid_until" value="<?php echo $q['valid_until']; ?>" required>
-        </div>
-    </div>
-    <div class="form-group">
-        <label>Status</label>
-        <select name="status">
-            <?php foreach (['draft'=>'Draft','sent'=>'Sent to Client','accepted'=>'Accepted','rejected'=>'Rejected'] as $v=>$l): ?>
-            <option value="<?php echo $v; ?>" <?php echo $q['status']===$v?'selected':''; ?>><?php echo $l; ?></option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-</div>
-
-<div id="pri" class="tab">
-    <h3 style="margin-bottom:6px;">Pricing Table</h3>
-    <p style="color:#888;font-size:13.5px;margin-bottom:16px;">Update services and deliverables included in this quotation.</p>
-
-    <div class="items-table-wrap">
-        <table class="items-table">
-            <thead>
-                <tr>
-                    <th style="width:48%">Description</th>
-                    <th style="width:13%">Qty</th>
-                    <th style="width:17%">Unit Price</th>
-                    <th style="width:15%">Total</th>
-                    <th style="width:7%"></th>
-                </tr>
-            </thead>
-            <tbody id="itemsBody"></tbody>
-        </table>
-    </div>
-    <button type="button" class="add-feature-btn" onclick="addRow()" style="margin:12px 0;">＋ Add Line Item</button>
-
-    <div class="form-grid" style="margin-top:14px;">
-        <div class="form-group">
-            <label>Tax %</label>
-            <input type="number" name="tax_percent" id="taxPct" value="<?php echo $q['tax_percent']; ?>" step="0.01" min="0" max="100" oninput="recalc()">
-        </div>
-        <div class="form-group">
-            <label>Discount Amount</label>
-            <input type="number" name="discount_amount" id="discAmt" value="<?php echo $q['discount_amount']; ?>" step="0.01" min="0" oninput="recalc()">
-        </div>
-    </div>
-
-    <div class="totals-box">
-        <div class="total-row"><span>Subtotal</span><span id="tSubtotal">PKR 0.00</span></div>
-        <div class="total-row"><span>Tax (<span id="tTaxPct">0</span>%)</span><span id="tTax">PKR 0.00</span></div>
-        <div class="total-row"><span>Discount</span><span id="tDiscount">— PKR 0.00</span></div>
-        <div class="total-row total-final"><span>TOTAL</span><span id="tTotal">PKR 0.00</span></div>
-    </div>
-</div>
-
-<div id="nts" class="tab">
-    <div class="form-group">
-        <label>Project Description / Notes <span style="color:#aaa;font-weight:400;">(printed on PDF)</span></label>
-        <div id="notesEditor" style="height: 200px; background: #fff; font-family: inherit; border-radius: 0 0 8px 8px;"><?php echo $q['notes']; ?></div>
-        <input type="hidden" name="notes" id="notesInput">
-    </div>
-    <div class="form-group">
-        <label>Terms & Conditions</label>
-        <textarea name="terms" style="min-height:130px;"><?php echo htmlspecialchars($q['terms'] ?? ''); ?></textarea>
-    </div>
-</div>
-
-<div id="sig" class="tab">
-    <h3 style="margin-bottom:6px;">Signature & Authorization</h3>
-    <p style="color:#888;font-size:13.5px;margin-bottom:20px;">Appears at the bottom of the PDF.</p>
-
-    <div class="sig-preview-box">
-        <div class="sig-preview-label">PDF Preview</div>
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:20px;">
-            <div>
-                <div class="sig-underline"></div>
-                <div class="sig-pname"  id="pName"><?php echo htmlspecialchars($q['signature_name']  ?: 'Your Name'); ?></div>
-                <div class="sig-ptitle" id="pTitle"><?php echo htmlspecialchars($q['signature_title'] ?: 'Your Title'); ?></div>
-                <div class="sig-pdate"  id="pDate">Date: <?php echo !empty($q['signature_date']) ? date('M d, Y', strtotime($q['signature_date'])) : date('M d, Y'); ?></div>
-                <div class="sig-pco">Graphicafix Creative Agency</div>
+    <!-- ==================== TAB 1: CLIENT & META ==================== -->
+    <div id="cli" class="tab active">
+            <div class="form-group">
+                <label>Select Client <span class="required">*</span></label>
+                <select name="client_id" onchange="autofill(this.value)" required style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
+                    <option value="">— Select client —</option>
+                    <?php foreach ($cData as $cid => $c): ?>
+                        <option value="<?php echo $cid; ?>" <?php echo $cid == $q['client_id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($c['client_name']); ?> <?php echo !empty($c['company']) ? '('.htmlspecialchars($c['company']).')' : ''; ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
-            <div style="text-align:right;">
-                <div style="font-size:11px;color:#aaa;margin-bottom:6px;">Client Acceptance</div>
-                <div class="sig-underline" style="margin-left:auto;"></div>
-                <div class="sig-pname" style="color:#ccc;">Client Signature</div>
-                <div class="sig-pdate" style="color:#ccc;">Date: _______________</div>
+
+            <!-- Auto-populated Client details -->
+            <div class="form-grid" style="margin-top: 15px;">
+                <div class="form-group">
+                    <label>Client Name / Contact Person</label>
+                    <input type="text" name="client_name" id="fName" value="<?php echo htmlspecialchars($q['client_name'] ?? ''); ?>" required placeholder="Full Name">
+                </div>
+                <div class="form-group">
+                    <label>Company Name</label>
+                    <input type="text" name="client_company" id="fCompany" value="<?php echo htmlspecialchars($q['client_company'] ?? ''); ?>" placeholder="Company Name">
+                </div>
             </div>
-        </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" name="client_email" id="fEmail" value="<?php echo htmlspecialchars($q['client_email'] ?? ''); ?>" placeholder="client@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="text" name="client_phone" id="fPhone" value="<?php echo htmlspecialchars($q['client_phone'] ?? ''); ?>" placeholder="+92 300 0000000">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Billing Address</label>
+                <textarea name="client_address" id="fAddress" placeholder="Client billing address..." style="min-height: 70px;"><?php echo htmlspecialchars($q['client_address'] ?? ''); ?></textarea>
+            </div>
+
+            <!-- Tax and Reference details -->
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Client Tax ID / VAT Number</label>
+                    <input type="text" name="client_tax_id" id="fClientTaxId" value="<?php echo htmlspecialchars($q['client_tax_id'] ?? ''); ?>" placeholder="e.g. STRN-987654321">
+                </div>
+                <div class="form-group">
+                    <label>Client RFQ / Reference Number</label>
+                    <input type="text" name="client_ref_rfq" id="fClientRefRfq" value="<?php echo htmlspecialchars($q['client_ref_rfq'] ?? ''); ?>" placeholder="e.g. RFQ-2026-004">
+                </div>
+            </div>
+
+            <hr style="border:none; border-top:1px solid #f0f0f0; margin: 20px 0;">
+
+            <!-- Meta details -->
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Quotation Number</label>
+                    <input type="text" name="quotation_number" value="<?php echo htmlspecialchars($q['quotation_number']); ?>" readonly style="background-color: #f3f4f6; cursor: not-allowed;">
+                </div>
+                <div class="form-group">
+                    <label>Currency</label>
+                    <select name="currency" id="fCurrency">
+                        <option value="PKR" <?php echo $q['currency'] == 'PKR' ? 'selected' : ''; ?>>PKR — Rs (Pakistani Rupee)</option>
+                        <option value="USD" <?php echo $q['currency'] == 'USD' ? 'selected' : ''; ?>>USD — $ (US Dollar)</option>
+                        <option value="EUR" <?php echo $q['currency'] == 'EUR' ? 'selected' : ''; ?>>EUR — € (Euro)</option>
+                        <option value="GBP" <?php echo $q['currency'] == 'GBP' ? 'selected' : ''; ?>>GBP — £ (British Pound)</option>
+                        <option value="AED" <?php echo $q['currency'] == 'AED' ? 'selected' : ''; ?>>AED — AED (UAE Dirham)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Issue Date</label>
+                    <input type="date" name="issue_date" value="<?php echo $q['issue_date']; ?>" required>
+                </div>
+                <div class="form-group">
+                    <label>Valid Until</label>
+                    <input type="date" name="valid_until" value="<?php echo $q['valid_until']; ?>" required>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Lead Time / Project Duration</label>
+                    <input type="text" name="delivery_time" value="<?php echo htmlspecialchars($q['delivery_time'] ?? ''); ?>" placeholder="e.g. 4-6 weeks from advance">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="status">
+                        <option value="draft" <?php echo $q['status'] == 'draft' ? 'selected' : ''; ?>>Draft</option>
+                        <option value="sent" <?php echo $q['status'] == 'sent' ? 'selected' : ''; ?>>Sent to Client</option>
+                        <option value="accepted" <?php echo $q['status'] == 'accepted' ? 'selected' : ''; ?>>Accepted</option>
+                        <option value="rejected" <?php echo $q['status'] == 'rejected' ? 'selected' : ''; ?>>Rejected</option>
+                        <option value="expired" <?php echo $q['status'] == 'expired' ? 'selected' : ''; ?>>Expired</option>
+                    </select>
+                </div>
+            </div>
     </div>
 
-    <div class="form-grid" style="margin-top:20px;">
-        <div class="form-group">
-            <label>Signatory Name</label>
-            <input type="text" name="signature_name" value="<?php echo htmlspecialchars($q['signature_name'] ?? ''); ?>"
-                   placeholder="e.g. Ahmad Hassan"
-                   oninput="document.getElementById('pName').textContent=this.value||'Your Name'">
-        </div>
-        <div class="form-group">
-            <label>Title / Designation</label>
-            <input type="text" name="signature_title" value="<?php echo htmlspecialchars($q['signature_title'] ?? ''); ?>"
-                   placeholder="e.g. Creative Director"
-                   oninput="document.getElementById('pTitle').textContent=this.value||'Your Title'">
-        </div>
-    </div>
-    <div class="form-group">
-        <label>Signature Date</label>
-        <input type="date" name="signature_date" value="<?php echo $q['signature_date'] ?? date('Y-m-d'); ?>"
-               oninput="updateSigDate(this.value)">
-    </div>
-</div>
+    <!-- ==================== TAB 2: SCOPE OF WORK ==================== -->
+    <div id="sco" class="tab" style="display:none;">
+            <div class="form-group">
+                <label>Project / Engagement Name <span class="required">*</span></label>
+                <input type="text" name="scope_project_name" required value="<?php echo htmlspecialchars($q['scope_project_name'] ?? ''); ?>" placeholder="e.g. Website Re-design and Brand Identity">
+            </div>
 
-<div class="form-actions">
-    <button type="button" class="btn btn-secondary" id="prevBtn" onclick="prevTab()" style="display:none;">← Previous</button>
-    <button type="button" class="btn btn-secondary" onclick="window.location='quotation_details.php?id=<?php echo $id; ?>'">Cancel</button>
-    <button type="button" class="btn btn-primary"   id="nextBtn" onclick="nextTab()">Next →</button>
-    <button type="submit" class="btn btn-primary"   id="subBtn"  style="display:none;"><i class="fas fa-check"></i> Save Changes</button>
-</div>
+            <div class="form-group">
+                <label>Project Overview (Boilerplate Description)</label>
+                <textarea name="notes" style="min-height: 100px;"><?php echo htmlspecialchars($q['notes'] ?? ''); ?></textarea>
+            </div>
+
+            <!-- Notes Repeatable Bullets -->
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 5px;">Notes (Repeatable Bullet List)</label>
+                <div id="notesBulletsContainer"></div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addNoteBullet()" style="margin-top: 5px;"><i class="fas fa-plus"></i> Add Note</button>
+            </div>
+
+            <!-- Scope of Work Table -->
+            <div style="margin-bottom: 25px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 8px;">Scope of Work Table (JSON Encoded)</label>
+                <table class="items-table" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th style="width:40%;">Description</th>
+                            <th style="width:50%;">Details</th>
+                            <th style="width:10%; text-align:center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scopeBody"></tbody>
+                </table>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addScopeRow()" style="margin-top: 8px;"><i class="fas fa-plus"></i> Add Scope Row</button>
+            </div>
+
+            <!-- Inclusions and Exclusions -->
+            <div class="form-grid">
+                <div class="form-group">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Included Deliverables</label>
+                    <div id="includedBulletsContainer"></div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addIncludedBullet()" style="margin-top: 5px;"><i class="fas fa-plus"></i> Add Bullet</button>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Explicit Exclusions</label>
+                    <div id="excludedBulletsContainer"></div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addExcludedBullet()" style="margin-top: 5px;"><i class="fas fa-plus"></i> Add Bullet</button>
+                </div>
+            </div>
+    </div>
+
+    <!-- ==================== TAB 3: PRICING & PAYMENT ==================== -->
+    <div id="pri" class="tab" style="display:none;">
+            
+            <!-- Pricing Table -->
+            <label style="font-weight: bold; display: block; margin-bottom: 8px;">Pricing Items</label>
+            <table class="items-table" style="width:100%;">
+                <thead>
+                    <tr>
+                        <th style="width:38%;">Description</th>
+                        <th style="width:10%;">Qty</th>
+                        <th style="width:12%;">Unit</th>
+                        <th style="width:15%;">Unit Price</th>
+                        <th style="width:10%;">Tax % <button type="button" class="btn btn-sm btn-secondary" onclick="toggleTaxColumn()" style="padding:2px 5px;font-size:9px;margin-left:5px;">Toggle</button></th>
+                        <th style="width:10%;">Total</th>
+                        <th style="width:5%;"></th>
+                    </tr>
+                </thead>
+                <tbody id="itemsBody"></tbody>
+            </table>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addRow()" style="margin-top: 8px;"><i class="fas fa-plus"></i> Add Pricing Row</button>
+
+            <!-- Calculations Block -->
+            <div style="width:350px; margin-left:auto; margin-top:20px; border-top:2px solid #e5e7eb; padding-top:15px;">
+                <table style="width:100%;">
+                    <tr>
+                        <td style="padding:6px 0; color:#555;">Subtotal</td>
+                        <td style="text-align:right; font-weight:bold;" id="tSubtotal">PKR Rs 0.00</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:6px 0; color:#555;">Tax Total</td>
+                        <td style="text-align:right; font-weight:bold;" id="tTax">PKR Rs 0.00</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:6px 0; color:#555;">Discount</td>
+                        <td style="text-align:right; font-weight:bold; color:#b91c1c;" id="tDiscount">— PKR Rs 0.00</td>
+                    </tr>
+                    <tr style="font-size:12pt; border-top:1px solid #e5e7eb; padding-top:10px;">
+                        <td style="padding:10px 0; font-weight:bold; color:#024442;">Grand Total</td>
+                        <td style="text-align:right; font-weight:bold; color:#024442;" id="tTotal">PKR Rs 0.00</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Tax Rate and Discount Controls -->
+            <div class="form-grid" style="margin-top: 15px;">
+                <div class="form-group">
+                    <label>Global Tax Rate (%)</label>
+                    <input type="number" name="tax_percent" id="fTaxPercent" value="<?php echo floatval($q['tax_percent']); ?>" step="0.01" min="0" oninput="recalc()">
+                </div>
+                <div class="form-group">
+                    <label>Discount Amount</label>
+                    <input type="number" name="discount_amount" id="discAmt" value="<?php echo floatval($q['discount_amount']); ?>" step="0.01" min="0" oninput="recalc()">
+                </div>
+            </div>
+
+            <!-- Amount in Words -->
+            <div style="background:#f9fafb; border: 1px solid #e5e7eb; padding: 12px; border-radius: 6px; font-weight: bold; color: #024442; margin-top:15px; font-size:10pt;">
+                Amount in Words: <span style="font-weight:normal; color:#333; font-style:italic;" id="tAmountInWords"><?php echo htmlspecialchars($q['amount_in_words'] ?? ''); ?></span>
+                <input type="hidden" name="amount_in_words" id="amountInWordsInput" value="<?php echo htmlspecialchars($q['amount_in_words'] ?? ''); ?>">
+            </div>
+
+            <hr style="border:none; border-top:1px solid #f0f0f0; margin: 25px 0;">
+
+            <!-- Payment Schedule Table -->
+            <div style="margin-bottom: 25px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 8px;">Payment Schedule</label>
+                <table class="items-table" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th style="width:50%;">Milestone / Stage</th>
+                            <th style="width:40%;">Amount / Percentage</th>
+                            <th style="width:10%; text-align:center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paymentBody"></tbody>
+                </table>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addPaymentRow()" style="margin-top: 8px;"><i class="fas fa-plus"></i> Add Milestone</button>
+            </div>
+
+            <!-- Terms & Conditions -->
+            <div class="form-group" style="margin-top:20px;">
+                <label style="font-weight:bold; display:block; margin-bottom:8px;"><i class="fas fa-file-alt" style="margin-right:6px;"></i> Terms & Conditions</label>
+                <?php 
+                $termsVal = trim($q['terms'] ?? '');
+                if (empty($termsVal)) {
+                    $termsVal = "1. Validity: This quotation is valid for 30 days. Prices are subject to revision after expiry.\n" .
+                                 "2. Payment Terms: 50% advance payment required to initiate the project, and 50% prior to final delivery/deployment.\n" .
+                                 "3. Delivery / Lead Time: Timelines are estimates from confirmed order date and receipt of advance payment and assets.\n" .
+                                 "4. Taxes & Duties: All prices are exclusive of taxes unless stated otherwise; client bears any local duties or tax.\n" .
+                                 "5. Warranty: Includes 6 months post-deployment technical support for bug fixes and layout issues.\n" .
+                                 "6. Cancellation & Refunds: Cancelled orders are subject to a fee covering all hours/deliverables completed up to the cancellation date.\n" .
+                                 "7. Force Majeure: Neither party is liable for failure due to natural disasters, war, strikes, or government actions.\n" .
+                                 "8. Confidentiality: Both parties agree to keep pricing, assets, and technical details confidential.\n" .
+                                 "9. Intellectual Property: Ownership of designs, source code, and deliverables transfers to client only upon receipt of full payment.\n" .
+                                 "10. Governing Law & Jurisdiction: Governed by the laws of Pakistan, with disputes subject to exclusive jurisdiction of its courts.\n" .
+                                 "11. Acceptance: Signing, stamping, or issuing a purchase order against this quotation constitutes acceptance of these terms in full.";
+                }
+                ?>
+                <textarea name="terms" style="width:100%; min-height:220px; font-family:monospace; font-size:11px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;"><?php echo htmlspecialchars($termsVal); ?></textarea>
+            </div>
+    </div>
+
+    <!-- Navigation buttons at bottom of form -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:25px; border-top:1px solid #eee; padding-top:20px; flex-wrap:wrap; gap:12px;">
+        <button type="submit" class="btn btn-primary" style="padding:12px 35px; font-size:11pt; font-weight:bold;"><i class="fas fa-save" style="margin-right:6px;"></i> Update & Generate PDF</button>
+        <div style="display:flex; gap:10px;">
+            <button type="button" class="btn btn-secondary" id="prevBtn" onclick="prevTab()" style="display:none; padding:10px 24px; font-weight:600;">← Previous</button>
+            <button type="button" class="btn btn-secondary" id="nextBtn" onclick="nextTab()" style="padding:10px 24px; font-weight:600;">Next →</button>
+        </div>
+    </div>
 </form>
 </div>
+</div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
-
-<style>
-.page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:22px;}
-.page-header h1{margin:0 0 4px;}
-.page-header p{margin:0;color:#888;font-size:14px;}
-.items-table-wrap{overflow-x:auto;}
-.items-table{width:100%;border-collapse:collapse;font-size:14px;}
-.items-table th{background:#f9fafb;padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #e5e7eb;}
-.items-table td{padding:7px 5px;border-bottom:1px solid #f5f5f5;vertical-align:middle;}
-.items-table input{width:100%;padding:8px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13.5px;outline:none;box-sizing:border-box;transition:border-color .2s;}
-.items-table input:focus{border-color:#024442;}
-.row-total{font-weight:700;color:#024442;font-size:13.5px;padding:7px 12px;white-space:nowrap;}
-.remove-row-btn{background:none;border:none;color:#e53e3e;font-size:15px;cursor:pointer;padding:4px 7px;border-radius:5px;}
-.remove-row-btn:hover{background:#fff5f5;}
-.totals-box{margin:18px 0 0 auto;max-width:320px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;}
-.total-row{display:flex;justify-content:space-between;font-size:13.5px;color:#555;padding:5px 0;border-bottom:1px solid #f0f0f0;}
-.total-row:last-child{border-bottom:none;}
-.total-final{font-size:16px;font-weight:800;color:#024442;padding-top:9px;margin-top:3px;}
-.sig-preview-box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:22px 26px;}
-.sig-preview-label{font-size:10px;font-weight:700;color:#024442;text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px;}
-.sig-underline{width:180px;height:1px;background:#333;margin-bottom:6px;}
-.sig-pname{font-size:15px;font-weight:700;color:#111;}
-.sig-ptitle{font-size:12.5px;color:#555;margin-top:2px;}
-.sig-pdate{font-size:11.5px;color:#888;margin-top:3px;}
-.sig-pco{font-size:13px;font-weight:700;color:#024442;margin-top:7px;}
-
-/* Quill fixes to match layout */
-.ql-toolbar { border-radius: 8px 8px 0 0; background: #f9fafb; border-color: #e5e7eb !important; }
-.ql-container { border-radius: 0 0 8px 8px; border-color: #e5e7eb !important; }
-</style>
+<datalist id="unitList">
+    <option value="pcs">pcs</option>
+    <option value="hours">hours</option>
+    <option value="days">days</option>
+    <option value="lot">lot</option>
+    <option value="flat rate">flat rate</option>
+</datalist>
 
 <script>
-// Initialize Quill Editor
-let notesEditor = null;
-document.addEventListener('DOMContentLoaded', () => {
-    if (typeof Quill !== 'undefined') {
-        notesEditor = new Quill('#notesEditor', {
-            modules: { toolbar: [[{header:[2,3,false]}],['bold','italic','underline'],[{list:'ordered'},{list:'bullet'}],['clean']] },
-            theme: 'snow',
-            placeholder: 'Project description and extra notes...'
-        });
-        const notesInput = document.getElementById('notesInput');
-        // Set initial value
-        notesInput.value = notesEditor.root.innerHTML;
-        
-        // Update hidden input on change
-        notesEditor.on('text-change', () => {
-            notesInput.value = notesEditor.root.innerHTML;
-        });
+// ── Native Tab navigation switcher ───────────────────────────────────────────
+const TABS = ['cli', 'sco', 'pri'];
+let tabIdx = 0;
+function showTab(id) {
+    TABS.forEach(t => {
+        const el = document.getElementById(t);
+        if (el) {
+            el.style.display = (t === id) ? 'block' : 'none';
+            if (t === id) el.classList.add('active');
+            else el.classList.remove('active');
+        }
+    });
+    
+    const btns = document.querySelectorAll('.mp-tab-buttons button');
+    btns.forEach(b => b.classList.remove('active'));
+    const btn = Array.from(btns).find(b => b.getAttribute('onclick')?.includes(id));
+    if (btn) btn.classList.add('active');
+    
+    tabIdx = TABS.indexOf(id);
+    
+    // Update next/prev button visibilities
+    document.getElementById('prevBtn').style.display = (tabIdx === 0) ? 'none' : 'inline-block';
+    document.getElementById('nextBtn').style.display = (tabIdx === TABS.length - 1) ? 'none' : 'inline-block';
+}
+
+function nextTab() {
+    if (tabIdx < TABS.length - 1) {
+        showTab(TABS[tabIdx + 1]);
     }
-});
-
-const TABS=['cli','pri','nts','sig'];
-let ti=0;
-function showTab(id){
-    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-    document.querySelectorAll('.mp-tab-buttons button').forEach(b=>b.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    ti=TABS.indexOf(id);
-    document.querySelectorAll('.mp-tab-buttons button')[ti].classList.add('active');
-    syncBtns();
-}
-function nextTab(){if(ti<TABS.length-1){ti++;showTab(TABS[ti]);}}
-function prevTab(){if(ti>0){ti--;showTab(TABS[ti]);}}
-function syncBtns(){
-    document.getElementById('prevBtn').style.display=ti===0?'none':'inline-flex';
-    document.getElementById('nextBtn').style.display=ti===TABS.length-1?'none':'inline-flex';
-    document.getElementById('subBtn').style.display=ti===TABS.length-1?'inline-flex':'none';
 }
 
-const cData=<?php echo json_encode($cData); ?>;
-function autofill(id){
-    document.getElementById('hidCid').value=id;
-    if(!id||!cData[id])return;
-    const c=cData[id];
-    document.getElementById('fName').value=c.client_name||'';
-    document.getElementById('fCompany').value=c.company||'';
-    document.getElementById('fEmail').value=c.email||'';
-    document.getElementById('fPhone').value=c.phone||'';
-    document.getElementById('fAddress').value=c.address||'';
+function prevTab() {
+    if (tabIdx > 0) {
+        showTab(TABS[tabIdx - 1]);
+    }
 }
 
-function updateSigDate(val){
-    const d=val?new Date(val+' 00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
-    document.getElementById('pDate').textContent='Date: '+d;
+const cData = <?php echo json_encode($cData); ?>;
+function autofill(val) {
+    if (!val) {
+        document.getElementById('fName').value = '';
+        document.getElementById('fCompany').value = '';
+        document.getElementById('fEmail').value = '';
+        document.getElementById('fPhone').value = '';
+        document.getElementById('fAddress').value = '';
+        return;
+    }
+    const c = cData[val];
+    document.getElementById('fName').value = c.client_name || '';
+    document.getElementById('fCompany').value = c.company     || '';
+    document.getElementById('fEmail').value = c.email       || '';
+    document.getElementById('fPhone').value = c.phone       || '';
+    document.getElementById('fAddress').value = c.address     || '';
 }
 
-let rowCnt=0;
-function addRow(desc='',qty=1,price=''){
-    const i=rowCnt++;
-    const tr=document.createElement('tr');
-    tr.id='r'+i;
-    tr.innerHTML=`
-        <td><input type="text"   name="items[${i}][description]" value="${desc.replace(/"/g,'&quot;')}" placeholder="Service or deliverable description"></td>
-        <td><input type="number" name="items[${i}][quantity]"    value="${qty}"  step="0.01" min="0" oninput="calcRow(${i})"></td>
-        <td><input type="number" name="items[${i}][unit_price]"  value="${price}"step="0.01" min="0" placeholder="0.00" oninput="calcRow(${i})"></td>
-        <td class="row-total" id="rt${i}">PKR 0.00</td>
-        <td><button type="button" class="remove-row-btn" onclick="removeRow(${i})"><i class="fas fa-times"></i></button></td>
+// Global variable to keep track of hiding/showing tax columns
+let showTax = true;
+function toggleTaxColumn() {
+    showTax = !showTax;
+    document.querySelectorAll('[name$="[tax_percent]"]').forEach(input => {
+        input.style.display = showTax ? 'inline-block' : 'none';
+    });
+}
+
+// Currency translation logic
+function getSelectedCurrency() {
+    return document.getElementById('fCurrency')?.value || 'PKR';
+}
+
+function jsNumberToWords(number) {
+    const dictionary = {
+        0: 'Zero', 1: 'One', 2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five', 6: 'Six', 7: 'Seven', 8: 'Eight', 9: 'Nine',
+        10: 'Ten', 11: 'Eleven', 12: 'Twelve', 13: 'Thirteen', 14: 'Fourteen', 15: 'Fifteen', 16: 'Sixteen',
+        17: 'Seventeen', 18: 'Eighteen', 19: 'Nineteen', 20: 'Twenty', 30: 'Thirty', 40: 'Forty', 50: 'Fifty',
+        60: 'Sixty', 70: 'Seventy', 80: 'Eighty', 90: 'Ninety'
+    };
+    if (number < 21) return dictionary[number];
+    if (number < 100) {
+        let tens = Math.floor(number / 10) * 10;
+        let units = number % 10;
+        return dictionary[tens] + (units ? ' ' + dictionary[units] : '');
+    }
+    if (number < 1000) {
+        let hundreds = Math.floor(number / 100);
+        let remainder = number % 100;
+        return dictionary[hundreds] + ' Hundred' + (remainder ? ' and ' + jsNumberToWords(remainder) : '');
+    }
+    if (number < 1000000) {
+        let thousands = Math.floor(number / 1000);
+        let remainder = number % 1000;
+        return jsNumberToWords(thousands) + ' Thousand' + (remainder ? (remainder < 100 ? ' and ' : ' ') + jsNumberToWords(remainder) : '');
+    }
+    if (number < 1000000000) {
+        let millions = Math.floor(number / 1000000);
+        let remainder = number % 1000000;
+        return jsNumberToWords(millions) + ' Million' + (remainder ? ' ' + jsNumberToWords(remainder) : '');
+    }
+    return number.toString();
+}
+
+function jsAmountToWords(amount, currencyCode) {
+    amount = Math.round(amount * 100) / 100;
+    let whole = Math.floor(amount);
+    let cents = Math.round((amount - whole) * 100);
+    
+    const currencyNames = {
+        'USD': 'US Dollars',
+        'PKR': 'Pakistani Rupees',
+        'EUR': 'Euros',
+        'GBP': 'British Pounds',
+        'AED': 'UAE Dirhams'
+    };
+    
+    let currencyName = currencyNames[currencyCode] || currencyCode;
+    let wholeWords = jsNumberToWords(whole) || 'Zero';
+    
+    if (cents === 0) {
+        return currencyName + ' ' + wholeWords + ' Only.';
+    } else {
+        let centsString = cents.toString().padStart(2, '0') + '/100';
+        return currencyName + ' ' + wholeWords + ' and ' + centsString + ' Only.';
+    }
+}
+
+// Dynamic elements addition
+let rowCnt = 0;
+function addRow(description = '', quantity = 1, unitPrice = '', unit = 'pcs', taxPercent = 0) {
+    const i = rowCnt++;
+    const tr = document.createElement('tr');
+    tr.id = 'r' + i;
+    tr.innerHTML = `
+        <td><input type="text"   name="items[${i}][description]" value="${description.replace(/"/g, '&quot;')}" placeholder="Service description" required style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
+        <td><input type="number" name="items[${i}][quantity]"    value="${quantity}"  step="0.01" min="0" oninput="calcRow(${i})" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
+        <td><input type="text"   name="items[${i}][unit]"        value="${unit.replace(/"/g, '&quot;')}" list="unitList" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
+        <td><input type="number" name="items[${i}][unit_price]"  value="${unitPrice}"   step="0.01" min="0" placeholder="0.00" oninput="calcRow(${i})" required style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
+        <td><input type="number" name="items[${i}][tax_percent]" value="${taxPercent}"  step="0.01" min="0" max="100" oninput="calcRow(${i})" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px; display: ${showTax ? 'inline-block' : 'none'};"></td>
+        <td class="row-total" id="rt${i}" style="font-weight:bold; vertical-align:middle; text-align:right;">PKR Rs 0.00</td>
+        <td style="text-align:center;"><button type="button" class="remove-row-btn" onclick="removeRow(${i})"><i class="fas fa-times"></i></button></td>
     `;
     document.getElementById('itemsBody').appendChild(tr);
-    if(price) calcRow(i);
+    calcRow(i);
 }
-function removeRow(i){const r=document.getElementById('r'+i);if(r)r.remove();recalc();}
-function calcRow(i){
-    const q=parseFloat(document.querySelector(`[name="items[${i}][quantity]"]`)?.value||0);
-    const p=parseFloat(document.querySelector(`[name="items[${i}][unit_price]"]`)?.value||0);
-    const c=document.getElementById('rt'+i);
-    if(c)c.textContent=fmt(q*p);
+function removeRow(i) {
+    document.getElementById('r' + i)?.remove();
+    recalc();
+}
+function calcRow(i) {
+    const q = parseFloat(document.querySelector(`[name="items[${i}][quantity]"]`)?.value  || 0);
+    const p = parseFloat(document.querySelector(`[name="items[${i}][unit_price]"]`)?.value || 0);
+    const t = parseFloat(document.querySelector(`[name="items[${i}][tax_percent]"]`)?.value || 0);
+    const sub = q * p;
+    const tax = sub * (t / 100);
+    const c = document.getElementById('rt'+i);
+    if(c) c.textContent = fmt(sub + tax);
     recalc();
 }
 function recalc(){
-    let sub=0;
-    document.querySelectorAll('[name^="items["]').forEach(inp=>{
-        const m=inp.name.match(/items\[(\d+)\]\[quantity\]/);
-        if(m){
-            const q=parseFloat(document.querySelector(`[name="items[${m[1]}][quantity]"]`)?.value||0);
-            const p=parseFloat(document.querySelector(`[name="items[${m[1]}][unit_price]"]`)?.value||0);
-            sub+=q*p;
+    let sub = 0;
+    let totalTax = 0;
+    document.querySelectorAll('[name^="items["]').forEach(inp => {
+        const m = inp.name.match(/items\[(\d+)\]\[quantity\]/);
+        if (m) {
+            const q = parseFloat(document.querySelector(`[name="items[${m[1]}][quantity]"]`)?.value || 0);
+            const p = parseFloat(document.querySelector(`[name="items[${m[1]}][unit_price]"]`)?.value || 0);
+            const t = parseFloat(document.querySelector(`[name="items[${m[1]}][tax_percent]"]`)?.value || 0);
+            const rowSub = q * p;
+            sub += rowSub;
+            totalTax += rowSub * (t / 100);
         }
     });
-    const tax=parseFloat(document.getElementById('taxPct')?.value||0);
-    const disc=parseFloat(document.getElementById('discAmt')?.value||0);
-    const ta=sub*(tax/100),tot=sub+ta-disc;
-    document.getElementById('tSubtotal').textContent=fmt(sub);
-    document.getElementById('tTaxPct').textContent=tax;
-    document.getElementById('tTax').textContent=fmt(ta);
-    document.getElementById('tDiscount').textContent='— '+fmt(disc);
-    document.getElementById('tTotal').textContent=fmt(tot);
+    
+    const disc = parseFloat(document.getElementById('discAmt')?.value || 0);
+    const tot = sub + totalTax - disc;
+    
+    document.getElementById('tSubtotal').textContent = fmt(sub);
+    document.getElementById('tTax').textContent = fmt(totalTax);
+    document.getElementById('tDiscount').textContent = '— ' + fmt(disc);
+    document.getElementById('tTotal').textContent = fmt(tot);
+    
+    const words = jsAmountToWords(tot, getSelectedCurrency());
+    document.getElementById('tAmountInWords').textContent = words;
+    document.getElementById('amountInWordsInput').value = words;
 }
-function fmt(v){return'PKR '+v.toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fmt(v) {
+    const cur = getSelectedCurrency();
+    const symbols = {
+        'USD': 'USD $',
+        'PKR': 'PKR Rs',
+        'EUR': 'EUR €',
+        'GBP': 'GBP £',
+        'AED': 'AED'
+    };
+    const sym = symbols[cur] || cur;
+    return sym + ' ' + Math.max(v,0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
 
-const existing=<?php echo json_encode($existingItems); ?>;
-existing.forEach(it=>addRow(it.description,it.quantity,it.unit_price));
+// Scope Dynamic Rows
+let scopeCnt = 0;
+function addScopeRow(desc = '', details = '') {
+    const i = scopeCnt++;
+    const tr = document.createElement('tr');
+    tr.id = 'scope_r' + i;
+    tr.innerHTML = `
+        <td><input type="text" name="scope_desc[]" value="${desc.replace(/"/g, '&quot;')}" placeholder="e.g. UX/UI Design" required style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
+        <td><input type="text" name="scope_details[]" value="${details.replace(/"/g, '&quot;')}" placeholder="e.g. Wireframes and prototype" required style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
+        <td style="text-align:center;"><button type="button" class="remove-row-btn" onclick="removeScopeRow(${i})"><i class="fas fa-times"></i></button></td>
+    `;
+    document.getElementById('scopeBody').appendChild(tr);
+}
+function removeScopeRow(i) {
+    document.getElementById('scope_r' + i)?.remove();
+}
+
+// Payment Dynamic Rows
+let paymentCnt = 0;
+function addPaymentRow(milestone = '', amount = '') {
+    const i = paymentCnt++;
+    const tr = document.createElement('tr');
+    tr.id = 'payment_r' + i;
+    tr.innerHTML = `
+        <td><input type="text" name="payment_milestone[]" value="${milestone.replace(/"/g, '&quot;')}" placeholder="e.g. Advance Booking" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
+        <td><input type="text" name="payment_amount[]" value="${amount.replace(/"/g, '&quot;')}" placeholder="e.g. 50%" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
+        <td style="text-align:center;"><button type="button" class="remove-row-btn" onclick="removePaymentRow(${i})"><i class="fas fa-times"></i></button></td>
+    `;
+    document.getElementById('paymentBody').appendChild(tr);
+}
+function removePaymentRow(i) {
+    document.getElementById('payment_r' + i)?.remove();
+}
+
+// Repeatable Bullets Logic
+function addIncludedBullet(val = '') {
+    const container = document.getElementById('includedBulletsContainer');
+    const div = document.createElement('div');
+    div.style = "display:flex; align-items:center; gap:8px; margin-bottom:6px;";
+    div.innerHTML = `
+        <span style="color:#16a34a; font-weight:bold;">✔</span>
+        <input type="text" name="scope_included[]" value="${val.replace(/"/g, '&quot;')}" placeholder="Included deliverable" style="flex:1; border:1px solid #ccc; padding:6px; border-radius:4px;">
+        <button type="button" class="remove-row-btn" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(div);
+}
+
+function addExcludedBullet(val = '') {
+    const container = document.getElementById('excludedBulletsContainer');
+    const div = document.createElement('div');
+    div.style = "display:flex; align-items:center; gap:8px; margin-bottom:6px;";
+    div.innerHTML = `
+        <span style="color:#b91c1c; font-weight:bold;">✖</span>
+        <input type="text" name="scope_excluded[]" value="${val.replace(/"/g, '&quot;')}" placeholder="Excluded items" style="flex:1; border:1px solid #ccc; padding:6px; border-radius:4px;">
+        <button type="button" class="remove-row-btn" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(div);
+}
+
+function addNoteBullet(val = '') {
+    const container = document.getElementById('notesBulletsContainer');
+    const div = document.createElement('div');
+    div.style = "display:flex; align-items:center; gap:8px; margin-bottom:6px;";
+    div.innerHTML = `
+        <span style="color:#888; font-weight:bold; font-size:12px;">•</span>
+        <input type="text" name="scope_notes[]" value="${val.replace(/"/g, '&quot;')}" placeholder="Standard note" style="flex:1; border:1px solid #ccc; padding:6px; border-radius:4px;">
+        <button type="button" class="remove-row-btn" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(div);
+}
+
+// Load existing scope items
+const extScope = <?php echo $scopeItemsJson; ?>;
+extScope.forEach(it => addScopeRow(it.description || '', it.details || ''));
+
+// Load existing payment schedule items
+const extPayment = <?php echo $paymentScheduleJson; ?>;
+extPayment.forEach(it => addPaymentRow(it.milestone || '', it.amount || ''));
+
+// Load existing inclusions (newline separated)
+const extInclusions = <?php echo json_encode(array_filter(array_map('trim', explode("\n", $q['scope_included'] ?? '')))); ?>;
+extInclusions.forEach(val => addIncludedBullet(val));
+
+// Load existing exclusions (newline separated)
+const extExclusions = <?php echo json_encode(array_filter(array_map('trim', explode("\n", $q['scope_excluded'] ?? '')))); ?>;
+extExclusions.forEach(val => addExcludedBullet(val));
+
+// Load existing notes (newline separated)
+const extNotes = <?php echo json_encode(array_filter(array_map('trim', explode("\n", $q['scope_notes'] ?? '')))); ?>;
+extNotes.forEach(val => addNoteBullet(val));
+
+// Initialize pricing items
+const existing = <?php echo json_encode($existingItems); ?>;
+existing.forEach(it => addRow(it.description, it.quantity, it.unit_price, it.unit || 'pcs', it.tax_percent || 0));
 if(!existing.length) addRow();
+
+recalc();
+showTab('cli');
+
+document.getElementById('fCurrency')?.addEventListener('change', recalc);
+
+document.getElementById('quotForm').addEventListener('submit', function(e) {
+    if (!document.getElementById('fName').value.trim()) {
+        e.preventDefault();
+        alert('Client name is required.');
+        showTab('cli');
+    }
+});
 </script>
-<?php include('dashboard_footer.php'); ?>
+
+<?php include 'dashboard_footer.php'; ?>

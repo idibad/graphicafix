@@ -37,8 +37,8 @@ if (!empty($enrolled)) {
             $is_past = strtotime($s['start_time']) < time();
         ?>
             <div class="col-md-6 col-lg-4">
-                <div class="d-card" style="padding:24px; display:flex; flex-direction:column; height:100%; border:1px solid <?= !$is_past ? '#024442' : '#e2e8f0' ?>;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                <div class="d-card" style="display:flex; flex-direction:column; height:100%; border:1px solid <?= !$is_past ? 'var(--primary-color)' : 'var(--border-color)' ?>;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
                         <span class="badge bg-light text-dark border"><i class="fas fa-book"></i> <?= htmlspecialchars($s['course_title']) ?></span>
                         <?php if(!$is_past): ?>
                             <span class="badge bg-danger animate-pulse"><i class="fas fa-broadcast-tower"></i> Upcoming</span>
@@ -47,10 +47,10 @@ if (!empty($enrolled)) {
                         <?php endif; ?>
                     </div>
 
-                    <h4 style="font-size:1.15rem; font-weight:800; color:#0f172a; margin:0 0 8px;"><?= htmlspecialchars($s['topic']) ?></h4>
-                    <div style="font-size:13px; color:#64748b; margin-bottom:16px;"><i class="fas fa-user-tie"></i> <?= htmlspecialchars($s['teacher_name'] ?? 'Instructor') ?></div>
+                    <h4 style="font-size:1.15rem; font-weight:800; color:var(--text-dark); margin:0 0 8px;"><?= htmlspecialchars($s['topic']) ?></h4>
+                    <div style="font-size:13px; color:var(--text-muted); margin-bottom:16px;"><i class="fas fa-user-tie"></i> <?= htmlspecialchars($s['teacher_name'] ?? 'Instructor') ?></div>
 
-                    <div style="background:#f8fafc; padding:12px; border-radius:10px; margin-bottom:20px; font-size:13px;">
+                    <div style="background:var(--bg-light); padding:12px; border-radius:10px; margin-bottom:20px; font-size:13px; border:1px solid var(--border-color);">
                         <i class="fas fa-calendar-alt text-success"></i> Time: <strong><?= date('M d, Y @ H:i', strtotime($s['start_time'])) ?></strong>
                     </div>
 

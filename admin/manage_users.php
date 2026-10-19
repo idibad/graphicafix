@@ -1,7 +1,7 @@
 <?php
 include 'dashboard_header.php';
 
-if ($role !== 'admin') {
+if ($role !== 'super_admin' && $role !== 'superadmin') {
     header("Location: index.php?error=unauthorized");
     exit;
 }
@@ -34,9 +34,11 @@ function getStatus($last_login, $user_status = 'active') {
 // Role Badge Color Helper
 function getRoleBadge($role) {
     $r = strtolower($role);
+    if ($r === 'super_admin' || $r === 'superadmin') return ['bg' => '#fef3c7', 'text' => '#b45309']; // Amber / Gold
     if ($r === 'admin')   return ['bg' => '#fff4e5', 'text' => '#e17055']; // Orange
     if ($r === 'pm')      return ['bg' => '#fce7f3', 'text' => '#db2777']; // Pink
     if ($r === 'manager') return ['bg' => '#e0f7fa', 'text' => '#00838f']; // Teal (Manager)
+    if ($r === 'hrm')     return ['bg' => '#e0e7ff', 'text' => '#4338ca']; // Indigo
     if ($r === 'teacher') return ['bg' => '#e0f2fe', 'text' => '#0284c7']; // Blue
     if ($r === 'student') return ['bg' => '#d7f8b8', 'text' => '#2b7a2b']; // Green
     if ($r === 'user')    return ['bg' => '#f3e8ff', 'text' => '#7c3aed']; // Purple
@@ -47,17 +49,19 @@ function getRoleBadge($role) {
 $total_users = $result->num_rows;
 $active_users = 0;
 $deactivated_users = 0;
+$super_admin_count = 0;
 $admin_count = 0;
 
 $users_grouped = [
-    'admin'   => [],
-    'pm'      => [],
-    'manager' => [],
-    'teacher' => [],
-    'student' => [],
-    'hrm'     => [],
-    'user'    => [],
-    'other'   => []
+    'super_admin' => [],
+    'admin'       => [],
+    'manager'     => [],
+    'pm'          => [],
+    'hrm'         => [],
+    'teacher'     => [],
+    'student'     => [],
+    'user'        => [],
+    'other'       => []
 ];
 
 foreach($result as $row) {
@@ -67,10 +71,15 @@ foreach($result as $row) {
     } else if(getStatus($row['last_login'], $u_stat)['class'] === 'active') {
         $active_users++;
     }
-    if(strtolower($row['role']) === 'admin') $admin_count++;
     
     $r = strtolower($row['role']);
-    if (array_key_exists($r, $users_grouped)) {
+    if ($r === 'super_admin' || $r === 'superadmin') {
+        $super_admin_count++;
+        $users_grouped['super_admin'][] = $row;
+    } elseif ($r === 'admin') {
+        $admin_count++;
+        $users_grouped['admin'][] = $row;
+    } elseif (array_key_exists($r, $users_grouped)) {
         $users_grouped[$r][] = $row;
     } else {
         $users_grouped['other'][] = $row;
@@ -80,14 +89,15 @@ $result->data_seek(0); // Reset pointer
 
 // FontAwesome integrated Role Titles
 $role_titles = [
-    'admin'   => '<i class="fas fa-user-shield" style="color: var(--primary); margin-right: 6px;"></i> Administrators',
-    'pm'      => '<i class="fas fa-project-diagram" style="color: var(--primary); margin-right: 6px;"></i> Project Managers',
-    'manager' => '<i class="fas fa-user-tie" style="color: var(--primary); margin-right: 6px;"></i> Managers',
-    'teacher' => '<i class="fas fa-chalkboard-teacher" style="color: var(--primary); margin-right: 6px;"></i> Teachers',
-    'student' => '<i class="fas fa-user-graduate" style="color: var(--primary); margin-right: 6px;"></i> Students',
-    'hrm'     => '<i class="fas fa-briefcase" style="color: var(--primary); margin-right: 6px;"></i> HR Management',
-    'user'    => '<i class="fas fa-users" style="color: var(--primary); margin-right: 6px;"></i> Staff / Users',
-    'other'   => '<i class="fas fa-user-tag" style="color: var(--primary); margin-right: 6px;"></i> Other Roles'
+    'super_admin' => '<i class="fas fa-crown" style="color: #f59e0b; margin-right: 6px;"></i> Super Administrators (All Rights)',
+    'admin'       => '<i class="fas fa-user-shield" style="color: #e17055; margin-right: 6px;"></i> Admin Officers / Administrators',
+    'manager'     => '<i class="fas fa-user-tie" style="color: #00838f; margin-right: 6px;"></i> Managers',
+    'pm'          => '<i class="fas fa-project-diagram" style="color: #db2777; margin-right: 6px;"></i> Project Managers',
+    'hrm'         => '<i class="fas fa-briefcase" style="color: #4338ca; margin-right: 6px;"></i> HR Management',
+    'teacher'     => '<i class="fas fa-chalkboard-teacher" style="color: #0284c7; margin-right: 6px;"></i> Teachers',
+    'student'     => '<i class="fas fa-user-graduate" style="color: #2b7a2b; margin-right: 6px;"></i> Students',
+    'user'        => '<i class="fas fa-users" style="color: #7c3aed; margin-right: 6px;"></i> Staff / Users',
+    'other'       => '<i class="fas fa-user-tag" style="color: #555; margin-right: 6px;"></i> Other Roles'
 ];
 ?>
 
@@ -100,14 +110,19 @@ $role_titles = [
             <div class="stat-label">Total Users</div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon"><i class="fas fa-user-check" style="color: var(--primary);"></i></div>
+            <div class="stat-icon"><i class="fas fa-user-check" style="color: #10b981;"></i></div>
             <div class="stat-number"><?= $active_users ?></div>
             <div class="stat-label">Active Users</div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon"><i class="fas fa-user-shield" style="color: var(--primary);"></i></div>
+            <div class="stat-icon"><i class="fas fa-crown" style="color: #f59e0b;"></i></div>
+            <div class="stat-number"><?= $super_admin_count ?></div>
+            <div class="stat-label">Super Admins</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-user-shield" style="color: #e17055;"></i></div>
             <div class="stat-number"><?= $admin_count ?></div>
-            <div class="stat-label">Administrators</div>
+            <div class="stat-label">Admin Officers</div>
         </div>
         <div class="stat-card">
             <div class="stat-icon"><i class="fas fa-user-slash" style="color: #ef4444;"></i></div>
@@ -245,13 +260,14 @@ $role_titles = [
                         <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:7px;">Role <span style="color:#ef4444;">*</span></label>
                         <select name="role" id="f_role" required
                             style="width:100%;padding:11px 14px;border:2px solid #f0f0f0;border-radius:10px;font-size:14px;background:#f8f9fa;outline:none;box-sizing:border-box;font-family:inherit;">
-                            <option value="student">Student</option>
-                            <option value="teacher">Teacher</option>
-                            <option value="user">Staff / User</option>
+                            <option value="super_admin">Super Admin (All Rights Unrestricted)</option>
+                            <option value="admin">Admin (Admin Officer - Operations, Docs, Attendance, Invoices, CRM)</option>
+                            <option value="manager">Manager</option>
                             <option value="pm">Project Manager</option>
                             <option value="hrm">HR Management</option>
-                            <option value="manager">Manager</option>
-                            <option value="admin">Admin</option>
+                            <option value="user">Staff / User</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="student">Student</option>
                             <option value="client">Client Primary Contact</option>
                             <option value="client_sub">Client Participant</option>
                         </select>

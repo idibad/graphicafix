@@ -88,11 +88,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_lecture'])) {
             }
         }
     } elseif ($upload_mode === 'local_mp4' && !empty($_FILES['video_file']['name'])) {
-        $dir = '../admin/uploads/lectures/' . date('Y_m');
+        $dir = PORTAL_UPLOADS_PATH . 'lectures/' . date('Y_m');
         if (!is_dir($dir)) mkdir($dir, 0755, true);
         $fn = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '', $_FILES['video_file']['name']);
         if (move_uploaded_file($_FILES['video_file']['tmp_name'], $dir . '/' . $fn)) {
-            $file_path = 'uploads/lectures/' . date('Y_m') . '/' . $fn;
+            $file_path = 'lectures/' . date('Y_m') . '/' . $fn;
             $video_type = 'mp4';
         } else {
             $error = "Failed to move uploaded MP4 file.";
@@ -205,22 +205,22 @@ $lectures = $conn->query("
                         $vtype = strtolower(trim($l['video_type'] ?? 'mp4'));
                     ?>
                         <tr style="font-size:13.5px;">
-                            <td style="font-weight:800; color:#0f172a;">
+                            <td data-label="Lecture Title" style="font-weight:800; color:#0f172a;">
                                 <i class="fas <?= $vtype==='vimeo' ? 'fa-video text-info' : 'fa-film text-secondary' ?> me-2"></i>
                                 <?= htmlspecialchars($l['title']) ?>
                             </td>
-                            <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($l['course_title']) ?></span></td>
-                            <td>
+                            <td data-label="Course"><span class="badge bg-light text-dark border"><?= htmlspecialchars($l['course_title']) ?></span></td>
+                            <td data-label="Hosting / Source">
                                 <?php if($vtype==='vimeo'): ?>
                                     <span class="badge" style="background:#1ab7ea; color:white;"><i class="fab fa-vimeo-v"></i> VIMEO CLOUD</span>
                                 <?php else: ?>
                                     <span class="badge bg-secondary"><i class="fas fa-server"></i> LOCAL SERVER</span>
                                 <?php endif; ?>
                             </td>
-                            <td style="font-family:monospace; font-size:12.5px; color:#475569;">
+                            <td data-label="Vimeo ID / File" style="font-family:monospace; font-size:12.5px; color:#475569;">
                                 <?= htmlspecialchars(!empty($l['vimeo_id']) ? $l['vimeo_id'] : ($l['file_path'] ?: 'N/A')) ?>
                             </td>
-                            <td>
+                            <td data-label="Admin Status">
                                 <?php if($l['status']==='approved'): ?>
                                     <span class="badge bg-success"><i class="fas fa-check"></i> Approved</span>
                                 <?php elseif($l['status']==='rejected'): ?>
@@ -229,8 +229,8 @@ $lectures = $conn->query("
                                     <span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> In Review</span>
                                 <?php endif; ?>
                             </td>
-                            <td style="color:#64748b; font-size:12.5px;"><?= date('M d, Y', strtotime($l['created_at'])) ?></td>
-                            <td>
+                            <td data-label="Date" style="color:#64748b; font-size:12.5px;"><?= date('M d, Y', strtotime($l['created_at'])) ?></td>
+                            <td data-label="Actions">
                                 <a href="course_player.php?course_id=<?= $l['course_id'] ?>&lecture_id=<?= $l['id'] ?>" class="btn btn-sm btn-light border" title="Preview Playback"><i class="fas fa-play text-success"></i></a>
                                 <a href="teacher_lectures.php?delete_id=<?= $l['id'] ?>" class="btn btn-sm btn-light border" onclick="return confirm('Are you sure you want to delete this lecture?')" title="Delete"><i class="fas fa-trash text-danger"></i></a>
                             </td>

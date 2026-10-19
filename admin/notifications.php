@@ -11,7 +11,7 @@
  */
 
 $_notif_uid      = intval($_SESSION['user_id'] ?? 0);
-$_notif_is_admin = strtolower($_SESSION['role'] ?? '') === 'admin';
+$_notif_is_admin = in_array(strtolower($_SESSION['role'] ?? ''), ['super_admin', 'superadmin', 'admin']);
 
 // ── AJAX actions ──────────────────────────────────────────────────────────────
 if (isset($_GET['notif_action'])) {
@@ -333,6 +333,22 @@ if (!function_exists('notifColor')) {
             'review'             => '#d97706',
             'course_registration'=> '#10b981',
             default              => '#6b7280',
+        };
+    }
+}
+if (!function_exists('notifLabel')) {
+    function notifLabel($type) {
+        return match($type) {
+            'task'               => 'Task',
+            'notice'             => 'Notice',
+            'resource'           => 'Resource',
+            'user'               => 'New User',
+            'project_request'    => 'Project Request',
+            'career_application' => 'Application',
+            'contact'            => 'Message',
+            'review'             => 'Review',
+            'course_registration'=> 'Registration',
+            default              => 'Notification',
         };
     }
 }

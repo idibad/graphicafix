@@ -1,7 +1,4 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', '1');
-
 ob_start();
 include 'dashboard_header.php';
 
@@ -87,7 +84,7 @@ if (isset($_GET['download'])) {
     <div class="cert-wrapper">
         <div class="outer-border">
             <div class="inner-border">
-                <div class="logo-box"><img src="../images/logo.png" alt="Graphicafix"></div>
+                <div class="logo-box"><img src="<?= htmlspecialchars(MAIN_SITE_URL) ?>images/logo.png" alt="Graphicafix"></div>
                 <h1>Certificate of Achievement</h1>
                 <div class="sub-heading">Excellence in Professional Education</div>
                 

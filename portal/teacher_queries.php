@@ -48,8 +48,8 @@ $queries = $conn->query("
                         <?php endif; ?>
                     </div>
 
-                    <div style="font-size:12.5px; color:#64748b; margin-bottom:8px;"><i class="fas fa-user-circle"></i> Student: <strong style="color:#0f172a;"><?= htmlspecialchars($q['student_name']) ?></strong> (<?= htmlspecialchars($q['student_email']) ?>)</div>
-                    <div style="background:#f8fafc; p-3; padding:14px; border-radius:10px; font-size:14px; font-weight:600; color:#1e293b; margin-bottom:16px;">
+                    <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:8px;"><i class="fas fa-user-circle"></i> Student: <strong style="color:var(--text-dark);"><?= htmlspecialchars($q['student_name']) ?></strong> (<?= htmlspecialchars($q['student_email']) ?>)</div>
+                    <div style="background:var(--bg-light); padding:14px; border-radius:10px; font-size:14px; font-weight:600; color:var(--text-dark); margin-bottom:16px; border:1px solid var(--border-color);">
                         <?= nl2br(htmlspecialchars($q['query_text'])) ?>
                     </div>
 

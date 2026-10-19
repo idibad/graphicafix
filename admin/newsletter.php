@@ -23,8 +23,14 @@ $conn->query("CREATE TABLE IF NOT EXISTS newsletter_broadcasts (
     subject VARCHAR(255) NOT NULL,
     body_content TEXT NOT NULL,
     recipient_count INT DEFAULT 0,
+    target_audience VARCHAR(50) DEFAULT 'Subscribers',
     sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )");
+
+$check_col = $conn->query("SHOW COLUMNS FROM newsletter_broadcasts LIKE 'target_audience'");
+if ($check_col && $check_col->num_rows == 0) {
+    $conn->query("ALTER TABLE newsletter_broadcasts ADD COLUMN target_audience VARCHAR(50) DEFAULT 'Subscribers' AFTER recipient_count");
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  EMAIL WRAPPER HELPER
@@ -54,15 +60,37 @@ function buildBroadcastEmail($heading, $body_html) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_broadcast'])) {
     $subject = trim($_POST['subject'] ?? '');
     $message = trim($_POST['message_body'] ?? '');
+    $target_audience = trim($_POST['target_audience'] ?? 'Subscribers');
 
     if (empty($subject) || empty($message) || $message === '<p><br></p>') {
         header("Location: newsletter.php?tab=broadcasts&error=empty");
         exit;
     }
 
-    $subs = $conn->query("SELECT email FROM newsletter_subscribers");
+    $emails = [];
+    if ($target_audience === 'Subscribers') {
+        $subs = $conn->query("SELECT email FROM newsletter_subscribers WHERE email IS NOT NULL AND email != ''");
+        if ($subs) { while ($r = $subs->fetch_assoc()) $emails[] = $r['email']; }
+    } elseif ($target_audience === 'All Users') {
+        $subs = $conn->query("SELECT email FROM users WHERE email IS NOT NULL AND email != ''");
+        if ($subs) { while ($r = $subs->fetch_assoc()) $emails[] = $r['email']; }
+    } else {
+        $role_prefix = 'Role: ';
+        if (strpos($target_audience, $role_prefix) === 0) {
+            $role = substr($target_audience, strlen($role_prefix));
+            $stmt_u = $conn->prepare("SELECT email FROM users WHERE role = ? AND email IS NOT NULL AND email != ''");
+            $stmt_u->bind_param("s", $role);
+            $stmt_u->execute();
+            $res_u = $stmt_u->get_result();
+            while ($r = $res_u->fetch_assoc()) {
+                $emails[] = $r['email'];
+            }
+        }
+    }
+
+    $emails = array_unique(array_filter($emails));
     
-    if ($subs && $subs->num_rows > 0) {
+    if (count($emails) > 0) {
         $sent_count = 0;
         $html_content = buildBroadcastEmail($subject, $message);
         
@@ -71,14 +99,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_broadcast'])) {
         $headers .= "From: Graphicafix <noreply@graphicafix.com>\r\n";
         $headers .= "Reply-To: info@graphicafix.com\r\n";
 
-        while ($row = $subs->fetch_assoc()) {
-            mail($row['email'], $subject, $html_content, $headers);
+        foreach ($emails as $email_addr) {
+            mail($email_addr, $subject, $html_content, $headers);
             $sent_count++;
         }
 
         // Store History in DB
-        $stmt = $conn->prepare("INSERT INTO newsletter_broadcasts (admin_id, admin_name, subject, body_content, recipient_count) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("isssi", $admin_id, $admin_name, $subject, $message, $sent_count);
+        $stmt = $conn->prepare("INSERT INTO newsletter_broadcasts (admin_id, admin_name, subject, body_content, recipient_count, target_audience) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("isssis", $admin_id, $admin_name, $subject, $message, $sent_count, $target_audience);
         $stmt->execute();
 
         header("Location: newsletter.php?tab=broadcasts&success=sent");
@@ -174,7 +202,7 @@ function timeAgo($d) {
             <div class="table-head" style="grid-template-columns: 2.5fr 1fr 1fr 1fr 0.5fr;">
                 <span>Subject / Content</span>
                 <span>Sent By</span>
-                <span>Recipients</span>
+                <span>Audience / Recipients</span>
                 <span>Date Sent</span>
                 <span>Actions</span>
             </div>
@@ -194,7 +222,8 @@ function timeAgo($d) {
                 <span data-label="Sent By" style="font-size:13px; font-weight:600; color:var(--primary);">
                     <?= htmlspecialchars($b['admin_name']) ?>
                 </span>
-                <span data-label="Recipients">
+                <span data-label="Audience / Recipients">
+                    <div style="font-size:12px; color:#666; font-weight:600; margin-bottom:4px;"><?= htmlspecialchars($b['target_audience'] ?? 'Subscribers') ?></div>
                     <span style="background:#e0f2fe; color:#0284c7; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700;">
                         <i class="fas fa-users"></i> <?= number_format($b['recipient_count']) ?>
                     </span>
@@ -272,6 +301,19 @@ function timeAgo($d) {
                 <div class="info-grid" style="grid-template-columns: 1fr;">
                     
                     <div class="form-group">
+                        <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:6px;">Target Audience <span style="color:#ef4444;">*</span></label>
+                        <select name="target_audience" id="bAudience" required style="width:100%;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;background:#f9fbfc;outline:none;font-family:inherit;">
+                            <option value="Subscribers">Newsletter Subscribers</option>
+                            <option value="All Users">All Registered Users</option>
+                            <option value="Role: admin">Role: Admin</option>
+                            <option value="Role: user">Role: User (Staff)</option>
+                            <option value="Role: hrm">Role: HRM</option>
+                            <option value="Role: student">Role: Student</option>
+                            <option value="Role: teacher">Role: Teacher</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
                         <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:6px;">Email Subject <span style="color:#ef4444;">*</span></label>
                         <input type="text" name="subject" id="bSubject" required placeholder="e.g. New Masterclass Available!"
                                style="width:100%;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;background:#f9fbfc;outline:none;font-family:inherit;">
@@ -287,7 +329,7 @@ function timeAgo($d) {
                         <span style="font-size:18px;"><i class="fas fa-exclamation-triangle"></i>️</span>
                         <div>
                             <strong style="font-size:13px; color:#9a3412; display:block; margin-bottom:2px;">Warning: Bulk Action</strong>
-                            <span style="font-size:12px; color:#c2410c;">Clicking send will instantly deliver this email to all <strong><?= number_format($total_subs) ?></strong> active subscribers. This action cannot be undone.</span>
+                            <span style="font-size:12px; color:#c2410c;">Clicking send will instantly deliver this email to all users in the selected target group. This action cannot be undone.</span>
                         </div>
                     </div>
 
@@ -295,7 +337,7 @@ function timeAgo($d) {
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary-custom" onclick="closeBroadcastModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary-custom" id="bSubmit"><i class="fas fa-rocket"></i> Send to <?= number_format($total_subs) ?> Subscribers</button>
+                <button type="submit" class="btn btn-primary-custom" id="bSubmit"><i class="fas fa-rocket"></i> Send Broadcast</button>
             </div>
         </form>
     </div>

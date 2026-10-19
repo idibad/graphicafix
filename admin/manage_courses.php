@@ -5,7 +5,7 @@ ini_set('display_startup_errors', '1');
 
 include 'dashboard_header.php';
 
-if ($role !== 'admin' && $role !== 'teacher') {
+if (!in_array($role, ['super_admin', 'superadmin', 'teacher'])) {
     header("Location: index.php?error=unauthorized");
     exit;
 }

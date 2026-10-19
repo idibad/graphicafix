@@ -37,12 +37,12 @@ if ($portal_role === 'student') {
 
 <div class="height-100">
     <!-- Welcome Hero -->
-    <div class="d-card mb-4" style="background: linear-gradient(135deg, #024442 0%, #065f5b 100%); color:white; border: 1px solid rgba(184,243,90,0.3); position:relative; overflow:hidden;">
+    <div class="d-card mb-4 fade-in-up glow-volt" style="background: linear-gradient(135deg, #024442 0%, #065f5b 100%); color:white; border: 1px solid rgba(184,243,90,0.3); position:relative; overflow:hidden;">
         <div style="position:absolute; right:-20px; bottom:-30px; font-size:12rem; opacity:0.06; color:#b8f35a; pointer-events:none;"><i class="fas fa-graduation-cap"></i></div>
         <div class="row align-items-center">
             <div class="col-md-8">
                 <span style="background:rgba(184,243,90,0.15); color:#b8f35a; font-size:11px; font-weight:800; padding:4px 12px; border-radius:50px; text-transform:uppercase;">
-                    <i class="fas fa-bolt"></i> Graphicafix LMS Portal
+                    <i class="fas fa-bolt"></i> Graphicafix Education Portal
                 </span>
                 <h2 style="font-size:1.8rem; font-weight:800; margin:12px 0 8px; color:white;">Welcome, <?= htmlspecialchars($name) ?>!</h2>
                 <p style="color:#cbd5e1; font-size:14.5px; margin:0;">
@@ -61,52 +61,52 @@ if ($portal_role === 'student') {
 
     <?php if($portal_role === 'student'): ?>
         <!-- Student Stats -->
-        <div class="row g-3 mb-4">
+        <div class="row g-3 mb-4 fade-in-up">
             <div class="col-6 col-lg-3">
-                <div class="d-card" style="padding:20px; display:flex; align-items:center; gap:16px;">
+                <div class="d-card d-flex align-items-center gap-3">
                     <div style="width:50px; height:50px; border-radius:12px; background:rgba(2,68,66,0.1); color:#024442; display:flex; align-items:center; justify-content:center; font-size:24px;"><i class="fas fa-book-open"></i></div>
                     <div>
-                        <div style="font-size:24px; font-weight:800; color:#111; line-height:1;"><?= $enrolled_cnt ?></div>
-                        <div style="font-size:12.5px; color:#666; margin-top:4px; font-weight:600;">Total Enrolled</div>
+                        <div style="font-size:24px; font-weight:800; color:var(--text-dark); line-height:1;"><?= $enrolled_cnt ?></div>
+                        <div style="font-size:12.5px; color:var(--text-muted); margin-top:4px; font-weight:600;">Total Enrolled</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-lg-3">
-                <div class="d-card" style="padding:20px; display:flex; align-items:center; gap:16px;">
+                <div class="d-card d-flex align-items-center gap-3">
                     <div style="width:50px; height:50px; border-radius:12px; background:rgba(16,185,129,0.1); color:#10b981; display:flex; align-items:center; justify-content:center; font-size:24px;"><i class="fas fa-play-circle"></i></div>
                     <div>
-                        <div style="font-size:24px; font-weight:800; color:#111; line-height:1;"><?= $active_cnt ?></div>
-                        <div style="font-size:12.5px; color:#666; margin-top:4px; font-weight:600;">Active Courses</div>
+                        <div style="font-size:24px; font-weight:800; color:var(--text-dark); line-height:1;"><?= $active_cnt ?></div>
+                        <div style="font-size:12.5px; color:var(--text-muted); margin-top:4px; font-weight:600;">Active Courses</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-lg-3">
-                <div class="d-card" style="padding:20px; display:flex; align-items:center; gap:16px;">
+                <div class="d-card d-flex align-items-center gap-3">
                     <div style="width:50px; height:50px; border-radius:12px; background:rgba(212,175,55,0.15); color:#d4af37; display:flex; align-items:center; justify-content:center; font-size:24px;"><i class="fas fa-certificate"></i></div>
                     <div>
-                        <div style="font-size:24px; font-weight:800; color:#111; line-height:1;"><?= $cert_cnt ?></div>
-                        <div style="font-size:12.5px; color:#666; margin-top:4px; font-weight:600;">Certificates</div>
+                        <div style="font-size:24px; font-weight:800; color:var(--text-dark); line-height:1;"><?= $cert_cnt ?></div>
+                        <div style="font-size:12.5px; color:var(--text-muted); margin-top:4px; font-weight:600;">Certificates</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-lg-3">
-                <div class="d-card" style="padding:20px; display:flex; align-items:center; gap:16px;">
+                <div class="d-card d-flex align-items-center gap-3">
                     <div style="width:50px; height:50px; border-radius:12px; background:rgba(59,130,246,0.1); color:#3b82f6; display:flex; align-items:center; justify-content:center; font-size:24px;"><i class="fas fa-question-circle"></i></div>
                     <div>
-                        <div style="font-size:24px; font-weight:800; color:#111; line-height:1;"><?= $query_cnt ?></div>
-                        <div style="font-size:12.5px; color:#666; margin-top:4px; font-weight:600;">My Queries</div>
+                        <div style="font-size:24px; font-weight:800; color:var(--text-dark); line-height:1;"><?= $query_cnt ?></div>
+                        <div style="font-size:12.5px; color:var(--text-muted); margin-top:4px; font-weight:600;">My Queries</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="row g-4">
+        <div class="row g-4 fade-in-up">
             <!-- Active Courses Grid -->
             <div class="col-lg-8">
                 <div class="d-card">
                     <div class="main-header mb-3">
                         <h4 style="font-size:1.2rem; font-weight:800; color:#024442; margin:0;"><i class="fas fa-laptop-code"></i> Active Classroom</h4>
-                        <a href="student_courses.php" style="font-size:13px; font-weight:700; color:var(--primary);">View All &rarr;</a>
+                        <a href="student_courses.php" style="font-size:13px; font-weight:700; color:var(--primary-color);">View All &rarr;</a>
                     </div>
                     
                     <div class="row g-3">
@@ -140,7 +140,7 @@ if ($portal_role === 'student') {
                                             <span><?= $prog_pct ?>%</span>
                                         </div>
                                         <div style="width:100%; height:8px; background:#e2e8f0; border-radius:10px; overflow:hidden; margin-bottom:14px;">
-                                            <div style="width:<?= $prog_pct ?>%; height:100%; background:#10b981; border-radius:10px; transition:width .3s;"></div>
+                                            <div style="width:<?= $prog_pct ?>%; height:100%; background:var(--primary-color); border-radius:10px; transition:width .3s;"></div>
                                         </div>
 
                                         <a href="course_player.php?course_id=<?= $c['id'] ?>" class="btn btn-primary-custom" style="width:100%; justify-content:center; padding:10px; font-size:13px;"><i class="fas fa-play"></i> Watch Lectures</a>
@@ -163,11 +163,13 @@ if ($portal_role === 'student') {
                     <h4 style="font-size:1.15rem; font-weight:800; color:#024442; margin:0 0 16px;"><i class="fas fa-bullhorn"></i> Campus Noticeboard</h4>
                     <div style="display:flex; flex-direction:column; gap:12px;">
                         <?php if($notices && $notices->num_rows > 0): while($n = $notices->fetch_assoc()): ?>
-                            <div style="padding:12px; border-left:4px solid var(--accent); background:#f8fafc; border-radius:0 8px 8px 0;">
-                                <div style="font-size:13.5px; font-weight:800; color:#1e293b;"><?= htmlspecialchars($n['title']) ?></div>
-                                <div style="font-size:12.5px; color:#64748b; margin:4px 0 8px;"><?= nl2br(htmlspecialchars($n['message'])) ?></div>
-                                <div style="font-size:11px; color:#94a3b8;"><i class="fas fa-user"></i> <?= htmlspecialchars($n['created_by'] ?? $n['teacher_name'] ?? 'Campus Admin') ?> &middot; <?= date('M d', strtotime($n['created_at'])) ?></div>
-                            </div>
+                            <a href="../admin/notice_details.php?id=<?= $n['id'] ?>" style="text-decoration:none; display:block;">
+                                <div style="padding:12px; border-left:4px solid var(--accent); background:#f8fafc; border-radius:0 8px 8px 0; transition: background 0.2s;" onmouseover="this.style.background='#eaede0'" onmouseout="this.style.background='#f8fafc'">
+                                    <div style="font-size:13.5px; font-weight:800; color:#1e293b;"><?= htmlspecialchars($n['title']) ?></div>
+                                    <div style="font-size:12.5px; color:#64748b; margin:4px 0 8px;"><?= nl2br(htmlspecialchars(substr($n['message'], 0, 100))) ?><?= strlen($n['message']) > 100 ? '...' : '' ?></div>
+                                    <div style="font-size:11px; color:#94a3b8;"><i class="fas fa-user"></i> <?= htmlspecialchars($n['created_by'] ?? $n['teacher_name'] ?? 'Campus Admin') ?> &middot; <?= date('M d', strtotime($n['created_at'])) ?></div>
+                                </div>
+                            </a>
                         <?php endwhile; else: ?>
                             <p class="text-muted text-center my-4" style="font-size:13px;">No notices posted.</p>
                         <?php endif; ?>
@@ -178,46 +180,46 @@ if ($portal_role === 'student') {
 
     <?php else: ?>
         <!-- Teacher Stats -->
-        <div class="row g-3 mb-4">
+        <div class="row g-3 mb-4 fade-in-up">
             <div class="col-6 col-lg-3">
-                <div class="d-card" style="padding:20px; display:flex; align-items:center; gap:16px;">
+                <div class="d-card d-flex align-items-center gap-3">
                     <div style="width:50px; height:50px; border-radius:12px; background:rgba(2,68,66,0.1); color:#024442; display:flex; align-items:center; justify-content:center; font-size:24px;"><i class="fas fa-book-open"></i></div>
                     <div>
-                        <div style="font-size:24px; font-weight:800; color:#111; line-height:1;"><?= $my_course_cnt ?></div>
-                        <div style="font-size:12.5px; color:#666; margin-top:4px; font-weight:600;">My Courses</div>
+                        <div style="font-size:24px; font-weight:800; color:var(--text-dark); line-height:1;"><?= $my_course_cnt ?></div>
+                        <div style="font-size:12.5px; color:var(--text-muted); margin-top:4px; font-weight:600;">My Courses</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-lg-3">
-                <div class="d-card" style="padding:20px; display:flex; align-items:center; gap:16px;">
+                <div class="d-card d-flex align-items-center gap-3">
                     <div style="width:50px; height:50px; border-radius:12px; background:rgba(184,243,90,0.25); color:#024442; display:flex; align-items:center; justify-content:center; font-size:24px;"><i class="fas fa-video"></i></div>
                     <div>
-                        <div style="font-size:24px; font-weight:800; color:#111; line-height:1;"><?= $lec_cnt ?></div>
-                        <div style="font-size:12.5px; color:#666; margin-top:4px; font-weight:600;">Video Lectures</div>
+                        <div style="font-size:24px; font-weight:800; color:var(--text-dark); line-height:1;"><?= $lec_cnt ?></div>
+                        <div style="font-size:12.5px; color:var(--text-muted); margin-top:4px; font-weight:600;">Video Lectures</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-lg-3">
-                <div class="d-card" style="padding:20px; display:flex; align-items:center; gap:16px;">
+                <div class="d-card d-flex align-items-center gap-3">
                     <div style="width:50px; height:50px; border-radius:12px; background:rgba(59,130,246,0.1); color:#3b82f6; display:flex; align-items:center; justify-content:center; font-size:24px;"><i class="fas fa-tasks"></i></div>
                     <div>
-                        <div style="font-size:24px; font-weight:800; color:#111; line-height:1;"><?= $assign_cnt ?></div>
-                        <div style="font-size:12.5px; color:#666; margin-top:4px; font-weight:600;">Assignments</div>
+                        <div style="font-size:24px; font-weight:800; color:var(--text-dark); line-height:1;"><?= $assign_cnt ?></div>
+                        <div style="font-size:12.5px; color:var(--text-muted); margin-top:4px; font-weight:600;">Assignments</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-lg-3">
-                <div class="d-card" style="padding:20px; display:flex; align-items:center; gap:16px;">
+                <div class="d-card d-flex align-items-center gap-3">
                     <div style="width:50px; height:50px; border-radius:12px; background:rgba(239,68,68,0.1); color:#ef4444; display:flex; align-items:center; justify-content:center; font-size:24px;"><i class="fas fa-question-circle"></i></div>
                     <div>
                         <div style="font-size:24px; font-weight:800; color:#ef4444; line-height:1;"><?= $query_pending ?></div>
-                        <div style="font-size:12.5px; color:#666; margin-top:4px; font-weight:600;">Pending Queries</div>
+                        <div style="font-size:12.5px; color:var(--text-muted); margin-top:4px; font-weight:600;">Pending Queries</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="row g-4">
+        <div class="row g-4 fade-in-up">
             <div class="col-lg-8">
                 <div class="d-card">
                     <div class="main-header mb-3">
@@ -238,10 +240,10 @@ if ($portal_role === 'student') {
                             <tbody>
                                 <?php if($recent_lecs && $recent_lecs->num_rows > 0): while($l = $recent_lecs->fetch_assoc()): ?>
                                     <tr style="font-size:13.5px;">
-                                        <td style="font-weight:700; color:#111;"><?= htmlspecialchars($l['title']) ?></td>
-                                        <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($l['course_title']) ?></span></td>
-                                        <td><span class="badge" style="background:#024442; color:#b8f35a;"><?= strtoupper($l['video_type'] ?? 'MP4') ?></span></td>
-                                        <td>
+                                        <td data-label="Lecture Title" style="font-weight:700; color:var(--text-dark);"><?= htmlspecialchars($l['title']) ?></td>
+                                        <td data-label="Course"><span class="badge bg-light text-dark border"><?= htmlspecialchars($l['course_title']) ?></span></td>
+                                        <td data-label="Type"><span class="badge" style="background:#024442; color:#b8f35a;"><?= strtoupper($l['video_type'] ?? 'MP4') ?></span></td>
+                                        <td data-label="Status">
                                             <?php if($l['status']==='approved'): ?>
                                                 <span class="badge bg-success">Approved</span>
                                             <?php elseif($l['status']==='rejected'): ?>
@@ -250,7 +252,7 @@ if ($portal_role === 'student') {
                                                 <span class="badge bg-warning text-dark">Pending</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td style="color:#666; font-size:12.5px;"><?= date('M d, Y', strtotime($l['created_at'])) ?></td>
+                                        <td data-label="Date" style="color:var(--text-muted); font-size:12.5px;"><?= date('M d, Y', strtotime($l['created_at'])) ?></td>
                                     </tr>
                                 <?php endwhile; else: ?>
                                     <tr><td colspan="5" class="text-center py-4 text-muted">No lectures uploaded yet.</td></tr>
@@ -263,8 +265,8 @@ if ($portal_role === 'student') {
 
             <!-- Quick Action Box -->
             <div class="col-lg-4">
-                <div class="d-card mb-4" style="background:#0f172a; color:white;">
-                    <h4 style="font-size:1.1rem; font-weight:800; color:var(--accent); margin:0 0 16px;"><i class="fas fa-rocket"></i> Instructor Toolkit</h4>
+                <div class="d-card mb-4" style="background:var(--bg-dark); color:white;">
+                    <h4 style="font-size:1.1rem; font-weight:800; color:var(--accent-color); margin:0 0 16px;"><i class="fas fa-rocket"></i> Instructor Toolkit</h4>
                     <div style="display:flex; flex-direction:column; gap:10px;">
                         <a href="teacher_quizzes.php" class="btn" style="background:rgba(255,255,255,0.08); color:white; justify-content:flex-start;"><i class="fas fa-question-circle text-info"></i> Create Course Quiz</a>
                         <a href="teacher_resources.php" class="btn" style="background:rgba(255,255,255,0.08); color:white; justify-content:flex-start;"><i class="fas fa-file-download text-warning"></i> Attach Resource Files</a>

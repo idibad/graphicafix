@@ -27,34 +27,45 @@ if (
 $_SESSION['LAST_ACTIVITY'] = time();
 
 
-// Load .env variables
-$env_path = __DIR__ . '/../.env';
-if (file_exists($env_path)) {
-    $lines = file($env_path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue;
-        list($name, $value) = explode('=', $line, 2);
-        $_ENV[trim($name)] = trim($value);
+// Load .env variables (check both .env and env)
+$env_paths = [__DIR__ . '/../.env', __DIR__ . '/../env'];
+foreach ($env_paths as $env_path) {
+    if (file_exists($env_path)) {
+        $lines = file($env_path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            if (strpos(trim($line), '#') === 0) continue;
+            $parts = explode('=', $line, 2);
+            if (count($parts) === 2) {
+                $key = trim($parts[0]);
+                $val = trim($parts[1]);
+                $_ENV[$key] = $val;
+                $_SERVER[$key] = $val;
+                putenv("$key=$val");
+            }
+        }
+        break;
     }
 }
 
+// Dynamically determine BASE_URL for both localhost (/graphicafix/) and live hosting (/)
 if (!defined('BASE_URL')) {
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $doc_root = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']), '/');
-    $app_root = rtrim(str_replace('\\', '/', realpath(__DIR__ . '/..')), '/');
-    $base_path = '';
-    if (strpos($app_root, $doc_root) === 0) {
-        $base_path = substr($app_root, strlen($doc_root));
+    if (isset($_ENV['SITE_URL']) && !empty($_ENV['SITE_URL'])) {
+        define('BASE_URL', rtrim($_ENV['SITE_URL'], '/') . '/');
+    } else {
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+        $host = $_SERVER['HTTP_HOST'];
+        if ($host === 'localhost' || $host === '127.0.0.1') {
+            define('BASE_URL', $protocol . $host . '/graphicafix/');
+        } else {
+            define('BASE_URL', $protocol . $host . '/');
+        }
     }
-    $base_path = rtrim($base_path, '/') . '/';
-    define('BASE_URL', $protocol . $host . $base_path);
 }
 
-$server = $_ENV['DB_SERVER'] ?? "localhost";
-$username = $_ENV['DB_USERNAME'] ?? "root";
-$password = $_ENV['DB_PASSWORD'] ?? "";
-$db = $_ENV['DB_DATABASE'] ?? "graphica_fix_db";
+$server = $_ENV['DB_SERVER'] ?? ($_SERVER['DB_SERVER'] ?? (getenv('DB_SERVER') ?: "localhost"));
+$username = $_ENV['DB_USERNAME'] ?? ($_SERVER['DB_USERNAME'] ?? (getenv('DB_USERNAME') ?: "root"));
+$password = $_ENV['DB_PASSWORD'] ?? ($_SERVER['DB_PASSWORD'] ?? (getenv('DB_PASSWORD') ?: ""));
+$db = $_ENV['DB_DATABASE'] ?? ($_SERVER['DB_DATABASE'] ?? (getenv('DB_DATABASE') ?: "graphica_fix_db"));
 
 
 
@@ -70,14 +81,14 @@ if (!$conn) {
 date_default_timezone_set('Asia/Karachi');
 $conn->query("SET time_zone = '+05:00'");
 
-define('SAFEPAY_ENVIRONMENT', $_ENV['SAFEPAY_ENVIRONMENT'] ?? 'sandbox');
-define('SAFEPAY_API_KEY', $_ENV['SAFEPAY_API_KEY'] ?? '');
+define('SAFEPAY_ENVIRONMENT', $_ENV['SAFEPAY_ENVIRONMENT'] ?? ($_SERVER['SAFEPAY_ENVIRONMENT'] ?? (getenv('SAFEPAY_ENVIRONMENT') ?: 'sandbox')));
+define('SAFEPAY_API_KEY', $_ENV['SAFEPAY_API_KEY'] ?? ($_SERVER['SAFEPAY_API_KEY'] ?? (getenv('SAFEPAY_API_KEY') ?: '')));
 define('SAFEPAY_API_URL', SAFEPAY_ENVIRONMENT === 'sandbox' ? 'https://sandbox.api.getsafepay.com' : 'https://api.getsafepay.com');
 
 // JazzCash Configuration
-define('JAZZCASH_ENVIRONMENT', $_ENV['JAZZCASH_ENVIRONMENT'] ?? 'sandbox');
-define('JAZZCASH_MERCHANT_ID', $_ENV['JAZZCASH_MERCHANT_ID'] ?? '');
-define('JAZZCASH_PASSWORD', $_ENV['JAZZCASH_PASSWORD'] ?? '');
-define('JAZZCASH_INTEGRITY_SALT', $_ENV['JAZZCASH_INTEGRITY_SALT'] ?? '');
+define('JAZZCASH_ENVIRONMENT', $_ENV['JAZZCASH_ENVIRONMENT'] ?? ($_SERVER['JAZZCASH_ENVIRONMENT'] ?? (getenv('JAZZCASH_ENVIRONMENT') ?: 'sandbox')));
+define('JAZZCASH_MERCHANT_ID', $_ENV['JAZZCASH_MERCHANT_ID'] ?? ($_SERVER['JAZZCASH_MERCHANT_ID'] ?? (getenv('JAZZCASH_MERCHANT_ID') ?: '')));
+define('JAZZCASH_PASSWORD', $_ENV['JAZZCASH_PASSWORD'] ?? ($_SERVER['JAZZCASH_PASSWORD'] ?? (getenv('JAZZCASH_PASSWORD') ?: '')));
+define('JAZZCASH_INTEGRITY_SALT', $_ENV['JAZZCASH_INTEGRITY_SALT'] ?? ($_SERVER['JAZZCASH_INTEGRITY_SALT'] ?? (getenv('JAZZCASH_INTEGRITY_SALT') ?: '')));
 define('JAZZCASH_POST_URL', JAZZCASH_ENVIRONMENT === 'sandbox' ? 'https://sandbox.jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform/' : 'https://jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform/');
 ?>

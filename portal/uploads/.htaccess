@@ -1,0 +1,10 @@
+# Security: Prevent PHP execution in uploads directory
+# Uploaded files (assignments, lectures) should never run as PHP
+
+<FilesMatch "\.php$">
+    Order Allow,Deny
+    Deny from All
+</FilesMatch>
+
+# Allow direct access to media and document files
+Options -Indexes

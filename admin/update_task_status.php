@@ -1,22 +1,60 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// admin/update_task_status.php
+if (session_status() === PHP_SESSION_NONE) session_start();
 
-require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/config.php'; // DB connection
+require_once __DIR__ . '/../core/config.php';
 
-if(isset($_POST['id'], $_POST['status'])){
+header('Content-Type: application/json');
+
+// Auth check
+if (!isset($_SESSION['user_id'])) {
+    echo json_encode(['success' => false, 'message' => 'Unauthorized: Please log in']);
+    exit;
+}
+
+$user_id = intval($_SESSION['user_id']);
+$role = strtolower($_SESSION['role'] ?? '');
+
+if (empty($role)) {
+    $u_stmt = $conn->prepare("SELECT role FROM users WHERE user_id = ?");
+    $u_stmt->bind_param("i", $user_id);
+    $u_stmt->execute();
+    $u_row = $u_stmt->get_result()->fetch_assoc();
+    $role = strtolower($u_row['role'] ?? '');
+    $_SESSION['role'] = $role;
+}
+
+$is_admin = in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'hrm']);
+
+if (isset($_POST['id'], $_POST['status'])) {
     $task_id = intval($_POST['id']);
-    $status = $_POST['status'];
+    $status = trim($_POST['status']);
 
-    $stmt = $conn->prepare("UPDATE tasks SET status = ? WHERE id = ?");
+    // Verify ownership/permissions
+    $check = $conn->prepare("SELECT id, created_by, assigned_to, project_id FROM tasks WHERE id = ?");
+    $check->bind_param("i", $task_id);
+    $check->execute();
+    $t = $check->get_result()->fetch_assoc();
+
+    if (!$t || (!$is_admin && $t['assigned_to'] != $user_id && $t['created_by'] != $user_id)) {
+        echo json_encode(['success' => false, 'message' => 'Unauthorized: You do not have permission to modify this task']);
+        exit;
+    }
+
+    $stmt = $conn->prepare("UPDATE tasks SET status = ?, updated_at = NOW() WHERE id = ?");
     $stmt->bind_param("si", $status, $task_id);
 
-    if($stmt->execute()){
-        echo "Updated task $task_id to $status";
+    if ($stmt->execute()) {
+        echo json_encode([
+            'success' => true,
+            'message' => "Updated task status to {$status}",
+            'task_id' => $task_id,
+            'status' => $status
+        ]);
     } else {
-        echo "DB Error: ".$conn->error;
+        echo json_encode(['success' => false, 'message' => "Database error: " . $conn->error]);
     }
 } else {
-    echo "Invalid request: ".print_r($_POST,true);
+    echo json_encode(['success' => false, 'message' => 'Invalid request parameters']);
 }
 ?>

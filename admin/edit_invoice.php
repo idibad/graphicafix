@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+// Check permissions
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user'])) {
+    header('location:index.php'); exit;
+}
+
 $id = intval($_GET['id'] ?? 0);
 if (!$id) { header('Location: manage_invoices.php'); exit; }
 
@@ -18,19 +23,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $terms           = trim($_POST['terms']   ?? '');
     $currency        = $_POST['currency'] ?? 'PKR';
 
+    // New Fields
+    $client_ref_rfq  = trim($_POST['client_ref_rfq'] ?? '');
+    $client_tax_id   = trim($_POST['client_tax_id'] ?? '');
+    $ship_to         = trim($_POST['ship_to'] ?? '');
+    $bank_name       = trim($_POST['bank_name'] ?? '');
+    $bank_branch     = trim($_POST['bank_branch'] ?? '');
+    $account_name    = trim($_POST['account_name'] ?? '');
+    $account_number  = trim($_POST['account_number'] ?? '');
+    $swift_code      = trim($_POST['swift_code'] ?? '');
+    $payment_methods = trim($_POST['payment_methods'] ?? '');
+    $sig_name        = trim($_POST['signature_name'] ?? '');
+    $sig_title       = trim($_POST['signature_title'] ?? '');
+    $sig_date        = !empty($_POST['signature_date']) ? $_POST['signature_date'] : date('Y-m-d');
+    $amount_in_words = trim($_POST['amount_in_words'] ?? '');
+
     // Build items & totals
     $subtotal = 0;
+    $total_tax = 0;
     $items = [];
     foreach (($_POST['items'] ?? []) as $i => $item) {
         if (empty(trim($item['description'] ?? ''))) continue;
         $qty   = floatval($item['quantity']   ?? 1);
         $price = floatval($item['unit_price'] ?? 0);
+        $unit  = trim($item['unit'] ?? 'pcs');
+        $tax_c = trim($item['tax_code'] ?? '');
+        $tax_p = floatval($item['tax_percent'] ?? 0);
+        $tax_a = round(($qty * $price) * ($tax_p / 100), 2);
         $tot   = round($qty * $price, 2);
+        
         $subtotal += $tot;
-        $items[] = ['description' => trim($item['description']), 'quantity' => $qty, 'unit_price' => $price, 'total' => $tot, 'sort_order' => (int)$i];
+        $total_tax += $tax_a;
+        
+        $items[] = [
+            'description' => trim($item['description']),
+            'quantity' => $qty,
+            'unit' => $unit,
+            'tax_code' => $tax_c,
+            'unit_price' => $price,
+            'tax_percent' => $tax_p,
+            'tax_amount' => $tax_a,
+            'total' => $tot,
+            'sort_order' => (int)$i
+        ];
     }
 
-    $tax_amount   = round($subtotal * ($tax_percent / 100), 2);
+    $tax_amount   = $total_tax; // line-item tax sum
     $total_amount = round($subtotal + $tax_amount - $discount_amount, 2);
 
     // ── Paid amount logic ─────────────────────────────────────────────────────
@@ -59,20 +97,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $conn->prepare("UPDATE invoices SET
         invoice_number=?, client_id=?, project_id=?, issue_date=?, due_date=?, status=?,
         subtotal=?, tax_percent=?, tax_amount=?, discount_amount=?, total_amount=?,
-        amount_paid=?, amount_due=?, currency=?, notes=?, terms=?, paid_at=?, updated_at=NOW()
-        WHERE id=?");
-    $stmt->bind_param("siisssdddddddssssi",
+        amount_paid=?, amount_due=?, currency=?, notes=?, terms=?, paid_at=?,
+        client_ref_rfq=?, client_tax_id=?, ship_to=?, bank_name=?, bank_branch=?, account_name=?,
+        account_number=?, swift_code=?, payment_methods=?, signature_name=?, signature_title=?, signature_date=?, amount_in_words=?,
+        updated_at=NOW() WHERE id=?");
+    $stmt->bind_param("siisssdddddddsssssssssssssssssi",
         $invoice_number, $client_id, $project_id, $issue_date, $due_date, $status,
         $subtotal, $tax_percent, $tax_amount, $discount_amount, $total_amount,
-        $amount_paid, $amount_due, $currency, $notes, $terms, $paid_at, $id
+        $amount_paid, $amount_due, $currency, $notes, $terms, $paid_at,
+        $client_ref_rfq, $client_tax_id, $ship_to, $bank_name, $bank_branch, $account_name,
+        $account_number, $swift_code, $payment_methods, $sig_name, $sig_title, $sig_date, $amount_in_words,
+        $id
     );
     $stmt->execute();
 
     // Replace all line items
     $conn->query("DELETE FROM invoice_items WHERE invoice_id={$id}");
-    $is = $conn->prepare("INSERT INTO invoice_items (invoice_id,description,quantity,unit_price,total,sort_order) VALUES (?,?,?,?,?,?)");
+    $is = $conn->prepare("INSERT INTO invoice_items (invoice_id,description,quantity,unit_price,total,sort_order,unit,tax_code,tax_percent,tax_amount) VALUES (?,?,?,?,?,?,?,?,?,?)");
     foreach ($items as $it) {
-        $is->bind_param("isdddi", $id, $it['description'], $it['quantity'], $it['unit_price'], $it['total'], $it['sort_order']);
+        $is->bind_param("isdddissdd", $id, $it['description'], $it['quantity'], $it['unit_price'], $it['total'], $it['sort_order'], $it['unit'], $it['tax_code'], $it['tax_percent'], $it['tax_amount']);
         $is->execute();
     }
 
@@ -113,6 +156,7 @@ $projects = $conn->query("SELECT id,project_name FROM projects ORDER BY project_
     </div>
 </div>
 
+<div class="form-container">
 <form method="POST" id="invForm">
 
 <!-- ── Tab 1: Details ──────────────────────────────────────────────────────── -->
@@ -142,6 +186,20 @@ $projects = $conn->query("SELECT id,project_name FROM projects ORDER BY project_
             <?php endwhile; ?>
         </select>
     </div>
+    <div class="form-grid">
+        <div class="form-group">
+            <label>Client Tax ID / VAT Registration</label>
+            <input type="text" name="client_tax_id" id="fClientTaxId" value="<?= htmlspecialchars($inv['client_tax_id'] ?? '') ?>" placeholder="e.g. STRN-987654321">
+        </div>
+        <div class="form-group">
+            <label>Client PO / RFQ Reference Number</label>
+            <input type="text" name="client_ref_rfq" id="fClientRefRfq" value="<?= htmlspecialchars($inv['client_ref_rfq'] ?? '') ?>" placeholder="e.g. PO-2026-088">
+        </div>
+    </div>
+    <div class="form-group">
+        <label>Ship To / Delivery Address <span style="color:#aaa;font-weight:400;">(optional, only for goods)</span></label>
+        <textarea name="ship_to" placeholder="Delivery address..." style="min-height:50px;"><?= htmlspecialchars($inv['ship_to'] ?? '') ?></textarea>
+    </div>
 
     <div class="form-group">
         <label>Linked Project <span style="color:#aaa;font-weight:400;">(optional)</span></label>
@@ -152,7 +210,6 @@ $projects = $conn->query("SELECT id,project_name FROM projects ORDER BY project_
             <?php endwhile; ?>
         </select>
     </div>
-
     <div class="form-grid">
         <div class="form-group">
             <label>Issue Date <span class="required">*</span></label>
@@ -163,10 +220,9 @@ $projects = $conn->query("SELECT id,project_name FROM projects ORDER BY project_
             <input type="date" name="due_date" value="<?= $inv['due_date'] ?>" required>
         </div>
     </div>
-
     <div class="form-grid">
-        <div class="form-group">
-            <label>Tax %</label>
+        <div class="form-group" style="display:none;">
+            <label>Tax % (Global)</label>
             <input type="number" name="tax_percent" id="taxPct" value="<?= $inv['tax_percent'] ?>" step="0.01" min="0" max="100" oninput="recalc()">
         </div>
         <div class="form-group">
@@ -174,7 +230,6 @@ $projects = $conn->query("SELECT id,project_name FROM projects ORDER BY project_
             <input type="number" name="discount_amount" id="discAmt" value="<?= $inv['discount_amount'] ?>" step="0.01" min="0" oninput="recalc()">
         </div>
     </div>
-
     <div class="form-group">
         <label>Status</label>
         <select name="status" id="statusSel" onchange="handleStatusChange(this.value)">
@@ -182,6 +237,56 @@ $projects = $conn->query("SELECT id,project_name FROM projects ORDER BY project_
             <option value="<?= $v ?>" <?= $inv['status']===$v ? 'selected':'' ?>><?= $l ?></option>
             <?php endforeach; ?>
         </select>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #f0f0f0;margin:20px 0;">
+    <h3 style="margin-bottom:16px;">Remittance Bank Details</h3>
+    <div class="form-grid">
+        <div class="form-group">
+            <label>Bank Name</label>
+            <input type="text" name="bank_name" value="<?= htmlspecialchars($inv['bank_name'] ?? 'Meezan Bank Ltd') ?>">
+        </div>
+        <div class="form-group">
+            <label>Branch</label>
+            <input type="text" name="bank_branch" value="<?= htmlspecialchars($inv['bank_branch'] ?? 'Sector F-11 Branch, Islamabad') ?>">
+        </div>
+    </div>
+    <div class="form-grid">
+        <div class="form-group">
+            <label>Account Name / Title</label>
+            <input type="text" name="account_name" value="<?= htmlspecialchars($inv['account_name'] ?? 'Graphica Fix') ?>">
+        </div>
+        <div class="form-group">
+            <label>Account Number / IBAN</label>
+            <input type="text" name="account_number" value="<?= htmlspecialchars($inv['account_number'] ?? 'PK09MEZN000810011299029') ?>">
+        </div>
+    </div>
+    <div class="form-grid">
+        <div class="form-group">
+            <label>SWIFT / BIC Code</label>
+            <input type="text" name="swift_code" value="<?= htmlspecialchars($inv['swift_code'] ?? 'MEZNPKKA') ?>">
+        </div>
+        <div class="form-group">
+            <label>Accepted Payment Methods</label>
+            <input type="text" name="payment_methods" value="<?= htmlspecialchars($inv['payment_methods'] ?? 'Bank Transfer, JazzCash, Safepay') ?>">
+        </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #f0f0f0;margin:20px 0;">
+    <h3 style="margin-bottom:16px;">Authorized Signatory</h3>
+    <div class="form-grid">
+        <div class="form-group">
+            <label>Signatory Name</label>
+            <input type="text" name="signature_name" value="<?= htmlspecialchars($inv['signature_name'] ?? 'Ibadullah') ?>">
+        </div>
+        <div class="form-group">
+            <label>Title / Designation</label>
+            <input type="text" name="signature_title" value="<?= htmlspecialchars($inv['signature_title'] ?? 'Managing Director') ?>">
+        </div>
+    </div>
+    <div class="form-group">
+        <label>Signature Date</label>
+        <input type="date" name="signature_date" value="<?= htmlspecialchars($inv['signature_date'] ?? date('Y-m-d')) ?>">
     </div>
 </div>
 
@@ -191,25 +296,35 @@ $projects = $conn->query("SELECT id,project_name FROM projects ORDER BY project_
         <table class="items-table">
             <thead>
                 <tr>
-                    <th style="width:48%">Description</th>
-                    <th style="width:13%">Qty</th>
-                    <th style="width:17%">Unit Price</th>
-                    <th style="width:15%">Total</th>
-                    <th style="width:7%"></th>
+                    <th style="width:30%">Description</th>
+                    <th style="width:8%">Qty</th>
+                    <th style="width:10%">Unit</th>
+                    <th style="width:12%">Tax Code</th>
+                    <th style="width:15%">Unit Price</th>
+                    <th style="width:10%">Tax %</th>
+                    <th style="width:10%">Total</th>
+                    <th style="width:5%"></th>
                 </tr>
             </thead>
             <tbody id="itemsBody"></tbody>
         </table>
     </div>
     <button type="button" class="add-feature-btn main-btn" onclick="addRow()" style="margin:12px 0;">＋ Add Line Item</button>
+    <datalist id="unitList">
+        <option value="pcs"></option>
+        <option value="hours"></option>
+        <option value="days"></option>
+        <option value="lot"></option>
+        <option value="units"></option>
+    </datalist>
 
     <div class="totals-box">
-        <div class="total-row"><span>Subtotal</span>                                            <span id="tSubtotal">PKR 0.00</span></div>
-        <div class="total-row"><span>Tax (<span id="tTaxPct">0</span>%)</span>                 <span id="tTax">PKR 0.00</span></div>
-        <div class="total-row"><span>Discount</span>                                            <span id="tDiscount">— PKR 0.00</span></div>
-        <div class="total-row total-final"><span>TOTAL</span>                                   <span id="tTotal">PKR 0.00</span></div>
-
-        <!-- Amount Paid input -->
+        <div class="total-row"><span>Subtotal</span>                                          <span id="tSubtotal">PKR 0.00</span></div>
+        <div class="total-row"><span>Tax</span>                                                 <span id="tTax">PKR 0.00</span></div>
+        <div class="total-row"><span>Discount</span>                                          <span id="tDiscount">— PKR 0.00</span></div>
+        <div class="total-row total-final"><span>TOTAL</span>                                 <span id="tTotal">PKR 0.00</span></div>
+        
+        <!-- Paid amount input -->
         <div class="total-row" id="paidRow" style="margin-top:12px;padding-top:12px;border-top:2px dashed #d1fae5;border-bottom:none;">
             <label for="amountPaidInput" style="font-size:13.5px;font-weight:700;color:#059669;display:flex;align-items:center;gap:6px;cursor:pointer;">
                 <i class="fas fa-dollar-sign"></i> Amount Paid
@@ -227,11 +342,19 @@ $projects = $conn->query("SELECT id,project_name FROM projects ORDER BY project_
             </div>
         </div>
 
-        <!-- Amount Due -->
+        <!-- Amount due -->
         <div class="total-row" id="dueRow" style="padding:8px 10px;border-radius:8px;background:#fff7ed;margin-top:6px;border-bottom:none;">
             <span style="font-weight:700;color:#ea580c;"><i class="fas fa-thumbtack"></i> Amount Due</span>
             <span style="font-weight:800;font-size:15px;color:#ea580c;" id="tDue">PKR 0.00</span>
         </div>
+    </div>
+
+    <div class="form-group" style="margin-top: 15px;">
+        <label>Amount in Words <span class="required">*</span></label>
+        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 14px; font-weight: bold; color: #024442;" id="tAmountInWords">
+            <?= htmlspecialchars($inv['amount_in_words'] ?? 'Pakistani Rupees Zero and 00/100 Only.') ?>
+        </div>
+        <input type="hidden" name="amount_in_words" id="amountInWordsInput" value="<?= htmlspecialchars($inv['amount_in_words'] ?? 'Pakistani Rupees Zero and 00/100 Only.') ?>">
     </div>
 </div>
 
@@ -239,7 +362,7 @@ $projects = $conn->query("SELECT id,project_name FROM projects ORDER BY project_
 <div id="nts" class="tab">
     <div class="form-group">
         <label>Notes <span style="color:#aaa;font-weight:400;">(visible to client)</span></label>
-        <textarea name="notes" style="min-height:100px;"><?= htmlspecialchars($inv['notes'] ?? '') ?></textarea>
+        <textarea name="notes" id="notesEditor" style="min-height:100px; width: 100%;"><?= htmlspecialchars($inv['notes'] ?? '') ?></textarea>
     </div>
     <div class="form-group">
         <label>Terms & Conditions</label>
@@ -254,6 +377,7 @@ $projects = $conn->query("SELECT id,project_name FROM projects ORDER BY project_
     <button type="submit" class="btn btn-primary"   id="subBtn"  style="display:none;"><i class="fas fa-check"></i> Save Changes</button>
 </div>
 </form>
+</div> <!-- end form-container -->
 </div>
 
 <style>
@@ -276,7 +400,23 @@ $projects = $conn->query("SELECT id,project_name FROM projects ORDER BY project_
 #amountPaidInput:focus{border-color:#059669 !important;box-shadow:0 0 0 3px rgba(5,150,105,.12);}
 #amountPaidInput:disabled{opacity:.5;cursor:not-allowed;}
 </style>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    tinymce.init({
+        selector: '#notesEditor',
+        height: 200,
+        menubar: false,
+        plugins: 'image table link lists',
+        toolbar: 'undo redo | blocks | bold italic underline | alignleft aligncenter alignright | bullist numlist | link image table | removeformat',
+        setup: function(editor) {
+            editor.on('change keyup', function() {
+                editor.save();
+            });
+        }
+    });
+});
+</script>
 <script>
 const TABS = ['det','itm','nts'];
 let ti = 0;
@@ -304,6 +444,56 @@ function updateCurrency(val) {
     recalc();
 }
 
+function jsNumberToWords(number) {
+    const dictionary = {
+        0: 'Zero', 1: 'One', 2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five', 6: 'Six', 7: 'Seven', 8: 'Eight', 9: 'Nine',
+        10: 'Ten', 11: 'Eleven', 12: 'Twelve', 13: 'Thirteen', 14: 'Fourteen', 15: 'Fifteen', 16: 'Sixteen',
+        17: 'Seventeen', 18: 'Eighteen', 19: 'Nineteen', 20: 'Twenty', 30: 'Thirty', 40: 'Forty', 50: 'Fifty',
+        60: 'Sixty', 70: 'Seventy', 80: 'Eighty', 90: 'Ninety'
+    };
+    if (number < 21) return dictionary[number];
+    if (number < 100) {
+        let tens = Math.floor(number / 10) * 10;
+        let units = number % 10;
+        return dictionary[tens] + (units ? ' ' + dictionary[units] : '');
+    }
+    if (number < 1000) {
+        let hundreds = Math.floor(number / 100);
+        let remainder = number % 100;
+        return dictionary[hundreds] + ' Hundred' + (remainder ? ' and ' + jsNumberToWords(remainder) : '');
+    }
+    if (number < 1000000) {
+        let thousands = Math.floor(number / 1000);
+        let remainder = number % 1000;
+        return jsNumberToWords(thousands) + ' Thousand' + (remainder ? (remainder < 100 ? ' and ' : ' ') + jsNumberToWords(remainder) : '');
+    }
+    if (number < 1000000000) {
+        let millions = Math.floor(number / 1000000);
+        let remainder = number % 1000000;
+        return jsNumberToWords(millions) + ' Million' + (remainder ? ' ' + jsNumberToWords(remainder) : '');
+    }
+    return number.toString();
+}
+
+function jsAmountToWords(amount, currencyCode) {
+    amount = Math.round(amount * 100) / 100;
+    let whole = Math.floor(amount);
+    let cents = Math.round((amount - whole) * 100);
+    
+    const currencyNames = {
+        'USD': 'US Dollars',
+        'PKR': 'Pakistani Rupees',
+        'EUR': 'Euros',
+        'GBP': 'British Pounds',
+        'AED': 'UAE Dirhams'
+    };
+    
+    let currencyName = currencyNames[currencyCode] || currencyCode;
+    let wholeWords = jsNumberToWords(whole) || 'Zero';
+    let centsString = cents.toString().padStart(2, '0') + '/100';
+    return currencyName + ' ' + wholeWords + ' and ' + centsString + ' Only.';
+}
+
 function handleStatusChange(val) {
     const paidInput = document.getElementById('amountPaidInput');
     if (val === 'paid') {
@@ -317,57 +507,68 @@ function handleStatusChange(val) {
 
 function getTotal() {
     let sub = 0;
+    let totalTax = 0;
     document.querySelectorAll('[name^="items["]').forEach(inp => {
         const m = inp.name.match(/items\[(\d+)\]\[quantity\]/);
         if (m) {
             const q = parseFloat(document.querySelector(`[name="items[${m[1]}][quantity]"]`)?.value  || 0);
             const p = parseFloat(document.querySelector(`[name="items[${m[1]}][unit_price]"]`)?.value || 0);
-            sub += q * p;
+            const t = parseFloat(document.querySelector(`[name="items[${m[1]}][tax_percent]"]`)?.value || 0);
+            const rowSub = q * p;
+            sub += rowSub;
+            totalTax += rowSub * (t / 100);
         }
     });
-    const tax  = parseFloat(document.getElementById('taxPct')?.value  || 0);
     const disc = parseFloat(document.getElementById('discAmt')?.value || 0);
-    return sub + (sub * tax / 100) - disc;
+    return sub + totalTax - disc;
 }
 
 let rowCnt = 0;
-function addRow(desc='', qty=1, price='') {
+function addRow(desc='', qty=1, price='', unit='pcs', tax_code='', tax_percent=0) {
     const i  = rowCnt++;
     const tr = document.createElement('tr');
     tr.id    = 'r'+i;
     tr.innerHTML = `
         <td><input type="text"   name="items[${i}][description]" value="${desc.replace(/"/g,'&quot;')}" placeholder="Description"></td>
         <td><input type="number" name="items[${i}][quantity]"    value="${qty}"  step="0.01" min="0" oninput="calcRow(${i})"></td>
+        <td><input type="text"   name="items[${i}][unit]"        value="${unit}" list="unitList"></td>
+        <td><input type="text"   name="items[${i}][tax_code]"    value="${tax_code}" placeholder="HSN/SAC"></td>
         <td><input type="number" name="items[${i}][unit_price]"  value="${price}"step="0.01" min="0" placeholder="0.00" oninput="calcRow(${i})"></td>
-        <td class="row-total" id="rt${i}">${currentCurrency} 0.00</td>
+        <td><input type="number" name="items[${i}][tax_percent]" value="${tax_percent}" step="0.01" min="0" max="100" oninput="calcRow(${i})"></td>
+        <td class="row-total" id="rt${i}">PKR ₨ 0.00</td>
         <td><button type="button" class="remove-row-btn" onclick="removeRow(${i})"><i class="fas fa-times"></i></button></td>
     `;
     document.getElementById('itemsBody').appendChild(tr);
-    if (price) calcRow(i);
+    calcRow(i);
 }
 function removeRow(i) { const r = document.getElementById('r'+i); if(r) r.remove(); recalc(); }
 function calcRow(i) {
     const q = parseFloat(document.querySelector(`[name="items[${i}][quantity]"]`)?.value  || 0);
     const p = parseFloat(document.querySelector(`[name="items[${i}][unit_price]"]`)?.value || 0);
+    const t = parseFloat(document.querySelector(`[name="items[${i}][tax_percent]"]`)?.value || 0);
+    const sub   = q * p;
+    const taxAmt = sub * (t / 100);
     const c = document.getElementById('rt'+i);
-    if (c) c.textContent = fmt(q * p);
+    if (c) c.textContent = fmt(sub + taxAmt);
     recalc();
 }
 
 function recalc() {
     const total  = getTotal();
-    const tax    = parseFloat(document.getElementById('taxPct')?.value  || 0);
     const disc   = parseFloat(document.getElementById('discAmt')?.value || 0);
     let sub = 0;
+    let totalTax = 0;
     document.querySelectorAll('[name^="items["]').forEach(inp => {
         const m = inp.name.match(/items\[(\d+)\]\[quantity\]/);
         if (m) {
             const q = parseFloat(document.querySelector(`[name="items[${m[1]}][quantity]"]`)?.value  || 0);
             const p = parseFloat(document.querySelector(`[name="items[${m[1]}][unit_price]"]`)?.value || 0);
-            sub += q * p;
+            const t = parseFloat(document.querySelector(`[name="items[${m[1]}][tax_percent]"]`)?.value || 0);
+            const rowSub = q * p;
+            sub += rowSub;
+            totalTax += rowSub * (t / 100);
         }
     });
-    const taxAmt = sub * (tax / 100);
 
     // Sync if status=paid
     const statusVal = document.getElementById('statusSel').value;
@@ -378,8 +579,7 @@ function recalc() {
     const due  = Math.max(total - paid, 0);
 
     document.getElementById('tSubtotal').textContent = fmt(sub);
-    document.getElementById('tTaxPct').textContent   = tax;
-    document.getElementById('tTax').textContent      = fmt(taxAmt);
+    document.getElementById('tTax').textContent      = fmt(totalTax);
     document.getElementById('tDiscount').textContent = '— ' + fmt(disc);
     document.getElementById('tTotal').textContent    = fmt(total);
 
@@ -389,21 +589,35 @@ function recalc() {
     if (due === 0) {
         dueRow.style.background = '#f0fdf4';
         dueRow.querySelectorAll('span').forEach(s => s.style.color = '#059669');
-        dueSpan.textContent = '<i class="fas fa-check"></i> Fully Paid';
+        dueSpan.innerHTML = '<i class="fas fa-check"></i> Fully Paid';
     } else {
         dueRow.style.background = '#fff7ed';
         dueRow.querySelectorAll('span').forEach(s => s.style.color = '#ea580c');
         dueSpan.textContent = fmt(due);
     }
+
+    // Amount in words
+    const words = jsAmountToWords(total, currentCurrency);
+    document.getElementById('tAmountInWords').textContent = words;
+    document.getElementById('amountInWordsInput').value = words;
 }
 
 function fmt(v) {
-    return currentCurrency + ' ' + Math.max(v, 0).toLocaleString('en-PK', {minimumFractionDigits:2, maximumFractionDigits:2});
+    const cur = currentCurrency;
+    const symbols = {
+        'USD': 'USD $',
+        'PKR': 'PKR ₨',
+        'EUR': 'EUR €',
+        'GBP': 'GBP £',
+        'AED': 'AED د.إ'
+    };
+    const sym = symbols[cur] || cur;
+    return sym + ' ' + Math.max(v,0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
 // Prefill existing line items
 const existing = <?= json_encode($existingItems) ?>;
-existing.forEach(it => addRow(it.description, it.quantity, it.unit_price));
+existing.forEach(it => addRow(it.description, it.quantity, it.unit_price, it.unit || 'pcs', it.tax_code || '', it.tax_percent || 0));
 if (!existing.length) addRow();
 
 // Set initial state based on current status

@@ -9,15 +9,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_doc'])) {
     $type  = trim($_POST['doc_type']); // ID Proof, Degree, Certificate, Contract, Other
     
     if (!empty($_FILES['doc_file']['name'])) {
-        // Physical save to admin directory so admin review tools find it seamlessly
-        $target_dir = '../admin/uploads/teacher_docs/' . date('Y_m');
+        // Store in portal uploads — production-safe for cross-domain deployments
+        $target_dir = PORTAL_UPLOADS_PATH . 'teacher_docs/' . date('Y_m');
         if (!is_dir($target_dir)) mkdir($target_dir, 0755, true);
         
         $fn = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '', $_FILES['doc_file']['name']);
         
         if (move_uploaded_file($_FILES['doc_file']['tmp_name'], $target_dir . '/' . $fn)) {
-            // Store DB path relative to admin root exactly as admin_teacher_docs expects
-            $db_path = 'uploads/teacher_docs/' . date('Y_m') . '/' . $fn;
+            $db_path = 'teacher_docs/' . date('Y_m') . '/' . $fn;
             
             $stmt = $conn->prepare("INSERT INTO teacher_documents (teacher_id, title, doc_type, file_path, status, uploaded_at) VALUES (?, ?, ?, ?, 'pending', NOW())");
             $stmt->bind_param("isss", $user_id, $title, $type, $db_path);
@@ -80,31 +79,31 @@ $docs = $conn->query("SELECT * FROM teacher_documents WHERE teacher_id = $user_i
                 </thead>
                 <tbody>
                     <?php if($docs && $docs->num_rows > 0): while($d = $docs->fetch_assoc()): ?>
-                        <tr style="font-size:13.5px;">
-                            <td><strong style="color:#0f172a;"><i class="fas fa-file-contract text-secondary me-2"></i> <?= htmlspecialchars($d['title']) ?></strong></td>
-                            <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($d['doc_type']) ?></span></td>
-                            <td>
-                                <a href="../admin/<?= htmlspecialchars($d['file_path']) ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-external-link-alt"></i> View</a>
-                            </td>
-                            <td>
-                                <?php if($d['status'] === 'approved'): ?>
-                                    <span class="badge bg-success"><i class="fas fa-check-circle"></i> Approved</span>
-                                <?php elseif($d['status'] === 'rejected'): ?>
-                                    <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Rejected</span>
-                                <?php else: ?>
-                                    <span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> Pending Audit</span>
-                                <?php endif; ?>
-                            </td>
-                            <td style="color:#dc2626; font-size:12.5px; font-weight:600;"><?= htmlspecialchars($d['admin_notes'] ?? 'None') ?></td>
-                            <td style="color:#64748b; font-size:12.5px;"><?= date('M d, Y', strtotime($d['uploaded_at'])) ?></td>
-                            <td>
-                                <?php if($d['status'] !== 'approved'): ?>
-                                    <a href="teacher_documents.php?del=<?= $d['id'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove document?')" title="Delete"><i class="fas fa-trash"></i></a>
-                                <?php else: ?>
-                                    <i class="fas fa-lock text-muted" title="Locked (Approved)"></i>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
+                         <tr style="font-size:13.5px;">
+                             <td data-label="Document Title"><strong style="color:#0f172a;"><i class="fas fa-file-contract text-secondary me-2"></i> <?= htmlspecialchars($d['title']) ?></strong></td>
+                             <td data-label="Category"><span class="badge bg-light text-dark border"><?= htmlspecialchars($d['doc_type']) ?></span></td>
+                             <td data-label="File Binary">
+                                 <a href="<?= htmlspecialchars(preg_match('/^http/i', $d['file_path']) ? $d['file_path'] : PORTAL_UPLOADS_URL . ltrim($d['file_path'], '/')) ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-external-link-alt"></i> View</a>
+                             </td>
+                             <td data-label="Verification Status">
+                                 <?php if($d['status'] === 'approved'): ?>
+                                     <span class="badge bg-success"><i class="fas fa-check-circle"></i> Approved</span>
+                                 <?php elseif($d['status'] === 'rejected'): ?>
+                                     <span class="badge bg-danger"><i class="fas fa-times-circle"></i> Rejected</span>
+                                 <?php else: ?>
+                                     <span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> Pending Audit</span>
+                                 <?php endif; ?>
+                             </td>
+                             <td data-label="Admin Comments" style="color:#dc2626; font-size:12.5px; font-weight:600;"><?= htmlspecialchars($d['admin_notes'] ?? 'None') ?></td>
+                             <td data-label="Uploaded Date" style="color:#64748b; font-size:12.5px;"><?= date('M d, Y', strtotime($d['uploaded_at'])) ?></td>
+                             <td data-label="Action">
+                                 <?php if($d['status'] !== 'approved'): ?>
+                                     <a href="teacher_documents.php?del=<?= $d['id'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove document?')" title="Delete"><i class="fas fa-trash"></i></a>
+                                 <?php else: ?>
+                                     <i class="fas fa-lock text-muted" title="Locked (Approved)"></i>
+                                 <?php endif; ?>
+                             </td>
+                         </tr>
                     <?php endwhile; else: ?>
                         <tr><td colspan="7" class="text-center py-5 text-muted">No documents uploaded to your vault yet.</td></tr>
                     <?php endif; ?>

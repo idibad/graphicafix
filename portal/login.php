@@ -1,6 +1,9 @@
 <?php
-require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/config.php';
-require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/functions.php';
+require_once __DIR__ . '/config.php';
+// functions.php is included via config.php when loaded from main core
+if (!function_exists('logLogin') && file_exists(__DIR__ . '/../core/functions.php')) {
+    require_once __DIR__ . '/../core/functions.php';
+}
 
 $login_input = '';
 $error_message = '';
@@ -12,39 +15,55 @@ if (isset($_POST['login'])) {
     if (strlen($password) < 4) {
         $error_message = 'Please enter your account password.';
     } else {
-        $stmt = $conn->prepare("SELECT user_id, password, username, role, name FROM users WHERE username = ? OR email = ?");
+        $stmt = $conn->prepare("SELECT user_id, password, username, role, name, status FROM users WHERE username = ? OR email = ?");
         $stmt->bind_param("ss", $login_input, $login_input);
         $stmt->execute();
         $stmt->store_result();
 
-        if ($stmt->num_rows === 1) {
-            $stmt->bind_result($user_id, $hashed_password, $username, $role, $name);
-            $stmt->fetch();
+        if ($stmt->num_rows >= 1) {
+            $stmt->bind_result($user_id, $hashed_password, $username, $role, $name, $status);
+            $found_user = false;
+            $is_deactivated_account = false;
 
-            if (password_verify($password, $hashed_password)) {
-                $role_lower = strtolower(trim($role ?? ''));
-                
-                // Allow students, teachers, admins, and PMs
-                if (in_array($role_lower, ['student', 'teacher', 'admin', 'pm'])) {
-                    if (function_exists('logLogin')) {
-                        logLogin($conn, $user_id, 'success');
+            while ($stmt->fetch()) {
+                if (password_verify($password, $hashed_password)) {
+                    $found_user = true;
+                    $user_status = strtolower(trim($status ?? 'active'));
+                    
+                    if ($user_status !== 'active') {
+                        $is_deactivated_account = true;
+                        break;
                     }
 
-                    $_SESSION['user_id'] = $user_id;
-                    $_SESSION['username'] = $username;
-                    $_SESSION['role'] = $role_lower;
+                    $role_lower = strtolower(trim($role ?? ''));
+                    
+                    // Allow students, teachers, admins, and PMs
+                    if (in_array($role_lower, ['student', 'teacher', 'admin', 'pm'])) {
+                        if (function_exists('logLogin')) {
+                            logLogin($conn, $user_id, 'success');
+                        }
 
-                    $updateStmt = $conn->prepare("UPDATE users SET last_login = NOW() WHERE user_id = ?");
-                    $updateStmt->bind_param("i", $user_id);
-                    $updateStmt->execute();
-                    $updateStmt->close();
+                        $_SESSION['user_id'] = $user_id;
+                        $_SESSION['username'] = $username;
+                        $_SESSION['role'] = $role_lower;
 
-                    header("Location: index.php");
-                    exit();
-                } else {
-                    $error_message = 'This portal is restricted to Students and Teachers.';
+                        $updateStmt = $conn->prepare("UPDATE users SET last_login = NOW() WHERE user_id = ?");
+                        $updateStmt->bind_param("i", $user_id);
+                        $updateStmt->execute();
+                        $updateStmt->close();
+
+                        header("Location: index.php");
+                        exit();
+                    } else {
+                        $error_message = 'This portal is restricted to Students and Teachers.';
+                    }
                 }
-            } else {
+            }
+
+            if ($is_deactivated_account) {
+                if (function_exists('logLogin')) logLogin($conn, NULL, 'failed');
+                $error_message = 'Your account has been deactivated. Please contact support.';
+            } else if (!$found_user && empty($error_message)) {
                 if (function_exists('logLogin')) logLogin($conn, NULL, 'failed');
                 $error_message = 'Incorrect password. Please try again.';
             }
@@ -62,12 +81,13 @@ if (isset($_POST['login'])) {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>LMS Portal Login | Graphicafix</title>
-<link rel="stylesheet" href="<?= BASE_URL ?>assets/css/bootstrap.css">
+<title>Education Portal Login | Graphicafix</title>
+<link rel="stylesheet" href="<?= MAIN_SITE_URL ?>assets/css/bootstrap.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" referrerpolicy="no-referrer">
-<link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
+<link rel="stylesheet" href="<?= MAIN_SITE_URL ?>assets/css/style.css">
+<link rel="stylesheet" href="<?= MAIN_SITE_URL ?>assets/css/dashboard.css">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" type="image/png" href="<?= BASE_URL ?>assets/images/icon.png">
+<link rel="icon" type="image/png" href="<?= MAIN_SITE_URL ?>assets/images/icon.png">
 <style>
     /* Custom Alert Styles matching Graphicafix theme */
     .custom-alert {
@@ -199,55 +219,71 @@ if (isset($_POST['login'])) {
 </style>
 </head>
 <body>
-<div class="container-fluid login-wrapper">
-    <div class="row min-vh-100">
-        <!-- LEFT IMAGE (Matches admin gfix_bg.png exactly) -->
-        <div class="col-lg-6 d-none d-lg-block login-left"></div>
+<div class="container-fluid login-wrapper p-0">
+    <div class="row g-0 min-vh-100">
+        <!-- LEFT SIDE WITH BACKGROUND VIDEO -->
+        <div class="col-lg-6 d-none d-lg-block login-left">
+            <video autoplay loop muted playsinline class="login-video">
+                <source src="<?= MAIN_SITE_URL ?>assets/images/bg-vid.mp4" type="video/mp4">
+            </video>
+            <div class="login-left-overlay"></div>
+            <div class="login-left-content">
+                <h2>Welcome to Graphicafix Education Portal</h2>
+                <p>Access your student portal, recorded lectures, quizzes, and course resources easily.</p>
+            </div>
+        </div>
         <!-- RIGHT SIDE -->
         <div class="col-lg-6 col-12 login-right">
             <div class="login-overlay"></div>
-            <div class="form-cont">
-                <img src="<?= BASE_URL ?>assets/images/logo.png" alt="Graphicafix">
+            <div class="form-cont d-card border shadow-lg">
+                <div class="text-center mb-3">
+                    <img src="<?= MAIN_SITE_URL ?>assets/images/logo.png" alt="Graphicafix" style="max-height: 60px;">
+                </div>
                 
                 <div class="text-center">
-                    <span class="portal-badge"><i class="fas fa-graduation-cap me-1"></i> Classroom Portal</span>
+                    <span class="portal-badge"><i class="fas fa-graduation-cap me-1"></i> Education Portal</span>
                 </div>
 
-                <h3>Sign In</h3>
+                <h3 class="text-center fw-bold mb-4">Sign In</h3>
 
                 <?php if (!empty($error_message)): ?>
-                <div class="custom-alert custom-alert-danger">
-                    <div class="custom-alert-icon">!</div>
-                    <div class="custom-alert-message">
-                        <?= htmlspecialchars($error_message) ?>
-                    </div>
+                <div class="alert alert-danger mb-4">
+                    <?= htmlspecialchars($error_message) ?>
                 </div>
                 <?php endif; ?>
 
-                <form method="POST">
-                    <label class="label">Username or Email</label>
-                    <input type="text" 
-                           name="login_input" 
-                           placeholder="Enter username or registered email" 
-                           value="<?= htmlspecialchars($login_input) ?>" 
-                           class="<?= !empty($error_message) ? 'error' : '' ?>"
-                           required>
-                
-                    <label class="label">Password</label>
-                    <div class="password-wrapper">
-                        <input type="password" 
-                               id="passwordInput"
-                               name="password" 
-                               placeholder="Enter password" 
-                               class="<?= !empty($error_message) ? 'error' : '' ?>"
+                <form method="POST" class="d-flex flex-column gap-3">
+                    <div class="form-group">
+                        <label class="form-label">Username or Email</label>
+                        <input type="text" 
+                               name="login_input" 
+                               placeholder="Enter username or registered email" 
+                               value="<?= htmlspecialchars($login_input) ?>" 
+                               class="form-control <?= !empty($error_message) ? 'is-invalid' : '' ?>"
                                required>
-                        <button type="button" id="togglePassword" class="toggle-password-btn" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
                     </div>
                 
-                    <input type="submit" name="login" value="Sign In to Classroom" class="main-btn" style="margin-top: 15px; width: 100%;">
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <div class="password-wrapper">
+                            <input type="password" 
+                                   id="passwordInput"
+                                   name="password" 
+                                   placeholder="Enter password" 
+                                   class="form-control <?= !empty($error_message) ? 'is-invalid' : '' ?>"
+                                   required>
+                            <button type="button" id="togglePassword" class="toggle-password-btn" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
+                        </div>
+                    </div>
+                
+                    <div class="text-end">
+                        <a href="<?= MAIN_SITE_URL ?>forgot_password.php" style="font-size: 13.5px; color: var(--primary-color); text-decoration: none; font-weight: 600;">Forgot Password?</a>
+                    </div>
+                
+                    <button type="submit" name="login" class="btn btn-primary-custom w-100 py-3 mt-2 justify-content-center"><i class="fas fa-sign-in-alt"></i> Sign In to Classroom</button>
                 </form>
 
-                <div class="text-center mt-4 pt-3 border-top" style="font-size: 12.5px; color: #64748b;">
+                <div class="text-center mt-4 pt-3 border-top" style="font-size: 12.5px; color: var(--text-muted);">
                     <i class="fas fa-shield-alt text-success me-1"></i> Secure Graphicafix Academic Gateway
                 </div>
             </div>

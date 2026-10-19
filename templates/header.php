@@ -1,10 +1,10 @@
 <?php
-    require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/config.php';
+    require_once __DIR__ . '/../core/config.php';
 
 // Check if user is logged in
 $isLoggedIn = isset($_SESSION['user_id']); 
 
-include('visitor_counter.php');
+include(__DIR__ . '/../visitor_counter.php');
 
 ?>
 <!DOCTYPE html>
@@ -45,9 +45,10 @@ include('visitor_counter.php');
     <meta property="og:image" content="<?= BASE_URL ?>assets/images/preview.jpg">
     <meta property="og:url" content="https://graphicafix.com">
     <meta property="og:type" content="website">
-    <meta name="theme-color" content="#024442">
+    <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link rel="canonical" href="https://graphicafix.com">
 
 
@@ -59,12 +60,9 @@ include('visitor_counter.php');
     <!-- iPhone / iPad home screen icon -->
     <link rel="apple-touch-icon" href="<?= BASE_URL ?>assets/images/icon2.png">
 
-    <!-- Optional: make status bar match theme -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <!-- Swiper CSS -->
+    <!-- Swiper CSS & JS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
-    
-    
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script>
       document.addEventListener("DOMContentLoaded", function () {
     const links = document.querySelectorAll(".navbar-menu .nav-link");
@@ -111,6 +109,94 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
     text-rendering: auto;
     -webkit-font-smoothing: antialiased;
 }
+
+/* Translucent Navbar with Primary Color Bottom Border */
+.modern-navbar {
+    background: rgba(255, 255, 255, 0.75) !important;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 2px solid #024442 !important;
+    transition: all 0.3s ease;
+}
+.modern-navbar.scrolled {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border-bottom: 2px solid #024442 !important;
+    box-shadow: 0 4px 25px rgba(2, 68, 66, 0.08) !important;
+}
+.navbar-menu .nav-link {
+    color: #111111 !important;
+    font-weight: 500;
+}
+.navbar-menu .nav-link:hover,
+.navbar-menu .nav-link.active {
+    color: #024442 !important;
+}
+.navbar-menu .nav-link::after {
+    background: #024442 !important;
+}
+.navbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.navbar-actions .btn-primary {
+    background: #024442 !important;
+    color: #ffffff !important;
+    padding: 10px 22px !important;
+    border-radius: 50px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    text-decoration: none !important;
+    border: 1px solid #024442 !important;
+    transition: all 0.25s ease !important;
+    box-shadow: 0 4px 14px rgba(2, 68, 66, 0.16) !important;
+}
+.navbar-actions .btn-primary:hover {
+    background: #035a57 !important;
+    color: #ffffff !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 22px rgba(2, 68, 66, 0.24) !important;
+}
+.navbar-actions .btn-primary i {
+    color: #B6F763 !important;
+}
+.navbar-actions .btn-secondary {
+    background: transparent !important;
+    color: #024442 !important;
+    padding: 9px 20px !important;
+    border-radius: 50px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    text-decoration: none !important;
+    border: 1.5px solid rgba(2, 68, 66, 0.3) !important;
+    transition: all 0.25s ease !important;
+}
+.navbar-actions .btn-secondary:hover {
+    background: rgba(2, 68, 66, 0.05) !important;
+    border-color: #024442 !important;
+    color: #024442 !important;
+    transform: translateY(-2px) !important;
+}
+.mobile-toggle span {
+    background: #111111 !important;
+}
+.mobile-menu {
+    background: #ffffff !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.07) !important;
+    box-shadow: 0 16px 30px rgba(0, 0, 0, 0.08) !important;
+}
+.mobile-menu ul li a {
+    color: #111111 !important;
+}
+.mobile-menu ul li a:hover {
+    color: #024442 !important;
+    background: rgba(2, 68, 66, 0.04) !important;
+}
     </style>
 
 
@@ -121,19 +207,19 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
     <div class="container">
         <div class="navbar-content">
             <!-- Logo -->
-            <a class="navbar-logo" href="index.php">
+            <a class="navbar-logo" href="<?= BASE_URL ?>">
                 <img src="<?= BASE_URL ?>assets/images/logo.png" alt="Graphicafix">
             </a>
 
             <!-- Desktop Menu -->
             <ul class="navbar-menu">
-                <li><a href="index.php" class="nav-link active">Home</a></li>
-                <li><a href="services.php" class="nav-link">Services</a></li>
-                <li><a href="portfolio.php" class="nav-link">Portfolio</a></li>
-                <li><a href="career.php" class="nav-link">Career</a></li>
-                <li class="animated-beat"><a href="courses.php" class="nav-link">Courses</a></li>
-                <li><a href="about.php" class="nav-link">About</a></li>
-                <li><a href="contact.php" class="nav-link">Contact</a></li>
+                <li><a href="<?= BASE_URL ?>" class="nav-link active">Home</a></li>
+                <li><a href="<?= BASE_URL ?>services" class="nav-link">Services</a></li>
+                <li><a href="<?= BASE_URL ?>portfolio" class="nav-link">Portfolio</a></li>
+                <li><a href="<?= BASE_URL ?>career" class="nav-link">Career</a></li>
+                <li class="animated-beat"><a href="<?= BASE_URL ?>courses" class="nav-link">Courses</a></li>
+                <li><a href="<?= BASE_URL ?>about" class="nav-link">About</a></li>
+                <li><a href="<?= BASE_URL ?>contact" class="nav-link">Contact</a></li>
             </ul>
 
             <!-- Action Buttons -->
@@ -141,14 +227,14 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
                 <a href="#" data-bs-toggle="modal" data-bs-target="#projectRequestModal" class="btn-primary">
                     <span><i class="fas fa-star" style="color: var(--accent);"></i></span> Request Project
                 </a>
-                <a href="<?= $isLoggedIn ? 'admin/' : 'admin/login.php'; ?>" 
+                <a href="<?= BASE_URL ?><?= $isLoggedIn ? 'admin/' : 'admin/login.php'; ?>" 
                    class="<?= $isLoggedIn ? 'btn-primary' : 'btn-secondary'; ?>">
                     <?= $isLoggedIn ? 'Dashboard' : 'Login'; ?>
                 </a>                                                            
             </div>
 
             <!-- Mobile Toggle -->
-            <button class="mobile-toggle" id="mobileToggle">
+            <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation">
                 <span></span>
                 <span></span>
                 <span></span>
@@ -158,22 +244,22 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
         <!-- Mobile Menu -->
         <div class="mobile-menu" id="mobileMenu">
             <ul>
-                <li><a href="index.php">Home</a></li>
-                <li><a href="services.php">Services</a></li>
-                <li><a href="portfolio.php">Portfolio</a></li>
-                <li><a href="career.php">Career</a></li>
-                <li><a href="courses.php" class="nav-link">Courses</a></li>
-                <li><a href="about.php">About</a></li>
-                <li><a href="contact.php">Contact</a></li>
+                <li><a href="<?= BASE_URL ?>">Home</a></li>
+                <li><a href="<?= BASE_URL ?>services">Services</a></li>
+                <li><a href="<?= BASE_URL ?>portfolio">Portfolio</a></li>
+                <li><a href="<?= BASE_URL ?>career">Career</a></li>
+                <li><a href="<?= BASE_URL ?>courses">Courses</a></li>
+                <li><a href="<?= BASE_URL ?>about">About</a></li>
+                <li><a href="<?= BASE_URL ?>contact">Contact</a></li>
                 <li class="mobile-divider"></li>
                 <li>
-                <a href="<?= $isLoggedIn ? 'admin/' : 'admin/login.php'; ?>" 
-                   class="main-btn color-dark" style="color: var(--primary);">
-                    <?= $isLoggedIn ? 'Dashboard' : 'Login'; ?>
-                </a>
-                <a href="courses.php" class="main-btn mt-2 color-dark" style="color: var(--primary);">
-                    Student Portal
-                </a>
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#projectRequestModal" class="main-btn w-100 text-center justify-content-center d-flex mb-2" style="background:#024442; color:#ffffff; font-weight:600; border-radius: 50px;">
+                        <i class="fas fa-star me-2" style="color:#B6F763;"></i> Request Project
+                    </a>
+                    <a href="<?= BASE_URL ?><?= $isLoggedIn ? 'admin/' : 'admin/login.php'; ?>" 
+                       class="main-btn w-100 text-center justify-content-center d-flex" style="color: #024442; background: rgba(2, 68, 66, 0.05); border: 1.5px solid rgba(2, 68, 66, 0.2); font-weight: 600; border-radius: 50px;">
+                        <?= $isLoggedIn ? 'Dashboard' : 'Login'; ?>
+                    </a>
                 </li>
             </ul>
         </div>
@@ -187,7 +273,7 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
         </a>
     </div>
 
-    <a href="courses.php" class="enroll-float-btn">
+    <a href="<?= BASE_URL ?>courses" class="enroll-float-btn">
         <i class="fas fa-user-graduate"></i> Enroll to Courses
     </a>
 
@@ -337,7 +423,7 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
     }
 </style>
 <?php
-    include('project_request_popup.php');
+    include(__DIR__ . '/../projects/project_request_popup.php');
 ?>
 
 <!-- Navbar End -->

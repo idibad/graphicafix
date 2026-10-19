@@ -3,14 +3,14 @@
 error_reporting(0);
 ini_set('display_errors', '0');
 
-include 'dashboard_header.php';
+include('dashboard_header.php');
 
 $task_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $user_id = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
-$is_admin = (isset($role) && $role === 'admin');
+$is_admin = (isset($role) && in_array($role, ['super_admin', 'superadmin', 'admin']));
 
 if (!$task_id || !$user_id) {
-    echo "<script>window.location='manage_tasks.php';</script>";
+    echo "<script>window.location='tasks.php';</script>";
     exit;
 }
 
@@ -48,13 +48,13 @@ if ($stmt) {
 
 // ── Security Check ────────────────────────────────────────────────────────────
 if (!$task) {
-    echo "<div class='height-100'><div class='main-card' style='text-align:center; padding: 50px;'><h2 style='color:#ef4444;'>Task Not Found</h2><p>This task does not exist or has been deleted.</p><a href='manage_tasks.php' class='btn-primary-custom'>Go Back</a></div></div>";
+    echo "<div class='height-100'><div class='main-card' style='text-align:center; padding: 50px;'><h2 style='color:#ef4444;'>Task Not Found</h2><p>This task does not exist or has been deleted.</p><a href='tasks.php' class='btn-primary-custom'>Go Back</a></div></div>";
     include('dashboard_footer.php');
     exit;
 }
 
 if (!$is_admin && $task['assigned_to'] != $user_id && $task['created_by'] != $user_id) {
-    echo "<div class='height-100'><div class='main-card' style='text-align:center; padding: 50px;'><h2 style='color:#ef4444;'>Unauthorized Access</h2><p>You do not have permission to view this task.</p><a href='manage_tasks.php' class='btn-primary-custom'>Go Back</a></div></div>";
+    echo "<div class='height-100'><div class='main-card' style='text-align:center; padding: 50px;'><h2 style='color:#ef4444;'>Unauthorized Access</h2><p>You do not have permission to view this task.</p><a href='tasks.php' class='btn-primary-custom'>Go Back</a></div></div>";
     include('dashboard_footer.php');
     exit;
 }
@@ -63,22 +63,22 @@ if (!$is_admin && $task['assigned_to'] != $user_id && $task['created_by'] != $us
 function getStatusBadge($s) {
     $status = $s ? $s : 'Pending';
     switch($status) {
-        case 'Pending':        return array('label'=>'Pending',        'bg'=>'#f3f4f6','color'=>'#4b5563', 'icon'=>'<i class="fas fa-clipboard"></i>');
-        case 'In Progress':    return array('label'=>'In Progress',    'bg'=>'#fffbeb','color'=>'#d97706', 'icon'=>'<i class="fas fa-bolt"></i>');
-        case 'In Review':      return array('label'=>'In Review',      'bg'=>'#f3e8ff','color'=>'#7e22ce', 'icon'=>'<i class="fas fa-search"></i>');
-        case 'Completed':      return array('label'=>'Completed',      'bg'=>'#dcfce7','color'=>'#16a34a', 'icon'=>'<i class="fas fa-check-circle"></i>');
-        case 'Cancelled':      return array('label'=>'Cancelled',      'bg'=>'#fee2e2','color'=>'#dc2626', 'icon'=>'<i class="fas fa-ban"></i>');
-        default:               return array('label'=>$status,          'bg'=>'#f0f0f0','color'=>'#555',    'icon'=>'<i class="fas fa-thumbtack"></i>');
+        case 'Pending':        return array('label'=>'Pending',        'bg'=>'#f3f4f6','color'=>'#4b5563', 'icon'=>'📋');
+        case 'In Progress':    return array('label'=>'In Progress',    'bg'=>'#fffbeb','color'=>'#d97706', 'icon'=>'⚡');
+        case 'In Review':      return array('label'=>'In Review',      'bg'=>'#f3e8ff','color'=>'#7e22ce', 'icon'=>'🔍');
+        case 'Completed':      return array('label'=>'Completed',      'bg'=>'#dcfce7','color'=>'#16a34a', 'icon'=>'✅');
+        case 'Cancelled':      return array('label'=>'Cancelled',      'bg'=>'#fee2e2','color'=>'#dc2626', 'icon'=>'🚫');
+        default:               return array('label'=>$status,          'bg'=>'#f0f0f0','color'=>'#555',    'icon'=>'📌');
     }
 }
 
 function getPriorityBadge($p) {
     $priority = $p ? strtolower($p) : 'low';
     switch($priority) {
-        case 'high':   return array('label'=>'High Priority',   'bg'=>'#fef2f2','color'=>'#ef4444', 'icon'=>'<i class="fas fa-fire"></i>');
-        case 'medium': return array('label'=>'Medium Priority', 'bg'=>'#fffbeb','color'=>'#f59e0b', 'icon'=>'<i class="fas fa-star"></i>');
-        case 'low':    return array('label'=>'Low Priority',    'bg'=>'#f0fdf4','color'=>'#10b981', 'icon'=>'<i class="fas fa-chevron-down"></i>');
-        default:       return array('label'=>'Normal',          'bg'=>'#f3f4f6','color'=>'#6b7280', 'icon'=>'<i class="fas fa-thumbtack"></i>');
+        case 'high':   return array('label'=>'High Priority',   'bg'=>'#fef2f2','color'=>'#ef4444', 'icon'=>'🔥');
+        case 'medium': return array('label'=>'Medium Priority', 'bg'=>'#fffbeb','color'=>'#f59e0b', 'icon'=>'⭐');
+        case 'low':    return array('label'=>'Low Priority',    'bg'=>'#f0fdf4','color'=>'#10b981', 'icon'=>'🔽');
+        default:       return array('label'=>'Normal',          'bg'=>'#f3f4f6','color'=>'#6b7280', 'icon'=>'📌');
     }
 }
 
@@ -184,7 +184,7 @@ $priorityBadge = getPriorityBadge($task['priority']);
             <div>
                 <a href="javascript:history.back()" class="btn-outline-custom" style="display:inline-block; width:auto;">← Back to Board</a>
                 <?php if ($is_admin): ?>
-                <a href="create_task.php?edit=<?php echo $task['id']; ?>" class="btn-primary-custom" style="display:inline-block; margin-left:10px;"><i class="fas fa-pencil-alt"></i>️ Edit Task</a>
+                <a href="create_task.php?edit=<?php echo $task['id']; ?>" class="btn-primary-custom" style="display:inline-block; margin-left:10px;">✏️ Edit Task</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -260,11 +260,11 @@ $priorityBadge = getPriorityBadge($task['priority']);
                         <form method="POST" class="status-form">
                             <input type="hidden" name="update_status" value="1">
                             <select name="new_status" class="status-select">
-                                <option value="Pending" <?php echo $task['status'] == 'Pending' ? 'selected' : ''; ?>> Pending</option>
-                                <option value="In Progress" <?php echo $task['status'] == 'In Progress' ? 'selected' : ''; ?>> In Progress</option>
-                                <option value="In Review" <?php echo $task['status'] == 'In Review' ? 'selected' : ''; ?>> In Review</option>
-                                <option value="Completed" <?php echo $task['status'] == 'Completed' ? 'selected' : ''; ?>> Completed</option>
-                                <option value="Cancelled" <?php echo $task['status'] == 'Cancelled' ? 'selected' : ''; ?>> Cancelled</option>
+                                <option value="Pending" <?php echo $task['status'] == 'Pending' ? 'selected' : ''; ?>>📋 Pending</option>
+                                <option value="In Progress" <?php echo $task['status'] == 'In Progress' ? 'selected' : ''; ?>>⚡ In Progress</option>
+                                <option value="In Review" <?php echo $task['status'] == 'In Review' ? 'selected' : ''; ?>>🔍 In Review</option>
+                                <option value="Completed" <?php echo $task['status'] == 'Completed' ? 'selected' : ''; ?>>✅ Completed</option>
+                                <option value="Cancelled" <?php echo $task['status'] == 'Cancelled' ? 'selected' : ''; ?>>🚫 Cancelled</option>
                             </select>
                             <button type="submit" class="btn-primary-custom" style="width:100%; text-align:center;">Update</button>
                         </form>
@@ -283,7 +283,7 @@ $priorityBadge = getPriorityBadge($task['priority']);
 function showToast(msg, type='success') {
     const t = document.createElement('div');
     t.style.cssText = `background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 12px rgba(0,0,0,.1);font-size:13.5px;min-width:200px;border-left:4px solid ${type==='success'?'#10b981':'#ef4444'};`;
-    t.innerHTML = `<span style="font-weight:700;color:${type==='success'?'#10b981':'#ef4444'}">${type==='success'?'<i class="fas fa-check"></i>':'<i class="fas fa-times"></i>'}</span><span>${msg}</span>`;
+    t.innerHTML = `<span style="font-weight:700;color:${type==='success'?'#10b981':'#ef4444'}">${type==='success'?'✓':'✕'}</span><span>${msg}</span>`;
     document.getElementById('toastContainer').appendChild(t);
     setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 3000);
 }

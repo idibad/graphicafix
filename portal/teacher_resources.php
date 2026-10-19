@@ -9,11 +9,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_resource'])) {
     $fpath = trim($_POST['file_url'] ?? '');
     
     if (!empty($_FILES['res_file']['name'])) {
-        $dir = '../admin/uploads/resources/' . date('Y_m');
+        $dir = PORTAL_UPLOADS_PATH . 'resources/' . date('Y_m');
         if (!is_dir($dir)) mkdir($dir, 0755, true);
         $fn = time() . '_' . basename($_FILES['res_file']['name']);
         if (move_uploaded_file($_FILES['res_file']['tmp_name'], $dir . '/' . $fn)) {
-            $fpath = 'uploads/resources/' . date('Y_m') . '/' . $fn;
+            $fpath = 'resources/' . date('Y_m') . '/' . $fn;
         }
     }
     
@@ -71,11 +71,11 @@ $resources = $conn->query("
                 <tbody>
                     <?php if($resources && $resources->num_rows > 0): while($r = $resources->fetch_assoc()): ?>
                         <tr style="font-size:13.5px;">
-                            <td><strong style="color:#0f172a;"><i class="fas fa-file-download text-primary me-2"></i> <?= htmlspecialchars($r['title']) ?></strong></td>
-                            <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($r['course_title']) ?></span></td>
-                            <td><a href="<?= htmlspecialchars(preg_match('/^http/i',$r['file_path'])?$r['file_path']:'../admin/'.$r['file_path']) ?>" target="_blank" class="text-primary text-decoration-none"><i class="fas fa-external-link-alt"></i> Open File</a></td>
-                            <td style="color:#64748b; font-size:12.5px;"><?= date('M d, Y', strtotime($r['created_at'])) ?></td>
-                            <td>
+                            <td data-label="Asset Title"><strong style="color:#0f172a;"><i class="fas fa-file-download text-primary me-2"></i> <?= htmlspecialchars($r['title']) ?></strong></td>
+                            <td data-label="Course"><span class="badge bg-light text-dark border"><?= htmlspecialchars($r['course_title']) ?></span></td>
+                            <td data-label="File / Link"><a href="<?= htmlspecialchars(preg_match('/^http/i',$r['file_path'])?$r['file_path']:PORTAL_UPLOADS_URL.ltrim($r['file_path'],'/')) ?>" target="_blank" class="text-primary text-decoration-none"><i class="fas fa-external-link-alt"></i> Open File</a></td>
+                            <td data-label="Date" style="color:#64748b; font-size:12.5px;"><?= date('M d, Y', strtotime($r['created_at'])) ?></td>
+                            <td data-label="Action">
                                 <a href="teacher_resources.php?del=<?= $r['id'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this resource?')"><i class="fas fa-trash"></i></a>
                             </td>
                         </tr>

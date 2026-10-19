@@ -16,8 +16,8 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = intval($_SESSION['user_id']);
 $user_res = $conn->query("SELECT role FROM users WHERE user_id = $user_id");
 $user_data = $user_res->fetch_assoc();
-if (!$user_data || strtolower($user_data['role']) !== 'admin') {
-    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+if (!$user_data || !in_array(strtolower($user_data['role']), ['super_admin', 'superadmin'])) {
+    echo json_encode(['success' => false, 'message' => 'Unauthorized: Super Admin access required']);
     exit();
 }
 
@@ -338,7 +338,18 @@ function deleteUser($conn) {
         echo json_encode(['success' => false, 'message' => 'You cannot delete your own account']);
         return;
     }
-    
+
+    // Protect primary super admins
+    $checkStmt = $conn->prepare("SELECT username FROM users WHERE user_id = ?");
+    $checkStmt->bind_param("i", $user_id);
+    $checkStmt->execute();
+    $targetUser = $checkStmt->get_result()->fetch_assoc();
+    $checkStmt->close();
+    if ($targetUser && in_array(strtolower($targetUser['username']), ['sbano', 'ibad', 'ibadshalmany'])) {
+        echo json_encode(['success' => false, 'message' => 'Primary Super Admin accounts cannot be deleted']);
+        return;
+    }
+
     $stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
     $stmt->bind_param("i", $user_id);
     

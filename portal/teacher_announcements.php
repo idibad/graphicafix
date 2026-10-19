@@ -37,14 +37,14 @@ $notices = $conn->query("SELECT *, notice_id as id, notice_title as title, conte
     <div class="row g-4">
         <?php if($notices && $notices->num_rows > 0): while($n = $notices->fetch_assoc()): ?>
             <div class="col-md-6">
-                <div class="d-card p-4 h-100 d-flex flex-column border">
+                <div class="d-card p-4 h-100 d-flex flex-column" style="border: 1px solid var(--border-color);">
                     <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
                         <span class="badge bg-success text-white"><i class="fas fa-satellite-dish"></i> Active Broadcast</span>
                         <a href="teacher_announcements.php?del=<?= $n['id'] ?>" class="text-danger" onclick="return confirm('Delete broadcast?')"><i class="fas fa-trash"></i></a>
                     </div>
-                    <h4 style="font-weight:800; color:#0f172a; margin:4px 0 12px;"><?= htmlspecialchars($n['title']) ?></h4>
-                    <div style="color:#334155; font-size:14px; line-height:1.6; flex:1;"><?= nl2br(htmlspecialchars($n['message'])) ?></div>
-                    <div style="font-size:11.5px; color:#94a3b8; margin-top:16px; border-top:1px solid #f1f5f9; padding-top:10px;">Posted on <?= date('M d, Y @ H:i', strtotime($n['created_at'])) ?></div>
+                    <a href="../admin/notice_details.php?id=<?= $n['id'] ?>" style="text-decoration:none;"><h4 style="font-weight:800; color:var(--text-dark); margin:4px 0 12px;"><?= htmlspecialchars($n['title']) ?></h4></a>
+                    <div style="color:var(--text-muted); font-size:14px; line-height:1.6; flex:1;"><?= nl2br(htmlspecialchars($n['message'])) ?></div>
+                    <div style="font-size:11.5px; color:var(--text-muted); margin-top:16px; border-top:1px solid var(--border-color); padding-top:10px;">Posted on <?= date('M d, Y @ H:i', strtotime($n['created_at'])) ?></div>
                 </div>
             </div>
         <?php endwhile; else: ?>

@@ -2,11 +2,11 @@
 // ── AJAX handler — must be BEFORE any HTML output ─────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
     ob_start(); // buffer anything that leaks (e.g. from includes)
-    include 'dashboard_header.php'; // needed for $conn and session
+    include('dashboard_header.php'); // needed for $conn and session
     while (ob_get_level() > 0) ob_end_clean(); // discard ALL nested buffers
 
     $user_id  = intval($_SESSION['user_id'] ?? 0);
-    $is_admin = ($role === 'admin' || $role === 'pm');
+    $is_admin = ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin');
     $action   = $_POST['ajax_action'];
     $task_id  = intval($_POST['task_id'] ?? 0);
 
@@ -32,10 +32,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
         if (!in_array($new_status, $allowed)) {
             echo json_encode(['success' => false, 'message' => 'Invalid status']); exit;
         }
-        
-        if ($new_status === 'Completed' && !$is_admin) {
-            echo json_encode(['success' => false, 'message' => 'Only admins can mark a task as completed. Please mark it "In Review" instead.']); exit;
-        }
         $stmt = $conn->prepare("UPDATE tasks SET status=?, updated_at=NOW() WHERE id=?");
         $stmt->bind_param("si", $new_status, $task_id);
         $stmt->execute();
@@ -53,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
     exit;
 }
 
-include 'dashboard_header.php';
+include('dashboard_header.php');
 
 // Auth check
 if (!isset($_SESSION['user_id'])) {
@@ -61,7 +57,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id   = intval($_SESSION['user_id']);
-$is_admin  = ($role === 'admin' || $role === 'pm');
+$is_admin  = ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin');
 
 
 // ── Build WHERE clause ────────────────────────────────────────────────────────
@@ -129,11 +125,11 @@ function timeAgo($datetime) {
 }
 
 $column_config = [
-    'Pending'     => ['icon' => '<i class="fas fa-clipboard"></i>', 'color' => '#6b7280'],
-    'In Progress' => ['icon' => '<i class="fas fa-bolt"></i>', 'color' => '#f59e0b'],
-    'In Review'   => ['icon' => '<i class="fas fa-search"></i>', 'color' => '#8b5cf6'],
-    'Completed'   => ['icon' => '<i class="fas fa-check-circle"></i>', 'color' => '#10b981'],
-    'Cancelled'   => ['icon' => '<i class="fas fa-ban"></i>', 'color' => '#ef4444'],
+    'Pending'     => ['icon' => '📋', 'color' => '#6b7280'],
+    'In Progress' => ['icon' => '⚡', 'color' => '#f59e0b'],
+    'In Review'   => ['icon' => '🔍', 'color' => '#8b5cf6'],
+    'Completed'   => ['icon' => '✅', 'color' => '#10b981'],
+    'Cancelled'   => ['icon' => '🚫', 'color' => '#ef4444'],
 ];
 ?>
 
@@ -148,7 +144,7 @@ $column_config = [
         </div>
         <div class="header-actions">
             <?php if ($is_admin): ?>
-            <a href="manage_users.php" class="btn-secondary-custom"><i class="fas fa-users"></i> Team</a>
+            <a href="manage_users.php" class="btn-secondary-custom">👥 Team</a>
              <?php endif; ?>
             <a href="create_task.php" class="btn-primary-custom">+ New Task</a>
         </div>
@@ -184,18 +180,14 @@ $column_config = [
                                 <button class="task-menu-btn" onclick="toggleMenu(<?= $task['id'] ?>)">⋮</button>
                                 <div class="task-dropdown" id="menu-<?= $task['id'] ?>">
                                     <?php if($is_admin): ?>
-                                    <a href="create_task.php?edit=<?= $task['id'] ?>"><i class="fas fa-pencil-alt"></i>️ Edit</a>
+                                    <a href="create_task.php?edit=<?= $task['id'] ?>">✏️ Edit</a>
                                     <?php endif; ?>
-                                    <a href="#" onclick="updateStatus(<?= $task['id'] ?>, 'In Progress'); return false;"><i class="fas fa-bolt"></i> Mark In Progress</a>
-                                    <a href="#" onclick="updateStatus(<?= $task['id'] ?>, 'In Review'); return false;"><i class="fas fa-search"></i> Mark In Review</a>
-                                    
+                                    <a href="#" onclick="updateStatus(<?= $task['id'] ?>, 'In Progress'); return false;">⚡ Mark In Progress</a>
+                                    <a href="#" onclick="updateStatus(<?= $task['id'] ?>, 'In Review'); return false;">🔍 Mark In Review</a>
+                                    <a href="#" onclick="updateStatus(<?= $task['id'] ?>, 'Completed'); return false;">✅ Mark Completed</a>
+                                    <a href="#" onclick="updateStatus(<?= $task['id'] ?>, 'Cancelled'); return false;" style="color:#f59e0b;">🚫 Cancel Task</a>
                                     <?php if($is_admin): ?>
-                                    <a href="#" onclick="updateStatus(<?= $task['id'] ?>, 'Completed'); return false;"><i class="fas fa-check-circle"></i> Mark Completed</a>
-                                    <?php endif; ?>
-                                    
-                                    <a href="#" onclick="updateStatus(<?= $task['id'] ?>, 'Cancelled'); return false;" style="color:#f59e0b;"><i class="fas fa-ban"></i> Cancel Task</a>
-                                    <?php if($is_admin): ?>
-                                    <a href="#" onclick="deleteTask(<?= $task['id'] ?>); return false;" style="color:#ef4444;"><i class="fas fa-trash"></i>️ Delete</a>
+                                    <a href="#" onclick="deleteTask(<?= $task['id'] ?>); return false;" style="color:#ef4444;">🗑️ Delete</a>
                                     <?php endif; ?>
 
                                 </div>
@@ -206,7 +198,7 @@ $column_config = [
                         <div class="task-description"><?= htmlspecialchars(substr($task['description'], 0, 80)) . (strlen($task['description']) > 80 ? '…' : '') ?></div>
                         <?php endif; ?>
                         <div class="task-meta">
-                            <span><i class="fas fa-calendar-alt"></i> <?= date('M d', strtotime($task['due_date'])) ?></span>
+                            <span>📅 <?= date('M d', strtotime($task['due_date'])) ?></span>
                             <?php if ($task['assignee_name']): ?>
                             <div class="assignee-avatar" title="<?= htmlspecialchars($task['assignee_name']) ?>">
                                 <?= strtoupper(substr($task['assignee_name'], 0, 1)) ?>
@@ -228,7 +220,7 @@ $column_config = [
 
             <!-- Calendar -->
             <div class="sidebar-card">
-                <div class="sidebar-header"><i class="fas fa-calendar-alt"></i> Calendar</div>
+                <div class="sidebar-header">📅 Calendar</div>
                 <div class="mini-calendar">
                     <div class="calendar-month"><?= date('F', mktime(0,0,0,$month,1)) ?> <?= $year ?></div>
                     <div class="calendar-grid">
@@ -253,10 +245,10 @@ $column_config = [
 
             <!-- Recent Activity -->
             <div class="sidebar-card">
-                <div class="sidebar-header"><i class="fas fa-chart-bar"></i> Recent Activity</div>
+                <div class="sidebar-header">📊 Recent Activity</div>
                 <?php while($activity = $activity_result->fetch_assoc()): ?>
                 <?php
-                    $icon  = $activity['status'] === 'Completed' ? '<i class="fas fa-check-circle"></i>' : ($activity['status'] === 'Cancelled' ? '<i class="fas fa-ban"></i>' : '<i class="fas fa-edit"></i>');
+                    $icon  = $activity['status'] === 'Completed' ? '✅' : ($activity['status'] === 'Cancelled' ? '🚫' : '📝');
                     $label = $activity['status'] === 'Completed' ? 'Completed' : ($activity['status'] === 'Cancelled' ? 'Cancelled' : 'Updated');
                     $time  = timeAgo($activity['updated_at'] > $activity['created_at'] ? $activity['updated_at'] : $activity['created_at']);
                 ?>
@@ -349,7 +341,7 @@ function postAction(data) {
 function showToast(msg, type='success') {
     const t = document.createElement('div');
     t.className = `toast ${type}`;
-    t.innerHTML = `<span>${type==='success'?'<i class="fas fa-check"></i>':'<i class="fas fa-times"></i>'}</span><span>${msg}</span>`;
+    t.innerHTML = `<span>${type==='success'?'✓':'✕'}</span><span>${msg}</span>`;
     document.getElementById('toastContainer').appendChild(t);
     setTimeout(() => t.remove(), 3000);
 }
@@ -406,22 +398,10 @@ document.querySelectorAll('.task-list').forEach(list => {
         const taskId    = draggedCard?.dataset.id;
         if (!taskId || !newStatus) return;
 
-        <?php if(!$is_admin): ?>
-        if (newStatus === 'Completed') {
-            showToast('Only admins can mark a task as completed. Please mark it "In Review" instead.', 'error');
-            setTimeout(() => location.reload(), 1500); // Reload to reset the card's position
-            return;
-        }
-        <?php endif; ?>
-
         postAction({ ajax_action: 'update_status', task_id: taskId, status: newStatus })
             .then(data => {
-                if (data.success) {
-                    showToast('Moved to: ' + newStatus);
-                } else {
-                    showToast(data.message || 'Update failed', 'error');
-                    setTimeout(() => location.reload(), 1500); // Reload to reset UI on failure
-                }
+                if (data.success) showToast('Moved to: ' + newStatus);
+                else showToast(data.message || 'Update failed', 'error');
             });
 
         document.querySelectorAll('.task-column').forEach(col => {

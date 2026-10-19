@@ -2,7 +2,7 @@
 include 'dashboard_header.php';
 
 
-$is_admin   = ($role === 'admin' || $role === 'manager');
+$is_admin   = ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $role === 'manager');
 
 // ── Query — JOIN users to get username ────────────────────────────────────────
 if ($is_admin) {

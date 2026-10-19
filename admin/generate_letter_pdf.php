@@ -49,6 +49,8 @@ p {
     margin-top: 0;
     margin-bottom: 10px;
 }
+.letter-body table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 10px; }
+.letter-body th, .letter-body td { border: 1px solid #ccc; padding: 6px; }
 </style>
 </head>
 <body>
@@ -96,7 +98,7 @@ p {
         </div>
         <?php endif; ?>
 
-        <div style="margin-top: 30px; font-size: 14px; color: #333333; line-height: 1.6; min-height: 100mm;">
+        <div class="letter-body" style="margin-top: 30px; font-size: 14px; color: #333333; line-height: 1.6; min-height: 100mm;">
             <?php echo $l['body_html']; ?>
         </div>
 

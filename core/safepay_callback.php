@@ -7,7 +7,7 @@
 error_reporting(0);
 ini_set('display_errors', '0');
 
-require_once 'core/config.php';
+require_once __DIR__ . '/config.php';
 
 function doTopRedirect($url) {
     echo "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'><title>Payment Successful</title></head>
@@ -65,7 +65,7 @@ if ($temp_row) {
 
     // If already enrolled (e.g. user refreshed callback page), redirect top window
     if (!empty($temp_row['enrolled_id']) && $temp_row['enrolled_id'] > 0) {
-        doTopRedirect("course_thank_you.php?eid=" . $temp_row['enrolled_id'] . "&course=" . urlencode($course_title));
+        doTopRedirect(rtrim(BASE_URL, '/') . "/course_thank_you?eid=" . $temp_row['enrolled_id'] . "&course=" . urlencode($course_title));
     }
 
     // Ensure table columns exist
@@ -143,7 +143,7 @@ if ($temp_row) {
             $headers = "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nFrom: Graphicafix <noreply@graphicafix.com>\r\nReply-To: info@graphicafix.com\r\n";
             @mail($student_email, "🎓 Enrollment Confirmed — " . $course_title, $html, $headers);
 
-            doTopRedirect("course_thank_you.php?eid=" . $new_eid . "&course=" . urlencode($course_title));
+            doTopRedirect(rtrim(BASE_URL, '/') . "/course_thank_you?eid=" . $new_eid . "&course=" . urlencode($course_title));
         }
     }
 }
@@ -161,17 +161,17 @@ if ($eid > 0 || !empty($ref)) {
     if ($old_row) {
         $matched_eid = intval($old_row['id']);
         @$conn->query("UPDATE course_enrollments SET status = 'active', payment_proof = 'SAFEPAY_PAID:" . $conn->real_escape_string($tracker) . "' WHERE id = $matched_eid");
-        doTopRedirect("course_thank_you.php?eid=" . $matched_eid . "&course=" . urlencode($old_row['course_title'] ?? 'Course'));
+        doTopRedirect(rtrim(BASE_URL, '/') . "/course_thank_you?eid=" . $matched_eid . "&course=" . urlencode($old_row['course_title'] ?? 'Course'));
     }
 }
 
 // Fallback error if no pending enrollment found at all
-include 'templates/header.php';
+include __DIR__ . '/../templates/header.php';
 echo "<div style='text-align:center;padding:100px 20px;font-family:Poppins,sans-serif;'>
         <i class='fas fa-exclamation-triangle' style='font-size:48px;color:#ef4444;margin-bottom:20px;display:block;'></i>
         <h2>Enrollment Not Found</h2>
         <p style='color:#666;max-width:500px;margin:10px auto 25px;'>We could not verify your pending payment. If your payment was completed successfully, please contact support with your payment receipt so we can activate your access.</p>
-        <a href='courses.php' style='background:#024442;color:#fff;padding:12px 28px;border-radius:50px;text-decoration:none;font-weight:700;'>Return to Courses</a>
+        <a href='" . rtrim(BASE_URL, '/') . "/courses' style='background:#024442;color:#fff;padding:12px 28px;border-radius:50px;text-decoration:none;font-weight:700;'>Return to Courses</a>
       </div>";
-include 'templates/footer.php';
+include __DIR__ . '/../templates/footer.php';
 exit;

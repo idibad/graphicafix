@@ -115,7 +115,7 @@ $quizzes_res = $conn->query("SELECT * FROM course_quizzes WHERE course_id = $cou
         top: 90px;
     }
     .playlist-header {
-        background: #0f172a;
+        background: var(--bg-dark);
         color: white;
         padding: 18px 20px;
         font-weight: 800;
@@ -140,9 +140,9 @@ $quizzes_res = $conn->query("SELECT * FROM course_quizzes WHERE course_id = $cou
     }
     .lec-item:hover { background: #f8fafc; color: #0f172a; }
     .lec-item.active {
-        background: rgba(184, 243, 90, 0.15);
-        border-left: 4px solid #024442;
-        color: #024442;
+        background: rgba(2, 68, 66, 0.06);
+        border-left: 4px solid var(--primary-color);
+        color: var(--primary-color);
         font-weight: 800;
     }
     .lec-status {
@@ -182,8 +182,8 @@ $quizzes_res = $conn->query("SELECT * FROM course_quizzes WHERE course_id = $cou
     }
     .tab-btn-custom:hover { color: #0f172a; }
     .tab-btn-custom.active {
-        color: #024442;
-        border-color: #024442;
+        color: var(--primary-color);
+        border-color: var(--primary-color);
     }
     
     .cert-banner {
@@ -279,7 +279,7 @@ $quizzes_res = $conn->query("SELECT * FROM course_quizzes WHERE course_id = $cou
                     <?php else: ?>
                         <!-- HTML5 Video Player -->
                         <video id="html5VideoPlayer" controls autoplay style="width:100%; height:100%; background:#000;">
-                            <source src="<?= htmlspecialchars(!empty($vurl) ? $vurl : (preg_match('/^http/i', $fpath) ? $fpath : '../admin/' . $fpath)) ?>">
+                            <source src="<?= htmlspecialchars(!empty($vurl) ? $vurl : (preg_match('/^http/i', $fpath) ? $fpath : PORTAL_UPLOADS_URL . ltrim($fpath, '/'))) ?>">
                             Your browser does not support HTML5 video.
                         </video>
                     <?php endif; ?>
@@ -333,7 +333,7 @@ $quizzes_res = $conn->query("SELECT * FROM course_quizzes WHERE course_id = $cou
                                         <div style="width:40px; height:40px; border-radius:10px; background:#024442; color:#b8f35a; display:flex; align-items:center; justify-content:center; font-size:18px;"><i class="fas fa-file-archive"></i></div>
                                         <span style="font-weight:700; font-size:14.5px; color:#0f172a;"><?= htmlspecialchars($r['title']) ?></span>
                                     </div>
-                                    <a href="<?= htmlspecialchars(preg_match('/^http/i', $r['file_path']) ? $r['file_path'] : '../admin/' . $r['file_path']) ?>" target="_blank" class="btn btn-primary-custom" style="padding:8px 18px; font-size:13px;"><i class="fas fa-download"></i> Download</a>
+                                    <a href="<?= htmlspecialchars(preg_match('/^http/i', $r['file_path']) ? $r['file_path'] : PORTAL_UPLOADS_URL . ltrim($r['file_path'], '/')) ?>" target="_blank" class="btn btn-primary-custom" style="padding:8px 18px; font-size:13px;"><i class="fas fa-download"></i> Download</a>
                                 </div>
                             <?php endwhile; else: ?>
                                 <p class="text-muted">No downloadable assets attached to this course.</p>

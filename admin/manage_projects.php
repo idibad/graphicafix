@@ -2,7 +2,7 @@
 
 include 'dashboard_header.php';
 
-$is_admin = ($role === 'admin' || $role === 'pm');
+$is_admin = ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $role === 'pm');
 
 // ── Projects query ────────────────────────────────────────────────────────────
 if ($role === 'user') {

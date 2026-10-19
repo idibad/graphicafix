@@ -82,26 +82,26 @@ $submissions = $conn->query("
                         </thead>
                         <tbody>
                             <?php if($submissions && $submissions->num_rows > 0): while($sub = $submissions->fetch_assoc()): ?>
-                                <tr style="font-size:13.5px;">
-                                    <td><strong style="color:#0f172a;"><?= htmlspecialchars($sub['student_name']) ?></strong></td>
-                                    <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($sub['assign_title']) ?></span></td>
-                                    <td>
-                                        <a href="../admin/<?= htmlspecialchars($sub['file_path']) ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-download"></i> Zip</a>
-                                    </td>
-                                    <td>
-                                        <?php if(!empty($sub['grade'])): ?>
-                                            <span class="badge bg-success"><?= htmlspecialchars($sub['grade']) ?></span>
-                                        <?php else: ?>
-                                            <span class="badge bg-warning text-dark">Ungraded</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-primary-custom" style="padding:4px 12px; font-size:12px;" 
-                                            onclick="openGradeModal(<?= $sub['id'] ?>, '<?= htmlspecialchars(addslashes($sub['student_name'])) ?>', '<?= htmlspecialchars(addslashes($sub['grade'] ?? '')) ?>', '<?= htmlspecialchars(addslashes($sub['feedback'] ?? '')) ?>')">
-                                            Grade
-                                        </button>
-                                    </td>
-                                </tr>
+                                 <tr style="font-size:13.5px;">
+                                     <td data-label="Student"><strong style="color:#0f172a;"><?= htmlspecialchars($sub['student_name']) ?></strong></td>
+                                     <td data-label="Assignment"><span class="badge bg-light text-dark border"><?= htmlspecialchars($sub['assign_title']) ?></span></td>
+                                     <td data-label="File">
+                                         <a href="<?= htmlspecialchars(preg_match('/^http/i', $sub['file_path']) ? $sub['file_path'] : PORTAL_UPLOADS_URL . ltrim($sub['file_path'], '/')) ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-download"></i> Zip</a>
+                                     </td>
+                                     <td data-label="Grade">
+                                         <?php if(!empty($sub['grade'])): ?>
+                                             <span class="badge bg-success"><?= htmlspecialchars($sub['grade']) ?></span>
+                                         <?php else: ?>
+                                             <span class="badge bg-warning text-dark">Ungraded</span>
+                                         <?php endif; ?>
+                                     </td>
+                                     <td data-label="Action">
+                                         <button class="btn btn-sm btn-primary-custom" style="padding:4px 12px; font-size:12px;" 
+                                             onclick="openGradeModal(<?= $sub['id'] ?>, '<?= htmlspecialchars(addslashes($sub['student_name'])) ?>', '<?= htmlspecialchars(addslashes($sub['grade'] ?? '')) ?>', '<?= htmlspecialchars(addslashes($sub['feedback'] ?? '')) ?>')">
+                                             Grade
+                                         </button>
+                                     </td>
+                                 </tr>
                             <?php endwhile; else: ?>
                                 <tr><td colspan="5" class="text-center py-4 text-muted">No student submissions in queue.</td></tr>
                             <?php endif; ?>

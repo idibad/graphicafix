@@ -2908,13 +2908,30 @@ INSERT INTO `teacher_documents` (`id`, `teacher_id`, `title`, `description`, `fi
 --
 
 CREATE TABLE `team` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `employee_id` varchar(50) DEFAULT NULL,
   `member_name` varchar(255) NOT NULL,
+  `photo` varchar(255) DEFAULT NULL,
   `role` varchar(255) DEFAULT NULL,
+  `department` varchar(100) DEFAULT NULL,
+  `bio` text DEFAULT NULL,
+  `gender` varchar(20) DEFAULT 'Male',
+  `status` varchar(20) DEFAULT 'active',
+  `show_on_about` tinyint(1) DEFAULT 1,
+  `display_order` int(11) DEFAULT 0,
+  `verification_code` varchar(64) DEFAULT NULL,
   `email` varchar(255) DEFAULT NULL,
   `phone` varchar(50) DEFAULT NULL,
+  `linkedin` varchar(255) DEFAULT NULL,
+  `github` varchar(255) DEFAULT NULL,
+  `twitter` varchar(255) DEFAULT NULL,
+  `blood_group` varchar(10) DEFAULT NULL,
+  `emergency_contact` varchar(50) DEFAULT NULL,
+  `address` varchar(255) DEFAULT NULL,
   `joined_at` date DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_emp_id` (`employee_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -2956,8 +2973,8 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`user_id`, `name`, `phone`, `email`, `username`, `role`, `password`, `created_at`, `last_login`) VALUES
-(25, 'Ibad Shalmany', '03410505005', 'ibadshalmany@gmail.com', 'ibadshalmany', 'admin', '$2y$10$EnJ1SY2FglvODJW8hUk9k.0RA6uAdIGF69Yg71MpLIR8TuzpmtClW', '2026-02-25 20:23:41', '2026-06-29 14:34:57'),
-(26, 'CEO', '', 'sbano0775@gmail.com', 'sbano', 'admin', '$2y$10$NPOnMKuANWsnMrjhqcDpm.b2x99WJxw82mdjH540CVF1E1qYLYdPa', '2026-02-25 22:04:11', '2026-06-20 20:45:54'),
+(25, 'Ibad Shalmany', '03410505005', 'ibadshalmany@gmail.com', 'ibadshalmany', 'super_admin', '$2y$10$EnJ1SY2FglvODJW8hUk9k.0RA6uAdIGF69Yg71MpLIR8TuzpmtClW', '2026-02-25 20:23:41', '2026-06-29 14:34:57'),
+(26, 'CEO', '', 'sbano0775@gmail.com', 'sbano', 'super_admin', '$2y$10$NPOnMKuANWsnMrjhqcDpm.b2x99WJxw82mdjH540CVF1E1qYLYdPa', '2026-02-25 22:04:11', '2026-06-20 20:45:54'),
 (29, 'Saba kareem', '', 'sabakareem125@gmail.com', 'sabakareem', 'user', '$2y$10$.iRTYso3/uPST1uy1kWCHe1XutzK1JTGOTtmMGl/n80pGPfHA2Qj.', '2026-03-11 23:52:52', '2026-06-24 23:21:41'),
 (30, 'Fatima Hassan', '', 'Fatima.hassan8822@gmail.com', 'fatima_hassan', 'user', '$2y$10$YJglmd0kxIQ8yztYjaIMb..4f7Z48nKepNX7InQpP3MvR0wRg66Ye', '2026-03-11 23:53:31', '2026-05-27 20:19:53'),
 (31, 'Ikram Khan', '', 'ikram.dataengineer.info@gmail.com', 'ikram_khan', 'user', '$2y$10$Mi/L.SFRFOKBMrxgcTYU0ekb03EqNHzZlzgfGZywjfhEHLIRCAX3C', '2026-03-18 18:51:09', NULL),
@@ -34104,10 +34121,35 @@ ALTER TABLE `service_packages`
   ADD CONSTRAINT `fk_service_packages` FOREIGN KEY (`service_id`) REFERENCES `services` (`id`) ON DELETE CASCADE;
 
 --
--- Constraints for table `service_package_features`
+-- Table structure for table `bank_accounts`
 --
-ALTER TABLE `service_package_features`
-  ADD CONSTRAINT `fk_package_features` FOREIGN KEY (`package_id`) REFERENCES `service_packages` (`id`) ON DELETE CASCADE;
+
+CREATE TABLE IF NOT EXISTS `bank_accounts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `bank_name` varchar(100) NOT NULL,
+  `account_title` varchar(150) NOT NULL,
+  `account_number` varchar(100) NOT NULL,
+  `status` varchar(20) DEFAULT 'active',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `bank_accounts`
+--
+
+CREATE TABLE IF NOT EXISTS `bank_accounts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `bank_name` varchar(100) NOT NULL,
+  `account_title` varchar(150) NOT NULL,
+  `account_number` varchar(100) NOT NULL,
+  `status` varchar(20) DEFAULT 'active',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

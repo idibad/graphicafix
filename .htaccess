@@ -1,59 +1,124 @@
-# Disable directory browsing for security
+# ==============================================
+# GRAPHICAFIX FINAL PRODUCTION HTACCESS (FIXED)
+# ==============================================
+
 Options -Indexes
+DirectoryIndex index.php index.html courses.php blogs.php
 
-# Protect hidden files (like .env, .git, etc.)
-<FilesMatch "^\.">
-    Order allow,deny
-    Deny from all
-</FilesMatch>
-
-# Protect config files
-<FilesMatch "^config\.php$">
-    Order allow,deny
-    Deny from all
-</FilesMatch>
-
+# ----------------------------------------------
+# 1. FORCE HTTPS + NON-WWW (SAFE FOR LOCAL & PROD)
+# ----------------------------------------------
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    
-    # ----------------------------------------------------------------------
-    # Remove .php extension from URLs
-    # ----------------------------------------------------------------------
-    # If the requested URI doesn't end with a trailing slash
-    # and isn't a directory, and the .php file exists, serve the .php file
+
+    # Block direct web access to .git repository folder
+    RewriteRule ^\.git - [F,L]
+
+    # Only force HTTPS & non-www when NOT on localhost / 127.0.0.1
+    RewriteCond %{HTTP_HOST} !^localhost$ [NC]
+    RewriteCond %{HTTP_HOST} !^127\.0\.0\.1$
+    RewriteCond %{HTTPS} off [OR]
+    RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
+    RewriteCond %{HTTP_HOST} ^(?:www\.)?(.+)$ [NC]
+    RewriteRule ^ https://%1%{REQUEST_URI} [R=301,L,NE]
+
+    # ----------------------------------------------
+    # 2. SPECIFIC MODULE ROUTES (MUST BE BEFORE DIRECTORY CHECK)
+    # ----------------------------------------------
+    # Courses Routes (Prevents /courses/ folder from 404ing)
+    RewriteRule ^courses/?$ courses/courses.php [L,NC]
+    RewriteRule ^course_detail/?$ courses/course_detail.php [L,NC]
+    RewriteRule ^course_progress/?$ courses/course_progress.php [L,NC]
+    RewriteRule ^course_thank_you/?$ courses/course_thank_you.php [L,NC]
+    RewriteRule ^manage_courses/?$ courses/manage_courses.php [L,NC]
+
+    # Blog Routes (Prevents /blogs/ folder from 404ing)
+    RewriteRule ^blogs/?$ blogs/blogs.php [L,NC]
+    RewriteRule ^blog_post/?$ blogs/blog_post.php [L,NC]
+
+    # Public Pages Routes
+    RewriteRule ^(about|career|contact|portfolio|privacy-policy|services|terms)/?$ pages/$1.php [L,NC]
+    RewriteRule ^verify-employee/?$ pages/verify_employee.php [L,NC,QSA]
+    RewriteRule ^verify/([a-zA-Z0-9_-]+)/?$ pages/verify_employee.php?id=$1 [L,NC,QSA]
+
+    # Project Routes
+    RewriteRule ^project/([0-9]+)/?$ projects/project_details.php?id=$1 [QSA,L,NC]
+    RewriteRule ^(edit_project|project_add|project_details|project_request_popup|project_request_submission)/?$ projects/$1.php [L,NC]
+
+    # ----------------------------------------------
+    # 3. ALLOW REAL FILES & DIRECTORIES
+    # ----------------------------------------------
+    # Prevents 500/404 errors on existing folders like /admin, /portal, /api, /assets
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # ----------------------------------------------
+    # 4. REMOVE .PHP (SAFE FOR LOCAL & PROD)
+    # ----------------------------------------------
+    # Safely redirect .php requests to clean URLs without breaking subfolders
+    RewriteCond %{THE_REQUEST} \s/+([^\s?]+)\.php(?:[\s?]|$) [NC]
+    RewriteRule ^ /%1 [R=301,L,NE]
+
+    # Resolve clean URLs to .php files across all directories (/admin/login -> /admin/login.php)
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{DOCUMENT_ROOT}/$1.php -f [NC]
+    RewriteCond %{REQUEST_FILENAME}\.php -f
     RewriteRule ^(.+?)/?$ $1.php [L]
-    
-    # Optional: Force HTTPS (uncomment if you have SSL setup)
-    # RewriteCond %{HTTPS} off
-    # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-    
-    # Custom Error Pages (if you have them)
+
+    # ----------------------------------------------
+    # 5. CUSTOM ERROR PAGES & CATCH-ALL 404 (PORTABLE)
+    # ----------------------------------------------
+    # Route any non-existent file or folder to 404.php cleanly
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME}\.php !-f
+    RewriteRule ^.*$ 404.php [L,QSA]
+
     ErrorDocument 404 /404.php
     ErrorDocument 403 /403.php
 </IfModule>
 
-# ----------------------------------------------------------------------
-# Enable GZIP compression to speed up the site
-# ----------------------------------------------------------------------
+# ----------------------------------------------
+# 6. SECURITY (SAFE FOR SHARED HOSTING & APACHE 2.4)
+# ----------------------------------------------
+<FilesMatch "^\.|\.env$|composer\.(json|lock)$|wp-config\.php">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# ----------------------------------------------
+# 7. PERFORMANCE & COMPRESSION
+# ----------------------------------------------
 <IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+    AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json
 </IfModule>
 
-# ----------------------------------------------------------------------
-# Browser Caching to speed up the site for returning visitors
-# ----------------------------------------------------------------------
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresByType image/jpg "access plus 1 year"
     ExpiresByType image/jpeg "access plus 1 year"
-    ExpiresByType image/gif "access plus 1 year"
     ExpiresByType image/png "access plus 1 year"
     ExpiresByType image/webp "access plus 1 year"
-    ExpiresByType image/svg+xml "access plus 1 year"
     ExpiresByType text/css "access plus 1 month"
     ExpiresByType application/javascript "access plus 1 month"
-    ExpiresByType text/javascript "access plus 1 month"
+</IfModule>
+
+# ----------------------------------------------
+# 8. HOSTINGER IP ALLOW (KEEP LAST - SAFE APACHE 2.4)
+# ----------------------------------------------
+<IfModule mod_authz_core.c>
+    <RequireAny>
+        Require all granted
+        Require ip 203.215.167.55
+    </RequireAny>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+    Allow from 203.215.167.55
 </IfModule>

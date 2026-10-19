@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+// Check permissions
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user'])) {
+    header('location:index.php'); exit;
+}
+
 $id = intval($_GET['id'] ?? 0);
 if (!$id) { echo "<script>alert('Invalid invoice.');window.location='manage_invoices.php';</script>"; exit; }
 

@@ -1,2 +1,30 @@
+# Dependencies
 /vendor/
+
+# Environment Configuration (Strictly local to environment)
 .env
+.env.*
+!.env.example
+env
+
+# Logs and Temporary Debugging
+*.log
+scratch/
+test_output.pdf
+list_tables.php
+password_history.txt
+user_action_history.txt
+
+# Generated documents & test PDFs
+quotations/QT-TEST*.pdf
+quotations/test_*.pdf
+
+# Dynamic uploads generated at runtime (keep folder structure via .gitkeep)
+uploads/qrcodes/*
+!uploads/qrcodes/.gitkeep
+uploads/team/*
+!uploads/team/.gitkeep
+portal/uploads/assignments/*
+!portal/uploads/assignments/.gitkeep
+portal/uploads/lectures/*
+!portal/uploads/lectures/.gitkeep

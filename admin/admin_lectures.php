@@ -1,7 +1,7 @@
 <?php
 include 'dashboard_header.php';
 
-if ($role !== 'admin' && $role !== 'superadmin') {
+if (!in_array($role, ['super_admin', 'superadmin'])) {
     die("Access denied");
 }
 

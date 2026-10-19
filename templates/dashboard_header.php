@@ -5,7 +5,7 @@ header("Cache-Control: no-cache, no-store, must-revalidate"); // HTTP 1.1
 header("Pragma: no-cache"); // HTTP 1.0
 header("Expires: 0"); // Proxies
 
-require_once $_SERVER['DOCUMENT_ROOT'] . '/graphicafix/core/config.php';
+require_once __DIR__ . '/../core/config.php';
 
 // Redirect to login if not logged in
 if(!isset($_SESSION['username'])){
@@ -25,33 +25,220 @@ $email = $data['email'];
 $user_id = $data['user_id'];
 $role = $data['role']; // admin, team_member, client
 
+// ── Helper: check active state for menu / subitems ────────────────────────────
+if (!function_exists('isMenuItemActive')) {
+    function isMenuItemActive($link) {
+        if (empty($link) || $link === '#') return false;
+        $current_file = basename($_SERVER['PHP_SELF']);
+        $parsed_link = parse_url($link);
+        $link_file = basename($parsed_link['path'] ?? '');
+        
+        if ($current_file !== $link_file) {
+            return false;
+        }
+        
+        if (isset($parsed_link['query'])) {
+            parse_str($parsed_link['query'], $link_query);
+            foreach ($link_query as $k => $v) {
+                if (($_GET[$k] ?? '') !== $v) {
+                    return false;
+                }
+            }
+            return true;
+        } else {
+            return true;
+        }
+    }
+}
+
 // Role-based menu definitions
 $menus = [
     'admin' => [
-        ['title' => 'Dashboard', 'link' => 'dashboard.php', 'icon' => 'fas fa-tachometer-alt'],
-        ['title' => 'Projects', 'link' => 'manage_projects.php', 'icon' => 'fas fa-tasks'],
-        ['title' => 'Tasks', 'link' => 'tasks.php', 'icon' => 'fas fa-check-square'],
-        ['title' => 'Manage Clients', 'link' => 'manage_clients.php', 'icon' => 'fas fa-users'],
-        ['title' => 'Manage Services', 'link' => 'manage_services.php', 'icon' => 'fas fa-cogs'],
-        ['title' => 'Reviews', 'link' => 'reviews.php', 'icon' => 'fas fa-star'],
-        ['title' => 'Messages', 'link' => 'messages.php', 'icon' => 'fas fa-envelope'],
-        ['title' => 'Manage Users', 'link' => 'manage_users.php', 'icon' => 'fas fa-users'],
-        ['title' => 'Manage Applications', 'link' => 'manage_applications.php', 'icon' => 'fas fa-file-alt'],
-        ['title' => 'Settings', 'link' => 'profile.php', 'icon' => 'fas fa-cog'],
+        [
+            'title' => 'Dashboard',       
+            'link'  => 'dashboard.php',               
+            'icon'  => 'fas fa-tachometer-alt',
+            'submenus' => [
+                ['title' => 'Overview',         'link' => 'dashboard.php',           'icon' => 'fas fa-home'],
+            ]
+        ],
+        [
+            'title' => 'Users & Staff',
+            'link'  => '#',
+            'icon'  => 'fas fa-users',
+            'submenus' => [
+                ['title' => 'Manage Users',     'link' => 'manage_users.php',        'icon' => 'fas fa-user-cog'],
+                ['title' => 'Add User',         'link' => 'manage_users.php?action=add', 'icon' => 'fas fa-user-plus'],
+            ]
+        ],
+        [
+            'title' => 'Projects Management',
+            'link'  => '#',
+            'icon'  => 'fas fa-tasks',
+            'submenus' => [
+                ['title' => 'Manage Projects',  'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
+            ]
+        ],
+        [
+            'title' => 'Tasks & Workflow',
+            'link'  => '#',
+            'icon'  => 'fas fa-check-square',
+            'submenus' => [
+                ['title' => 'Task Board',       'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
+            ]
+        ],
+        [
+            'title' => 'Clients Management',
+            'link'  => '#',
+            'icon'  => 'fas fa-user-tie',
+            'submenus' => [
+                ['title' => 'Manage Clients',   'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
+                ['title' => 'Client Reviews',   'link' => 'reviews.php',             'icon' => 'fas fa-star'],
+            ]
+        ],
+        [
+            'title' => 'Services Catalog',
+            'link'  => '#',
+            'icon'  => 'fas fa-cogs',
+            'submenus' => [
+                ['title' => 'Manage Services',  'link' => 'manage_services.php',     'icon' => 'fas fa-concierge-bell'],
+            ]
+        ],
+        [
+            'title' => 'HR Management',
+            'link'  => '#',
+            'icon'  => 'fas fa-briefcase',
+            'submenus' => [
+                ['title' => 'Applications',     'link' => 'manage_applications.php', 'icon' => 'fas fa-file-alt'],
+            ]
+        ],
+        [
+            'title' => 'Messages',        
+            'link'  => '#',             
+            'icon'  => 'fas fa-envelope',
+            'submenus' => [
+                ['title' => 'Inbox',            'link' => 'messages.php',            'icon' => 'fas fa-comments'],
+            ]
+        ],
+        [
+            'title' => 'Settings',        
+            'link'  => 'profile.php',             
+            'icon'  => 'fas fa-cog',
+            'submenus' => [
+                ['title' => 'My Profile',       'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
+            ]
+        ],
     ],
     'user' => [
-        ['title' => 'Dashboard', 'link' => 'dashboard.php', 'icon' => 'fas fa-tachometer-alt'],
-        ['title' => 'Projects', 'link' => 'manage_projects.php', 'icon' => 'fas fa-tasks'],
-        ['title' => 'Tasks', 'link' => 'tasks.php', 'icon' => 'fas fa-check-square'],
-        ['title' => 'Messages', 'link' => 'messages.php', 'icon' => 'fas fa-envelope'],
-        ['title' => 'Settings', 'link' => 'profile.php', 'icon' => 'fas fa-cog'],
+        [
+            'title' => 'Dashboard',       
+            'link'  => 'dashboard.php',               
+            'icon'  => 'fas fa-tachometer-alt',
+            'submenus' => [
+                ['title' => 'Overview',         'link' => 'dashboard.php',           'icon' => 'fas fa-home'],
+            ]
+        ],
+        [
+            'title' => 'Projects Management',
+            'link'  => '#',
+            'icon'  => 'fas fa-tasks',
+            'submenus' => [
+                ['title' => 'My Projects',      'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
+            ]
+        ],
+        [
+            'title' => 'Tasks & Workflow',
+            'link'  => '#',
+            'icon'  => 'fas fa-check-square',
+            'submenus' => [
+                ['title' => 'My Tasks',         'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
+            ]
+        ],
+        [
+            'title' => 'Messages',        
+            'link'  => '#',             
+            'icon'  => 'fas fa-envelope',
+            'submenus' => [
+                ['title' => 'Inbox',            'link' => 'messages.php',            'icon' => 'fas fa-comments'],
+            ]
+        ],
+        [
+            'title' => 'Settings',        
+            'link'  => 'profile.php',             
+            'icon'  => 'fas fa-cog',
+            'submenus' => [
+                ['title' => 'My Profile',       'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
+            ]
+        ],
     ],
     'client' => [
-        ['title' => 'Dashboard', 'link' => 'dashboard.php', 'icon' => 'fas fa-tachometer-alt'],
-        ['title' => 'My Projects', 'link' => 'client_projects.php', 'icon' => 'fas fa-tasks'],
-        ['title' => 'Invoices', 'link' => 'invoices.php', 'icon' => 'fas fa-file-invoice'],
-        ['title' => 'Messages', 'link' => 'messages.php', 'icon' => 'fas fa-envelope'],
-        ['title' => 'Settings', 'link' => 'profile.php', 'icon' => 'fas fa-cog'],
+        [
+            'title' => 'Dashboard',
+            'link'  => 'index.php',
+            'icon'  => 'fas fa-tachometer-alt',
+            'submenus' => [
+                ['title' => 'Overview',         'link' => 'index.php',               'icon' => 'fas fa-home'],
+            ]
+        ],
+        [
+            'title' => 'My Projects',
+            'link'  => '#',
+            'icon'  => 'fas fa-tasks',
+            'submenus' => [
+                ['title' => 'Active Projects',  'link' => 'client_projects.php',     'icon' => 'fas fa-folder-open'],
+            ]
+        ],
+        [
+            'title' => 'Billing & Invoices',
+            'link'  => '#',
+            'icon'  => 'fas fa-file-invoice',
+            'submenus' => [
+                ['title' => 'My Invoices',      'link' => 'client_invoices.php',     'icon' => 'fas fa-file-invoice-dollar'],
+            ]
+        ],
+        [
+            'title' => 'Client Users',
+            'link'  => '#',
+            'icon'  => 'fas fa-users',
+            'submenus' => [
+                ['title' => 'Manage Users',     'link' => 'client_users.php',        'icon' => 'fas fa-user-friends'],
+            ]
+        ],
+        [
+            'title' => 'Settings',
+            'link'  => '#',
+            'icon'  => 'fas fa-cog',
+            'submenus' => [
+                ['title' => 'My Profile',       'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
+                ['title' => 'Company Info',     'link' => 'client_info.php',         'icon' => 'fas fa-building'],
+            ]
+        ],
+    ],
+    'client_sub' => [
+        [
+            'title' => 'Dashboard',
+            'link'  => 'index.php',
+            'icon'  => 'fas fa-tachometer-alt',
+            'submenus' => [
+                ['title' => 'Overview',         'link' => 'index.php',               'icon' => 'fas fa-home'],
+            ]
+        ],
+        [
+            'title' => 'My Projects',
+            'link'  => '#',
+            'icon'  => 'fas fa-tasks',
+            'submenus' => [
+                ['title' => 'Active Projects',  'link' => 'client_projects.php',     'icon' => 'fas fa-folder-open'],
+            ]
+        ],
+        [
+            'title' => 'Settings',
+            'link'  => '#',
+            'icon'  => 'fas fa-cog',
+            'submenus' => [
+                ['title' => 'My Profile',       'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
+            ]
+        ],
     ]
 ];
 
@@ -111,24 +298,54 @@ if ($role !== 'admin') {
     <nav class="nav">
         <div>
             <a href="#" class="nav_logo">
+                <img src="<?= BASE_URL ?>assets/images/icon.png" class="nav_logo-icon-img" width="32px" alt="G">
                 <span class="nav_logo-name">
                     <img src="<?= BASE_URL ?>assets/images/logo-secondary.png" width='100px'>
                 </span>
             </a>
             <div class="nav_list">
-                <?php
-                if (isset($menus[$role])) {
-                    foreach ($menus[$role] as $menu) {
-                        $active = (basename($_SERVER['PHP_SELF']) == basename($menu['link'])) ? 'active' : '';
-                        echo "<a class='nav_link $active' href='{$menu['link']}'>
-                                <i class='{$menu['icon']} nav_icon'></i>
-                                <span class='nav_name'>{$menu['title']}</span>
-                              </a>";
-                    }
-                }
+                <?php foreach ($menus[$role] ?? [] as $menu):
+                    if (!empty($menu['submenus'])) {
+                        $is_group_active = false;
+                        if (isMenuItemActive($menu['link'])) {
+                            $is_group_active = true;
+                        } else {
+                            foreach ($menu['submenus'] as $sub) {
+                                if (isMenuItemActive($sub['link'])) {
+                                    $is_group_active = true;
+                                    break;
+                                }
+                            }
+                        }
                 ?>
+                <div class="nav_group <?= $is_group_active ? 'open' : '' ?>">
+                    <div class="nav_group-toggle <?= $is_group_active ? 'active' : '' ?>" onclick="toggleNavGroup(this)">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <i class="<?= $menu['icon'] ?> nav_icon"></i>
+                            <span class="nav_name"><?= $menu['title'] ?></span>
+                        </div>
+                        <i class="fas fa-chevron-down nav_chevron"></i>
+                    </div>
+                    <div class="nav_submenus">
+                        <?php foreach ($menu['submenus'] as $sub): 
+                            $sub_active = isMenuItemActive($sub['link']) ? 'active' : '';
+                        ?>
+                        <a class="nav_sublink <?= $sub_active ?>" href="<?= $sub['link'] ?>">
+                            <span class="nav_subname"><?= $sub['title'] ?></span>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php } else {
+                    $active = isMenuItemActive($menu['link']) ? 'active' : '';
+                ?>
+                <a class="nav_link <?= $active ?>" href="<?= $menu['link'] ?>">
+                    <i class="<?= $menu['icon'] ?> nav_icon"></i>
+                    <span class="nav_name"><?= $menu['title'] ?></span>
+                </a>
+                <?php } endforeach; ?>
                 <a href="logout.php" class="nav_link">
-                    <i class='fas fa-sign-out-alt nav_icon'></i>
+                    <i class="fas fa-sign-out-alt nav_icon"></i>
                     <span class="nav_name">Sign Out</span>
                 </a>
             </div>
@@ -137,6 +354,19 @@ if ($role !== 'admin') {
 </div>
 
 <script>
+function toggleNavGroup(el) {
+    var navbar = document.getElementById('nav-bar');
+    var group  = el.parentElement;
+    if (navbar && !navbar.classList.contains('show')) {
+        navbar.classList.add('show');
+        var header = document.getElementById('header');
+        var bodyEl = document.getElementById('body-pd');
+        if (header) header.classList.add('body-pd');
+        if (bodyEl) bodyEl.classList.add('body-pd');
+    }
+    group.classList.toggle('open');
+}
+
 (function () {
     const toggle   = document.getElementById('header-toggle');
     const navbar   = document.getElementById('nav-bar');

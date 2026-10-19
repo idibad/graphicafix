@@ -34,25 +34,25 @@ $queries = $conn->query("
                 </thead>
                 <tbody>
                     <?php if($queries && $queries->num_rows > 0): while($q = $queries->fetch_assoc()): ?>
-                        <tr style="font-size:14px;">
-                            <td><span class="badge bg-light text-dark border"><i class="fas fa-book"></i> <?= htmlspecialchars($q['course_title']) ?></span></td>
-                            <td style="max-width:300px; font-weight:600; color:#1e293b;"><?= nl2br(htmlspecialchars($q['query_text'])) ?></td>
-                            <td style="max-width:300px; color:#15803d;">
-                                <?php if(!empty($q['answer_text'])): ?>
-                                    <div style="background:#f0fdf4; padding:8px 12px; border-radius:8px; border-left:3px solid #10b981;"><?= nl2br(htmlspecialchars($q['answer_text'])) ?></div>
-                                <?php else: ?>
-                                    <span class="text-muted fst-italic">Awaiting reply...</span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <?php if(!empty($q['answer_text'])): ?>
-                                    <span class="badge bg-success">Answered</span>
-                                <?php else: ?>
-                                    <span class="badge bg-warning text-dark">Pending</span>
-                                <?php endif; ?>
-                            </td>
-                            <td style="font-size:12.5px; color:#64748b;"><?= date('M d, Y', strtotime($q['created_at'])) ?></td>
-                        </tr>
+                         <tr style="font-size:14px;">
+                             <td data-label="Course"><span class="badge bg-light text-dark border"><i class="fas fa-book"></i> <?= htmlspecialchars($q['course_title']) ?></span></td>
+                             <td data-label="Question" style="max-width:300px; font-weight:600; color:#1e293b;"><?= nl2br(htmlspecialchars($q['query_text'])) ?></td>
+                             <td data-label="Instructor Reply" style="max-width:300px; color:#15803d;">
+                                 <?php if(!empty($q['answer_text'])): ?>
+                                     <div style="background:#f0fdf4; padding:8px 12px; border-radius:8px; border-left:3px solid #10b981;"><?= nl2br(htmlspecialchars($q['answer_text'])) ?></div>
+                                 <?php else: ?>
+                                     <span class="text-muted fst-italic">Awaiting reply...</span>
+                                 <?php endif; ?>
+                             </td>
+                             <td data-label="Status">
+                                 <?php if(!empty($q['answer_text'])): ?>
+                                     <span class="badge bg-success">Answered</span>
+                                 <?php else: ?>
+                                     <span class="badge bg-warning text-dark">Pending</span>
+                                 <?php endif; ?>
+                             </td>
+                             <td data-label="Date" style="font-size:12.5px; color:#64748b;"><?= date('M d, Y', strtotime($q['created_at'])) ?></td>
+                         </tr>
                     <?php endwhile; else: ?>
                         <tr><td colspan="5" class="text-center py-5 text-muted">You haven't asked any questions yet.</td></tr>
                     <?php endif; ?>

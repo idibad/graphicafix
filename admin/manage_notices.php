@@ -52,7 +52,7 @@ $notices_result = $conn->query("SELECT * FROM notices ORDER BY `date` DESC");
             ?>
             <div class="table-row" style="grid-template-columns:2.5fr 1fr 1.2fr 0.8fr;">
                 <div>
-                    <strong style="display:block;font-size:14px;color:#333;"><?= htmlspecialchars($row['notice_title']) ?></strong>
+                    <a href="notice_details.php?id=<?= $row['notice_id'] ?>" style="display:block;font-size:14px;color:var(--primary-color);font-weight:700;text-decoration:none;"><?= htmlspecialchars($row['notice_title']) ?></a>
                     <?php if (!empty($row['content'])): ?>
                     <span style="font-size:12.5px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:380px;">
                         <?= htmlspecialchars($row['content']) ?>

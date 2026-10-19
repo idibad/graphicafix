@@ -2,7 +2,7 @@
 
 include 'dashboard_header.php';
 
-if ($role !== 'admin' && $role !== 'pm') {
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm'])) {
     header("Location: manage_projects.php?error=unauthorized");
     exit;
 }
@@ -18,15 +18,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $priority = $_POST['priority'];
     $start_date = $_POST['start_date'];
     $end_date = $_POST['end_date'];
-    $visibility = $_POST['visibility'];
-    $category = $_POST['category'] ?? '';
-    $team_members = $_POST['team_members'] ?? []; // array
-    $slug = strtolower(str_replace(' ', '-', $project_name));
+    $visibility         = $_POST['visibility'];
+    $category           = $_POST['category'] ?? '';
+    $progress           = max(0, min(100, intval($_POST['progress'] ?? 0)));
+    $team_members       = $_POST['team_members'] ?? [];
+    $slug               = strtolower(str_replace(' ', '-', $project_name));
 
-    // Upload thumbnail
-    $thumbPath = "";
+    // Upload thumbnail if provided
+    $thumbPath = '';
     if (!empty($_FILES['thumbnail']['name'])) {
-        $thumbDir = "uploads/projects/" . time();
+        $thumbDir = "assets/images/uploads/projects/" . time();
         mkdir($thumbDir, 0777, true);
         $thumbPath = $thumbDir . "/thumb_" . $_FILES['thumbnail']['name'];
         move_uploaded_file($_FILES['thumbnail']['tmp_name'], $thumbPath);
@@ -35,11 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Insert into projects
     $stmt = $conn->prepare("INSERT INTO projects 
         (client_id, project_name, description, public_description, internal_notes, 
-         status, priority, start_date, end_date, thumbnail, slug, visibility, category) 
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
+         status, priority, start_date, end_date, thumbnail, slug, visibility, category, progress) 
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 
     $stmt->bind_param(
-        "issssssssssss",
+        "issssssssssssi",
         $client_id,
         $project_name,
         $description,
@@ -52,7 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $thumbPath,
         $slug,
         $visibility,
-        $category
+        $category,
+        $progress
     );
 
     $stmt->execute();
@@ -173,6 +175,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <option value="Medium">Medium</option>
                             <option value="High">High</option>
                         </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Initial Progress (%) <span class="required">*</span></label>
+                        <input type="number" name="progress" min="0" max="100" value="0" required placeholder="0-100">
                     </div>
                 </div>
 

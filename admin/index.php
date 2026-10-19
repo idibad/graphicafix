@@ -128,7 +128,7 @@ $notice_result = mysqli_query($conn, $notice_query);
 $notice_cout = mysqli_num_rows($notice_result);
 
 // Fetch tasks based on role
-if ($role === 'admin') {
+if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin') {
     $task_query = "SELECT * FROM tasks WHERE status NOT IN ('Completed', 'Cancelled') ORDER BY due_date ASC";
 } else {
     $task_query = "SELECT * FROM tasks WHERE (assigned_to = $user_id OR created_by = $user_id) AND status NOT IN ('Completed', 'Cancelled') ORDER BY due_date ASC";
@@ -142,13 +142,13 @@ $resource_result = mysqli_query($conn, $resource_query);
 $resource_count  = mysqli_num_rows($resource_result);
 
 // Admin/PM/Manager stats
-if ($role === 'admin' || $role === 'pm' || $role === 'manager') {
+if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $role === 'pm' || $role === 'manager') {
     $stats_filter = "1=1";
-    if ($role !== 'admin') {
+    if ($role !== 'super_admin' && $role !== 'superadmin' && $role !== 'admin') {
         $stats_filter = "(assigned_to = $user_id OR created_by = $user_id)";
     }
 
-    if ($role === 'admin') {
+    if ($role === 'super_admin' || $role === 'superadmin') {
         $total_users_result     = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM users");
         $total_users            = mysqli_fetch_assoc($total_users_result)['cnt'];
         // Recent users
@@ -357,13 +357,21 @@ elseif ($role === 'student') {
 <div class="dashboard-container">
 
     <div class="welcome-text">
-        <h1>Welcome back, <?php echo htmlspecialchars($name); ?> <?php echo $role === 'admin' ? '<i class="fas fa-shield-alt"></i>️' : '👋'; ?></h1>
-        <p><?php echo $role === 'admin' ? "Here's your system overview for today." : "Here's what's happening with your projects today."; ?></p>
+        <h1>Welcome back, <?php echo htmlspecialchars($name); ?> <?php 
+            if ($role === 'super_admin' || $role === 'superadmin') echo '<i class="fas fa-crown" style="color:#f59e0b;"></i>';
+            elseif ($role === 'admin') echo '<i class="fas fa-user-shield" style="color:var(--primary);"></i>';
+            else echo '👋'; 
+        ?></h1>
+        <p><?php 
+            if ($role === 'super_admin' || $role === 'superadmin') echo "Here's your comprehensive system overview for today (Super Admin).";
+            elseif ($role === 'admin') echo "Here's your administrative and operational overview for today.";
+            else echo "Here's what's happening with your projects today."; 
+        ?></p>
     </div>
 
-    <?php if ($role === 'admin' || $role === 'pm' || $role === 'manager'): ?>
+    <?php if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $role === 'pm' || $role === 'manager'): ?>
     <div class="admin-stats-grid">
-        <?php if ($role === 'admin'): ?>
+        <?php if ($role === 'super_admin' || $role === 'superadmin'): ?>
         <div class="stat-card">
             <div class="stat-icon"><i class="fas fa-users"></i></div>
             <div class="stat-value"><?= $total_users ?></div>
@@ -400,19 +408,24 @@ elseif ($role === 'student') {
     <div class="tasks-card" style="margin-bottom:30px;">
         <div class="card-header-custom"><h3><i class="fas fa-bolt"></i> Quick Actions</h3></div>
         <div class="quick-actions-grid">
-            <?php if ($role === 'admin'): ?>
+            <?php if ($role === 'super_admin' || $role === 'superadmin'): ?>
             <a href="manage_users.php?add_user=1"         class="quick-action-btn"><span class="qa-icon"><i class="fas fa-plus"></i></span> Add User</a>
             <?php endif; ?>
             <a href="create_task.php"                      class="quick-action-btn"><span class="qa-icon"><i class="fas fa-edit"></i></span> New Task</a>
-            <?php if ($role === 'admin'): ?>
+            <?php if ($role === 'super_admin' || $role === 'superadmin'): ?>
             <a href="manage_users.php"                     class="quick-action-btn"><span class="qa-icon"><i class="fas fa-users"></i></span> Manage Users</a>
             <?php endif; ?>
             <a href="tasks.php"                            class="quick-action-btn"><span class="qa-icon"><i class="fas fa-clipboard"></i></span> All Tasks</a>
-            <?php if ($role === 'admin' || $role === 'manager'): ?>
+            <a href="price_calculator.php"                 class="quick-action-btn"><span class="qa-icon"><i class="fas fa-calculator"></i></span> Price Calc</a>
+            <?php if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $role === 'manager'): ?>
             <a href="manage_notices.php?add_notice=1"      class="quick-action-btn"><span class="qa-icon"><i class="fas fa-bullhorn"></i></span> Post Notice</a>
             <?php endif; ?>
-            <?php if ($role === 'admin'): ?>
+            <?php if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin'): ?>
             <a href="manage_resources.php?add_resource=1"  class="quick-action-btn"><span class="qa-icon"><i class="fas fa-book"></i></span> Add Resource</a>
+            <?php endif; ?>
+            <?php if ($role === 'admin'): ?>
+            <a href="correspondence.php"                   class="quick-action-btn"><span class="qa-icon"><i class="fas fa-envelope"></i></span> Letters / Docs</a>
+            <a href="attendance.php"                       class="quick-action-btn"><span class="qa-icon"><i class="fas fa-clock"></i></span> Attendance</a>
             <?php endif; ?>
             <a href="profile.php"                          class="quick-action-btn"><span class="qa-icon">⚙️</span> Settings</a>
         </div>
@@ -420,7 +433,7 @@ elseif ($role === 'student') {
 
     <div class="admin-panels">
 
-        <?php if ($role === 'admin'): ?>
+        <?php if ($role === 'super_admin' || $role === 'superadmin'): ?>
         <div class="tasks-card">
             <div class="card-header-custom">
                 <h3><i class="fas fa-users"></i> Recent Users</h3>
@@ -536,7 +549,7 @@ elseif ($role === 'student') {
         </div>
     </div>
 
-    <?php if ($role === 'admin'): ?>
+    <?php if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin'): ?>
     <?php include('visitor_widget.php'); ?>
 
     <div class="resources-card">
@@ -945,6 +958,33 @@ elseif ($role === 'student') {
         <div class="row g-4">
             <!-- Projects List -->
             <div class="col-lg-8">
+                <!-- How to Use Video Guide -->
+                <div class="card mb-4" style="padding:24px; border-radius: 12px; border: 1px solid #e2e8f0; background: #ffffff;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #1e293b;">
+                            <i class="fab fa-youtube" style="color:#ef4444; margin-right:8px;"></i> How to Use the Client Portal
+                        </h3>
+                        <span style="background:#e0f2fe; color:#0284c7; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:20px;">
+                            Video Tutorial
+                        </span>
+                    </div>
+                    <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 10px; background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+                        <iframe src="https://www.youtube.com/embed/r6KaII-FkR4?rel=0" 
+                                title="Client Portal Tutorial" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                                allowfullscreen 
+                                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:0;">
+                        </iframe>
+                    </div>
+                    <div style="margin-top: 12px; font-size: 13px; color: #64748b; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                        <span><i class="fas fa-info-circle" style="color:#024442;"></i> Watch this quick video guide to learn how to track deliverables, review milestones, and collaborate with us.</span>
+                        <a href="https://youtu.be/r6KaII-FkR4?si=Bav6a-KWEmLB0sha" target="_blank" style="color: #024442; font-weight: 700; text-decoration: none; font-size: 12.5px; display:inline-flex; align-items:center; gap:5px;">
+                            Watch on YouTube <i class="fas fa-external-link-alt" style="font-size:11px;"></i>
+                        </a>
+                    </div>
+                </div>
+
                 <div class="card" style="padding:24px; border-radius: 12px; border: 1px solid #e2e8f0;">
                     <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1e293b;"><i class="fas fa-folder-open" style="color:#024442;"></i> My Projects</h3>
                     <?php

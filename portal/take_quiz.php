@@ -53,14 +53,14 @@ $questions = $conn->query("SELECT * FROM quiz_questions WHERE quiz_id = $quiz_id
         <form method="POST">
             <input type="hidden" name="submit_quiz" value="1">
             <div style="display:flex; flex-direction:column; gap:20px;">
-                <?php if($questions && $questions->num_rows > 0): $idx = 1; while($q = $questions->fetch_assoc()): $qid = $q['id']; ?>
+                 <?php if($questions && $questions->num_rows > 0): $idx = 1; while($q = $questions->fetch_assoc()): $qid = $q['id']; ?>
                     <div class="d-card p-4">
-                        <h5 class="fw-bold text-dark mb-3"><span class="text-primary me-2"><?= $idx++ ?>.</span> <?= htmlspecialchars($q['question_text']) ?></h5>
+                        <h5 class="fw-bold text-dark mb-3"><span style="color:var(--primary-color);" class="me-2"><?= $idx++ ?>.</span> <?= htmlspecialchars($q['question_text']) ?></h5>
                         <div class="row g-3">
                             <?php foreach(['A'=>$q['option_a'], 'B'=>$q['option_b'], 'C'=>$q['option_c'], 'D'=>$q['option_d']] as $opt => $val): ?>
                                 <div class="col-md-6">
-                                    <label class="p-3 border rounded-3 d-flex align-items-center gap-3 w-100 cursor-pointer bg-light hover-shadow transition">
-                                        <input type="radio" name="ans_<?= $qid ?>" value="<?= $opt ?>" required class="form-check-input mt-0">
+                                    <label class="radio-card">
+                                        <input type="radio" name="ans_<?= $qid ?>" value="<?= $opt ?>" required>
                                         <span class="fw-bold text-muted"><?= $opt ?>)</span>
                                         <span class="text-dark fw-semibold"><?= htmlspecialchars($val) ?></span>
                                     </label>

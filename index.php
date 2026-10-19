@@ -243,275 +243,6 @@ if ($promo_query && $promo_query->num_rows > 0):
     from { opacity: 0; transform: scale(0.9) translateY(10px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
-
-/* ── NEW SPLIT HERO SECTION WITH FLOATING CARDS ── */
-.hero-section {
-    background: #024442; /* Deep Emerald */
-    padding: 140px 0 100px;
-    position: relative;
-    overflow: hidden;
-    color: #ffffff;
-}
-
-.hero-section::before {
-    content: '';
-    position: absolute;
-    top: -20%; left: -10%;
-    width: 50vw; height: 50vw;
-    background: radial-gradient(circle, rgba(184,243,90,0.08) 0%, rgba(184,243,90,0) 70%);
-    border-radius: 50%;
-    z-index: 0;
-    pointer-events: none;
-}
-
-.hero-section::after {
-    content: '';
-    position: absolute;
-    bottom: -20%; right: -5%;
-    width: 40vw; height: 40vw;
-    background: radial-gradient(circle, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 70%);
-    border-radius: 50%;
-    z-index: 0;
-    pointer-events: none;
-}
-
-.hero-grid {
-    display: grid;
-    grid-template-columns: 1.1fr 0.9fr; /* Left side slightly larger */
-    gap: 40px;
-    align-items: center;
-    position: relative;
-    z-index: 1;
-}
-
-/* ── LEFT SIDE: CONTENT ── */
-.hero-content {
-    text-align: left;
-    animation: heroFadeRight 0.8s ease-out forwards;
-}
-
-.hero-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.15);
-    color: #f2f5f7;
-    padding: 8px 20px;
-    border-radius: 50px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: 28px;
-}
-
-.hero-badge i {
-    color: #b8f35a; /* Accent Lime */
-}
-
-.hero-title {
-    font-size: clamp(2.8rem, 5vw, 4.5rem);
-    font-weight: 800;
-    line-height: 1.1;
-    margin-bottom: 24px;
-    color: #ffffff;
-}
-
-.hero-title .highlight {
-    color: var(--primary);
-    position: relative;
-    display: inline-block;
-    z-index: 1;
-}
-
-.hero-title .highlight::before {
-    content: '';
-    position: absolute;
-    bottom: 6px;
-    left: -2%;
-    width: 104%;
-    height: 30%;
-    background: rgba(184,243,90,0.2);
-    z-index: -1;
-    border-radius: 4px;
-    transform: rotate(-1deg);
-}
-
-.hero-subtitle {
-    font-size: 1.15rem;
-    color: rgba(255,255,255,0.8);
-    font-weight: 400;
-    line-height: 1.6;
-    margin-bottom: 40px;
-    max-width: 550px;
-}
-
-.hero-actions {
-    display: flex;
-    gap: 16px;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-}
-
-.btn-hero-primary {
-    background: #b8f35a;
-    color: #024442;
-    padding: 16px 36px;
-    border-radius: 50px;
-    font-weight: 700;
-    font-size: 1rem;
-    text-decoration: none;
-    transition: all 0.3s ease;
-}
-
-.btn-hero-primary:hover {
-    background: #a4e048;
-    transform: translateY(-3px);
-    box-shadow: 0 10px 25px rgba(184,243,90,0.3);
-    color: #024442;
-}
-
-.btn-hero-secondary {
-    background: transparent;
-    color: #ffffff;
-    padding: 16px 36px;
-    border-radius: 50px;
-    font-weight: 700;
-    font-size: 1rem;
-    text-decoration: none;
-    transition: all 0.3s ease;
-    border: 2px solid rgba(255,255,255,0.2);
-}
-
-.btn-hero-secondary:hover {
-    background: rgba(255,255,255,0.1);
-    border-color: #ffffff;
-    color: #ffffff;
-    transform: translateY(-3px);
-}
-
-/* ── RIGHT SIDE: FLOATING CARDS ── */
-.hero-visuals {
-    position: relative;
-    height: 450px;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: heroFadeLeft 1s ease-out forwards;
-}
-
-.floating-card {
-    position: absolute;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    padding: 20px;
-    border-radius: 20px;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-    animation: floatCard 6s ease-in-out infinite;
-    z-index: 2;
-}
-
-.fc-icon {
-    width: 54px;
-    height: 54px;
-    border-radius: 14px;
-    background: rgba(184,243,90,0.15);
-    color: #b8f35a;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    flex-shrink: 0;
-}
-
-.fc-text h4 { 
-    margin: 0 0 4px 0; 
-    font-size: 1.05rem; 
-    font-weight: 800; 
-    color: #fff;
-}
-.fc-text p { 
-    margin: 0; 
-    font-size: 0.85rem; 
-    color: rgba(255,255,255,0.7); 
-    line-height: 1.3;
-}
-
-/* Positioning & Animation Delays for each card */
-.card-1 { 
-    top: 20px; 
-    left: 10%; 
-    width: 260px;
-    animation-delay: 0s; 
-}
-.card-2 { 
-    bottom: 40px; 
-    right: 5%; 
-    width: 250px;
-    animation-delay: -2s; /* Offsets the floating animation */
-}
-.card-3 { 
-    top: 45%; 
-    right: 20%; 
-    width: 280px;
-    animation-delay: -4s; 
-    z-index: 3;
-}
-
-/* Animations */
-@keyframes heroFadeRight {
-    from { opacity: 0; transform: translateX(-30px); }
-    to { opacity: 1; transform: translateX(0); }
-}
-@keyframes heroFadeLeft {
-    from { opacity: 0; transform: translateX(30px); }
-    to { opacity: 1; transform: translateX(0); }
-}
-@keyframes floatCard {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-20px); }
-}
-
-/* Mobile Responsiveness */
-@media (max-width: 991px) {
-    .hero-section {
-        padding: 120px 0 80px;
-    }
-    .hero-grid {
-        grid-template-columns: 1fr;
-        text-align: center;
-        gap: 60px;
-    }
-    .hero-content {
-        text-align: center;
-    }
-    .hero-subtitle {
-        margin-inline: auto; /* Centers text block */
-    }
-    .hero-actions {
-        justify-content: center;
-    }
-    .hero-visuals {
-        height: 350px;
-        transform: scale(0.9); /* Scales down floating cards slightly to fit screen */
-    }
-    .card-1 { left: 0; }
-    .card-2 { right: 0; }
-    .card-3 { right: 10%; }
-}
-@media (max-width: 576px) {
-    .hero-visuals {
-        display: none; /* Hide floating cards on very small phones to save space */
-    }
-}
 </style>
 
 <div id="promoPopup" class="promo-overlay">
@@ -592,55 +323,289 @@ function closePromo() {
 <?php endif; ?>
 
 
-<section class="hero-section">
-    <div class="container">
+<style>
+/* ── GRAPHICAFIX EDITORIAL AGENCY HERO ── */
+.hero-section {
+    position: relative;
+    background-color: #F7F8F7;
+    padding: 155px 0 95px;
+    overflow: hidden;
+    color: #111111;
+}
+
+.hero-container {
+    position: relative;
+    z-index: 2;
+    max-width: 1360px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+.hero-grid {
+    display: grid;
+    grid-template-columns: 0.95fr 1.15fr;
+    gap: 60px;
+    align-items: center;
+}
+
+/* ── LEFT: SCULPTURAL EDITORIAL TYPOGRAPHY & CTAs ── */
+.hero-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    animation: heroTextReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.hero-title {
+    font-size: clamp(3rem, 5vw, 4.6rem);
+    font-weight: 850;
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    color: #111111;
+    margin: 0 0 24px 0;
+}
+
+/* Graphic lime-green accent on 'Forward.' */
+.hero-accent {
+    position: relative;
+    display: inline-block;
+    color: #024442;
+    z-index: 1;
+}
+
+.hero-accent::after {
+    content: '';
+    position: absolute;
+    left: -2%;
+    bottom: 0.08em;
+    width: 104%;
+    height: 0.34em;
+    background: #B6F763;
+    z-index: -1;
+    border-radius: 3px;
+}
+
+.hero-subtext {
+    font-size: clamp(1.05rem, 1.3vw, 1.22rem);
+    color: #4a5568;
+    line-height: 1.65;
+    max-width: 510px;
+    margin: 0 0 38px 0;
+    letter-spacing: -0.01em;
+}
+
+.hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    flex-wrap: wrap;
+}
+
+/* Primary CTA Button */
+.hero-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #024442;
+    color: #ffffff;
+    font-size: 15.5px;
+    font-weight: 600;
+    padding: 17px 36px;
+    border-radius: 999px;
+    text-decoration: none;
+    letter-spacing: -0.01em;
+    transition: all 0.25s ease;
+    border: none;
+    box-shadow: 0 6px 20px rgba(2, 68, 66, 0.16);
+}
+
+.hero-btn-primary:hover {
+    background: #035a57;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(2, 68, 66, 0.26);
+}
+
+/* Secondary CTA Text Link */
+.hero-link-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: #111111;
+    font-size: 15.5px;
+    font-weight: 600;
+    text-decoration: none;
+    letter-spacing: -0.01em;
+    transition: color 0.2s ease;
+    padding: 8px 0;
+}
+
+.hero-link-secondary .cta-arrow {
+    display: inline-block;
+    transition: transform 0.25s ease;
+    color: #024442;
+}
+
+.hero-link-secondary:hover {
+    color: #024442;
+}
+
+.hero-link-secondary:hover .cta-arrow {
+    transform: translateX(6px);
+}
+
+/* ── RIGHT: PURE CINEMATIC VIDEO (NO FRAMES, NO EXTRA ELEMENTS) ── */
+.hero-video-wrap {
+    position: relative;
+    width: 100%;
+    min-height: 520px;
+    aspect-ratio: 16 / 11;
+    border-radius: 28px;
+    overflow: hidden;
+    background: #024442;
+    box-shadow: 0 25px 70px -15px rgba(2, 68, 66, 0.18), 0 10px 30px -10px rgba(0, 0, 0, 0.06);
+    animation: heroMediaReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+.hero-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes heroTextReveal {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes heroMediaReveal {
+    from {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ── ACCESSIBILITY / PREFERS-REDUCED-MOTION ── */
+@media (prefers-reduced-motion: reduce) {
+    .hero-copy,
+    .hero-video-wrap {
+        animation: none !important;
+    }
+    .hero-link-secondary .cta-arrow,
+    .hero-btn-primary {
+        transition: none !important;
+    }
+}
+
+/* ── RESPONSIVE DESIGN ── */
+/* Tablet */
+@media (max-width: 991px) {
+    .hero-section {
+        padding: 130px 0 70px;
+    }
+    .hero-grid {
+        grid-template-columns: 1fr;
+        gap: 48px;
+    }
+    .hero-title {
+        font-size: clamp(2.6rem, 6vw, 3.6rem);
+    }
+    .hero-subtext {
+        max-width: 100%;
+    }
+    .hero-video-wrap {
+        aspect-ratio: 16 / 10;
+        min-height: 380px;
+        border-radius: 22px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 576px) {
+    .hero-section {
+        padding: 110px 0 50px;
+    }
+    .hero-title {
+        font-size: clamp(2.2rem, 8.8vw, 2.85rem);
+        line-height: 1.1;
+        margin-bottom: 18px;
+    }
+    .hero-subtext {
+        font-size: 1rem;
+        line-height: 1.6;
+        margin-bottom: 28px;
+    }
+    .hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+        width: 100%;
+    }
+    .hero-btn-primary {
+        width: 100%;
+        padding: 16px 24px;
+        font-size: 15px;
+    }
+    .hero-link-secondary {
+        justify-content: flex-start;
+        padding: 4px 0;
+    }
+    .hero-video-wrap {
+        aspect-ratio: 16 / 10;
+        min-height: 230px;
+        border-radius: 16px;
+        margin-top: 8px;
+    }
+}
+</style>
+
+<section class="hero-section" id="hero">
+    <div class="container hero-container">
         <div class="hero-grid">
             
-            <div class="hero-content">
-                <div class="hero-badge">
-                    <i class="fas fa-bolt"></i> Elevating Brands Worldwide
-                </div>
-
+            <!-- Left: Headline, Supporting Text, and Intentional CTAs -->
+            <div class="hero-copy">
                 <h1 class="hero-title">
-                    We Create Digital <br><span class="highlight">Excellence</span>
+                    We Build What<br>
+                    Moves Business<br>
+                    <span class="hero-accent">Forward.</span>
                 </h1>
-
-                <p class="hero-subtitle">
-                    Transforming bold ideas into modern branding, creative visuals, and highly functional digital experiences that drive growth. Let's build something extraordinary.
+                
+                <p class="hero-subtext">
+                    From distinctive brands to intelligent digital products, we turn ambitious ideas into solutions built to make a difference.
                 </p>
-
+                
                 <div class="hero-actions">
-                    <a href="#" data-bs-toggle="modal" data-bs-target="#projectRequestModal" class="btn-hero-primary">Start a Project</a>
-                    <a href="services.php" class="btn-hero-secondary">Explore Services</a>
+                    <a href="<?= BASE_URL ?>portfolio" class="hero-btn-primary">
+                        Explore Our Work
+                    </a>
+                    
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#projectRequestModal" class="hero-link-secondary">
+                        <span>Let's Discuss Your Project</span>
+                        <svg class="cta-arrow" width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3.75 9H14.25M14.25 9L9.75 4.5M14.25 9L9.75 13.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </a>
                 </div>
             </div>
 
-            <div class="hero-visuals">
-                
-                <div class="floating-card card-1">
-                    <div class="fc-icon"><i class="fas fa-rocket"></i></div>
-                    <div class="fc-text">
-                        <h4>Lightning Fast</h4>
-                        <p>On-time, high quality delivery.</p>
-                    </div>
-                </div>
-
-                <div class="floating-card card-2">
-                    <div class="fc-icon"><i class="fas fa-palette"></i></div>
-                    <div class="fc-text">
-                        <h4>Award Winning</h4>
-                        <p>Modern & creative aesthetics.</p>
-                    </div>
-                </div>
-
-                <div class="floating-card card-3">
-                    <div class="fc-icon"><i class="fas fa-star"></i></div>
-                    <div class="fc-text">
-                        <h4>5.0 Rating</h4>
-                        <p>100% Client Satisfaction.</p>
-                    </div>
-                </div>
-
+            <!-- Right: Pure, Cinematic Video (No Frames, No Extra Elements) -->
+            <div class="hero-video-wrap">
+                <video autoplay loop muted playsinline poster="<?= BASE_URL ?>assets/images/gfix_bg.png" class="hero-video">
+                    <source src="<?= BASE_URL ?>assets/images/bg-vid.mp4" type="video/mp4">
+                </video>
             </div>
 
         </div>
@@ -766,7 +731,7 @@ function closePromo() {
                             <div class="col-md-3">
                                 <a href="project_details.php?id=<?= intval($project['id']) ?>" class="work-card-link">
                                     <div class="work-card-single">
-<img src="admin/<?= htmlspecialchars(!empty($project['thumbnail']) ? $project['thumbnail'] : 'assets/images/placeholder.png') ?>" alt="Project Thumbnail">                                            alt="<?= htmlspecialchars($project['project_name']) ?>">
+                                        <img src="<?= !empty($project['thumbnail']) ? 'admin/' . htmlspecialchars($project['thumbnail']) : 'assets/images/placeholder.png' ?>" alt="<?= htmlspecialchars($project['project_name']) ?>">
                                         <div class="overlay">
                                             <h3><?= htmlspecialchars($project['project_name']) ?></h3>
                                         </div>
@@ -783,7 +748,6 @@ function closePromo() {
                     </div>
                 </div>
             </div>
-         </div>
             <div class="scroll-text-wrapper">
             <div class="scroll-text">
                 <span class="line">

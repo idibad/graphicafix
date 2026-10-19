@@ -1,7 +1,7 @@
 <?php
 include 'dashboard_header.php';
 
-if ($role !== 'admin' && $role !== 'pm') {
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm'])) {
     header("Location: manage_projects.php?error=unauthorized");
     exit;
 }

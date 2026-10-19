@@ -1,7 +1,7 @@
 <?php
 include 'dashboard_header.php';
 
-$is_admin = $role === 'admin';
+$is_admin = ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin');
 if (!$is_admin) {
     echo "Access Denied.";
     exit;

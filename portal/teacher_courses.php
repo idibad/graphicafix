@@ -28,21 +28,21 @@ $courses = $conn->query("
     <div class="row g-4">
         <?php if($courses && $courses->num_rows > 0): while($c = $courses->fetch_assoc()): ?>
             <div class="col-md-6 col-lg-4">
-                <div class="d-card" style="padding:0; overflow:hidden; display:flex; flex-direction:column; height:100%; border:1px solid #e2e8f0;">
-                    <div style="height:160px; background:#0f172a; position:relative;">
+                <div class="d-card" style="padding:0; overflow:hidden; display:flex; flex-direction:column; height:100%; border:1px solid var(--border-color);">
+                    <div style="height:160px; background:var(--bg-dark); position:relative;">
                         <?php if(!empty($c['thumbnail'])): ?>
                             <img src="<?= htmlspecialchars($c['thumbnail']) ?>" style="width:100%; height:100%; object-fit:cover;">
                         <?php else: ?>
-                            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:3rem; background:#024442; color:white;"><i class="fas fa-graduation-cap"></i></div>
+                            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:3rem; background:var(--primary-color); color:white;"><i class="fas fa-graduation-cap"></i></div>
                         <?php endif; ?>
-                        <span style="position:absolute; bottom:12px; left:12px; background:rgba(0,0,0,0.7); color:#b8f35a; font-size:11px; font-weight:800; padding:4px 10px; border-radius:6px;">
+                        <span style="position:absolute; bottom:12px; left:12px; background:rgba(15, 23, 42, 0.85); color:var(--accent-color); font-size:11px; font-weight:800; padding:4px 10px; border-radius:6px;">
                             <i class="fas fa-users"></i> <?= $c['student_cnt'] ?> Students Enrolled
                         </span>
                     </div>
 
                     <div style="padding:20px; display:flex; flex-direction:column; flex:1;">
-                        <h4 style="font-size:1.15rem; font-weight:800; color:#0f172a; margin:0 0 8px;"><?= htmlspecialchars($c['title']) ?></h4>
-                        <p style="font-size:13px; color:#64748b; margin-bottom:16px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+                        <h4 style="font-size:1.15rem; font-weight:800; color:var(--text-dark); margin:0 0 8px;"><?= htmlspecialchars($c['title']) ?></h4>
+                        <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
                             <?= htmlspecialchars($c['description'] ?? 'No description provided.') ?>
                         </p>
 

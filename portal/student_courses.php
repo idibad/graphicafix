@@ -49,37 +49,37 @@ $my_courses = $conn->query("
             $prog_pct = $tot_q > 0 ? round(($com_q / $tot_q) * 100) : 0;
         ?>
         <div class="col-md-6 col-lg-4">
-            <div class="d-card" style="padding:0; overflow:hidden; height:100%; display:flex; flex-direction:column; border:1px solid <?= $is_active ? '#024442' : '#e2e8f0' ?>; transition: transform .25s, box-shadow .25s;">
-                <div style="height: 180px; background: #0f172a; position:relative; filter: <?= $is_pending ? 'grayscale(80%)' : 'none' ?>;">
+            <div class="d-card" style="padding:0; overflow:hidden; height:100%; display:flex; flex-direction:column; border:1px solid <?= $is_active ? 'var(--primary-color)' : 'var(--border-color)' ?>;">
+                <div style="height: 180px; background: var(--bg-dark); position:relative; filter: <?= $is_pending ? 'grayscale(80%)' : 'none' ?>;">
                     <?php if(!empty($c['thumbnail'])): ?>
                         <img src="<?= htmlspecialchars($c['thumbnail']) ?>" style="width:100%; height:100%; object-fit:cover;">
                     <?php else: ?>
-                        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:3.5rem; background:linear-gradient(135deg,#024442,#b8f35a); color:#fff;"><i class="fas fa-laptop-code"></i></div>
+                        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:3.5rem; background:linear-gradient(135deg, var(--primary-color), var(--accent-color)); color:#fff;"><i class="fas fa-laptop-code"></i></div>
                     <?php endif; ?>
                     
                     <?php if($is_completed): ?>
-                        <span style="position:absolute; top:12px; right:12px; background:#10b981; color:#fff; font-size:11px; font-weight:800; padding:5px 12px; border-radius:50px; box-shadow:0 4px 12px rgba(0,0,0,0.3);">COMPLETED</span>
+                        <span class="badge bg-success" style="position:absolute; top:12px; right:12px; box-shadow:0 4px 12px rgba(0,0,0,0.2);">COMPLETED</span>
                     <?php elseif($is_pending): ?>
-                        <span style="position:absolute; top:12px; right:12px; background:#fef9c3; color:#a16207; font-size:11px; font-weight:800; padding:5px 12px; border-radius:50px;">PENDING APPROVAL</span>
+                        <span class="badge bg-warning text-dark" style="position:absolute; top:12px; right:12px;">PENDING APPROVAL</span>
                     <?php elseif($status === 'rejected' || $status === 'cancelled'): ?>
-                        <span style="position:absolute; top:12px; right:12px; background:#fee2e2; color:#ef4444; font-size:11px; font-weight:800; padding:5px 12px; border-radius:50px;">CANCELLED</span>
+                        <span class="badge bg-danger" style="position:absolute; top:12px; right:12px;">CANCELLED</span>
                     <?php else: ?>
-                        <span style="position:absolute; top:12px; right:12px; background:#024442; color:#b8f35a; font-size:11px; font-weight:800; padding:5px 12px; border-radius:50px; border:1px solid rgba(184,243,90,0.4);">ENROLLED</span>
+                        <span class="badge" style="position:absolute; top:12px; right:12px; background:var(--primary-color); color:var(--accent-color); border:1px solid rgba(184,243,90,0.4);">ENROLLED</span>
                     <?php endif; ?>
                 </div>
 
                 <div style="padding: 24px; display:flex; flex-direction:column; flex-grow:1;">
-                    <h4 style="font-size:1.15rem; font-weight:800; color:#0f172a; margin:0 0 6px;"><?= htmlspecialchars($c['title']) ?></h4>
-                    <div style="font-size:13px; color:#64748b; margin-bottom:16px;"><i class="fas fa-chalkboard-teacher"></i> <?= htmlspecialchars($c['instructor_name'] ?? 'Graphicafix Team') ?></div>
+                    <h4 style="font-size:1.15rem; font-weight:800; color:var(--text-dark); margin:0 0 6px;"><?= htmlspecialchars($c['title']) ?></h4>
+                    <div style="font-size:13px; color:var(--text-muted); margin-bottom:16px;"><i class="fas fa-chalkboard-teacher"></i> <?= htmlspecialchars($c['instructor_name'] ?? 'Graphicafix Team') ?></div>
                     
                     <?php if($is_active || $is_completed): ?>
                         <div style="margin-bottom:18px;">
-                            <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; color:#475569; margin-bottom:6px;">
+                            <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:6px;">
                                 <span>Curriculum Progress</span>
-                                <span style="color:#024442; font-weight:800;"><?= $prog_pct ?>%</span>
+                                <span style="color:var(--primary-color); font-weight:800;"><?= $prog_pct ?>%</span>
                             </div>
-                            <div style="width:100%; height:8px; background:#f1f5f9; border-radius:10px; overflow:hidden;">
-                                <div style="width:<?= $prog_pct ?>%; height:100%; background:linear-gradient(90deg,#024442,#10b981); border-radius:10px;"></div>
+                            <div style="width:100%; height:8px; background:var(--border-color); border-radius:10px; overflow:hidden;">
+                                <div style="width:<?= $prog_pct ?>%; height:100%; background:var(--primary-color); border-radius:10px;"></div>
                             </div>
                         </div>
                     <?php endif; ?>
@@ -89,7 +89,7 @@ $my_courses = $conn->query("
                             <a href="course_player.php?course_id=<?= $c['id'] ?>" class="btn btn-primary-custom" style="flex:1; justify-content:center; padding:12px; font-size:13.5px; font-weight:800;"><i class="fas fa-play"></i> Enter Classroom</a>
                             <button class="btn btn-secondary-custom" style="padding:12px;" onclick="openAskModal(<?= $c['id'] ?>, '<?= htmlspecialchars(addslashes($c['title'])) ?>')" title="Ask a Question"><i class="fas fa-question-circle"></i></button>
                         <?php elseif($is_pending): ?>
-                            <div style="background:#f8fafc; padding:12px; text-align:center; border-radius:10px; font-size:12.5px; color:#64748b; width:100%; border:1px dashed #cbd5e1;">
+                            <div style="background:var(--bg-light); padding:12px; text-align:center; border-radius:10px; font-size:12.5px; color:var(--text-muted); width:100%; border:1px dashed var(--border-color);">
                                 <i class="fas fa-clock"></i> Enrollment verification pending.
                             </div>
                         <?php else: ?>
@@ -106,7 +106,7 @@ $my_courses = $conn->query("
                 <div style="font-size:4rem; color:#cbd5e1; margin-bottom:16px;"><i class="fas fa-book-open"></i></div>
                 <h4 style="font-weight:800; color:#334155;">No Courses Found</h4>
                 <p style="color:#64748b;">You haven't registered for any courses yet.</p>
-                <a href="<?= BASE_URL ?>courses.php" class="btn btn-primary-custom mt-2">Browse Course Catalog</a>
+                <a href="<?= MAIN_SITE_URL ?>courses.php" class="btn btn-primary-custom mt-2">Browse Course Catalog</a>
             </div>
         <?php endif; ?>
     </div>
