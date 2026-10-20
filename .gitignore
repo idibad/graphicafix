@@ -15,16 +15,35 @@ list_tables.php
 password_history.txt
 user_action_history.txt
 
-# Generated documents & test PDFs
-quotations/QT-TEST*.pdf
-quotations/test_*.pdf
+# Generated documents & runtime PDFs (keep folder structure via .gitkeep)
+quotations/*.pdf
+!quotations/.gitkeep
+invoices/*.pdf
+!invoices/.gitkeep
 
 # Dynamic uploads generated at runtime (keep folder structure via .gitkeep)
+uploads/cvs/*
+!uploads/cvs/.gitkeep
+uploads/payment_proofs/*
+!uploads/payment_proofs/.gitkeep
 uploads/qrcodes/*
 !uploads/qrcodes/.gitkeep
+uploads/student_cards/*
+!uploads/student_cards/.gitkeep
 uploads/team/*
 !uploads/team/.gitkeep
 portal/uploads/assignments/*
 !portal/uploads/assignments/.gitkeep
 portal/uploads/lectures/*
 !portal/uploads/lectures/.gitkeep
+education/uploads/*
+!education/uploads/.gitkeep
+!education/uploads/.htaccess
+courses/uploads/*
+!courses/uploads/.gitkeep
+pages/uploads/*
+!pages/uploads/.gitkeep
+admin/images/uploads/*
+!admin/images/uploads/.gitkeep
+admin/uploads/*
+!admin/uploads/.gitkeep
