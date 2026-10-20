@@ -62,17 +62,14 @@
                             <a href="https://wa.me/923454568986" target="_blank" style="display:inline-flex; align-items:center; gap:8px;">
                                 <img src="https://flagcdn.com/w20/pk.png" width="18" height="13" alt="PK Flag" style="border-radius:2px; object-fit:cover;"> +92 345 4568986
                             </a>
-                            <a href="https://wa.me/447456328986" target="_blank" style="display:inline-flex; align-items:center; gap:8px;">
-                                <img src="https://flagcdn.com/w20/gb.png" width="18" height="13" alt="UK Flag" style="border-radius:2px; object-fit:cover;"> +44 745 6328986
-                            </a>
-                            <a href="https://wa.me/971504568986" target="_blank" style="display:inline-flex; align-items:center; gap:8px;">
-                                <img src="https://flagcdn.com/w20/ae.png" width="18" height="13" alt="UAE Flag" style="border-radius:2px; object-fit:cover;"> +971 50 4568986
+                            <a href="https://wa.me/447903442499" target="_blank" style="display:inline-flex; align-items:center; gap:8px;">
+                                <img src="https://flagcdn.com/w20/gb.png" width="18" height="13" alt="UK Flag" style="border-radius:2px; object-fit:cover;"> +44 7903 442499
                             </a>
                         </div>
                     </div>
                     <div class="contact-item">
                         <i class="fas fa-map-marker-alt"></i>
-                        <span style="color: #a1a1aa;">Pakistan | UK | UAE</span>
+                        <span style="color: #a1a1aa;">Pakistan | UK</span>
                     </div>
                 </div>
             </div>

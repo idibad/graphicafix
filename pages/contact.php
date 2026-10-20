@@ -189,16 +189,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_contact'])) {
                                 <img src="https://flagcdn.com/w20/pk.png" width="22" height="15" alt="Pakistan Flag" style="border-radius:3px; object-fit:cover;">
                                 <span>+92 345 4568986 <small style="color:#888; font-weight:400;">(Pakistan)</small></span>
                             </a>
-                            <a href="https://wa.me/447456328986" target="_blank" style="display:inline-flex; align-items:center; gap:10px; text-decoration:none;">
+                            <a href="https://wa.me/447903442499" target="_blank" style="display:inline-flex; align-items:center; gap:10px; text-decoration:none;">
                                 <img src="https://flagcdn.com/w20/gb.png" width="22" height="15" alt="UK Flag" style="border-radius:3px; object-fit:cover;">
-                                <span>+44 745 6328986 <small style="color:#888; font-weight:400;">(UK)</small></span>
-                            </a>
-                            <a href="https://wa.me/971504568986" target="_blank" style="display:inline-flex; align-items:center; gap:10px; text-decoration:none;">
-                                <img src="https://flagcdn.com/w20/ae.png" width="22" height="15" alt="UAE Flag" style="border-radius:3px; object-fit:cover;">
-                                <span>+971 50 4568986 <small style="color:#888; font-weight:400;">(UAE)</small></span>
+                                <span>+44 7903 442499 <small style="color:#888; font-weight:400;">(UK)</small></span>
                             </a>
                         </div>
-                        <p style="font-size: 0.8rem; margin-top: 10px; color:#888;">Mon - Fri, 9am - 6pm (PKT / GMT / GST)</p>
+                        <p style="font-size: 0.8rem; margin-top: 10px; color:#888;">Mon - Fri, 9am - 6pm (PKT / GMT)</p>
                     </div>
                 </div>
 
@@ -207,8 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_contact'])) {
                     <div class="info-content">
                         <h4>Our Offices & Presence</h4>
                         <p style="margin-bottom:4px;"><strong>Pakistan:</strong> Rawalpindi / Islamabad</p>
-                        <p style="margin-bottom:4px;"><strong>United Kingdom:</strong> London, UK</p>
-                        <p style="margin-bottom:0;"><strong>UAE:</strong> Dubai, UAE</p>
+                        <p style="margin-bottom:0;"><strong>United Kingdom:</strong> London, UK</p>
                     </div>
                 </div>
             </div>
