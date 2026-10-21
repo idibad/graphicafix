@@ -179,7 +179,8 @@ switch ($action) {
     // 2. REAL-TIME POLLING (For Admin Response Unit & Dashboard)
     // ──────────────────────────────────────────────────────────────────────────
     case 'poll':
-        $last_id = intval($_GET['last_id'] ?? 0);
+    case 'poll_latest':
+        $last_id = intval($_GET['last_id'] ?? ($_GET['since_id'] ?? 0));
         $since   = trim($_GET['since'] ?? '');
 
         // Fetch any new entries with id > last_id
@@ -219,12 +220,14 @@ switch ($action) {
         }
 
         echo json_encode([
-            'success'    => true,
-            'new_count'  => count($new_items),
-            'has_urgent' => $has_urgent,
-            'items'      => $new_items,
-            'latest_id'  => intval($stats['latest_id'] ?? 0),
-            'stats'      => [
+            'success'     => true,
+            'has_new'     => count($new_items) > 0,
+            'new_count'   => count($new_items),
+            'new_records' => $new_items,
+            'items'       => $new_items,
+            'has_urgent'  => $has_urgent,
+            'latest_id'   => intval($stats['latest_id'] ?? 0),
+            'stats'       => [
                 'total'     => intval($stats['total'] ?? 0),
                 'urgent'    => intval($stats['urgent_count'] ?? 0),
                 'pending'   => intval($stats['pending_count'] ?? 0),
@@ -339,7 +342,7 @@ switch ($action) {
     // 4. TOGGLE URGENT STATUS
     // ──────────────────────────────────────────────────────────────────────────
     case 'toggle_urgent':
-        $visit_id = intval($_POST['visit_id'] ?? ($_GET['visit_id'] ?? 0));
+        $visit_id = intval($_POST['visit_id'] ?? ($_POST['id'] ?? ($_GET['visit_id'] ?? ($_GET['id'] ?? 0))));
         if (!$visit_id) {
             echo json_encode(['success' => false, 'message' => 'Invalid visit ID']);
             exit;
@@ -365,7 +368,7 @@ switch ($action) {
     // 5. UPDATE VISIT STATUS (Contacted, In Discussion, Closed, etc.)
     // ──────────────────────────────────────────────────────────────────────────
     case 'update_status':
-        $visit_id = intval($_POST['visit_id'] ?? 0);
+        $visit_id = intval($_POST['visit_id'] ?? ($_POST['id'] ?? 0));
         $status   = strtolower(trim($_POST['status'] ?? ''));
         $notes    = trim($_POST['admin_notes'] ?? '');
 

@@ -85,23 +85,28 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
         </div>
 
         <!-- Table Container -->
-        <div class="main-table">
-            <div class="table-head" style="grid-template-columns: 2fr 1.3fr 1fr 1.4fr 1.5fr 1fr 1fr;">
-                <span>Client & Company</span>
-                <span>Phone / WhatsApp</span>
-                <span>Interest</span>
-                <span>Available Contact</span>
-                <span>Requirements</span>
-                <span>Logged By</span>
-                <span style="text-align:right;">Actions</span>
-            </div>
-
-            <div id="visitsTableBody">
-                <div style="text-align:center; padding:50px 20px; color:#888;">
-                    <i class="fas fa-spinner fa-spin" style="font-size:24px; margin-bottom:10px; color:var(--primary);"></i>
-                    <p style="margin:0;">Loading visits...</p>
-                </div>
-            </div>
+        <div style="overflow-x:auto;">
+            <table class="data-table" style="width:100%; border-collapse:collapse; min-width:880px;">
+                <thead>
+                    <tr>
+                        <th style="width:23%;">Client & Company</th>
+                        <th style="width:18%;">1-Click WhatsApp</th>
+                        <th style="width:11%;">Interest</th>
+                        <th style="width:16%;">Contact Window</th>
+                        <th style="width:15%;">Requirements</th>
+                        <th style="width:10%;">Logged By</th>
+                        <th style="width:7%; text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="visitsTableBody">
+                    <tr>
+                        <td colspan="7" style="text-align:center; padding:50px 20px; color:#888;">
+                            <i class="fas fa-spinner fa-spin" style="font-size:24px; margin-bottom:10px; color:var(--primary);"></i>
+                            <p style="margin:0;">Loading visits...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -414,10 +419,84 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
 }
 .sub-box input { accent-color: var(--primary); }
 
+/* ── Clean Universal Table Layout ── */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.data-table th {
+    background: #f8fafc;
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border-bottom: 1.5px solid #e2e8f0;
+    white-space: nowrap;
+}
+.data-table td {
+    padding: 13px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    vertical-align: middle;
+}
+.data-table tr:hover td {
+    background: #f8fafc;
+}
+.data-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* ── 1-Click WhatsApp Button ── */
+.btn-wa {
+    background: #16a34a !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 50px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none !important;
+    border: none;
+    box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+.btn-wa:hover {
+    background: #15803d !important;
+    color: #ffffff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35);
+}
+
+/* ── Action Buttons ── */
+.dots {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+.dots:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
 /* Standard Status Badge Helpers */
-.badge-hot  { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; }
-.badge-warm { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; }
-.badge-cold { background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; }
+.badge-hot  { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
+.badge-warm { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
+.badge-cold { background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
 .badge-urg  { background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; margin-left: 4px; }
 </style>
 
@@ -435,6 +514,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// ── Smart WhatsApp Phone Number Formatter ──
+function formatWhatsAppNumber(phone) {
+    if (!phone) return '';
+    let clean = phone.replace(/[^0-9]/g, '');
+    if (clean.startsWith('03') && clean.length === 11) {
+        clean = '92' + clean.substring(1);
+    } else if (clean.startsWith('00')) {
+        clean = clean.substring(2);
+    } else if (clean.length === 10 && clean.startsWith('3')) {
+        clean = '92' + clean;
+    }
+    return clean;
+}
+
 function loadVisits() {
     fetch(`sales_visits_api.php?action=fetch_all&filter=${currentFilter}`)
         .then(r => r.json())
@@ -444,12 +537,12 @@ function loadVisits() {
                 renderStats(data.stats || {});
                 renderTable();
             } else {
-                document.getElementById('visitsTableBody').innerHTML = `<div style="text-align:center;padding:40px;color:#ef4444;">${data.message}</div>`;
+                document.getElementById('visitsTableBody').innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#ef4444;">${data.message}</td></tr>`;
             }
         })
         .catch(err => {
             console.error(err);
-            document.getElementById('visitsTableBody').innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444;">Failed to load visits. Please try again.</div>';
+            document.getElementById('visitsTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#ef4444;">Failed to load visits. Please try again.</td></tr>';
         });
 }
 
@@ -486,11 +579,13 @@ function renderTable() {
 
     if (items.length === 0) {
         container.innerHTML = `
-            <div style="text-align:center; padding:60px 24px; color:#888;">
-                <i class="fas fa-street-view" style="font-size:32px; color:#cbd5e1; margin-bottom:12px;"></i>
-                <p style="margin:0; font-size:14px;">No client field visits found.</p>
-                <button class="add-client" onclick="openVisitModal('add')" style="margin-top:12px;">+ Log First Visit</button>
-            </div>
+            <tr>
+                <td colspan="7" style="text-align:center; padding:60px 24px; color:#888;">
+                    <i class="fas fa-street-view" style="font-size:32px; color:#cbd5e1; margin-bottom:12px;"></i>
+                    <p style="margin:0; font-size:14px; font-weight:600; color:#475569;">No client field visits found.</p>
+                    <button class="add-client" onclick="openVisitModal('add')" style="margin-top:12px;">+ Log First Visit</button>
+                </td>
+            </tr>
         `;
         return;
     }
@@ -498,7 +593,8 @@ function renderTable() {
     let html = '';
     items.forEach(v => {
         const isUrgent = (v.is_urgent == 1);
-        const cleanWa  = (v.whatsapp || v.phone || '').replace(/[^0-9]/g, '');
+        const rawWa    = (v.whatsapp || v.phone || '').trim();
+        const cleanWa  = formatWhatsAppNumber(rawWa);
         const waMsg    = encodeURIComponent(`Hello ${v.client_name}, this is Graphicafix following up on your discussion with our team regarding ${v.company_name}. Are you available for a quick chat?`);
         
         let interestBadge = '';
@@ -512,52 +608,79 @@ function renderTable() {
 
         let catBadges = '';
         if (v.categories_arr && v.categories_arr.length > 0) {
-            catBadges = v.categories_arr.slice(0, 2).map(c => `<span style="background:#e0f2fe; color:#0284c7; padding:2px 7px; border-radius:6px; font-size:11px; font-weight:600; margin-right:4px;">${escapeHtml(c)}</span>`).join('');
+            catBadges = v.categories_arr.slice(0, 2).map(c => `<span style="background:#e0f2fe; color:#0284c7; padding:2px 7px; border-radius:6px; font-size:11px; font-weight:600;">${escapeHtml(c)}</span>`).join(' ');
             if (v.categories_arr.length > 2) {
-                catBadges += `<span style="color:#64748b; font-size:11px;">+${v.categories_arr.length - 2}</span>`;
+                catBadges += ` <span style="color:#64748b; font-size:11px;">+${v.categories_arr.length - 2}</span>`;
             }
         } else {
             catBadges = '<span style="color:#94a3b8; font-size:12px;">General</span>';
         }
 
+        // WhatsApp Reach Out Button
+        let reachOutHtml = '';
+        if (cleanWa) {
+            reachOutHtml = `
+                <div style="display:flex; flex-direction:column; gap:3px; align-items:flex-start;">
+                    <a href="https://wa.me/${cleanWa}?text=${waMsg}" target="_blank" class="btn-wa" title="1-Click WhatsApp Reach Out">
+                        <i class="fab fa-whatsapp" style="font-size:14px;"></i>
+                        <span>WhatsApp</span>
+                    </a>
+                    <a href="tel:${escapeHtml(v.phone)}" style="font-size:12px; color:#64748b; text-decoration:none; display:inline-flex; align-items:center; gap:4px; margin-top:2px;">
+                        <i class="fas fa-phone-alt" style="font-size:10px; color:#94a3b8;"></i> ${escapeHtml(v.phone)}
+                    </a>
+                </div>
+            `;
+        } else {
+            reachOutHtml = `
+                <a href="tel:${escapeHtml(v.phone)}" style="font-size:12.5px; font-weight:600; color:#334155; text-decoration:none;">
+                    <i class="fas fa-phone-alt" style="font-size:11px; color:#94a3b8; margin-right:4px;"></i> ${escapeHtml(v.phone)}
+                </a>
+            `;
+        }
+
         html += `
-            <div class="table-row" style="grid-template-columns: 2fr 1.3fr 1fr 1.4fr 1.5fr 1fr 1fr; ${isUrgent ? 'background:#fffbfb;' : ''}">
-                <div>
-                    <strong style="color:#0f172a; font-size:13.5px; display:inline-flex; align-items:center;">
+            <tr style="${isUrgent ? 'background:#fffbfb; border-left:4px solid #ef4444;' : ''}">
+                <td>
+                    <div style="font-weight:700; color:#0f172a; font-size:13.5px; display:inline-flex; align-items:center; gap:6px;">
                         ${escapeHtml(v.company_name)}
                         ${isUrgent ? '<span class="badge-urg">URGENT</span>' : ''}
-                    </strong>
-                    <div style="font-size:12px; color:#64748b;">${escapeHtml(v.client_name)}</div>
-                </div>
-                <div>
-                    <div style="font-weight:600; color:#334155; font-size:12.5px;">${escapeHtml(v.phone)}</div>
-                    ${cleanWa ? `
-                        <a href="https://wa.me/${cleanWa}?text=${waMsg}" target="_blank" style="font-size:11.5px; color:#16a34a; font-weight:600; text-decoration:none;">
-                            <i class="fab fa-whatsapp"></i> ${escapeHtml(v.whatsapp || v.phone)}
-                        </a>
-                    ` : ''}
-                </div>
-                <div>${interestBadge}</div>
-                <div style="font-size:12.5px; color:#334155;">
-                    <i class="far fa-clock" style="color:#64748b; margin-right:4px;"></i>
-                    ${escapeHtml(v.contact_availability)}
-                </div>
-                <div>${catBadges}</div>
-                <div style="font-size:12px; color:#64748b;">
-                    <div>${escapeHtml(v.sales_rep_name)}</div>
-                    <small style="color:#94a3b8;">${v.time_ago || ''}</small>
-                </div>
-                <div style="display:flex; gap:6px; justify-content:flex-end; align-items:center;">
-                    ${cleanWa ? `
-                        <a href="https://wa.me/${cleanWa}?text=${waMsg}" target="_blank" class="dots" style="color:#16a34a; border-color:#bbf7d0; background:#f0fdf4;" title="1-Click WhatsApp">
-                            <i class="fab fa-whatsapp"></i>
-                        </a>
-                    ` : ''}
-                    <button class="dots" onclick="viewVisit(${v.id})" title="View Details"><i class="fas fa-eye"></i></button>
-                    <button class="dots" onclick="openVisitModal('edit', ${v.id})" title="Edit"><i class="fas fa-pencil-alt"></i></button>
-                    <button class="dots" onclick="deleteVisit(${v.id}, '${escapeHtml(v.company_name)}')" title="Delete" style="color:#ef4444;"><i class="fas fa-trash"></i></button>
-                </div>
-            </div>
+                    </div>
+                    <div style="font-size:12px; color:#64748b; margin-top:2px;">
+                        <i class="fas fa-user" style="font-size:10px; color:#94a3b8; margin-right:3px;"></i>
+                        ${escapeHtml(v.client_name)}
+                    </div>
+                </td>
+                <td>
+                    ${reachOutHtml}
+                </td>
+                <td>
+                    ${interestBadge}
+                </td>
+                <td>
+                    <div style="font-size:12.5px; color:#334155; display:flex; align-items:center; gap:5px;">
+                        <i class="far fa-clock" style="color:#64748b;"></i>
+                        <strong>${escapeHtml(v.contact_availability)}</strong>
+                    </div>
+                </td>
+                <td>
+                    <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                        ${catBadges}
+                    </div>
+                </td>
+                <td>
+                    <div style="font-size:12px; color:#64748b;">
+                        <div style="font-weight:600; color:#334155;">${escapeHtml(v.sales_rep_name)}</div>
+                        <small style="color:#94a3b8;">${v.time_ago || ''}</small>
+                    </div>
+                </td>
+                <td style="text-align:right;">
+                    <div style="display:inline-flex; gap:6px; justify-content:flex-end; align-items:center;">
+                        <button class="dots" onclick="viewVisit(${v.id})" title="View Details"><i class="fas fa-eye"></i></button>
+                        <button class="dots" onclick="openVisitModal('edit', ${v.id})" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="dots" onclick="deleteVisit(${v.id}, '${escapeHtml(v.company_name)}')" title="Delete" style="color:#ef4444;"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
         `;
     });
 

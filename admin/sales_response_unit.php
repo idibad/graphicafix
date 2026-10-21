@@ -105,23 +105,28 @@ $user_display_name = htmlspecialchars($_SESSION['name'] ?? ($_SESSION['username'
         </div>
 
         <!-- Table Container -->
-        <div class="main-table">
-            <div class="table-head" style="grid-template-columns: 2fr 1.6fr 1.1fr 1.5fr 1.5fr 1fr 1.2fr;">
-                <span>Client & Company</span>
-                <span>1-Click Reach Out</span>
-                <span>Interest</span>
-                <span>Available Window</span>
-                <span>Requirements</span>
-                <span>Rep & Time</span>
-                <span style="text-align:right;">Actions</span>
-            </div>
-
-            <div id="radarTableBody">
-                <div style="text-align:center; padding:50px 20px; color:#888;">
-                    <i class="fas fa-spinner fa-spin" style="font-size:24px; margin-bottom:10px; color:var(--primary);"></i>
-                    <p style="margin:0;">Connecting to Live Response Radar...</p>
-                </div>
-            </div>
+        <div style="overflow-x:auto;">
+            <table class="data-table" style="width:100%; border-collapse:collapse; min-width:880px;">
+                <thead>
+                    <tr>
+                        <th style="width:23%;">Client & Company</th>
+                        <th style="width:18%;">1-Click WhatsApp</th>
+                        <th style="width:11%;">Interest</th>
+                        <th style="width:16%;">Contact Window</th>
+                        <th style="width:15%;">Requirements</th>
+                        <th style="width:10%;">Sales Rep</th>
+                        <th style="width:7%; text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="radarTableBody">
+                    <tr>
+                        <td colspan="7" style="text-align:center; padding:50px 20px; color:#888;">
+                            <i class="fas fa-spinner fa-spin" style="font-size:24px; margin-bottom:10px; color:var(--primary);"></i>
+                            <p style="margin:0;">Connecting to Live Response Radar...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -152,18 +157,93 @@ $user_display_name = htmlspecialchars($_SESSION['name'] ?? ($_SESSION['username'
 </div>
 
 <style>
-/* Standard Status Badge Helpers */
-.badge-hot  { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; }
-.badge-warm { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; }
-.badge-cold { background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; }
+/* ── Clean Data Table ── */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    background: #fff;
+}
+.data-table th {
+    background: #f8fafc;
+    padding: 13px 16px;
+    text-align: left;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border-bottom: 1.5px solid #e2e8f0;
+    white-space: nowrap;
+}
+.data-table td {
+    padding: 13px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    vertical-align: middle;
+}
+.data-table tr:hover td {
+    background: #f8fafc;
+}
+.data-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* ── 1-Click WhatsApp Button ── */
+.btn-wa {
+    background: #16a34a !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 50px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none !important;
+    border: none;
+    box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+.btn-wa:hover {
+    background: #15803d !important;
+    color: #ffffff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35);
+}
+
+/* ── Action Buttons ── */
+.dots {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+.dots:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+/* ── Standard Status Badges ── */
+.badge-hot  { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
+.badge-warm { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
+.badge-cold { background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
 .badge-urg  { background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; margin-left: 4px; }
-.btn-wa     { background: #16a34a; color: #fff !important; font-weight: 700; font-size: 12.5px; padding: 6px 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; border: 1px solid #15803d; transition: all 0.15s ease; }
-.btn-wa:hover { background: #15803d; color: #fff !important; }
 </style>
 
 <script>
 let lastKnownId   = 0;
 let pollingTimer  = null;
+let syncTimer     = null;
 let radarItems    = [];
 let currentFilter = 'pending';
 let currentSort   = 'urgency';
@@ -172,38 +252,54 @@ let audioCtx      = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     checkNotificationPermission();
-    fetchFullRadar();
-    startShortPolling();
+    fetchFullRadar(true);
+    startPolling();
 });
 
-// ── Polling Engine (3.5s zero-lag) ──
-function startShortPolling() {
+// ── Smart WhatsApp Phone Number Formatter ──
+function formatWhatsAppNumber(phone) {
+    if (!phone) return '';
+    let clean = phone.replace(/[^0-9]/g, '');
+    if (clean.startsWith('03') && clean.length === 11) {
+        clean = '92' + clean.substring(1);
+    } else if (clean.startsWith('00')) {
+        clean = clean.substring(2);
+    } else if (clean.length === 10 && clean.startsWith('3')) {
+        clean = '92' + clean;
+    }
+    return clean;
+}
+
+// ── Polling Engine (3.5s zero-lag dynamic refresh) ──
+function startPolling() {
     if (pollingTimer) clearInterval(pollingTimer);
-    pollingTimer = setInterval(() => {
-        pollLatestVisits();
-    }, 3500);
+    pollingTimer = setInterval(pollLatestVisits, 3500);
+
+    // Silent background sync every 12 seconds so status updates reflect without reload
+    if (syncTimer) clearInterval(syncTimer);
+    syncTimer = setInterval(() => {
+        fetchFullRadar(false);
+    }, 12000);
 }
 
 function pollLatestVisits() {
-    fetch(`sales_visits_api.php?action=poll_latest&since_id=${lastKnownId}`)
+    fetch(`sales_visits_api.php?action=poll&last_id=${lastKnownId}`)
         .then(r => r.json())
         .then(data => {
-            if (data.success && data.has_new && data.new_records && data.new_records.length > 0) {
-                // Play pleasant notification audio chime
-                playNotificationChime();
-
-                // Desktop Notification for new entries
-                data.new_records.forEach(v => {
-                    triggerDesktopAlert(v);
-                });
-
-                // Update lastKnownId
-                data.new_records.forEach(v => {
-                    if (parseInt(v.id) > lastKnownId) lastKnownId = parseInt(v.id);
-                });
-
-                // Refresh table seamlessly
-                fetchFullRadar(false);
+            if (data.success) {
+                // If brand new visits have arrived
+                if (data.has_new || (data.items && data.items.length > 0)) {
+                    playNotificationChime();
+                    const newItems = data.items || data.new_records || [];
+                    newItems.forEach(v => triggerDesktopAlert(v));
+                    if (data.latest_id && data.latest_id > lastKnownId) {
+                        lastKnownId = data.latest_id;
+                    }
+                    // Seamlessly refresh table without full page reload
+                    fetchFullRadar(false);
+                } else if (data.stats) {
+                    renderStats(data.stats);
+                }
             }
         })
         .catch(e => console.warn('Radar poll error:', e));
@@ -212,10 +308,12 @@ function pollLatestVisits() {
 function fetchFullRadar(showLoading = true) {
     if (showLoading && radarItems.length === 0) {
         document.getElementById('radarTableBody').innerHTML = `
-            <div style="text-align:center; padding:50px 20px; color:#888;">
-                <i class="fas fa-spinner fa-spin" style="font-size:24px; margin-bottom:10px; color:var(--primary);"></i>
-                <p style="margin:0;">Scanning live radar...</p>
-            </div>
+            <tr>
+                <td colspan="7" style="text-align:center; padding:50px 20px; color:#888;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:24px; margin-bottom:10px; color:var(--primary);"></i>
+                    <p style="margin:0;">Scanning live radar...</p>
+                </td>
+            </tr>
         `;
     }
 
@@ -225,17 +323,21 @@ function fetchFullRadar(showLoading = true) {
             if (data.success) {
                 radarItems = data.items || [];
                 
-                // Track max ID
+                // Track highest ID
                 radarItems.forEach(v => {
-                    if (parseInt(v.id) > lastKnownId) lastKnownId = parseInt(v.id);
+                    const vid = parseInt(v.id);
+                    if (vid > lastKnownId) lastKnownId = vid;
                 });
+                if (data.latest_id && data.latest_id > lastKnownId) {
+                    lastKnownId = data.latest_id;
+                }
 
                 renderStats(data.stats || {});
                 renderRadarTable();
             }
         })
         .catch(err => {
-            console.error(err);
+            console.error('Radar fetch error:', err);
         });
 }
 
@@ -299,20 +401,23 @@ function renderRadarTable() {
 
     if (items.length === 0) {
         container.innerHTML = `
-            <div style="text-align:center; padding:60px 24px; color:#888;">
-                <i class="fas fa-check-circle" style="font-size:32px; color:#cbd5e1; margin-bottom:12px;"></i>
-                <p style="margin:0; font-size:14px;">No visits matching this filter.</p>
-                <small style="color:#94a3b8;">Radar is continuously listening for new submissions...</small>
-            </div>
+            <tr>
+                <td colspan="7" style="text-align:center; padding:60px 24px; color:#888;">
+                    <i class="fas fa-check-circle" style="font-size:32px; color:#cbd5e1; margin-bottom:12px;"></i>
+                    <p style="margin:0; font-size:14px; font-weight:600; color:#475569;">No visits matching this filter.</p>
+                    <small style="color:#94a3b8;">Radar is continuously listening for new client visits...</small>
+                </td>
+            </tr>
         `;
         return;
     }
 
     let html = '';
     items.forEach(v => {
-        const isUrgent = (v.is_urgent == 1);
-        const cleanWa  = (v.whatsapp || v.phone || '').replace(/[^0-9]/g, '');
-        const waMsg    = encodeURIComponent(`Hello ${v.client_name}, this is Graphicafix management reaching out following your visit with our team. When is a convenient time for a quick 5-minute call?`);
+        const isUrgent   = (v.is_urgent == 1);
+        const rawWa      = (v.whatsapp || v.phone || '').trim();
+        const cleanWa    = formatWhatsAppNumber(rawWa);
+        const waMsg      = encodeURIComponent(`Hello ${v.client_name}, this is Graphicafix management reaching out regarding your discussion for ${v.company_name}. When is a convenient time for a quick 5-minute call?`);
 
         let interestBadge = '';
         if (v.interest_level === 'hot') {
@@ -325,52 +430,81 @@ function renderRadarTable() {
 
         let catBadges = '';
         if (v.categories_arr && v.categories_arr.length > 0) {
-            catBadges = v.categories_arr.slice(0, 2).map(c => `<span style="background:#e0f2fe; color:#0284c7; padding:2px 7px; border-radius:6px; font-size:11px; font-weight:600; margin-right:4px;">${escapeHtml(c)}</span>`).join('');
+            catBadges = v.categories_arr.slice(0, 2).map(c => `<span style="background:#e0f2fe; color:#0284c7; padding:2px 7px; border-radius:6px; font-size:11px; font-weight:600;">${escapeHtml(c)}</span>`).join(' ');
             if (v.categories_arr.length > 2) {
-                catBadges += `<span style="color:#64748b; font-size:11px;">+${v.categories_arr.length - 2}</span>`;
+                catBadges += ` <span style="color:#64748b; font-size:11px;">+${v.categories_arr.length - 2}</span>`;
             }
         } else {
             catBadges = '<span style="color:#94a3b8; font-size:12px;">General</span>';
         }
 
+        // WhatsApp Reach Out Button
+        let reachOutHtml = '';
+        if (cleanWa) {
+            reachOutHtml = `
+                <div style="display:flex; flex-direction:column; gap:3px; align-items:flex-start;">
+                    <a href="https://wa.me/${cleanWa}?text=${waMsg}" target="_blank" class="btn-wa" title="1-Click WhatsApp Reach Out">
+                        <i class="fab fa-whatsapp" style="font-size:14px;"></i>
+                        <span>WhatsApp</span>
+                    </a>
+                    <a href="tel:${escapeHtml(v.phone)}" style="font-size:12px; color:#64748b; text-decoration:none; display:inline-flex; align-items:center; gap:4px; margin-top:2px;">
+                        <i class="fas fa-phone-alt" style="font-size:10px; color:#94a3b8;"></i> ${escapeHtml(v.phone)}
+                    </a>
+                </div>
+            `;
+        } else {
+            reachOutHtml = `
+                <a href="tel:${escapeHtml(v.phone)}" style="font-size:12.5px; font-weight:600; color:#334155; text-decoration:none;">
+                    <i class="fas fa-phone-alt" style="font-size:11px; color:#94a3b8; margin-right:4px;"></i> ${escapeHtml(v.phone)}
+                </a>
+            `;
+        }
+
         html += `
-            <div class="table-row" style="grid-template-columns: 2fr 1.6fr 1.1fr 1.5fr 1.5fr 1fr 1.2fr; ${isUrgent ? 'background:#fffbfb; border-left:3px solid #ef4444;' : ''}">
-                <div>
-                    <strong style="color:#0f172a; font-size:13.5px; display:inline-flex; align-items:center;">
+            <tr style="${isUrgent ? 'background:#fffbfb; border-left:4px solid #ef4444;' : ''}">
+                <td>
+                    <div style="font-weight:700; color:#0f172a; font-size:13.5px; display:inline-flex; align-items:center; gap:6px;">
                         ${escapeHtml(v.company_name)}
                         ${isUrgent ? '<span class="badge-urg">URGENT</span>' : ''}
-                    </strong>
-                    <div style="font-size:12px; color:#64748b;">${escapeHtml(v.client_name)}</div>
-                </div>
-                <div>
-                    ${cleanWa ? `
-                        <a href="https://wa.me/${cleanWa}?text=${waMsg}" target="_blank" class="btn-wa" title="1-Click WhatsApp Reach Out">
-                            <i class="fab fa-whatsapp"></i> WhatsApp Reach Out
-                        </a>
-                    ` : `
-                        <span style="font-size:12.5px; font-weight:600; color:#334155;">${escapeHtml(v.phone)}</span>
-                    `}
-                </div>
-                <div>${interestBadge}</div>
-                <div style="font-size:12.5px; color:#334155;">
-                    <i class="far fa-clock" style="color:#64748b; margin-right:4px;"></i>
-                    <strong>${escapeHtml(v.contact_availability)}</strong>
-                </div>
-                <div>${catBadges}</div>
-                <div style="font-size:12px; color:#64748b;">
-                    <div>${escapeHtml(v.sales_rep_name)}</div>
-                    <small style="color:#94a3b8;">${v.time_ago || ''}</small>
-                </div>
-                <div style="display:flex; gap:6px; justify-content:flex-end; align-items:center;">
-                    <button class="dots" onclick="toggleUrgent(${v.id})" title="${isUrgent ? 'Mark as Not Urgent' : 'Mark as URGENT'}" style="${isUrgent ? 'color:#ef4444; border-color:#fca5a5; background:#fff5f5;' : ''}">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </button>
-                    <button class="dots" onclick="openDetailModal(${v.id})" title="View Details / Update Status"><i class="fas fa-eye"></i></button>
-                    ${v.status !== 'contacted' ? `
-                        <button class="dots" onclick="markContacted(${v.id})" title="Mark Contacted" style="color:#16a34a;"><i class="fas fa-check"></i></button>
-                    ` : ''}
-                </div>
-            </div>
+                    </div>
+                    <div style="font-size:12px; color:#64748b; margin-top:2px;">
+                        <i class="fas fa-user" style="font-size:10px; color:#94a3b8; margin-right:3px;"></i>
+                        ${escapeHtml(v.client_name)}
+                    </div>
+                </td>
+                <td>
+                    ${reachOutHtml}
+                </td>
+                <td>
+                    ${interestBadge}
+                </td>
+                <td>
+                    <div style="font-size:12.5px; color:#334155; display:flex; align-items:center; gap:5px;">
+                        <i class="far fa-clock" style="color:#64748b;"></i>
+                        <strong>${escapeHtml(v.contact_availability)}</strong>
+                    </div>
+                </td>
+                <td>
+                    <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                        ${catBadges}
+                    </div>
+                </td>
+                <td>
+                    <div style="font-size:12px; font-weight:600; color:#334155;">${escapeHtml(v.sales_rep_name)}</div>
+                    <small style="color:#94a3b8; font-size:11px;">${v.time_ago || ''}</small>
+                </td>
+                <td style="text-align:right;">
+                    <div style="display:inline-flex; gap:6px; align-items:center;">
+                        <button class="dots" onclick="toggleUrgent(${v.id})" title="${isUrgent ? 'Mark as Not Urgent' : 'Mark as URGENT'}" style="${isUrgent ? 'color:#ef4444; border-color:#fca5a5; background:#fff5f5;' : ''}">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </button>
+                        <button class="dots" onclick="openDetailModal(${v.id})" title="View Details / Update Status"><i class="fas fa-eye"></i></button>
+                        ${v.status !== 'contacted' ? `
+                            <button class="dots" onclick="markContacted(${v.id})" title="Mark Contacted" style="color:#16a34a;"><i class="fas fa-check"></i></button>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>
         `;
     });
 
@@ -382,6 +516,7 @@ function toggleUrgent(id) {
     const fd = new FormData();
     fd.append('action', 'toggle_urgent');
     fd.append('id', id);
+    fd.append('visit_id', id);
     fetch('sales_visits_api.php', { method: 'POST', body: fd })
         .then(r => r.json())
         .then(data => {
@@ -397,6 +532,7 @@ function markContacted(id) {
     const fd = new FormData();
     fd.append('action', 'update_status');
     fd.append('id', id);
+    fd.append('visit_id', id);
     fd.append('status', 'contacted');
     fetch('sales_visits_api.php', { method: 'POST', body: fd })
         .then(r => r.json())
