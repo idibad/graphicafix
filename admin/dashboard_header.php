@@ -134,6 +134,7 @@ $menus = [
             'icon'  => 'fas fa-user-tie',
             'submenus' => [
                 ['title' => 'Sales Response Unit', 'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish'],
+                ['title' => 'Client Field Visits', 'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
                 ['title' => 'Manage Clients',   'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
                 ['title' => 'Add Client',       'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-plus-square'],
                 ['title' => 'CRM & Leads',      'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
@@ -267,6 +268,7 @@ $menus = [
             'icon'  => 'fas fa-user-friends',
             'submenus' => [
                 ['title' => 'Sales Response Unit', 'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish'],
+                ['title' => 'Client Field Visits', 'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
                 ['title' => 'Clients Database', 'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
                 ['title' => 'Add Client',       'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-user-plus'],
                 ['title' => 'CRM & Leads',      'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
@@ -967,4 +969,197 @@ document.addEventListener('click', function (e) {
     var wrap = document.getElementById('headerProfileWrap');
     if (wrap && !wrap.contains(e.target)) wrap.classList.remove('open');
 });
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     GLOBAL REAL-TIME SALES RADAR ENGINE (Alerts across ALL Admin Pages)
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<?php
+// Initialize latest sales visit ID
+$global_last_id_q = @$conn->query("SELECT MAX(id) AS mid FROM sales_visits");
+$global_sales_init_id = intval(($global_last_id_q && $r = $global_last_id_q->fetch_assoc()) ? ($r['mid'] ?? 0) : 0);
+?>
+<div id="globalSalesToastContainer" style="position:fixed; top:20px; right:20px; z-index:9999999; display:flex; flex-direction:column; gap:10px; max-width:390px; width:calc(100% - 40px); pointer-events:none;"></div>
+
+<style>
+@keyframes slideInSalesToast {
+    from { opacity: 0; transform: translateY(-16px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.sales-toast-card {
+    pointer-events: auto;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 8px rgba(15, 23, 42, 0.05);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: slideInSalesToast 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    border: 1px solid #e2e8f0;
+    transition: all 0.25s ease;
+}
+.sales-toast-card:hover {
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+}
+</style>
+
+<script>
+(function() {
+    let globalSalesLastId = <?= $global_sales_init_id ?>;
+    let globalSalesAudio  = null;
+    const isCurrentResponseUnit = window.location.pathname.endsWith('sales_response_unit.php');
+
+    function playGlobalChime() {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            if (!globalSalesAudio) globalSalesAudio = new AudioCtx();
+            if (globalSalesAudio.state === 'suspended') globalSalesAudio.resume();
+
+            const now = globalSalesAudio.currentTime;
+            const osc1 = globalSalesAudio.createOscillator();
+            const gain1 = globalSalesAudio.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(880, now);
+            osc1.frequency.exponentialRampToValueAtTime(1760, now + 0.15);
+            gain1.gain.setValueAtTime(0.3, now);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+            osc1.connect(gain1);
+            gain1.connect(globalSalesAudio.destination);
+            osc1.start(now);
+            osc1.stop(now + 0.45);
+
+            const osc2 = globalSalesAudio.createOscillator();
+            const gain2 = globalSalesAudio.createGain();
+            osc2.type = 'triangle';
+            osc2.frequency.setValueAtTime(1318.5, now + 0.12);
+            gain2.gain.setValueAtTime(0.25, now + 0.12);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+            osc2.connect(gain2);
+            gain2.connect(globalSalesAudio.destination);
+            osc2.start(now + 0.12);
+            osc2.stop(now + 0.55);
+        } catch(e) {}
+    }
+
+    function renderGlobalToast(v) {
+        const container = document.getElementById('globalSalesToastContainer');
+        if (!container) return;
+
+        const isUrgent = (v.is_urgent == 1);
+        const priorityLabel = v.interest_level === 'hot' ? 'High Priority' : (v.interest_level === 'warm' ? 'Medium' : 'Standard');
+        const badgeColor = v.interest_level === 'hot' ? '#991b1b' : (v.interest_level === 'warm' ? '#92400e' : '#475569');
+        const badgeBg    = v.interest_level === 'hot' ? '#fee2e2' : (v.interest_level === 'warm' ? '#fef3c7' : '#f1f5f9');
+
+        const toast = document.createElement('div');
+        toast.className = 'sales-toast-card';
+        toast.style.borderLeft = isUrgent ? '4px solid #ef4444' : '4px solid #16a34a';
+
+        toast.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${isUrgent ? '#ef4444' : '#16a34a'}; flex-shrink:0;"></span>
+                    <strong style="color:#0f172a; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtmlGlobal(v.company_name)}</strong>
+                </div>
+                <div style="display:flex; gap:4px; align-items:center; flex-shrink:0;">
+                    ${isUrgent ? '<span style="background:#fee2e2; color:#ef4444; font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px;">URGENT</span>' : ''}
+                    <span style="background:${badgeBg}; color:${badgeColor}; font-size:11px; font-weight:700; padding:2px 7px; border-radius:10px;">${priorityLabel}</span>
+                    <button type="button" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:16px; line-height:1; padding:0 0 0 6px;" onclick="this.closest('.sales-toast-card').remove()">×</button>
+                </div>
+            </div>
+            <div style="font-size:12px; color:#64748b; line-height:1.4;">
+                <div><i class="fas fa-user" style="font-size:10px; margin-right:4px;"></i> Client: <strong style="color:#334155;">${escapeHtmlGlobal(v.client_name)}</strong></div>
+                <div><i class="fas fa-street-view" style="font-size:10px; margin-right:4px;"></i> Rep: ${escapeHtmlGlobal(v.sales_rep_name)}</div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px; padding-top:6px; border-top:1px solid #f1f5f9;">
+                <span style="font-size:11px; color:#94a3b8;">Field visit logged</span>
+                <a href="sales_response_unit.php" style="background:var(--primary, #024442); color:#fff; font-size:11.5px; font-weight:600; padding:4px 12px; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                    <span>Open Response Radar</span> <i class="fas fa-arrow-right" style="font-size:10px;"></i>
+                </a>
+            </div>
+        `;
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-10px)';
+                toast.style.transition = 'all 0.25s ease';
+                setTimeout(() => toast.remove(), 250);
+            }
+        }, 9000);
+    }
+
+    function triggerGlobalDesktopAlert(v) {
+        if (!("Notification" in window) || Notification.permission !== "granted") return;
+        try {
+            const isUrgent = (v.is_urgent == 1);
+            const title = (isUrgent ? 'URGENT: ' : '') + 'New Client Visit - ' + v.company_name;
+            const notif = new Notification(title, {
+                body: `Client: ${v.client_name}\nPriority: ${v.interest_level.toUpperCase()}\nSales Rep: ${v.sales_rep_name}`,
+                icon: '../assets/images/icon.png',
+                tag: 'sales_visit_' + v.id
+            });
+            notif.onclick = function() {
+                window.focus();
+                window.location.href = 'sales_response_unit.php';
+            };
+        } catch(e) {}
+    }
+
+    function escapeHtmlGlobal(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    function pollGlobalRadar() {
+        fetch(`sales_visits_api.php?action=poll&last_id=${globalSalesLastId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && (data.has_new || (data.items && data.items.length > 0))) {
+                    const items = data.items || data.new_records || [];
+                    
+                    if (data.latest_id && data.latest_id > globalSalesLastId) {
+                        globalSalesLastId = data.latest_id;
+                    } else if (items.length > 0) {
+                        items.forEach(it => {
+                            const vid = parseInt(it.id);
+                            if (vid > globalSalesLastId) globalSalesLastId = vid;
+                        });
+                    }
+
+                    // Always chime
+                    playGlobalChime();
+
+                    // Notify desktop & render toast (if not on sales_response_unit page)
+                    items.forEach(v => {
+                        triggerGlobalDesktopAlert(v);
+                        if (!isCurrentResponseUnit) {
+                            renderGlobalToast(v);
+                        }
+                    });
+
+                    // Update top header bell badge
+                    const bellBadge = document.getElementById('notifBadge');
+                    if (bellBadge) {
+                        let cnt = parseInt(bellBadge.textContent) || 0;
+                        cnt += items.length;
+                        bellBadge.textContent = cnt > 99 ? '99+' : cnt;
+                        bellBadge.classList.remove('notif-badge-hidden');
+                        bellBadge.style.transform = 'scale(1.25)';
+                        setTimeout(() => bellBadge.style.transform = '', 300);
+                    }
+
+                    // Dispatch custom event for sales_response_unit page to catch without double polling
+                    window.dispatchEvent(new CustomEvent('globalSalesVisitArrived', { detail: { items: items, stats: data.stats } }));
+                }
+            })
+            .catch(() => {});
+    }
+
+    // Run polling every 4 seconds across all pages
+    setInterval(pollGlobalRadar, 4000);
+})();
 </script>

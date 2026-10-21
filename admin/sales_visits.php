@@ -30,14 +30,14 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
             </div>
             <div class="stat-number" id="statUrgent" style="color:#ef4444;">--</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" style="border-left: 3.5px solid #d97706;">
             <div class="stat-header">
-                <span class="stat-label">Hot Leads</span>
-                <div class="stat-icon" style="background:#fef3c7;color:#d97706;"><i class="fas fa-fire"></i></div>
+                <span class="stat-label">High Priority Leads</span>
+                <div class="stat-icon" style="background:#fef3c7;color:#d97706;"><i class="fas fa-layer-group"></i></div>
             </div>
             <div class="stat-number" id="statHot" style="color:#d97706;">--</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" style="border-left: 3.5px solid #16a34a;">
             <div class="stat-header">
                 <span class="stat-label">Contacted / Closed</span>
                 <div class="stat-icon" style="background:#dcfce7;color:#16a34a;"><i class="fas fa-check-circle"></i></div>
@@ -48,11 +48,14 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
 
     <!-- ── Universal Main Card & Table ── -->
     <div class="main-card">
-        <div class="main-header">
-            <h3><i class="fas fa-street-view"></i> Client Field Visits Log</h3>
-            <div style="display:flex; gap:10px; align-items:center;">
+        <div class="main-header" style="flex-wrap:wrap; gap:12px;">
+            <h3><i class="fas fa-street-view" style="color:var(--primary);"></i> Client Field Visits Log</h3>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <button type="button" onclick="openExportModal()" class="btn btn-secondary-custom" style="padding:8px 14px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fas fa-file-excel" style="color:#16a34a;"></i> Export Sheets
+                </button>
                 <?php if ($is_admin_user): ?>
-                <a href="sales_response_unit.php" class="btn btn-secondary-custom" style="padding:9px 16px; font-size:13.5px; text-decoration:none;">
+                <a href="sales_response_unit.php" class="btn btn-secondary-custom" style="padding:8px 14px; font-size:13px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
                     <i class="fas fa-satellite-dish"></i> Response Unit
                 </a>
                 <?php endif; ?>
@@ -68,12 +71,12 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
                 <span style="font-size:13px; font-weight:600; color:#64748b;">Filter:</span>
                 <select id="filterSelect" onchange="setFilter(this.value)" class="form-select" style="width:auto; padding:6px 12px; font-size:13px;">
                     <option value="all">All Visits</option>
-                    <option value="urgent">🚨 Urgent Need to Contact</option>
-                    <option value="hot">🔥 Hot Interest</option>
-                    <option value="warm">⚡ Warm Interest</option>
-                    <option value="cold">❄️ Cold Interest</option>
-                    <option value="pending">⏳ Pending Contact</option>
-                    <option value="contacted">✅ Contacted</option>
+                    <option value="urgent">Urgent Follow-ups</option>
+                    <option value="hot">High Priority (Hot)</option>
+                    <option value="warm">Medium Priority (Warm)</option>
+                    <option value="cold">Standard Priority (Cold)</option>
+                    <option value="pending">Pending Contact</option>
+                    <option value="contacted">Contacted</option>
                 </select>
             </div>
 
@@ -90,8 +93,8 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
                 <thead>
                     <tr>
                         <th style="width:23%;">Client & Company</th>
-                        <th style="width:18%;">1-Click WhatsApp</th>
-                        <th style="width:11%;">Interest</th>
+                        <th style="width:18%;">Direct Connect</th>
+                        <th style="width:11%;">Priority</th>
                         <th style="width:16%;">Contact Window</th>
                         <th style="width:15%;">Requirements</th>
                         <th style="width:10%;">Logged By</th>
@@ -336,6 +339,96 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
     </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     EXPORT SHEETS MODAL (Sales Rep & Date-wise Spreadsheet Export)
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<div id="exportModal" class="modal-overlay" onclick="if(event.target===this)closeExportModal()">
+    <div class="modal-content" style="max-width:540px; padding:0; overflow:hidden;">
+        <div class="modal-header" style="padding:16px 20px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <div class="modal-header-icon" style="background:#dcfce7; color:#16a34a; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-file-excel"></i>
+                </div>
+                <div>
+                    <h4 style="margin:0; font-size:15px; font-weight:700; color:#0f172a;">Export Field Visits Sheet</h4>
+                    <span style="font-size:12px; color:#64748b;">Download formatted spreadsheet (Excel & CSV compatible)</span>
+                </div>
+            </div>
+            <button class="modal-close" onclick="closeExportModal()" style="font-size:20px; color:#94a3b8; background:none; border:none; cursor:pointer;">×</button>
+        </div>
+
+        <form id="exportForm" onsubmit="executeExport(event)" style="padding:20px;">
+            <!-- Filter by Sales Rep -->
+            <div class="form-group" style="margin-bottom:16px;">
+                <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">
+                    Sales Representative
+                </label>
+                <select id="exportRepSelect" class="form-select" style="width:100%; font-size:13px; padding:8px 12px;">
+                    <option value="0">All Representatives (Company-wide)</option>
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+
+            <!-- Date Presets -->
+            <div style="margin-bottom:14px;">
+                <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:6px; display:block;">
+                    Date Range Preset
+                </label>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                    <button type="button" class="preset-pill active" onclick="setExportDatePreset('all', this)">All Time</button>
+                    <button type="button" class="preset-pill" onclick="setExportDatePreset('today', this)">Today</button>
+                    <button type="button" class="preset-pill" onclick="setExportDatePreset('yesterday', this)">Yesterday</button>
+                    <button type="button" class="preset-pill" onclick="setExportDatePreset('week', this)">Last 7 Days</button>
+                    <button type="button" class="preset-pill" onclick="setExportDatePreset('month', this)">This Month</button>
+                </div>
+            </div>
+
+            <!-- Custom Date Range -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+                <div class="form-group">
+                    <label style="font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; display:block;">From Date</label>
+                    <input type="date" id="exportStartDate" class="form-control" style="font-size:12.5px; padding:6px 10px;">
+                </div>
+                <div class="form-group">
+                    <label style="font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; display:block;">To Date</label>
+                    <input type="date" id="exportEndDate" class="form-control" style="font-size:12.5px; padding:6px 10px;">
+                </div>
+            </div>
+
+            <!-- Status & Priority Filters -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:18px;">
+                <div class="form-group">
+                    <label style="font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; display:block;">Status</label>
+                    <select id="exportStatusSelect" class="form-select" style="font-size:12.5px; padding:6px 10px;">
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending Contact</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="in_discussion">In Discussion</option>
+                        <option value="converted">Converted to Lead</option>
+                        <option value="closed">Closed / Resolved</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; display:block;">Priority</label>
+                    <select id="exportInterestSelect" class="form-select" style="font-size:12.5px; padding:6px 10px;">
+                        <option value="all">All Priorities</option>
+                        <option value="hot">High (Hot)</option>
+                        <option value="warm">Medium (Warm)</option>
+                        <option value="cold">Standard (Cold)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #f1f5f9; padding-top:16px;">
+                <button type="button" class="btn btn-secondary-custom" onclick="closeExportModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary-custom" style="display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fas fa-download"></i> Download Spreadsheet
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <style>
 /* ── Clean Universal Form Helpers ── */
 .form-group {
@@ -428,7 +521,7 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
     background: #f8fafc;
     padding: 12px 16px;
     text-align: left;
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 700;
     color: #64748b;
     text-transform: uppercase;
@@ -449,28 +542,42 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
     border-bottom: none;
 }
 
-/* ── 1-Click WhatsApp Button ── */
-.btn-wa {
+/* ── Direct Reach Out Button ── */
+.btn-wa-direct {
     background: #16a34a !important;
     color: #ffffff !important;
-    font-weight: 700;
+    font-weight: 600;
     font-size: 12px;
-    padding: 6px 14px;
-    border-radius: 50px;
+    padding: 5px 12px;
+    border-radius: 6px;
     display: inline-flex;
     align-items: center;
     gap: 6px;
     text-decoration: none !important;
     border: none;
-    box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
+    box-shadow: 0 1px 3px rgba(22, 163, 74, 0.2);
     white-space: nowrap;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
 }
-.btn-wa:hover {
+.btn-wa-direct:hover {
     background: #15803d !important;
     color: #ffffff !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35);
+    box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3);
+}
+
+.contact-phone-link {
+    font-size: 12px;
+    color: #64748b;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 3px;
+    font-weight: 500;
+}
+.contact-phone-link:hover {
+    color: #0f172a;
+    text-decoration: underline;
 }
 
 /* ── Action Buttons ── */
@@ -493,11 +600,58 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
     border-color: #cbd5e1;
 }
 
-/* Standard Status Badge Helpers */
-.badge-hot  { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
-.badge-warm { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
-.badge-cold { background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
-.badge-urg  { background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; margin-left: 4px; }
+/* ── Professional Badges ── */
+.badge-priority {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+}
+.badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.badge-hot   { background: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2; }
+.badge-dot-hot { background: #ef4444; }
+.badge-warm  { background: #fffbeb; color: #b45309; border: 1px solid #fef3c7; }
+.badge-dot-warm { background: #f59e0b; }
+.badge-cold  { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+.badge-dot-cold { background: #94a3b8; }
+
+.badge-urgent-tag {
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 9.5px;
+    font-weight: 800;
+    padding: 2px 5px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-left: 5px;
+}
+
+.preset-pill {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.preset-pill:hover,
+.preset-pill.active {
+    background: var(--primary, #024442);
+    color: #ffffff;
+    border-color: var(--primary, #024442);
+}
 </style>
 
 <script>
@@ -507,6 +661,7 @@ let allVisits     = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     loadVisits();
+    loadSalesRepsForExport();
     // Auto-open modal if URL has ?log=1
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('log') === '1') {
@@ -597,18 +752,18 @@ function renderTable() {
         const cleanWa  = formatWhatsAppNumber(rawWa);
         const waMsg    = encodeURIComponent(`Hello ${v.client_name}, this is Graphicafix following up on your discussion with our team regarding ${v.company_name}. Are you available for a quick chat?`);
         
-        let interestBadge = '';
+        let priorityBadge = '';
         if (v.interest_level === 'hot') {
-            interestBadge = '<span class="badge-hot">🔥 Hot</span>';
+            priorityBadge = '<span class="badge-priority badge-hot"><span class="badge-dot badge-dot-hot"></span>High</span>';
         } else if (v.interest_level === 'warm') {
-            interestBadge = '<span class="badge-warm">⚡ Warm</span>';
+            priorityBadge = '<span class="badge-priority badge-warm"><span class="badge-dot badge-dot-warm"></span>Medium</span>';
         } else {
-            interestBadge = '<span class="badge-cold">❄️ Cold</span>';
+            priorityBadge = '<span class="badge-priority badge-cold"><span class="badge-dot badge-dot-cold"></span>Standard</span>';
         }
 
         let catBadges = '';
         if (v.categories_arr && v.categories_arr.length > 0) {
-            catBadges = v.categories_arr.slice(0, 2).map(c => `<span style="background:#e0f2fe; color:#0284c7; padding:2px 7px; border-radius:6px; font-size:11px; font-weight:600;">${escapeHtml(c)}</span>`).join(' ');
+            catBadges = v.categories_arr.slice(0, 2).map(c => `<span style="background:#e0f2fe; color:#0284c7; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:600;">${escapeHtml(c)}</span>`).join(' ');
             if (v.categories_arr.length > 2) {
                 catBadges += ` <span style="color:#64748b; font-size:11px;">+${v.categories_arr.length - 2}</span>`;
             }
@@ -620,20 +775,20 @@ function renderTable() {
         let reachOutHtml = '';
         if (cleanWa) {
             reachOutHtml = `
-                <div style="display:flex; flex-direction:column; gap:3px; align-items:flex-start;">
-                    <a href="https://wa.me/${cleanWa}?text=${waMsg}" target="_blank" class="btn-wa" title="1-Click WhatsApp Reach Out">
-                        <i class="fab fa-whatsapp" style="font-size:14px;"></i>
+                <div style="display:flex; flex-direction:column; gap:2px; align-items:flex-start;">
+                    <a href="https://wa.me/${cleanWa}?text=${waMsg}" target="_blank" class="btn-wa-direct" title="Open WhatsApp Chat">
+                        <i class="fab fa-whatsapp"></i>
                         <span>WhatsApp</span>
                     </a>
-                    <a href="tel:${escapeHtml(v.phone)}" style="font-size:12px; color:#64748b; text-decoration:none; display:inline-flex; align-items:center; gap:4px; margin-top:2px;">
-                        <i class="fas fa-phone-alt" style="font-size:10px; color:#94a3b8;"></i> ${escapeHtml(v.phone)}
+                    <a href="tel:${escapeHtml(v.phone)}" class="contact-phone-link" title="Call directly">
+                        <i class="fas fa-phone-alt" style="font-size:10px;"></i> ${escapeHtml(v.phone)}
                     </a>
                 </div>
             `;
         } else {
             reachOutHtml = `
-                <a href="tel:${escapeHtml(v.phone)}" style="font-size:12.5px; font-weight:600; color:#334155; text-decoration:none;">
-                    <i class="fas fa-phone-alt" style="font-size:11px; color:#94a3b8; margin-right:4px;"></i> ${escapeHtml(v.phone)}
+                <a href="tel:${escapeHtml(v.phone)}" class="contact-phone-link" style="font-weight:600; color:#334155;">
+                    <i class="fas fa-phone-alt" style="font-size:11px;"></i> ${escapeHtml(v.phone)}
                 </a>
             `;
         }
@@ -641,9 +796,9 @@ function renderTable() {
         html += `
             <tr style="${isUrgent ? 'background:#fffbfb; border-left:4px solid #ef4444;' : ''}">
                 <td>
-                    <div style="font-weight:700; color:#0f172a; font-size:13.5px; display:inline-flex; align-items:center; gap:6px;">
+                    <div style="font-weight:700; color:#0f172a; font-size:13.5px; display:inline-flex; align-items:center;">
                         ${escapeHtml(v.company_name)}
-                        ${isUrgent ? '<span class="badge-urg">URGENT</span>' : ''}
+                        ${isUrgent ? '<span class="badge-urgent-tag">Urgent</span>' : ''}
                     </div>
                     <div style="font-size:12px; color:#64748b; margin-top:2px;">
                         <i class="fas fa-user" style="font-size:10px; color:#94a3b8; margin-right:3px;"></i>
@@ -654,7 +809,7 @@ function renderTable() {
                     ${reachOutHtml}
                 </td>
                 <td>
-                    ${interestBadge}
+                    ${priorityBadge}
                 </td>
                 <td>
                     <div style="font-size:12.5px; color:#334155; display:flex; align-items:center; gap:5px;">
@@ -685,6 +840,92 @@ function renderTable() {
     });
 
     container.innerHTML = html;
+}
+
+// ── Export Sheets Logic ──
+function loadSalesRepsForExport() {
+    fetch('sales_visits_api.php?action=get_reps')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.reps) {
+                const sel = document.getElementById('exportRepSelect');
+                if (sel) {
+                    sel.innerHTML = '<option value="0">All Representatives (Company-wide)</option>';
+                    data.reps.forEach(rep => {
+                        sel.innerHTML += `<option value="${rep.id}">${escapeHtml(rep.name)} (${rep.role})</option>`;
+                    });
+                }
+            }
+        })
+        .catch(() => {});
+}
+
+function openExportModal() {
+    document.getElementById('exportModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeExportModal() {
+    document.getElementById('exportModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function setExportDatePreset(preset, btn) {
+    document.querySelectorAll('.preset-pill').forEach(el => el.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    const startInput = document.getElementById('exportStartDate');
+    const endInput   = document.getElementById('exportEndDate');
+    const today      = new Date();
+
+    function formatDate(d) {
+        return d.toISOString().split('T')[0];
+    }
+
+    if (preset === 'all') {
+        startInput.value = '';
+        endInput.value   = '';
+    } else if (preset === 'today') {
+        const dStr = formatDate(today);
+        startInput.value = dStr;
+        endInput.value   = dStr;
+    } else if (preset === 'yesterday') {
+        const yest = new Date();
+        yest.setDate(yest.getDate() - 1);
+        const yStr = formatDate(yest);
+        startInput.value = yStr;
+        endInput.value   = yStr;
+    } else if (preset === 'week') {
+        const past = new Date();
+        past.setDate(past.getDate() - 7);
+        startInput.value = formatDate(past);
+        endInput.value   = formatDate(today);
+    } else if (preset === 'month') {
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        startInput.value = formatDate(firstDay);
+        endInput.value   = formatDate(today);
+    }
+}
+
+function executeExport(e) {
+    e.preventDefault();
+    const repId     = document.getElementById('exportRepSelect').value;
+    const startDate = document.getElementById('exportStartDate').value;
+    const endDate   = document.getElementById('exportEndDate').value;
+    const status    = document.getElementById('exportStatusSelect').value;
+    const interest  = document.getElementById('exportInterestSelect').value;
+
+    const params = new URLSearchParams({
+        action: 'export_csv',
+        rep_id: repId,
+        start_date: startDate,
+        end_date: endDate,
+        status: status,
+        interest: interest
+    });
+
+    window.location.href = `sales_visits_api.php?${params.toString()}`;
+    closeExportModal();
 }
 
 // ── Modal Handling ──

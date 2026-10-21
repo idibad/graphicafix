@@ -277,6 +277,30 @@ if ($tableCheck && $tableCheck->num_rows > 0) {
     }
 }
 
+// 10. Sales Field Visits → admin & management (user_id = NULL)
+$tableCheck = $conn->query("SHOW TABLES LIKE 'sales_visits'");
+if ($tableCheck && $tableCheck->num_rows > 0) {
+    $newVisits = $conn->query("
+        SELECT sv.id, sv.client_name, sv.company_name, sv.interest_level, sv.is_urgent, sv.created_at
+        FROM sales_visits sv
+        LEFT JOIN notifications nb ON nb.type = 'sales_visit' AND nb.reference_id = sv.id
+        WHERE nb.id IS NULL
+    ");
+    if ($newVisits && $newVisits->num_rows > 0) {
+        $ins = $conn->prepare("INSERT INTO notifications (type, title, message, link, reference_id, user_id, created_at)
+                               VALUES ('sales_visit', ?, ?, ?, ?, NULL, ?)");
+        while ($r = $newVisits->fetch_assoc()) {
+            $isUrg = ($r['is_urgent'] == 1);
+            $title = ($isUrg ? "URGENT: " : "") . "New Field Visit";
+            $priority_label = ucfirst($r['interest_level']);
+            $msg   = htmlspecialchars($r['company_name']) . " (" . htmlspecialchars($r['client_name']) . ") - Priority: {$priority_label}";
+            $link  = "sales_response_unit.php";
+            $ins->bind_param("sssss", $title, $msg, $link, $r['id'], $r['created_at']);
+            $ins->execute();
+        }
+    }
+}
+
 // ── Fetch notifications based on role ─────────────────────────────────────────
 // Admin  → everything
 // User   → their tasks (user_id = their id) + shared content (user_id = 0)
@@ -313,9 +337,10 @@ if (!function_exists('notifIcon')) {
             'user'               => '<i class="fas fa-user"></i>',
             'project_request'    => '<i class="fas fa-clipboard"></i>',
             'career_application' => '<i class="fas fa-briefcase"></i>',
-            'contact'            => '<i class="fas fa-envelope"></i>️',
+            'contact'            => '<i class="fas fa-envelope"></i>',
             'review'             => '<i class="fas fa-star"></i>',
             'course_registration'=> '<i class="fas fa-graduation-cap"></i>',
+            'sales_visit'        => '<i class="fas fa-street-view"></i>',
             default              => '<i class="fas fa-bell"></i>',
         };
     }

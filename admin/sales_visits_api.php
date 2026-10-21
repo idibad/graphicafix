@@ -473,6 +473,254 @@ switch ($action) {
         }
         exit;
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // 8. GET SALES REPS FOR FILTER / EXPORT
+    // ──────────────────────────────────────────────────────────────────────────
+    case 'get_reps':
+        $reps = [];
+        // First get distinct reps from sales_visits
+        $res = $conn->query("
+            SELECT DISTINCT sales_rep_id AS id, sales_rep_name AS name 
+            FROM sales_visits 
+            WHERE sales_rep_id > 0
+            ORDER BY sales_rep_name ASC
+        ");
+        if ($res) {
+            while ($r = $res->fetch_assoc()) {
+                $reps[$r['id']] = [
+                    'id'   => intval($r['id']),
+                    'name' => $r['name'],
+                    'role' => 'Sales Rep'
+                ];
+            }
+        }
+
+        // Also include active users with role sales, admin, or super_admin
+        $res_users = $conn->query("
+            SELECT user_id AS id, name, role 
+            FROM users 
+            WHERE role IN ('sales', 'admin', 'super_admin') AND status = 'active'
+            ORDER BY name ASC
+        ");
+        if ($res_users) {
+            while ($r = $res_users->fetch_assoc()) {
+                if (!isset($reps[$r['id']])) {
+                    $reps[$r['id']] = [
+                        'id'   => intval($r['id']),
+                        'name' => $r['name'],
+                        'role' => ucfirst($r['role'])
+                    ];
+                }
+            }
+        }
+
+        echo json_encode([
+            'success' => true,
+            'reps'    => array_values($reps)
+        ]);
+        exit;
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 9. LOG AGENT RESPONSE INTERACTION & QUICK NOTE
+    // ──────────────────────────────────────────────────────────────────────────
+    case 'log_response_interaction':
+        $visit_id   = intval($_POST['visit_id'] ?? 0);
+        $new_status = strtolower(trim($_POST['status'] ?? ''));
+        $note       = trim($_POST['interaction_note'] ?? '');
+
+        if (!$visit_id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid visit ID']);
+            exit;
+        }
+
+        $v_res = $conn->query("SELECT * FROM sales_visits WHERE id = {$visit_id}");
+        $v = $v_res ? $v_res->fetch_assoc() : null;
+        if (!$v) {
+            echo json_encode(['success' => false, 'message' => 'Visit not found']);
+            exit;
+        }
+
+        $existing_notes = trim($v['admin_notes'] ?? '');
+        $timestamp      = date('M d, Y h:i A');
+        $updated_notes  = $existing_notes;
+
+        if (!empty($note)) {
+            $formatted_entry = "[{$timestamp} by {$current_user_name}]: {$note}";
+            $updated_notes   = !empty($existing_notes) ? "{$existing_notes}\n{$formatted_entry}" : $formatted_entry;
+        }
+
+        $allowed_statuses = ['pending', 'contacted', 'in_discussion', 'converted', 'closed'];
+        $final_status     = in_array($new_status, $allowed_statuses) ? $new_status : $v['status'];
+
+        $contacted_sql = "";
+        if ($final_status === 'contacted' && empty($v['contacted_at'])) {
+            $contacted_sql = ", contacted_at = NOW(), contacted_by_id = {$current_user_id}, contacted_by_name = '" . $conn->real_escape_string($current_user_name) . "'";
+        }
+
+        $stmt = $conn->prepare("UPDATE sales_visits SET status = ?, admin_notes = ? {$contacted_sql} WHERE id = ?");
+        $stmt->bind_param("ssi", $final_status, $updated_notes, $visit_id);
+        $exec = $stmt->execute();
+        $stmt->close();
+
+        echo json_encode([
+            'success'     => $exec,
+            'status'      => $final_status,
+            'admin_notes' => $updated_notes,
+            'message'     => 'Response interaction recorded successfully'
+        ]);
+        exit;
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 10. EXPORT DATA TO SPREADSHEET (CSV / EXCEL COMPATIBLE)
+    // ──────────────────────────────────────────────────────────────────────────
+    case 'export_csv':
+    case 'export_sheet':
+        $rep_id      = intval($_GET['rep_id'] ?? 0);
+        $start_date  = trim($_GET['start_date'] ?? '');
+        $end_date    = trim($_GET['end_date'] ?? '');
+        $status      = trim($_GET['status'] ?? 'all');
+        $interest    = trim($_GET['interest'] ?? 'all');
+        $urgent_only = intval($_GET['urgent_only'] ?? 0);
+
+        $where = ["1=1"];
+        $params = [];
+        $types  = "";
+
+        // Non-admin sales reps only export their own visits
+        if (!$is_admin) {
+            $where[]  = "sales_rep_id = ?";
+            $params[] = $current_user_id;
+            $types   .= "i";
+        } elseif ($rep_id > 0) {
+            $where[]  = "sales_rep_id = ?";
+            $params[] = $rep_id;
+            $types   .= "i";
+        }
+
+        if (!empty($start_date)) {
+            $where[]  = "created_at >= ?";
+            $params[] = $start_date . " 00:00:00";
+            $types   .= "s";
+        }
+
+        if (!empty($end_date)) {
+            $where[]  = "created_at <= ?";
+            $params[] = $end_date . " 23:59:59";
+            $types   .= "s";
+        }
+
+        if ($status !== 'all' && !empty($status)) {
+            $where[]  = "status = ?";
+            $params[] = $status;
+            $types   .= "s";
+        }
+
+        if ($interest !== 'all' && !empty($interest)) {
+            $where[]  = "interest_level = ?";
+            $params[] = $interest;
+            $types   .= "s";
+        }
+
+        if ($urgent_only === 1) {
+            $where[] = "is_urgent = 1";
+        }
+
+        $sql = "SELECT * FROM sales_visits WHERE " . implode(" AND ", $where) . " ORDER BY id DESC";
+        $stmt = $conn->prepare($sql);
+        if (!empty($types) && count($params) > 0) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        // Clear output buffer
+        while (ob_get_level() > 0) ob_end_clean();
+
+        // Send Excel CSV headers
+        $filename = "sales_visits_export_" . date('Y-m-d_His') . ".csv";
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        // UTF-8 BOM for flawless Excel opening
+        echo "\xEF\xBB\xBF";
+
+        $output = fopen('php://output', 'w');
+
+        // CSV Header Row
+        fputcsv($output, [
+            'Visit ID',
+            'Date Logged',
+            'Time Logged',
+            'Sales Representative',
+            'Client Name',
+            'Company / Business',
+            'Phone Number',
+            'WhatsApp Number',
+            'Priority Level',
+            'Urgency',
+            'Current Status',
+            'Preferred Contact Window',
+            'Required Services / Categories',
+            'Specific Subcategories',
+            'Field Rep Remarks',
+            'Quick Remark',
+            'Response Interaction Notes',
+            'Contacted At',
+            'Contacted By'
+        ]);
+
+        while ($r = $result->fetch_assoc()) {
+            $cat_arr    = json_decode($r['categories'] ?? '[]', true) ?: [];
+            $subcat_arr = json_decode($r['subcategories'] ?? '[]', true) ?: [];
+
+            $date_str = date('Y-m-d', strtotime($r['created_at']));
+            $time_str = date('h:i A', strtotime($r['created_at']));
+
+            $priority_label = match ($r['interest_level']) {
+                'hot'   => 'High (Hot)',
+                'cold'  => 'Standard (Cold)',
+                default => 'Medium (Warm)',
+            };
+
+            $urgency_label = ($r['is_urgent'] == 1) ? 'Urgent' : 'Standard';
+
+            $status_label = match ($r['status']) {
+                'contacted'     => 'Contacted',
+                'in_discussion' => 'In Discussion',
+                'converted'     => 'Converted to Lead',
+                'closed'        => 'Closed / Resolved',
+                default         => 'Pending Contact',
+            };
+
+            fputcsv($output, [
+                $r['id'],
+                $date_str,
+                $time_str,
+                $r['sales_rep_name'],
+                $r['client_name'],
+                $r['company_name'],
+                $r['phone'],
+                $r['whatsapp'] ?: $r['phone'],
+                $priority_label,
+                $urgency_label,
+                $status_label,
+                $r['contact_availability'],
+                implode(', ', $cat_arr),
+                implode(', ', $subcat_arr),
+                $r['remarks'] ?? '',
+                $r['quick_remark'] ?? '',
+                $r['admin_notes'] ?? '',
+                $r['contacted_at'] ? date('Y-m-d h:i A', strtotime($r['contacted_at'])) : '',
+                $r['contacted_by_name'] ?? ''
+            ]);
+        }
+
+        fclose($output);
+        $stmt->close();
+        exit;
+
     default:
         echo json_encode(['success' => false, 'message' => 'Unknown action']);
         exit;
