@@ -6,6 +6,14 @@ $isLoggedIn = isset($_SESSION['user_id']);
 
 include(__DIR__ . '/../visitor_counter.php');
 
+// Check if any courses are currently active/published
+$has_active_courses = false;
+if (isset($conn) && $conn instanceof mysqli) {
+    $active_courses_check = $conn->query("SELECT id FROM courses WHERE is_published = 1 LIMIT 1");
+    if ($active_courses_check && $active_courses_check->num_rows > 0) {
+        $has_active_courses = true;
+    }
+}
 ?>
 <!DOCTYPE html>
 
@@ -217,7 +225,9 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
                 <li><a href="<?= BASE_URL ?>services" class="nav-link">Services</a></li>
                 <li><a href="<?= BASE_URL ?>portfolio" class="nav-link">Portfolio</a></li>
                 <li><a href="<?= BASE_URL ?>career" class="nav-link">Career</a></li>
+                <?php if (!empty($has_active_courses)): ?>
                 <li class="animated-beat"><a href="<?= BASE_URL ?>courses" class="nav-link">Courses</a></li>
+                <?php endif; ?>
                 <li><a href="<?= BASE_URL ?>about" class="nav-link">About</a></li>
                 <li><a href="<?= BASE_URL ?>contact" class="nav-link">Contact</a></li>
             </ul>
@@ -248,7 +258,9 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
                 <li><a href="<?= BASE_URL ?>services">Services</a></li>
                 <li><a href="<?= BASE_URL ?>portfolio">Portfolio</a></li>
                 <li><a href="<?= BASE_URL ?>career">Career</a></li>
+                <?php if (!empty($has_active_courses)): ?>
                 <li><a href="<?= BASE_URL ?>courses">Courses</a></li>
+                <?php endif; ?>
                 <li><a href="<?= BASE_URL ?>about">About</a></li>
                 <li><a href="<?= BASE_URL ?>contact">Contact</a></li>
                 <li class="mobile-divider"></li>
@@ -273,9 +285,11 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
         </a>
     </div>
 
+    <?php if (!empty($has_active_courses)): ?>
     <a href="<?= BASE_URL ?>courses" class="enroll-float-btn">
         <i class="fas fa-user-graduate"></i> Enroll to Courses
     </a>
+    <?php endif; ?>
 
 </div>
 

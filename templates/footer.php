@@ -215,6 +215,5 @@ function animateCounters() {
 }
 </script>
 
-<?php include_once __DIR__ . '/ai_chatbot.php'; ?>
 </body>
 </html>

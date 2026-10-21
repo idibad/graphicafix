@@ -607,6 +607,14 @@ foreach ($courses as $c) {
 
                 <div id="step1-area">
                     <div class="row g-4">
+                        <?php if (empty($courses)): ?>
+                        <div class="col-12 text-center py-5">
+                            <div style="font-size: 3.5rem; color: #cbd5e1; margin-bottom: 16px;"><i class="fas fa-graduation-cap"></i></div>
+                            <h3 style="font-weight: 800; color: var(--primary);">No Active Courses At The Moment</h3>
+                            <p style="color: #64748b; max-width: 520px; margin: 0 auto 24px;">New courses and batches will be announced soon. Stay tuned or reach out to our team for custom training programs.</p>
+                            <a href="<?= BASE_URL ?>contact" class="creg-btn-next" style="text-decoration:none; display:inline-flex;">Get in Touch</a>
+                        </div>
+                        <?php else: ?>
                         <?php foreach ($courses as $crs): 
                             $basePrice = floatval($crs['price']);
                             
@@ -723,6 +731,7 @@ foreach ($courses as $c) {
 </div>
                         </div>
                         <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
 
