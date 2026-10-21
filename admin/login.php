@@ -1,8 +1,9 @@
 <?php 
-require_once $_SERVER['DOCUMENT_ROOT'] . '/core/config.php';
-require_once $_SERVER['DOCUMENT_ROOT'] . '/core/functions.php';
-
-session_start();
+require_once __DIR__ . '/../core/config.php';
+require_once __DIR__ . '/../core/functions.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 $login_input = '';
 $error_message = '';

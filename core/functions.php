@@ -2,14 +2,28 @@
 // LOGIN LOGS
 
 function logLogin($conn, $user_id, $status) {
-    // Get IP and User Agent
-    $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
-    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+    try {
+        // Get IP and User Agent
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
 
-    $stmt = $conn->prepare("INSERT INTO login_logs (user_id, login_time, ip_address, user_agent, status) VALUES (?, NOW(), ?, ?, ?)");
-    $stmt->bind_param("isss", $user_id, $ip_address, $user_agent, $status);
-    $stmt->execute();
-    $stmt->close();
+        // Auto-fix table if login_logs has PRIMARY key without AUTO_INCREMENT
+        static $login_logs_checked = false;
+        if (!$login_logs_checked) {
+            $login_logs_checked = true;
+            @$conn->query("ALTER TABLE login_logs MODIFY id INT AUTO_INCREMENT");
+        }
+
+        $stmt = $conn->prepare("INSERT INTO login_logs (user_id, login_time, ip_address, user_agent, status) VALUES (?, NOW(), ?, ?, ?)");
+        if ($stmt) {
+            $stmt->bind_param("isss", $user_id, $ip_address, $user_agent, $status);
+            $stmt->execute();
+            $stmt->close();
+        }
+    } catch (Throwable $e) {
+        // Silently catch so database log errors never break the login process
+        error_log("logLogin non-fatal: " . $e->getMessage());
+    }
 }
 
 function notifyClientOnProjectProgress($conn, $project_id, $progress) {
