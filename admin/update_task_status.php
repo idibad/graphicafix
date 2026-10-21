@@ -24,7 +24,7 @@ if (empty($role)) {
     $_SESSION['role'] = $role;
 }
 
-$is_admin = in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'hrm']);
+$is_admin = in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'hrm', 'sales']);
 
 if (isset($_POST['id'], $_POST['status'])) {
     $task_id = intval($_POST['id']);

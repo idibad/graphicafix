@@ -7,7 +7,7 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id   = intval($_SESSION['user_id']);
 $user_role = $role;
-$is_admin  = (in_array($user_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager']));
+$is_admin  = (in_array($user_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'sales']));
 
 // Edit mode?
 $edit_id = intval($_GET['edit'] ?? 0);

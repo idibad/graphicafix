@@ -2,7 +2,7 @@
 include 'dashboard_header.php';
 
 // Check permissions
-if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'teacher', 'user', 'manager'])) {
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'teacher', 'user', 'manager', 'sales'])) {
     header('location:index.php'); exit;
 }
 
@@ -103,6 +103,7 @@ function getRoleBadge($role) {
     if ($r === 'teacher')    return ['bg' => '#e0f2fe', 'text' => '#0284c7'];
     if ($r === 'student')    return ['bg' => '#d7f8b8', 'text' => '#2b7a2b'];
     if ($r === 'user')       return ['bg' => '#f3e8ff', 'text' => '#7c3aed'];
+    if ($r === 'sales')      return ['bg' => '#d1fae5', 'text' => '#065f46'];
     if ($r === 'client')     return ['bg' => '#e0f2fe', 'text' => '#0284c7'];
     if ($r === 'client_sub') return ['bg' => '#f1f5f9', 'text' => '#475569'];
     return ['bg' => '#f3f4f6', 'text' => '#4b5563'];

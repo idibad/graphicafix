@@ -133,6 +133,8 @@ $menus = [
             'link'  => '#',
             'icon'  => 'fas fa-user-tie',
             'submenus' => [
+                ['title' => '⚡ Response Unit', 'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish text-warning'],
+                ['title' => 'Field Visits Log', 'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
                 ['title' => 'Manage Clients',   'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
                 ['title' => 'Add Client',       'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-plus-square'],
                 ['title' => 'CRM & Leads',      'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
@@ -265,6 +267,8 @@ $menus = [
             'link'  => '#',
             'icon'  => 'fas fa-user-friends',
             'submenus' => [
+                ['title' => '⚡ Response Unit', 'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish text-warning'],
+                ['title' => 'Field Visits Log', 'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
                 ['title' => 'Clients Database', 'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
                 ['title' => 'Add Client',       'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-user-plus'],
                 ['title' => 'CRM & Leads',      'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
@@ -561,6 +565,8 @@ $menus = [
             'link'  => '#',
             'icon'  => 'fas fa-file-invoice-dollar',
             'submenus' => [
+                ['title' => '⚡ Response Unit', 'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish text-warning'],
+                ['title' => 'Field Visits Log', 'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
                 ['title' => 'Manage Invoices',  'link' => 'manage_invoices.php',     'icon' => 'fas fa-file-invoice'],
                 ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
             ]
@@ -590,6 +596,86 @@ $menus = [
             'icon'  => 'fas fa-gamepad',
             'submenus' => [
                 ['title' => 'Entertainment',    'link' => 'entertainment.php',       'icon' => 'fas fa-dice'],
+            ]
+        ],
+        [
+            'title' => 'Settings',
+            'link'  => 'profile.php',
+            'icon'  => 'fas fa-cog',
+            'submenus' => [
+                ['title' => 'My Profile',       'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
+                ['title' => 'Login History',    'link' => 'login_history.php',       'icon' => 'fas fa-shield-alt'],
+            ]
+        ],
+    ],
+    'sales' => [
+        [
+            'title' => 'Dashboard',
+            'link'  => 'index.php',
+            'icon'  => 'fas fa-tachometer-alt',
+            'submenus' => [
+                ['title' => 'Overview',         'link' => 'index.php',               'icon' => 'fas fa-home'],
+                ['title' => 'Daily Reports (DPR)', 'link' => 'dpr.php',              'icon' => 'fas fa-calendar-check'],
+                ['title' => 'Notice Board',     'link' => 'manage_notices.php',      'icon' => 'fas fa-bullhorn'],
+            ]
+        ],
+        [
+            'title' => 'Client Visits',
+            'link'  => '#',
+            'icon'  => 'fas fa-street-view',
+            'submenus' => [
+                ['title' => 'Log Client Visit',   'link' => 'sales_visits.php?log=1',  'icon' => 'fas fa-plus-circle'],
+                ['title' => 'My Field Visits',    'link' => 'sales_visits.php',        'icon' => 'fas fa-list-alt'],
+            ]
+        ],
+        [
+            'title' => 'CRM & Leads',
+            'link'  => '#',
+            'icon'  => 'fas fa-filter',
+            'submenus' => [
+                ['title' => 'Pipeline & Leads', 'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
+                ['title' => 'Add Lead',         'link' => 'manage_leads.php?action=add', 'icon' => 'fas fa-user-tag'],
+                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+                ['title' => 'Customer Inquiries', 'link' => 'contacts.php',          'icon' => 'fas fa-phone-alt'],
+                ['title' => 'Questionnaires',   'link' => 'client_questionnaires.php', 'icon' => 'fas fa-clipboard-check'],
+            ]
+        ],
+        [
+            'title' => 'Clients',
+            'link'  => '#',
+            'icon'  => 'fas fa-user-tie',
+            'submenus' => [
+                ['title' => 'Clients Database', 'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
+                ['title' => 'Add Client',       'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-user-plus'],
+                ['title' => 'Client Reviews',   'link' => 'reviews.php',             'icon' => 'fas fa-star'],
+            ]
+        ],
+        [
+            'title' => 'Quotations',
+            'link'  => '#',
+            'icon'  => 'fas fa-file-signature',
+            'submenus' => [
+                ['title' => 'Manage Quotations','link' => 'manage_invoices.php?tab=quotations', 'icon' => 'fas fa-file-alt'],
+                ['title' => 'Create Quotation', 'link' => 'create_quotation.php',    'icon' => 'fas fa-plus-circle'],
+                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+            ]
+        ],
+        [
+            'title' => 'Tasks & Projects',
+            'link'  => '#',
+            'icon'  => 'fas fa-tasks',
+            'submenus' => [
+                ['title' => 'My Tasks',         'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
+                ['title' => 'Create Task',      'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
+                ['title' => 'Projects List',    'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
+            ]
+        ],
+        [
+            'title' => 'Office Communication',
+            'link'  => '#',
+            'icon'  => 'fas fa-comments',
+            'submenus' => [
+                ['title' => 'Internal Messages', 'link' => 'messages.php',           'icon' => 'fas fa-envelope'],
             ]
         ],
         [
@@ -699,6 +785,7 @@ $notifications_html = ob_get_clean();
         elseif ($role === 'admin') $role_badge_title = 'Admin Officer';
         elseif ($role === 'pm') $role_badge_title = 'Project Manager';
         elseif ($role === 'manager') $role_badge_title = 'Manager';
+        elseif ($role === 'sales') $role_badge_title = 'Sales Executive';
         elseif ($role === 'hrm') $role_badge_title = 'HR Officer';
         elseif ($role === 'teacher') $role_badge_title = 'Teacher';
         elseif ($role === 'student') $role_badge_title = 'Student';
@@ -706,7 +793,7 @@ $notifications_html = ob_get_clean();
 
         $avatar_style = $is_super_admin 
             ? 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important; color: #fff !important; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);' 
-            : ($role === 'admin' ? 'background: linear-gradient(135deg, #024442 0%, #035e5b 100%) !important; color: #fff !important;' : '');
+            : ($role === 'admin' ? 'background: linear-gradient(135deg, #024442 0%, #035e5b 100%) !important; color: #fff !important;' : ($role === 'sales' ? 'background: linear-gradient(135deg, #059669 0%, #047857 100%) !important; color: #fff !important;' : ''));
         ?>
         <div class="header-profile-wrap" id="headerProfileWrap">
             <button type="button" class="header-profile-btn" onclick="toggleProfileMenu()">

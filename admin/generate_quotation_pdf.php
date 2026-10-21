@@ -38,7 +38,7 @@ $q = $stmt->get_result()->fetch_assoc();
 if (!$q) die('Quotation not found.');
 
 // Authorize access
-if (in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user'])) {
+if (in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user', 'sales'])) {
     // Allowed
 } elseif ($role === 'client' || $role === 'client_sub') {
     if (intval($q['client_id']) !== $client_id || $client_id <= 0) {

@@ -20,7 +20,7 @@ $user_stmt->execute();
 $role_data = $user_stmt->get_result()->fetch_assoc();
 $role = strtolower($role_data['role'] ?? 'user');
 
-if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user'])) {
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user', 'sales'])) {
     header('location:index.php');
     exit;
 }

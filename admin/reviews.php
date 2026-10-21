@@ -1,7 +1,7 @@
 <?php
 include 'dashboard_header.php';
 
-if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm'])) {
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'sales'])) {
     header("Location: index.php?error=unauthorized");
     exit;
 }

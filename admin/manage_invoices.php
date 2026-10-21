@@ -9,6 +9,15 @@ if (isset($_GET['action'], $_GET['id'])) {
         header("Location: manage_invoices.php?error=unauthorized");
         exit;
     }
+    // Sales role cannot perform any invoice actions, and cannot delete quotations
+    if ($role === 'sales') {
+        $type = $_GET['type'] ?? 'invoice';
+        $act  = $_GET['action'] ?? '';
+        if ($type === 'invoice' || $act === 'delete') {
+            echo "<script>alert('You do not have permission to perform this action.');window.location='manage_invoices.php?tab=quotations';</script>";
+            exit;
+        }
+    }
     $id = intval($_GET['id']);
     $type = $_GET['type'] ?? 'invoice';
 
@@ -70,7 +79,7 @@ $quotStats = $conn->query("
 ")->fetch_assoc();
 
 // ── Active tab & filters ──────────────────────────────────────────────────────
-$activeTab    = $_GET['tab']    ?? 'invoices';
+$activeTab    = ($role === 'sales') ? 'quotations' : ($_GET['tab'] ?? 'invoices');
 $invFilter    = $_GET['filter'] ?? 'all';
 $quotFilter   = $_GET['qfilter'] ?? 'all';
 
@@ -107,18 +116,72 @@ function quotBadge($s) {
 
 <div class="page-header">
     <div>
-        <h1><i class="fas fa-file-invoice-dollar"></i> Invoices & Quotations</h1>
-        <p>Manage billing, track payments, and send professional quotations</p>
+        <h1><i class="fas fa-file-invoice-dollar"></i> <?= $role === 'sales' ? 'Quotations & Proposals' : 'Invoices & Quotations' ?></h1>
+        <p><?= $role === 'sales' ? 'Manage, track, and send professional quotations to prospective clients' : 'Manage billing, track payments, and send professional quotations' ?></p>
     </div>
     <div style="display:flex;gap:10px;">
         <?php if ($role !== 'manager'): ?>
         <a href="create_quotation.php" class="btn btn-secondary"><i class="fas fa-file-alt"></i> New Quotation</a>
+        <?php if ($role !== 'sales'): ?>
         <a href="create_invoice.php"   class="btn btn-primary"><i class="fas fa-plus"></i> New Invoice</a>
+        <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>
 
 <!-- ── Stats ──────────────────────────────────────────────────────────────── -->
+<?php if ($role === 'sales'): ?>
+<div class="inv-stats-grid">
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon" style="background:#f5f3ff;color:#7c3aed;"><i class="fas fa-file-alt"></i></div>
+        <div>
+            <div class="inv-stat-num"><?= $quotStats['total'] ?></div>
+            <div class="inv-stat-label">Total Quotations</div>
+            <div class="inv-stat-sub"><?= $quotStats['accepted_count'] ?> converted / accepted</div>
+        </div>
+    </div>
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon" style="background:#f0fff4;color:#22c55e;"><i class="fas fa-check-circle"></i></div>
+        <div>
+            <div class="inv-stat-num"><?= $quotStats['accepted_count'] ?></div>
+            <div class="inv-stat-label">Accepted Deals</div>
+            <div class="inv-stat-sub">PKR <?= number_format($quotStats['accepted_value'] ?? 0) ?></div>
+        </div>
+    </div>
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon" style="background:#eff6ff;color:#3b82f6;"><i class="fas fa-upload"></i></div>
+        <div>
+            <div class="inv-stat-num"><?= $quotStats['sent_count'] ?></div>
+            <div class="inv-stat-label">Sent / In Review</div>
+            <div class="inv-stat-sub">Awaiting decision</div>
+        </div>
+    </div>
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon" style="background:#fffbeb;color:#d97706;"><i class="fas fa-edit"></i></div>
+        <div>
+            <div class="inv-stat-num"><?= $quotStats['draft_count'] ?></div>
+            <div class="inv-stat-label">Draft Proposals</div>
+            <div class="inv-stat-sub">In preparation</div>
+        </div>
+    </div>
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon" style="background:#fff5f5;color:#e53e3e;"><i class="fas fa-clock"></i></div>
+        <div>
+            <div class="inv-stat-num"><?= $quotStats['expired_count'] ?></div>
+            <div class="inv-stat-label">Expired / Rejected</div>
+            <div class="inv-stat-sub"><?= $quotStats['rejected_count'] ?> rejected</div>
+        </div>
+    </div>
+    <div class="inv-stat-card">
+        <div class="inv-stat-icon" style="background:#f0f9f8;color:#024442;"><i class="fas fa-coins"></i></div>
+        <div>
+            <div class="inv-stat-num">PKR <?= number_format($quotStats['total_value'] ?? 0) ?></div>
+            <div class="inv-stat-label">Pipeline Value</div>
+            <div class="inv-stat-sub">All active quotes</div>
+        </div>
+    </div>
+</div>
+<?php else: ?>
 <div class="inv-stats-grid">
     <div class="inv-stat-card">
         <div class="inv-stat-icon" style="background:#fffbeb;color:#d97706;"><i class="fas fa-dollar-sign"></i></div>
@@ -171,8 +234,10 @@ function quotBadge($s) {
         </div>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- ── Main Tabs ───────────────────────────────────────────────────────────── -->
+<?php if ($role !== 'sales'): ?>
 <div class="mp-tabs-container" style="margin-bottom:0;">
     <div class="mp-tab-buttons">
         <button type="button" onclick="switchMainTab('invoices')"   id="tabBtnInvoices"   class="<?= $activeTab==='invoices'   ? 'active' : '' ?>"><span class="mp-tab-icon"><i class="fas fa-file-invoice-dollar"></i></span> Invoices <span class="tab-count"><?= $invStats['total'] ?></span></button>
@@ -181,8 +246,10 @@ function quotBadge($s) {
         <?php endif; ?>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- ════════════════════════════ INVOICES TAB ════════════════════════════════ -->
+<?php if ($role !== 'sales'): ?>
 <div id="tabInvoices" class="main-tab-panel" style="display:<?= $activeTab==='invoices' ? 'block' : 'none' ?>;">
 
     <!-- Filter bar -->
@@ -305,6 +372,7 @@ function quotBadge($s) {
         <?php endif; ?>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- ════════════════════════════ QUOTATIONS TAB ══════════════════════════════ -->
 <?php if ($role !== 'manager'): ?>
@@ -374,22 +442,28 @@ function quotBadge($s) {
                     <td><span class="badge <?= quotBadge($q['status']) ?>"><?= ucfirst($q['status']) ?></span></td>
                     <td>
                         <?php if ($q['converted_invoice_id']): ?>
-                            <a href="invoice_details.php?id=<?= $q['converted_invoice_id'] ?>" style="font-size:12px;color:#024442;"><i class="fas fa-file-invoice-dollar"></i> Invoice</a>
+                            <?php if ($role !== 'sales'): ?>
+                                <a href="invoice_details.php?id=<?= $q['converted_invoice_id'] ?>" style="font-size:12px;color:#024442;"><i class="fas fa-file-invoice-dollar"></i> Invoice</a>
+                            <?php else: ?>
+                                <span style="font-size:12px;color:#16a34a;font-weight:600;"><i class="fas fa-check"></i> Invoiced</span>
+                            <?php endif; ?>
                         <?php else: ?>
                             <span style="font-size:12px;color:#ccc;">—</span>
                         <?php endif; ?>
                     </td>
                     <td>
                         <div class="row-actions">
-                            <a href="quotation_details.php?id=<?= $q['id'] ?>"         class="action-btn" title="View"><i class="fas fa-eye"></i>️</a>
-                            <a href="edit_quotation.php?id=<?= $q['id'] ?>"            class="action-btn" title="Edit"><i class="fas fa-pencil-alt"></i>️</a>
+                            <a href="quotation_details.php?id=<?= $q['id'] ?>"         class="action-btn" title="View"><i class="fas fa-eye"></i></a>
+                            <a href="edit_quotation.php?id=<?= $q['id'] ?>"            class="action-btn" title="Edit"><i class="fas fa-pencil-alt"></i></a>
                             <a href="generate_quotation_pdf.php?id=<?= $q['id'] ?>"   class="action-btn" title="PDF" target="_blank"><i class="fas fa-inbox"></i></a>
-                            <?php if (!$q['converted_invoice_id']): ?>
+                            <?php if (!$q['converted_invoice_id'] && $role !== 'sales'): ?>
                             <a href="create_invoice.php?from_quot=<?= $q['id'] ?>"    class="action-btn" title="Convert to Invoice"><i class="fas fa-file-invoice-dollar"></i></a>
                             <?php endif; ?>
+                            <?php if ($role !== 'sales'): ?>
                             <a href="?action=delete&id=<?= $q['id'] ?>&type=quotation&tab=quotations&qfilter=<?= $quotFilter ?>"
                                class="action-btn action-danger" title="Delete"
-                               onclick="return confirm('Delete quotation <?= htmlspecialchars($q['quotation_number']) ?>?')"><i class="fas fa-trash"></i>️</a>
+                               onclick="return confirm('Delete quotation <?= htmlspecialchars($q['quotation_number']) ?>?')"><i class="fas fa-trash"></i></a>
+                            <?php endif; ?>
                         </div>
                     </td>
                 </tr>

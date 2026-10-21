@@ -38,6 +38,7 @@ function getRoleBadge($role) {
     if ($r === 'admin')   return ['bg' => '#fff4e5', 'text' => '#e17055']; // Orange
     if ($r === 'pm')      return ['bg' => '#fce7f3', 'text' => '#db2777']; // Pink
     if ($r === 'manager') return ['bg' => '#e0f7fa', 'text' => '#00838f']; // Teal (Manager)
+    if ($r === 'sales')   return ['bg' => '#d1fae5', 'text' => '#065f46']; // Emerald Green (Sales)
     if ($r === 'hrm')     return ['bg' => '#e0e7ff', 'text' => '#4338ca']; // Indigo
     if ($r === 'teacher') return ['bg' => '#e0f2fe', 'text' => '#0284c7']; // Blue
     if ($r === 'student') return ['bg' => '#d7f8b8', 'text' => '#2b7a2b']; // Green
@@ -57,6 +58,7 @@ $users_grouped = [
     'admin'       => [],
     'manager'     => [],
     'pm'          => [],
+    'sales'       => [],
     'hrm'         => [],
     'teacher'     => [],
     'student'     => [],
@@ -93,6 +95,7 @@ $role_titles = [
     'admin'       => '<i class="fas fa-user-shield" style="color: #e17055; margin-right: 6px;"></i> Admin Officers / Administrators',
     'manager'     => '<i class="fas fa-user-tie" style="color: #00838f; margin-right: 6px;"></i> Managers',
     'pm'          => '<i class="fas fa-project-diagram" style="color: #db2777; margin-right: 6px;"></i> Project Managers',
+    'sales'       => '<i class="fas fa-handshake" style="color: #059669; margin-right: 6px;"></i> Sales & Business Development',
     'hrm'         => '<i class="fas fa-briefcase" style="color: #4338ca; margin-right: 6px;"></i> HR Management',
     'teacher'     => '<i class="fas fa-chalkboard-teacher" style="color: #0284c7; margin-right: 6px;"></i> Teachers',
     'student'     => '<i class="fas fa-user-graduate" style="color: #2b7a2b; margin-right: 6px;"></i> Students',
@@ -264,6 +267,7 @@ $role_titles = [
                             <option value="admin">Admin (Admin Officer - Operations, Docs, Attendance, Invoices, CRM)</option>
                             <option value="manager">Manager</option>
                             <option value="pm">Project Manager</option>
+                            <option value="sales">Sales (Leads & CRM, Clients, Quotations, Price Calc & DPR)</option>
                             <option value="hrm">HR Management</option>
                             <option value="user">Staff / User</option>
                             <option value="teacher">Teacher</option>

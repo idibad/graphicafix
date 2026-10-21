@@ -2,7 +2,7 @@
 include 'dashboard_header.php';
 
 // Check permissions
-if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user'])) {
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user', 'sales'])) {
     header('location:index.php'); exit;
 }
 
@@ -19,6 +19,10 @@ if (isset($_GET['action'])) {
         default         => null,
     };
     if ($_GET['action'] === 'delete') {
+        if ($role === 'sales') {
+            echo "<script>alert('You do not have permission to delete quotations.');window.location='quotation_details.php?id={$id}';</script>";
+            exit;
+        }
         $conn->query("DELETE FROM quotations WHERE id={$id}");
         echo "<script>alert('Quotation deleted.');window.location='manage_invoices.php?tab=quotations';</script>";
         exit;
@@ -98,10 +102,12 @@ function quotStatusColor($s) {
         <a href="generate_quotation_pdf.php?id=<?= $id ?>"     target="_blank" class="btn btn-secondary"><i class="fas fa-inbox"></i> View PDF</a>
         <a href="generate_quotation_pdf.php?id=<?= $id ?>&dl=1" class="btn btn-secondary">⬇️ Download PDF</a>
         <a href="edit_quotation.php?id=<?= $id ?>"             class="btn btn-secondary"><i class="fas fa-pencil-alt"></i>️ Edit</a>
-        <?php if (!$convertedInv): ?>
+        <?php if (!$convertedInv && $role !== 'sales'): ?>
         <a href="create_invoice.php?from_quot=<?= $id ?>"      class="btn btn-primary"><i class="fas fa-file-invoice-dollar"></i> Convert to Invoice</a>
         <?php endif; ?>
-        <button class="btn btn-danger" onclick="deleteQuot(<?= $id ?>,'<?= htmlspecialchars($q['quotation_number']) ?>')"><i class="fas fa-trash"></i>️ Delete</button>
+        <?php if ($role !== 'sales'): ?>
+        <button class="btn btn-danger" onclick="deleteQuot(<?= $id ?>,'<?= htmlspecialchars($q['quotation_number']) ?>')"><i class="fas fa-trash"></i> Delete</button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -116,14 +122,20 @@ function quotStatusColor($s) {
 <?php if ($q['status'] === 'accepted' && $convertedInv): ?>
 <div class="alert-success">
     <i class="fas fa-check-circle"></i> <strong>Accepted.</strong> Converted to invoice
+    <?php if ($role !== 'sales'): ?>
     <a href="invoice_details.php?id=<?= $convertedInv['id'] ?>" style="font-weight:700;color:#16a34a;">
         <?= htmlspecialchars($convertedInv['invoice_number']) ?>
     </a>
+    <?php else: ?>
+    <strong style="color:#16a34a;"><?= htmlspecialchars($convertedInv['invoice_number']) ?></strong>
+    <?php endif; ?>
 </div>
 <?php elseif ($q['status'] === 'accepted'): ?>
 <div class="alert-success">
     <i class="fas fa-check-circle"></i> <strong>This quotation has been accepted.</strong>
+    <?php if ($role !== 'sales'): ?>
     <a href="create_invoice.php?from_quot=<?= $id ?>">Convert to Invoice →</a>
+    <?php endif; ?>
 </div>
 <?php elseif ($q['status'] === 'rejected'): ?>
 <div class="alert-rejected">
