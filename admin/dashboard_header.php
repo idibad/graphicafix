@@ -133,8 +133,8 @@ $menus = [
             'link'  => '#',
             'icon'  => 'fas fa-user-tie',
             'submenus' => [
-                ['title' => '⚡ Response Unit', 'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish text-warning'],
-                ['title' => 'Field Visits Log', 'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
+                ['title' => 'Sales Response Unit', 'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish'],
+                ['title' => 'Client Visits Log',   'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
                 ['title' => 'Manage Clients',   'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
                 ['title' => 'Add Client',       'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-plus-square'],
                 ['title' => 'CRM & Leads',      'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
@@ -267,8 +267,8 @@ $menus = [
             'link'  => '#',
             'icon'  => 'fas fa-user-friends',
             'submenus' => [
-                ['title' => '⚡ Response Unit', 'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish text-warning'],
-                ['title' => 'Field Visits Log', 'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
+                ['title' => 'Sales Response Unit', 'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish'],
+                ['title' => 'Client Visits Log',   'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
                 ['title' => 'Clients Database', 'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
                 ['title' => 'Add Client',       'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-user-plus'],
                 ['title' => 'CRM & Leads',      'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
@@ -565,8 +565,8 @@ $menus = [
             'link'  => '#',
             'icon'  => 'fas fa-file-invoice-dollar',
             'submenus' => [
-                ['title' => '⚡ Response Unit', 'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish text-warning'],
-                ['title' => 'Field Visits Log', 'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
+                ['title' => 'Sales Response Unit', 'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish'],
+                ['title' => 'Client Visits Log',   'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
                 ['title' => 'Manage Invoices',  'link' => 'manage_invoices.php',     'icon' => 'fas fa-file-invoice'],
                 ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
             ]

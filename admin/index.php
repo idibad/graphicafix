@@ -176,28 +176,6 @@ if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $r
     while ($row = mysqli_fetch_assoc($priority_result)) {
         $priority_data[$row['priority']] = $row['cnt'];
     }
-
-    // Sales Visits metrics
-    $total_visits_count  = $conn->query("SELECT COUNT(*) AS c FROM sales_visits")->fetch_assoc()['c'] ?? 0;
-    $urgent_visits_count = $conn->query("SELECT COUNT(*) AS c FROM sales_visits WHERE is_urgent = 1 AND status != 'closed'")->fetch_assoc()['c'] ?? 0;
-    $pending_visits_count = $conn->query("SELECT COUNT(*) AS c FROM sales_visits WHERE status = 'pending'")->fetch_assoc()['c'] ?? 0;
-
-    $recent_inbound_visits = [];
-    if (in_array($role, ['super_admin', 'superadmin', 'admin', 'manager', 'pm'])) {
-        $v_res = $conn->query("SELECT * FROM sales_visits ORDER BY is_urgent DESC, id DESC LIMIT 5");
-        if ($v_res) while($vr = $v_res->fetch_assoc()) $recent_inbound_visits[] = $vr;
-    } elseif ($role === 'sales') {
-        $v_res = $conn->query("SELECT * FROM sales_visits WHERE sales_rep_id = $user_id ORDER BY id DESC LIMIT 5");
-        if ($v_res) while($vr = $v_res->fetch_assoc()) $recent_inbound_visits[] = $vr;
-    }
-
-    if ($role === 'sales') {
-        $sales_leads_count   = $conn->query("SELECT COUNT(*) AS c FROM leads")->fetch_assoc()['c'] ?? 0;
-        $sales_active_leads  = $conn->query("SELECT COUNT(*) AS c FROM leads WHERE pipeline_stage NOT IN ('won','lost')")->fetch_assoc()['c'] ?? 0;
-        $sales_quot_count    = $conn->query("SELECT COUNT(*) AS c FROM quotations")->fetch_assoc()['c'] ?? 0;
-        $sales_accepted_quot = $conn->query("SELECT COUNT(*) AS c FROM quotations WHERE status = 'accepted'")->fetch_assoc()['c'] ?? 0;
-        $sales_my_visits     = $conn->query("SELECT COUNT(*) AS c FROM sales_visits WHERE sales_rep_id = $user_id")->fetch_assoc()['c'] ?? 0;
-    }
 }
 elseif ($role === 'teacher') {
     // Teacher Data
@@ -382,74 +360,16 @@ elseif ($role === 'student') {
         <h1>Welcome back, <?php echo htmlspecialchars($name); ?> <?php 
             if ($role === 'super_admin' || $role === 'superadmin') echo '<i class="fas fa-crown" style="color:#f59e0b;"></i>';
             elseif ($role === 'admin') echo '<i class="fas fa-user-shield" style="color:var(--primary);"></i>';
-            elseif ($role === 'sales') echo '<i class="fas fa-handshake" style="color:#059669;"></i>';
             else echo '👋'; 
         ?></h1>
         <p><?php 
             if ($role === 'super_admin' || $role === 'superadmin') echo "Here's your comprehensive system overview for today (Super Admin).";
             elseif ($role === 'admin') echo "Here's your administrative and operational overview for today.";
-            elseif ($role === 'sales') echo "Here's your sales pipeline, deals, and client activities for today.";
             else echo "Here's what's happening with your projects today."; 
         ?></p>
     </div>
 
-    <?php if ($urgent_visits_count > 0 && in_array($role, ['super_admin', 'superadmin', 'admin', 'manager', 'pm'])): ?>
-    <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border: 1.5px solid #ef4444; border-radius: 12px; padding: 14px 20px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.12);">
-        <div style="display: flex; align-items: center; gap: 14px;">
-            <span style="display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: #ef4444; color: #fff; font-size: 1.15rem; flex-shrink: 0;">
-                <i class="fas fa-exclamation-triangle"></i>
-            </span>
-            <div>
-                <strong style="color: #991b1b; font-size: 15px; display: block;"><?= $urgent_visits_count ?> Field Visit(s) Need URGENT Contact!</strong>
-                <div style="color: #b91c1c; font-size: 13px;">Prospects marked for immediate reach-out are waiting in the Response Unit.</div>
-            </div>
-        </div>
-        <a href="sales_response_unit.php" style="background: #dc2626; color: #fff; font-weight: 700; font-size: 13px; padding: 9px 18px; border-radius: 8px; text-decoration: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 7px; box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);">
-            <i class="fas fa-bolt"></i> Open Response Unit
-        </a>
-    </div>
-    <?php endif; ?>
-
     <?php if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $role === 'pm' || $role === 'manager' || $role === 'sales'): ?>
-    <?php if ($role === 'sales'): ?>
-    <div class="admin-stats-grid">
-        <div class="stat-card" style="border-top-color:#0284c7;">
-            <div class="stat-icon"><i class="fas fa-street-view" style="color:#0284c7;"></i></div>
-            <div class="stat-value"><?= $sales_my_visits ?></div>
-            <div class="stat-label">Visits Logged</div>
-        </div>
-        <div class="stat-card" style="border-top-color:#059669;">
-            <div class="stat-icon"><i class="fas fa-filter" style="color:#059669;"></i></div>
-            <div class="stat-value"><?= $sales_leads_count ?></div>
-            <div class="stat-label">Total Leads</div>
-        </div>
-        <div class="stat-card blue">
-            <div class="stat-icon"><i class="fas fa-funnel-dollar"></i></div>
-            <div class="stat-value"><?= $sales_active_leads ?></div>
-            <div class="stat-label">Active Pipeline</div>
-        </div>
-        <div class="stat-card orange">
-            <div class="stat-icon"><i class="fas fa-file-signature"></i></div>
-            <div class="stat-value"><?= $sales_quot_count ?></div>
-            <div class="stat-label">Quotations</div>
-        </div>
-        <div class="stat-card green">
-            <div class="stat-icon"><i class="fas fa-handshake"></i></div>
-            <div class="stat-value"><?= $sales_accepted_quot ?></div>
-            <div class="stat-label">Deals Won</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon"><i class="fas fa-clipboard"></i></div>
-            <div class="stat-value"><?= $pending_tasks ?></div>
-            <div class="stat-label">Pending Tasks</div>
-        </div>
-        <div class="stat-card red">
-            <div class="stat-icon">🚨</div>
-            <div class="stat-value"><?= $overdue_tasks ?></div>
-            <div class="stat-label">Overdue Tasks</div>
-        </div>
-    </div>
-    <?php else: ?>
     <div class="admin-stats-grid">
         <?php if ($role === 'super_admin' || $role === 'superadmin'): ?>
         <div class="stat-card">
@@ -458,11 +378,6 @@ elseif ($role === 'student') {
             <div class="stat-label">Total Users</div>
         </div>
         <?php endif; ?>
-        <div class="stat-card" style="border-top-color:#059669;">
-            <div class="stat-icon"><i class="fas fa-street-view" style="color:#059669;"></i></div>
-            <div class="stat-value"><?= $total_visits_count ?></div>
-            <div class="stat-label">Field Visits</div>
-        </div>
         <div class="stat-card">
             <div class="stat-icon"><i class="fas fa-clipboard"></i></div>
             <div class="stat-value"><?= $total_tasks ?></div>
@@ -489,7 +404,6 @@ elseif ($role === 'student') {
             <div class="stat-label">High Priority</div>
         </div>
     </div>
-    <?php endif; ?>
 
     <div class="tasks-card" style="margin-bottom:30px;">
         <div class="card-header-custom"><h3><i class="fas fa-bolt"></i> Quick Actions</h3></div>
@@ -497,20 +411,6 @@ elseif ($role === 'student') {
             <?php if ($role === 'super_admin' || $role === 'superadmin'): ?>
             <a href="manage_users.php?add_user=1"         class="quick-action-btn"><span class="qa-icon"><i class="fas fa-plus"></i></span> Add User</a>
             <?php endif; ?>
-            <?php if ($role === 'sales'): ?>
-            <a href="sales_visits.php?log=1"               class="quick-action-btn"><span class="qa-icon"><i class="fas fa-plus-circle" style="color:#059669;"></i></span> Log Visit</a>
-            <a href="sales_visits.php"                     class="quick-action-btn"><span class="qa-icon"><i class="fas fa-street-view" style="color:#0284c7;"></i></span> Field Visits</a>
-            <a href="manage_leads.php?action=add"          class="quick-action-btn"><span class="qa-icon"><i class="fas fa-user-tag" style="color:#059669;"></i></span> Add Lead</a>
-            <a href="manage_leads.php"                     class="quick-action-btn"><span class="qa-icon"><i class="fas fa-filter"></i></span> Pipeline</a>
-            <a href="create_quotation.php"                 class="quick-action-btn"><span class="qa-icon"><i class="fas fa-file-signature"></i></span> New Quote</a>
-            <a href="manage_invoices.php?tab=quotations"   class="quick-action-btn"><span class="qa-icon"><i class="fas fa-file-alt"></i></span> Quotations</a>
-            <a href="price_calculator.php"                 class="quick-action-btn"><span class="qa-icon"><i class="fas fa-calculator"></i></span> Price Calc</a>
-            <a href="create_task.php"                      class="quick-action-btn"><span class="qa-icon"><i class="fas fa-edit"></i></span> New Task</a>
-            <a href="manage_clients.php"                   class="quick-action-btn"><span class="qa-icon"><i class="fas fa-building"></i></span> Clients</a>
-            <a href="dpr.php"                              class="quick-action-btn"><span class="qa-icon"><i class="fas fa-calendar-check"></i></span> My DPR</a>
-            <?php else: ?>
-            <a href="sales_response_unit.php"              class="quick-action-btn" style="position:relative;"><span class="qa-icon"><i class="fas fa-satellite-dish" style="color:#f59e0b;"></i></span> Response Unit <?= ($urgent_visits_count > 0 ? '<span style="position:absolute;top:8px;right:8px;background:#ef4444;color:#fff;border-radius:999px;font-size:10px;padding:1px 6px;font-weight:800;">' . $urgent_visits_count . '</span>' : '') ?></a>
-            <a href="sales_visits.php"                     class="quick-action-btn"><span class="qa-icon"><i class="fas fa-street-view" style="color:#10b981;"></i></span> Field Visits</a>
             <a href="create_task.php"                      class="quick-action-btn"><span class="qa-icon"><i class="fas fa-edit"></i></span> New Task</a>
             <?php if ($role === 'super_admin' || $role === 'superadmin'): ?>
             <a href="manage_users.php"                     class="quick-action-btn"><span class="qa-icon"><i class="fas fa-users"></i></span> Manage Users</a>
@@ -526,7 +426,6 @@ elseif ($role === 'student') {
             <?php if ($role === 'admin'): ?>
             <a href="correspondence.php"                   class="quick-action-btn"><span class="qa-icon"><i class="fas fa-envelope"></i></span> Letters / Docs</a>
             <a href="attendance.php"                       class="quick-action-btn"><span class="qa-icon"><i class="fas fa-clock"></i></span> Attendance</a>
-            <?php endif; ?>
             <?php endif; ?>
             <a href="profile.php"                          class="quick-action-btn"><span class="qa-icon">⚙️</span> Settings</a>
         </div>
@@ -608,107 +507,6 @@ elseif ($role === 'student') {
             <?php endwhile; ?>
         </div>
     </div>
-
-    <!-- ── Inbound Field Visits & Response Unit Live Widget ── -->
-    <?php if (!empty($recent_inbound_visits)): ?>
-    <div class="main-card" style="margin-bottom:30px; background:#fff; border-radius:14px; border:1px solid #e2e8f0; box-shadow:0 4px 15px rgba(0,0,0,0.03); overflow:hidden;">
-        <div class="main-header" style="padding:16px 20px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-            <div style="display:flex; align-items:center; gap:10px;">
-                <span style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:8px; background:<?= ($role==='sales'?'#ecfdf5':'#e0f2fe') ?>; color:<?= ($role==='sales'?'#059669':'#0284c7') ?>;">
-                    <i class="fas <?= ($role==='sales'?'fa-street-view':'fa-satellite-dish') ?>"></i>
-                </span>
-                <h3 style="margin:0; font-size:16px; font-weight:800; color:#0f172a;">
-                    <?= ($role === 'sales' ? 'My Recent Field Visits' : '⚡ Inbound Field Visits (Live Response Radar)') ?>
-                </h3>
-                <?php if ($urgent_visits_count > 0 && $role !== 'sales'): ?>
-                <span style="background:#fee2e2; color:#ef4444; font-size:11px; font-weight:800; padding:3px 9px; border-radius:999px;">
-                    🚨 <?= $urgent_visits_count ?> Urgent
-                </span>
-                <?php endif; ?>
-            </div>
-            <div>
-                <?php if ($role === 'sales'): ?>
-                <a href="sales_visits.php?log=1" class="btn" style="background:#059669; color:#fff; font-size:12.5px; font-weight:700; padding:6px 14px; border-radius:6px; text-decoration:none; margin-right:8px;">
-                    <i class="fas fa-plus"></i> Log Visit
-                </a>
-                <a href="sales_visits.php" class="view-all-link">View All Logged →</a>
-                <?php else: ?>
-                <a href="sales_response_unit.php" class="btn" style="background:var(--primary); color:#b8f35a; font-size:12.5px; font-weight:700; padding:6px 14px; border-radius:6px; text-decoration:none;">
-                    <i class="fas fa-bolt"></i> Open Full Response Unit →
-                </a>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <div style="overflow-x:auto;">
-            <table style="width:100%; border-collapse:collapse; text-align:left; font-size:13px;">
-                <thead>
-                    <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0; color:#64748b; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">
-                        <th style="padding:12px 18px;">Company / Client</th>
-                        <th style="padding:12px 14px;">Contact Window</th>
-                        <th style="padding:12px 14px;">Interest Level</th>
-                        <th style="padding:12px 14px;">Logged By</th>
-                        <th style="padding:12px 14px;">Status</th>
-                        <th style="padding:12px 18px; text-align:right;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach($recent_inbound_visits as $rv): 
-                        $is_urg = ($rv['is_urgent'] == 1);
-                        $clean_wa = preg_replace('/[^0-9]/', '', $rv['whatsapp'] ?: $rv['phone']);
-                        $wa_msg = urlencode("Hello " . $rv['client_name'] . ", this is Graphicafix Management following up on your discussion with our team. Are you available for a quick discussion?");
-                    ?>
-                    <tr style="border-bottom:1px solid #f1f5f9; <?= $is_urg ? 'background:#fffbfb;' : '' ?>">
-                        <td style="padding:14px 18px;">
-                            <div style="font-weight:700; color:#0f172a; font-size:13.5px; display:flex; align-items:center; gap:6px;">
-                                <?= htmlspecialchars($rv['company_name']) ?>
-                                <?php if ($is_urg): ?>
-                                <span style="background:#ef4444; color:#fff; font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px;">URGENT</span>
-                                <?php endif; ?>
-                            </div>
-                            <div style="color:#64748b; font-size:12px;"><?= htmlspecialchars($rv['client_name']) ?> • <?= htmlspecialchars($rv['phone']) ?></div>
-                        </td>
-                        <td style="padding:14px 14px;">
-                            <span style="background:#ecfdf5; color:#065f46; font-size:11.5px; font-weight:600; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;">
-                                <i class="far fa-clock"></i> <?= htmlspecialchars($rv['contact_availability']) ?>
-                            </span>
-                        </td>
-                        <td style="padding:14px 14px;">
-                            <?php if ($rv['interest_level'] === 'hot'): ?>
-                            <span style="background:#fee2e2; color:#991b1b; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;">🔥 HOT</span>
-                            <?php elseif ($rv['interest_level'] === 'warm'): ?>
-                            <span style="background:#fef3c7; color:#92400e; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;">WARM</span>
-                            <?php else: ?>
-                            <span style="background:#f1f5f9; color:#475569; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;">COLD</span>
-                            <?php endif; ?>
-                        </td>
-                        <td style="padding:14px 14px; color:#475569; font-size:12.5px;">
-                            <?= htmlspecialchars($rv['sales_rep_name']) ?>
-                        </td>
-                        <td style="padding:14px 14px;">
-                            <span style="font-size:11.5px; font-weight:600; text-transform:capitalize; color:#334155;">
-                                <?= htmlspecialchars($rv['status']) ?>
-                            </span>
-                        </td>
-                        <td style="padding:14px 18px; text-align:right;">
-                            <div style="display:inline-flex; gap:6px;">
-                                <a href="https://wa.me/<?= $clean_wa ?>?text=<?= $wa_msg ?>" target="_blank" 
-                                   style="background:#25D366; color:#fff; font-size:12px; font-weight:700; padding:5px 10px; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="WhatsApp Reach Out">
-                                    <i class="fab fa-whatsapp"></i> WhatsApp
-                                </a>
-                                <a href="<?= ($role==='sales'?'sales_visits.php':'sales_response_unit.php?highlight='.$rv['id']) ?>" 
-                                   style="background:#f1f5f9; color:#334155; font-size:12px; padding:5px 9px; border-radius:6px; text-decoration:none;" title="View Details">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <?php endif; ?>
 
     <div class="main-card" style="margin-bottom:30px;">
         <div class="main-header">
