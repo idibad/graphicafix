@@ -1,7 +1,7 @@
 <?php
 include 'dashboard_header.php';
 
-// Auth: Sales reps, Admins, Managers, PMs can access
+// Auth: Sales reps, Admins, Super Admins, PMs, Managers can access
 $allowed_roles = ['sales', 'super_admin', 'superadmin', 'admin', 'manager', 'pm'];
 if (!in_array($role, $allowed_roles)) {
     header("Location: index.php?error=unauthorized");
@@ -9,85 +9,98 @@ if (!in_array($role, $allowed_roles)) {
 }
 
 $user_id_int = intval($_SESSION['user_id'] ?? 0);
-$is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin', 'manager', 'pm']);
+$is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
 ?>
 
 <div class="height-100">
 
-    <!-- ── Page Header ── -->
-    <div class="page-header d-flex justify-content-between align-items-center flex-wrap" style="margin-bottom: 24px; gap: 14px;">
-        <div>
-            <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 10px;">
-                <span style="display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px; background:#d1fae5; color:#065f46;">
-                    <i class="fas fa-street-view"></i>
-                </span>
-                Client Field Visits
-            </h1>
-            <p style="margin: 4px 0 0; color: #64748b; font-size: 14px;">
-                Quickly record field visits, customer requirements, interest levels, and follow-up availability.
-            </p>
-        </div>
-        <div style="display: flex; gap: 10px; align-items: center;">
-            <?php if ($is_admin_user): ?>
-            <a href="sales_response_unit.php" class="btn btn-secondary-custom" style="padding: 10px 18px; font-size: 13.5px; text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
-                <i class="fas fa-bolt" style="color: #f59e0b;"></i> Live Response Unit
-            </a>
-            <?php endif; ?>
-            <button class="add-client" onclick="openVisitModal('add')" style="padding: 10px 20px; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">
-                <i class="fas fa-plus-circle"></i> Log Client Visit
-            </button>
-        </div>
-    </div>
-
-    <!-- ── Quick Statistics Cards ── -->
-    <div class="stats-row" style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-        <div class="stat-card" style="border-top: 4px solid var(--primary);">
-            <div class="stat-icon"><i class="fas fa-clipboard-list" style="color: var(--primary);"></i></div>
+    <!-- ── Universal Stats Row ── -->
+    <div class="stats-row" style="margin-bottom:24px;">
+        <div class="stat-card">
+            <div class="stat-header">
+                <span class="stat-label">Total Field Visits</span>
+                <div class="stat-icon" style="background:var(--light);color:var(--primary);"><i class="fas fa-street-view"></i></div>
+            </div>
             <div class="stat-number" id="statTotal">--</div>
-            <div class="stat-label">Total Visits Logged</div>
         </div>
-        <div class="stat-card" style="border-top: 4px solid #ef4444;">
-            <div class="stat-icon"><i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i></div>
-            <div class="stat-number" id="statUrgent" style="color: #ef4444;">--</div>
-            <div class="stat-label">Urgent Follow-ups</div>
+        <div class="stat-card">
+            <div class="stat-header">
+                <span class="stat-label">Urgent Follow-ups</span>
+                <div class="stat-icon" style="background:#fee2e2;color:#ef4444;"><i class="fas fa-exclamation-triangle"></i></div>
+            </div>
+            <div class="stat-number" id="statUrgent" style="color:#ef4444;">--</div>
         </div>
-        <div class="stat-card" style="border-top: 4px solid #f59e0b;">
-            <div class="stat-icon"><i class="fas fa-fire" style="color: #f59e0b;"></i></div>
-            <div class="stat-number" id="statHot" style="color: #f59e0b;">--</div>
-            <div class="stat-label">Hot / High Interest</div>
+        <div class="stat-card">
+            <div class="stat-header">
+                <span class="stat-label">Hot Leads</span>
+                <div class="stat-icon" style="background:#fef3c7;color:#d97706;"><i class="fas fa-fire"></i></div>
+            </div>
+            <div class="stat-number" id="statHot" style="color:#d97706;">--</div>
         </div>
-        <div class="stat-card" style="border-top: 4px solid #10b981;">
-            <div class="stat-icon"><i class="fas fa-hourglass-half" style="color: #10b981;"></i></div>
-            <div class="stat-number" id="statPending" style="color: #10b981;">--</div>
-            <div class="stat-label">Awaiting Contact</div>
+        <div class="stat-card">
+            <div class="stat-header">
+                <span class="stat-label">Contacted / Closed</span>
+                <div class="stat-icon" style="background:#dcfce7;color:#16a34a;"><i class="fas fa-check-circle"></i></div>
+            </div>
+            <div class="stat-number" id="statContacted" style="color:#16a34a;">--</div>
         </div>
     </div>
 
-    <!-- ── Main Card: Search, Filters & Visits Table ── -->
-    <div class="main-card" style="background:#fff; border-radius:14px; box-shadow:0 4px 20px rgba(0,0,0,0.04); border:1px solid #e2e8f0; overflow:hidden;">
-        
-        <!-- Filter Bar -->
-        <div style="padding: 18px 24px; border-bottom: 1px solid #f1f5f9; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between;">
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                <button type="button" class="tab-pill active" onclick="setVisitFilter('all', this)">All</button>
-                <button type="button" class="tab-pill" onclick="setVisitFilter('urgent', this)"><i class="fas fa-exclamation-circle" style="color:#ef4444;"></i> Urgent</button>
-                <button type="button" class="tab-pill" onclick="setVisitFilter('hot', this)">🔥 Hot Leads</button>
-                <button type="button" class="tab-pill" onclick="setVisitFilter('pending', this)">⏳ Pending Contact</button>
-                <button type="button" class="tab-pill" onclick="setVisitFilter('contacted', this)">✅ Contacted</button>
-            </div>
-
-            <div style="display: flex; gap: 10px; align-items: center; flex-grow: 1; max-width: 420px; position: relative;">
-                <input type="text" id="visitSearchInput" placeholder="Search by name, company, phone..." 
-                       style="width: 100%; padding: 9px 14px 9px 36px; border: 1.5px solid #e2e8f0; border-radius: 8px; outline: none; font-size: 13.5px; font-family: inherit; background:#f8fafc;">
-                <i class="fas fa-search" style="position: absolute; left: 12px; top: 11px; color: #94a3b8;"></i>
+    <!-- ── Universal Main Card & Table ── -->
+    <div class="main-card">
+        <div class="main-header">
+            <h3><i class="fas fa-street-view"></i> Client Field Visits Log</h3>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <?php if ($is_admin_user): ?>
+                <a href="sales_response_unit.php" class="btn btn-secondary-custom" style="padding:9px 16px; font-size:13.5px; text-decoration:none;">
+                    <i class="fas fa-satellite-dish"></i> Response Unit
+                </a>
+                <?php endif; ?>
+                <button class="add-client" onclick="openVisitModal('add')">
+                    <i class="fas fa-plus"></i> Log Client Visit
+                </button>
             </div>
         </div>
 
-        <!-- Visits Feed Container -->
-        <div id="visitsFeedContainer" style="padding: 16px 24px; min-height: 250px;">
-            <div style="text-align: center; padding: 50px 20px; color: #94a3b8;">
-                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 12px; color: var(--primary);"></i>
-                <p style="margin: 0;">Loading visits...</p>
+        <!-- Filter & Search Toolbar -->
+        <div style="padding:14px 24px; border-bottom:1px solid #f1f5f9; background:#fafafa; display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <span style="font-size:13px; font-weight:600; color:#64748b;">Filter:</span>
+                <select id="filterSelect" onchange="setFilter(this.value)" class="form-select" style="width:auto; padding:6px 12px; font-size:13px;">
+                    <option value="all">All Visits</option>
+                    <option value="urgent">🚨 Urgent Need to Contact</option>
+                    <option value="hot">🔥 Hot Interest</option>
+                    <option value="warm">⚡ Warm Interest</option>
+                    <option value="cold">❄️ Cold Interest</option>
+                    <option value="pending">⏳ Pending Contact</option>
+                    <option value="contacted">✅ Contacted</option>
+                </select>
+            </div>
+
+            <div style="position:relative; width:100%; max-width:320px;">
+                <input type="text" id="searchInput" oninput="handleSearch(this.value)" placeholder="Search client, company, phone..."
+                       class="form-control" style="padding-left:34px; font-size:13px; height:36px;">
+                <i class="fas fa-search" style="position:absolute; left:12px; top:11px; color:#94a3b8; font-size:13px;"></i>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="main-table">
+            <div class="table-head" style="grid-template-columns: 2fr 1.3fr 1fr 1.4fr 1.5fr 1fr 1fr;">
+                <span>Client & Company</span>
+                <span>Phone / WhatsApp</span>
+                <span>Interest</span>
+                <span>Available Contact</span>
+                <span>Requirements</span>
+                <span>Logged By</span>
+                <span style="text-align:right;">Actions</span>
+            </div>
+
+            <div id="visitsTableBody">
+                <div style="text-align:center; padding:50px 20px; color:#888;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:24px; margin-bottom:10px; color:var(--primary);"></i>
+                    <p style="margin:0;">Loading visits...</p>
+                </div>
             </div>
         </div>
     </div>
@@ -95,152 +108,110 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin', 'manager
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════════
-     MODAL: LOG CLIENT VISIT (Clean, Ultra-Fast UX)
+     UNIVERSAL MODAL: LOG / EDIT CLIENT VISIT
      ══════════════════════════════════════════════════════════════════════════════ -->
 <div id="visitModal" class="modal-overlay" onclick="if(event.target===this)closeVisitModal()">
-    <div class="modal-content" style="max-width: 780px; width: 95%; max-height: 90vh; overflow-y: auto; border-radius: 16px; padding: 0;">
-        
-        <div class="modal-header" style="padding: 20px 26px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #fafafa; border-radius: 16px 16px 0 0;">
-            <h4 style="margin: 0; font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 10px; color: #0f172a;">
-                <span id="modalIconWrap" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:8px; background:#d1fae5; color:#065f46;">
-                    <i class="fas fa-user-plus"></i>
-                </span>
-                <span id="visitModalTitle">Log New Client Visit</span>
+    <div class="modal-content" style="max-width:740px;">
+        <div class="modal-header">
+            <h4>
+                <div class="modal-header-icon"><i class="fas fa-street-view"></i></div>
+                <span id="visitModalTitle">Log Client Visit</span>
             </h4>
-            <button class="modal-close" onclick="closeVisitModal()" style="background:none; border:none; font-size:18px; color:#94a3b8; cursor:pointer;">
-                <i class="fas fa-times"></i>
-            </button>
+            <button class="modal-close" onclick="closeVisitModal()">×</button>
         </div>
 
         <form id="visitForm" onsubmit="submitVisitForm(event)">
             <input type="hidden" name="action" value="save">
             <input type="hidden" name="visit_id" id="f_visit_id" value="">
 
-            <div class="modal-body" style="padding: 24px 26px; display: flex; flex-direction: column; gap: 20px;">
-                
-                <!-- Section 1: Client & Company Information -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px;">
-                    <div style="font-weight: 700; font-size: 13.5px; color: #0f172a; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-id-card" style="color: var(--primary);"></i> Client & Company Details
+            <div class="modal-body">
+
+                <!-- Row 1: Client & Company -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+                    <div class="form-group">
+                        <label>Client Name <span style="color:#ef4444;">*</span></label>
+                        <input type="text" name="client_name" id="f_client_name" required placeholder="e.g. John Doe / Muhammad Ali" class="form-control">
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px;">
-                        <div>
-                            <label style="display: block; font-size: 12.5px; font-weight: 600; color: #334155; margin-bottom: 5px;">Client / Contact Name <span style="color:#ef4444;">*</span></label>
-                            <input type="text" name="client_name" id="f_client_name" required placeholder="e.g. John Doe / Muhammad Ali"
-                                   style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13.5px; outline: none; background: #fff;">
-                        </div>
-                        <div>
-                            <label style="display: block; font-size: 12.5px; font-weight: 600; color: #334155; margin-bottom: 5px;">Company / Business Name <span style="color:#ef4444;">*</span></label>
-                            <input type="text" name="company_name" id="f_company_name" required placeholder="e.g. Apex Global Traders"
-                                   style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13.5px; outline: none; background: #fff;">
-                        </div>
-                        <div>
-                            <label style="display: block; font-size: 12.5px; font-weight: 600; color: #334155; margin-bottom: 5px;">Phone Number <span style="color:#ef4444;">*</span></label>
-                            <input type="tel" name="phone" id="f_phone" required placeholder="e.g. 03001234567"
-                                   style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13.5px; outline: none; background: #fff;">
-                        </div>
-                        <div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                <label style="font-size: 12.5px; font-weight: 600; color: #334155; margin: 0;">WhatsApp Number</label>
-                                <button type="button" onclick="copyPhoneToWhatsapp()" style="background: none; border: none; color: #059669; font-size: 11.5px; font-weight: 700; cursor: pointer; padding: 0;">
-                                    <i class="fab fa-whatsapp"></i> Same as Phone
-                                </button>
-                            </div>
-                            <input type="tel" name="whatsapp" id="f_whatsapp" placeholder="e.g. 03001234567"
-                                   style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13.5px; outline: none; background: #fff;">
-                        </div>
+                    <div class="form-group">
+                        <label>Company / Business <span style="color:#ef4444;">*</span></label>
+                        <input type="text" name="company_name" id="f_company_name" required placeholder="e.g. Apex Traders" class="form-control">
                     </div>
                 </div>
 
-                <!-- Section 2: Interest Level & Availability Timing -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px;">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px;">
-                        
-                        <!-- Interest Level Selector -->
-                        <div>
-                            <label style="display: block; font-size: 12.5px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">
-                                <i class="fas fa-thermometer-half" style="color: #f59e0b;"></i> Client Interest Level <span style="color:#ef4444;">*</span>
-                            </label>
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
-                                <label class="interest-radio-card" id="card_hot">
-                                    <input type="radio" name="interest_level" value="hot" required onchange="updateInterestUI('hot')">
-                                    <div class="interest-inner">
-                                        <span class="icon">🔥</span>
-                                        <span class="label">Hot</span>
-                                        <small>Immediate</small>
-                                    </div>
-                                </label>
-                                <label class="interest-radio-card active" id="card_warm">
-                                    <input type="radio" name="interest_level" value="warm" checked required onchange="updateInterestUI('warm')">
-                                    <div class="interest-inner">
-                                        <span class="icon">⚡</span>
-                                        <span class="label">Warm</span>
-                                        <small>Interested</small>
-                                    </div>
-                                </label>
-                                <label class="interest-radio-card" id="card_cold">
-                                    <input type="radio" name="interest_level" value="cold" required onchange="updateInterestUI('cold')">
-                                    <div class="interest-inner">
-                                        <span class="icon">❄️</span>
-                                        <span class="label">Cold</span>
-                                        <small>Exploring</small>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Urgency Checkbox -->
-                        <div>
-                            <label style="display: block; font-size: 12.5px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">
-                                <i class="fas fa-bell" style="color: #ef4444;"></i> Urgent Flag
-                            </label>
-                            <div style="background: #fff; border: 1.5px solid #fecaca; border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer;"
-                                 onclick="document.getElementById('f_is_urgent').click();">
-                                <input type="checkbox" name="is_urgent" id="f_is_urgent" value="1" style="width: 20px; height: 20px; accent-color: #ef4444; cursor: pointer;" onclick="event.stopPropagation();">
-                                <div>
-                                    <div style="font-weight: 700; font-size: 13px; color: #b91c1c;">🚨 Urgent Need to Contact</div>
-                                    <div style="font-size: 11.5px; color: #64748b;">Alerts response team for immediate reach-out</div>
-                                </div>
-                            </div>
-                        </div>
-
+                <!-- Row 2: Phone & WhatsApp -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+                    <div class="form-group">
+                        <label>Phone Number <span style="color:#ef4444;">*</span></label>
+                        <input type="tel" name="phone" id="f_phone" required placeholder="e.g. 03001234567" class="form-control">
                     </div>
+                    <div class="form-group">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <label style="margin:0;">WhatsApp Number</label>
+                            <button type="button" onclick="copyPhoneToWa()" style="background:none; border:none; color:#16a34a; font-size:11.5px; font-weight:700; cursor:pointer; padding:0;">
+                                <i class="fab fa-whatsapp"></i> Same as Phone
+                            </button>
+                        </div>
+                        <input type="tel" name="whatsapp" id="f_whatsapp" placeholder="e.g. 03001234567" class="form-control">
+                    </div>
+                </div>
 
-                    <!-- Client Availability Timing -->
-                    <div style="margin-top: 14px;">
-                        <label style="display: block; font-size: 12.5px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">
-                            <i class="fas fa-clock" style="color: #0284c7;"></i> When is client available for contact? <span style="color:#ef4444;">*</span>
+                <!-- Row 3: Interest Level & Urgency -->
+                <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:14px; margin-bottom:14px;">
+                    <div class="form-group">
+                        <label>Interest Level <span style="color:#ef4444;">*</span></label>
+                        <div style="display:flex; gap:8px;">
+                            <label class="interest-chip" id="chip_hot">
+                                <input type="radio" name="interest_level" value="hot" required onchange="setInterestUI('hot')">
+                                <span>🔥 Hot</span>
+                            </label>
+                            <label class="interest-chip active-chip" id="chip_warm">
+                                <input type="radio" name="interest_level" value="warm" checked required onchange="setInterestUI('warm')">
+                                <span>⚡ Warm</span>
+                            </label>
+                            <label class="interest-chip" id="chip_cold">
+                                <input type="radio" name="interest_level" value="cold" required onchange="setInterestUI('cold')">
+                                <span>❄️ Cold</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Urgent Follow-up</label>
+                        <label style="display:flex; align-items:center; gap:8px; padding:9px 12px; background:#fff5f5; border:1px solid #fecaca; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; color:#b91c1c;">
+                            <input type="checkbox" name="is_urgent" id="f_is_urgent" value="1" style="width:17px; height:17px; accent-color:#ef4444;">
+                            <span>🚨 Urgently Need to Contact</span>
                         </label>
-                        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
-                            <button type="button" class="preset-chip" onclick="setAvailabilityChip('Available in 1-2 hours')">In 1-2 hours</button>
-                            <button type="button" class="preset-chip" onclick="setAvailabilityChip('Evening today (5:00 PM - 8:00 PM)')">Today Evening</button>
-                            <button type="button" class="preset-chip" onclick="setAvailabilityChip('Tomorrow morning (10:00 AM - 12:00 PM)')">Tomorrow Morning</button>
-                            <button type="button" class="preset-chip" onclick="setAvailabilityChip('Tomorrow afternoon (2:00 PM - 5:00 PM)')">Tomorrow Afternoon</button>
-                            <button type="button" class="preset-chip" onclick="setAvailabilityChip('After 2 days')">In 2 days</button>
-                            <button type="button" class="preset-chip" onclick="setAvailabilityChip('Next week Monday')">Next Week</button>
-                        </div>
-                        <input type="text" name="contact_availability" id="f_contact_availability" required 
-                               placeholder="e.g. Available today after 4 PM, or Tomorrow at 11:30 AM"
-                               style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13.5px; outline: none; background: #fff;">
                     </div>
                 </div>
 
-                <!-- Section 3: Requirements (Categories & Subcategories) -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px;">
-                    <div style="font-weight: 700; font-size: 13.5px; color: #0f172a; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
-                        <span><i class="fas fa-layer-group" style="color: var(--primary);"></i> Client Requirements / Services Needed</span>
-                        <span style="font-size: 11px; font-weight: 600; color: #64748b;">(Select categories & optional sub-items)</span>
+                <!-- Row 4: Client Availability Timing -->
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label>Client Availability (When to Contact?) <span style="color:#ef4444;">*</span></label>
+                    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+                        <button type="button" class="preset-tag" onclick="setAvailPreset('Available in 1-2 hours')">In 1-2 hours</button>
+                        <button type="button" class="preset-tag" onclick="setAvailPreset('Evening today (5:00 PM - 8:00 PM)')">Today Evening</button>
+                        <button type="button" class="preset-tag" onclick="setAvailPreset('Tomorrow morning (10:00 AM - 12:00 PM)')">Tomorrow Morning</button>
+                        <button type="button" class="preset-tag" onclick="setAvailPreset('Tomorrow afternoon (2:00 PM - 5:00 PM)')">Tomorrow Afternoon</button>
+                        <button type="button" class="preset-tag" onclick="setAvailPreset('After 2 days')">After 2 days</button>
+                        <button type="button" class="preset-tag" onclick="setAvailPreset('Next week Monday')">Next week</button>
                     </div>
+                    <input type="text" name="contact_availability" id="f_contact_availability" required placeholder="e.g. Tomorrow afternoon at 3:00 PM" class="form-control">
+                </div>
 
-                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px;">
-                        
-                        <!-- 1. Website -->
-                        <div class="category-block">
-                            <label class="category-header">
-                                <input type="checkbox" name="categories[]" value="Website" onchange="toggleSubcategories('sub_website', this.checked)">
-                                <span class="cat-title"><i class="fas fa-globe" style="color:#0284c7;"></i> Website</span>
+                <!-- Row 5: Requirements Categories & Subcategories -->
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>Requirements / Services Discussed</span>
+                        <small style="color:#64748b; font-weight:normal;">(Select categories and optional sub-items)</small>
+                    </label>
+
+                    <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+                        <!-- Category: Website -->
+                        <div class="cat-box">
+                            <label class="cat-label">
+                                <input type="checkbox" name="categories[]" value="Website" onchange="toggleSub('sub_web', this.checked)">
+                                <strong><i class="fas fa-globe" style="color:#0284c7;"></i> Website</strong>
                             </label>
-                            <div class="subcategories-wrap" id="sub_website" style="display: none;">
+                            <div id="sub_web" class="sub-box" style="display:none;">
                                 <label><input type="checkbox" name="subcategories[]" value="Website: E-commerce Store"> E-commerce Store</label>
                                 <label><input type="checkbox" name="subcategories[]" value="Website: Corporate / Portfolio"> Corporate / Portfolio</label>
                                 <label><input type="checkbox" name="subcategories[]" value="Website: Custom Web App"> Custom Web App</label>
@@ -249,28 +220,28 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin', 'manager
                             </div>
                         </div>
 
-                        <!-- 2. Printing -->
-                        <div class="category-block">
-                            <label class="category-header">
-                                <input type="checkbox" name="categories[]" value="Printing" onchange="toggleSubcategories('sub_printing', this.checked)">
-                                <span class="cat-title"><i class="fas fa-print" style="color:#e17055;"></i> Printing</span>
+                        <!-- Category: Printing -->
+                        <div class="cat-box">
+                            <label class="cat-label">
+                                <input type="checkbox" name="categories[]" value="Printing" onchange="toggleSub('sub_print', this.checked)">
+                                <strong><i class="fas fa-print" style="color:#e17055;"></i> Printing</strong>
                             </label>
-                            <div class="subcategories-wrap" id="sub_printing" style="display: none;">
+                            <div id="sub_print" class="sub-box" style="display:none;">
                                 <label><input type="checkbox" name="subcategories[]" value="Printing: Business Cards"> Business Cards</label>
                                 <label><input type="checkbox" name="subcategories[]" value="Printing: Letterheads & Stationery"> Letterheads & Stationery</label>
                                 <label><input type="checkbox" name="subcategories[]" value="Printing: Flyers & Brochures"> Flyers & Brochures</label>
                                 <label><input type="checkbox" name="subcategories[]" value="Printing: Packaging Boxes"> Packaging & Boxes</label>
-                                <label><input type="checkbox" name="subcategories[]" value="Printing: Banners & Signboards"> Banners & Signage</label>
+                                <label><input type="checkbox" name="subcategories[]" value="Printing: Banners & Signboards"> Banners & Signboards</label>
                             </div>
                         </div>
 
-                        <!-- 3. Design -->
-                        <div class="category-block">
-                            <label class="category-header">
-                                <input type="checkbox" name="categories[]" value="Design" onchange="toggleSubcategories('sub_design', this.checked)">
-                                <span class="cat-title"><i class="fas fa-paint-brush" style="color:#db2777;"></i> Design</span>
+                        <!-- Category: Design -->
+                        <div class="cat-box">
+                            <label class="cat-label">
+                                <input type="checkbox" name="categories[]" value="Design" onchange="toggleSub('sub_design', this.checked)">
+                                <strong><i class="fas fa-paint-brush" style="color:#db2777;"></i> Design</strong>
                             </label>
-                            <div class="subcategories-wrap" id="sub_design" style="display: none;">
+                            <div id="sub_design" class="sub-box" style="display:none;">
                                 <label><input type="checkbox" name="subcategories[]" value="Design: Logo & Brand Identity"> Logo & Brand Identity</label>
                                 <label><input type="checkbox" name="subcategories[]" value="Design: UI/UX App Design"> UI/UX Design</label>
                                 <label><input type="checkbox" name="subcategories[]" value="Design: Social Media Graphics"> Social Media Graphics</label>
@@ -279,13 +250,13 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin', 'manager
                             </div>
                         </div>
 
-                        <!-- 4. Social Media Marketing -->
-                        <div class="category-block">
-                            <label class="category-header">
-                                <input type="checkbox" name="categories[]" value="Social Media Marketing" onchange="toggleSubcategories('sub_smm', this.checked)">
-                                <span class="cat-title"><i class="fas fa-chart-line" style="color:#8b5cf6;"></i> Social Media Marketing (Paid Ads)</span>
+                        <!-- Category: Social Media Marketing -->
+                        <div class="cat-box">
+                            <label class="cat-label">
+                                <input type="checkbox" name="categories[]" value="Social Media Marketing" onchange="toggleSub('sub_smm', this.checked)">
+                                <strong><i class="fas fa-chart-line" style="color:#8b5cf6;"></i> Social Media Marketing (Paid Ads)</strong>
                             </label>
-                            <div class="subcategories-wrap" id="sub_smm" style="display: none;">
+                            <div id="sub_smm" class="sub-box" style="display:none;">
                                 <label><input type="checkbox" name="subcategories[]" value="SMM: Meta Ads (FB & IG)"> Meta Ads (FB/IG)</label>
                                 <label><input type="checkbox" name="subcategories[]" value="SMM: Google Ads PPC"> Google Ads (PPC)</label>
                                 <label><input type="checkbox" name="subcategories[]" value="SMM: TikTok Ads"> TikTok Ads</label>
@@ -294,13 +265,13 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin', 'manager
                             </div>
                         </div>
 
-                        <!-- 5. Managing Social Media -->
-                        <div class="category-block">
-                            <label class="category-header">
-                                <input type="checkbox" name="categories[]" value="Managing Social Media" onchange="toggleSubcategories('sub_managing_smm', this.checked)">
-                                <span class="cat-title"><i class="fas fa-hashtag" style="color:#10b981;"></i> Managing Social Media (Organic Management)</span>
+                        <!-- Category: Managing Social Media -->
+                        <div class="cat-box">
+                            <label class="cat-label">
+                                <input type="checkbox" name="categories[]" value="Managing Social Media" onchange="toggleSub('sub_manage', this.checked)">
+                                <strong><i class="fas fa-hashtag" style="color:#10b981;"></i> Managing Social Media (Organic)</strong>
                             </label>
-                            <div class="subcategories-wrap" id="sub_managing_smm" style="display: none;">
+                            <div id="sub_manage" class="sub-box" style="display:none;">
                                 <label><input type="checkbox" name="subcategories[]" value="Management: Monthly Content Creation"> Content Creation & Design</label>
                                 <label><input type="checkbox" name="subcategories[]" value="Management: Daily Scheduling"> Daily Scheduling</label>
                                 <label><input type="checkbox" name="subcategories[]" value="Management: Community & DM Handling"> Community & Inbox Handling</label>
@@ -308,253 +279,217 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin', 'manager
                                 <label><input type="checkbox" name="subcategories[]" value="Management: Monthly Growth Strategy"> Monthly Analytics & Growth</label>
                             </div>
                         </div>
-
                     </div>
                 </div>
 
-                <!-- Section 4: Remarks & Quick Selectors -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px;">
-                    <div style="font-weight: 700; font-size: 13.5px; color: #0f172a; margin-bottom: 8px;">
-                        <i class="fas fa-comment-dots" style="color: var(--primary);"></i> Remarks & Quick Presets
+                <!-- Row 6: Remarks & Presets -->
+                <div class="form-group">
+                    <label>Remarks & One-Click Notes</label>
+                    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+                        <button type="button" class="preset-tag" onclick="addRemark('Contact owner directly')">👤 Contact owner directly</button>
+                        <button type="button" class="preset-tag" onclick="addRemark('Interested but budget issues')">💰 Interested but budget issues</button>
+                        <button type="button" class="preset-tag" onclick="addRemark('Not interested at this time')">❌ Not interested</button>
+                        <button type="button" class="preset-tag" onclick="addRemark('Ready to close / High intent')">🎯 Ready to close</button>
+                        <button type="button" class="preset-tag" onclick="addRemark('Requested formal quotation')">📄 Wants Quotation</button>
+                        <button type="button" class="preset-tag" onclick="addRemark('Comparing rates with agency')">🔄 Comparing rates</button>
                     </div>
-                    
-                    <!-- Quick Preset Buttons -->
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;">
-                        <button type="button" class="preset-chip remark-chip" onclick="appendQuickRemark('Contact owner directly')">👤 Contact owner directly</button>
-                        <button type="button" class="preset-chip remark-chip" onclick="appendQuickRemark('Interested but budget issues')">💰 Interested but budget issues</button>
-                        <button type="button" class="preset-chip remark-chip" onclick="appendQuickRemark('Not interested at this time')">❌ Not interested</button>
-                        <button type="button" class="preset-chip remark-chip" onclick="appendQuickRemark('Ready to close / High intent')">🎯 Ready to close</button>
-                        <button type="button" class="preset-chip remark-chip" onclick="appendQuickRemark('Requested formal quotation / proposal')">📄 Wants Quotation</button>
-                        <button type="button" class="preset-chip remark-chip" onclick="appendQuickRemark('Has existing agency / comparing rates')">🔄 Comparing rates</button>
-                    </div>
-
                     <input type="hidden" name="quick_remark" id="f_quick_remark" value="">
-
-                    <textarea name="remarks" id="f_remarks" rows="3" placeholder="Enter detailed visit notes, specific requirements discussed, objections, or instructions..."
-                              style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13.5px; outline: none; background: #fff; font-family: inherit; resize: vertical;"></textarea>
+                    <textarea name="remarks" id="f_remarks" rows="3" placeholder="Enter visit remarks, meeting notes, objections, or custom details..." class="form-control" style="resize:vertical;"></textarea>
                 </div>
 
             </div>
 
-            <div class="modal-footer" style="padding: 16px 26px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 10px; background: #fafafa; border-radius: 0 0 16px 16px;">
-                <button type="button" class="btn btn-secondary-custom" onclick="closeVisitModal()" style="padding: 10px 18px; font-size: 13.5px;">Cancel</button>
-                <button type="submit" class="btn btn-primary-custom" id="submitVisitBtn" style="padding: 10px 24px; font-size: 13.5px; font-weight: 700; background: var(--primary); color: #fff; border: none; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary-custom" onclick="closeVisitModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary-custom" id="submitBtn">
                     <i class="fas fa-save"></i> Save Visit Record
                 </button>
             </div>
         </form>
+    </div>
+</div>
 
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     UNIVERSAL MODAL: VIEW VISIT DETAILS
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<div id="viewModal" class="modal-overlay" onclick="if(event.target===this)closeViewModal()">
+    <div class="modal-content" style="max-width:580px;">
+        <div class="modal-header">
+            <h4>
+                <div class="modal-header-icon"><i class="fas fa-eye"></i></div>
+                <span>Visit Details</span>
+            </h4>
+            <button class="modal-close" onclick="closeViewModal()">×</button>
+        </div>
+        <div class="modal-body" id="viewModalBody" style="padding:20px;">
+            <!-- Populated dynamically -->
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary-custom" onclick="closeViewModal()">Close</button>
+            <span id="viewModalActions"></span>
+        </div>
     </div>
 </div>
 
 <style>
-/* ── Visits Custom Styles ── */
-.tab-pill {
-    padding: 7px 16px;
-    border-radius: 20px;
-    border: 1px solid #e2e8f0;
-    background: #fff;
-    color: #475569;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.tab-pill:hover, .tab-pill.active {
-    background: var(--primary);
-    color: #fff;
-    border-color: var(--primary);
-}
-
-.interest-radio-card {
-    border: 1.5px solid #e2e8f0;
-    border-radius: 10px;
-    background: #fff;
-    padding: 10px 6px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: block;
-    user-select: none;
-}
-.interest-radio-card input {
-    display: none;
-}
-.interest-radio-card .interest-inner {
+/* ── Clean Universal Form Helpers ── */
+.form-group {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 2px;
 }
-.interest-radio-card .icon { font-size: 18px; }
-.interest-radio-card .label { font-weight: 700; font-size: 12.5px; color: #1e293b; }
-.interest-radio-card small { font-size: 10.5px; color: #64748b; }
-
-.interest-radio-card.active-hot { border-color: #ef4444; background: #fff5f5; }
-.interest-radio-card.active-warm { border-color: #f59e0b; background: #fffbeb; }
-.interest-radio-card.active-cold { border-color: #0284c7; background: #f0f9ff; }
-
-.preset-chip {
-    padding: 5px 11px;
-    border-radius: 15px;
-    border: 1px solid #cbd5e1;
-    background: #fff;
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
     color: #334155;
-    font-size: 11.5px;
+    margin-bottom: 5px;
+}
+.preset-tag {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s ease;
 }
-.preset-chip:hover {
-    background: #f1f5f9;
-    border-color: #94a3b8;
-    color: #0f172a;
+.preset-tag:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
 }
-.remark-chip:hover {
-    background: #e0f2fe;
-    border-color: #38bdf8;
-    color: #0369a1;
-}
-
-.category-block {
-    background: #fff;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 10px 14px;
-    transition: border-color 0.2s;
-}
-.category-block:hover { border-color: #cbd5e1; }
-.category-header {
+.interest-chip {
+    flex: 1;
     display: flex;
     align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    margin: 0;
-    font-size: 13.5px;
+    justify-content: center;
+    padding: 8px 12px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 13px;
     font-weight: 700;
-    color: #1e293b;
-}
-.category-header input[type="checkbox"] {
-    width: 17px;
-    height: 17px;
-    accent-color: var(--primary);
     cursor: pointer;
+    transition: all 0.15s ease;
 }
-.subcategories-wrap {
-    margin-top: 10px;
-    padding-top: 10px;
+.interest-chip input { display: none; }
+.interest-chip.active-chip {
+    border-color: var(--primary);
+    background: #f0fdf4;
+    color: var(--primary);
+}
+.cat-box {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    padding: 8px 12px;
+}
+.cat-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    margin: 0;
+}
+.cat-label input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+.sub-box {
+    margin-top: 8px;
+    padding-top: 8px;
     border-top: 1px dashed #e2e8f0;
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
 }
-.subcategories-wrap label {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+.sub-box label {
     font-size: 12px;
     color: #475569;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    padding: 4px 10px;
-    border-radius: 6px;
-    cursor: pointer;
-}
-.subcategories-wrap label:hover { background: #f1f5f9; }
-.subcategories-wrap input { accent-color: var(--primary); }
-
-.visit-row-card {
-    border: 1px solid #f1f5f9;
-    border-radius: 12px;
-    padding: 16px 20px;
-    margin-bottom: 12px;
-    background: #fff;
-    transition: all 0.2s ease;
-    display: grid;
-    grid-template-columns: 2fr 1.8fr 1.2fr 1fr 1.2fr;
-    gap: 14px;
+    font-weight: 500;
+    display: flex;
     align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    margin: 0;
 }
-.visit-row-card:hover {
-    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-    border-color: #cbd5e1;
-}
-.visit-row-card.is-urgent {
-    border-left: 5px solid #ef4444;
-    background: #fffafb;
-}
+.sub-box input { accent-color: var(--primary); }
 
-@media (max-width: 991px) {
-    .visit-row-card {
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-}
+/* Standard Status Badge Helpers */
+.badge-hot  { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; }
+.badge-warm { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; }
+.badge-cold { background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 700; }
+.badge-urg  { background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; margin-left: 4px; }
 </style>
 
 <script>
 let currentFilter = 'all';
-let visitSearchTimer = null;
+let searchQuery   = '';
+let allVisits     = [];
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', () => {
     loadVisits();
-
-    document.getElementById('visitSearchInput').addEventListener('input', function() {
-        clearTimeout(visitSearchTimer);
-        visitSearchTimer = setTimeout(loadVisits, 300);
-    });
-
-    // Check if URL has ?log=1 to auto-open modal
+    // Auto-open modal if URL has ?log=1
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('log') === '1') {
         openVisitModal('add');
     }
 });
 
-function setVisitFilter(filter, btn) {
-    currentFilter = filter;
-    document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    loadVisits();
-}
-
 function loadVisits() {
-    const search = document.getElementById('visitSearchInput').value.trim();
-    const url = `sales_visits_api.php?action=fetch_all&filter=${encodeURIComponent(currentFilter)}&search=${encodeURIComponent(search)}`;
-
-    fetch(url)
-        .then(res => res.json())
+    fetch(`sales_visits_api.php?action=fetch_all&filter=${currentFilter}`)
+        .then(r => r.json())
         .then(data => {
-            if (!data.success) {
-                document.getElementById('visitsFeedContainer').innerHTML = `<div style="text-align:center;padding:40px;color:#ef4444;"><i class="fas fa-exclamation-triangle"></i> Failed to load visits: ${data.message}</div>`;
-                return;
+            if (data.success) {
+                allVisits = data.items || [];
+                renderStats(data.stats || {});
+                renderTable();
+            } else {
+                document.getElementById('visitsTableBody').innerHTML = `<div style="text-align:center;padding:40px;color:#ef4444;">${data.message}</div>`;
             }
-
-            // Update stats
-            if (data.stats) {
-                document.getElementById('statTotal').textContent = data.stats.total || 0;
-                document.getElementById('statUrgent').textContent = data.stats.urgent || 0;
-                document.getElementById('statHot').textContent = data.stats.hot || 0;
-                document.getElementById('statPending').textContent = data.stats.pending || 0;
-            }
-
-            renderVisitsList(data.items);
         })
         .catch(err => {
             console.error(err);
-            document.getElementById('visitsFeedContainer').innerHTML = `<div style="text-align:center;padding:40px;color:#ef4444;">Error connecting to server.</div>`;
+            document.getElementById('visitsTableBody').innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444;">Failed to load visits. Please try again.</div>';
         });
 }
 
-function renderVisitsList(items) {
-    const container = document.getElementById('visitsFeedContainer');
-    if (!items || items.length === 0) {
+function renderStats(stats) {
+    document.getElementById('statTotal').textContent     = stats.total || 0;
+    document.getElementById('statUrgent').textContent    = stats.urgent || 0;
+    document.getElementById('statHot').textContent       = stats.hot || 0;
+    document.getElementById('statContacted').textContent = (parseInt(stats.contacted || 0) + parseInt(stats.converted || 0));
+}
+
+function setFilter(val) {
+    currentFilter = val;
+    loadVisits();
+}
+
+function handleSearch(val) {
+    searchQuery = val.trim().toLowerCase();
+    renderTable();
+}
+
+function renderTable() {
+    const container = document.getElementById('visitsTableBody');
+    let items = allVisits;
+
+    if (searchQuery) {
+        items = items.filter(v =>
+            (v.client_name && v.client_name.toLowerCase().includes(searchQuery)) ||
+            (v.company_name && v.company_name.toLowerCase().includes(searchQuery)) ||
+            (v.phone && v.phone.includes(searchQuery)) ||
+            (v.categories && v.categories.toLowerCase().includes(searchQuery)) ||
+            (v.remarks && v.remarks.toLowerCase().includes(searchQuery))
+        );
+    }
+
+    if (items.length === 0) {
         container.innerHTML = `
-            <div style="text-align:center; padding:60px 20px; color:#94a3b8;">
-                <i class="fas fa-calendar-times" style="font-size:3rem; margin-bottom:14px; color:#cbd5e1;"></i>
-                <h5 style="margin:0 0 6px 0; color:#475569; font-weight:700;">No Client Visits Found</h5>
-                <p style="margin:0 0 16px; font-size:13.5px;">Click the button below to log your first field visit.</p>
-                <button class="add-client" onclick="openVisitModal('add')"><i class="fas fa-plus"></i> Log Client Visit</button>
+            <div style="text-align:center; padding:60px 24px; color:#888;">
+                <i class="fas fa-street-view" style="font-size:32px; color:#cbd5e1; margin-bottom:12px;"></i>
+                <p style="margin:0; font-size:14px;">No client field visits found.</p>
+                <button class="add-client" onclick="openVisitModal('add')" style="margin-top:12px;">+ Log First Visit</button>
             </div>
         `;
         return;
@@ -562,183 +497,152 @@ function renderVisitsList(items) {
 
     let html = '';
     items.forEach(v => {
-        const isUrgent = v.is_urgent == 1;
-        const interestClass = v.interest_level === 'hot' ? 'badge-hot' : (v.interest_level === 'warm' ? 'badge-warm' : 'badge-cold');
-        const interestLabel = v.interest_level === 'hot' ? '🔥 Hot' : (v.interest_level === 'warm' ? '⚡ Warm' : '❄️ Cold');
-        const interestColor = v.interest_level === 'hot' ? '#dc2626' : (v.interest_level === 'warm' ? '#d97706' : '#0284c7');
-        const interestBg    = v.interest_level === 'hot' ? '#fee2e2' : (v.interest_level === 'warm' ? '#fef3c7' : '#e0f2fe');
-
-        // Categories pills
-        let catHtml = '';
-        if (v.categories_arr && v.categories_arr.length > 0) {
-            catHtml = v.categories_arr.map(c => `<span style="display:inline-block; background:#f1f5f9; color:#334155; font-size:11px; font-weight:600; padding:2px 8px; border-radius:6px; margin:2px 3px 2px 0;">${escapeHtml(c)}</span>`).join('');
+        const isUrgent = (v.is_urgent == 1);
+        const cleanWa  = (v.whatsapp || v.phone || '').replace(/[^0-9]/g, '');
+        const waMsg    = encodeURIComponent(`Hello ${v.client_name}, this is Graphicafix following up on your discussion with our team regarding ${v.company_name}. Are you available for a quick chat?`);
+        
+        let interestBadge = '';
+        if (v.interest_level === 'hot') {
+            interestBadge = '<span class="badge-hot">🔥 Hot</span>';
+        } else if (v.interest_level === 'warm') {
+            interestBadge = '<span class="badge-warm">⚡ Warm</span>';
         } else {
-            catHtml = '<span style="color:#aaa;font-size:11.5px;">General</span>';
+            interestBadge = '<span class="badge-cold">❄️ Cold</span>';
         }
 
-        // WhatsApp clean number
-        const cleanWa = (v.whatsapp || v.phone || '').replace(/[^0-9]/g, '');
-        const waText = encodeURIComponent(`Hi ${v.client_name}, thank you for meeting our representative from Graphicafix today regarding your interest in ${v.categories_arr.join(', ')}. We are following up as requested. How can we assist you?`);
-        const waLink = `https://wa.me/${cleanWa}?text=${waText}`;
+        let catBadges = '';
+        if (v.categories_arr && v.categories_arr.length > 0) {
+            catBadges = v.categories_arr.slice(0, 2).map(c => `<span style="background:#e0f2fe; color:#0284c7; padding:2px 7px; border-radius:6px; font-size:11px; font-weight:600; margin-right:4px;">${escapeHtml(c)}</span>`).join('');
+            if (v.categories_arr.length > 2) {
+                catBadges += `<span style="color:#64748b; font-size:11px;">+${v.categories_arr.length - 2}</span>`;
+            }
+        } else {
+            catBadges = '<span style="color:#94a3b8; font-size:12px;">General</span>';
+        }
 
         html += `
-        <div class="visit-row-card ${isUrgent ? 'is-urgent' : ''}">
-            <!-- Col 1: Client & Company -->
-            <div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <strong style="font-size:14.5px; color:#0f172a;">${escapeHtml(v.client_name)}</strong>
-                    ${isUrgent ? '<span style="background:#fee2e2; color:#dc2626; font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px; text-transform:uppercase; letter-spacing:0.5px;"><i class="fas fa-exclamation-circle"></i> URGENT</span>' : ''}
-                </div>
-                <div style="font-size:13px; color:#475569; font-weight:600; margin-top:2px;">
-                    <i class="fas fa-building" style="color:#94a3b8; font-size:11px; margin-right:4px;"></i>${escapeHtml(v.company_name)}
-                </div>
-                <div style="font-size:12px; color:#64748b; margin-top:4px;">
-                    <i class="fas fa-user-circle" style="color:#94a3b8; font-size:11px; margin-right:3px;"></i> Rep: <strong>${escapeHtml(v.sales_rep_name)}</strong> · ${v.time_ago}
-                </div>
-            </div>
-
-            <!-- Col 2: Requirements & Remarks -->
-            <div>
-                <div style="margin-bottom:5px;">${catHtml}</div>
-                ${v.quick_remark ? `<div style="display:inline-block; background:#ede9fe; color:#6d28d9; font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px; margin-bottom:4px;">${escapeHtml(v.quick_remark)}</div>` : ''}
-                ${v.remarks ? `<div style="font-size:12px; color:#64748b; line-height:1.4; max-height:40px; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(v.remarks)}</div>` : ''}
-            </div>
-
-            <!-- Col 3: Interest & Availability -->
-            <div>
+            <div class="table-row" style="grid-template-columns: 2fr 1.3fr 1fr 1.4fr 1.5fr 1fr 1fr; ${isUrgent ? 'background:#fffbfb;' : ''}">
                 <div>
-                    <span style="background:${interestBg}; color:${interestColor}; font-size:11.5px; font-weight:700; padding:3px 10px; border-radius:12px; display:inline-block;">
-                        ${interestLabel}
-                    </span>
+                    <strong style="color:#0f172a; font-size:13.5px; display:inline-flex; align-items:center;">
+                        ${escapeHtml(v.company_name)}
+                        ${isUrgent ? '<span class="badge-urg">URGENT</span>' : ''}
+                    </strong>
+                    <div style="font-size:12px; color:#64748b;">${escapeHtml(v.client_name)}</div>
                 </div>
-                <div style="margin-top:6px; font-size:12px; color:#0284c7; font-weight:600;">
-                    <i class="fas fa-clock" style="font-size:11px; margin-right:4px;"></i>${escapeHtml(v.contact_availability)}
+                <div>
+                    <div style="font-weight:600; color:#334155; font-size:12.5px;">${escapeHtml(v.phone)}</div>
+                    ${cleanWa ? `
+                        <a href="https://wa.me/${cleanWa}?text=${waMsg}" target="_blank" style="font-size:11.5px; color:#16a34a; font-weight:600; text-decoration:none;">
+                            <i class="fab fa-whatsapp"></i> ${escapeHtml(v.whatsapp || v.phone)}
+                        </a>
+                    ` : ''}
+                </div>
+                <div>${interestBadge}</div>
+                <div style="font-size:12.5px; color:#334155;">
+                    <i class="far fa-clock" style="color:#64748b; margin-right:4px;"></i>
+                    ${escapeHtml(v.contact_availability)}
+                </div>
+                <div>${catBadges}</div>
+                <div style="font-size:12px; color:#64748b;">
+                    <div>${escapeHtml(v.sales_rep_name)}</div>
+                    <small style="color:#94a3b8;">${v.time_ago || ''}</small>
+                </div>
+                <div style="display:flex; gap:6px; justify-content:flex-end; align-items:center;">
+                    ${cleanWa ? `
+                        <a href="https://wa.me/${cleanWa}?text=${waMsg}" target="_blank" class="dots" style="color:#16a34a; border-color:#bbf7d0; background:#f0fdf4;" title="1-Click WhatsApp">
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                    ` : ''}
+                    <button class="dots" onclick="viewVisit(${v.id})" title="View Details"><i class="fas fa-eye"></i></button>
+                    <button class="dots" onclick="openVisitModal('edit', ${v.id})" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="dots" onclick="deleteVisit(${v.id}, '${escapeHtml(v.company_name)}')" title="Delete" style="color:#ef4444;"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
-
-            <!-- Col 4: Status -->
-            <div>
-                <span style="background:#f1f5f9; color:#475569; font-size:11px; font-weight:700; padding:4px 8px; border-radius:6px; text-transform:uppercase;">
-                    ${escapeHtml(v.status.replace('_', ' '))}
-                </span>
-                ${v.converted_lead_id ? `<div style="margin-top:4px;"><a href="manage_leads.php" style="font-size:11px; color:#059669; font-weight:700;"><i class="fas fa-check"></i> CRM Lead #${v.converted_lead_id}</a></div>` : ''}
-            </div>
-
-            <!-- Col 5: Actions -->
-            <div style="display:flex; gap:6px; justify-content:flex-end; align-items:center;">
-                <a href="${waLink}" target="_blank" class="btn" style="background:#25d366; color:#fff; padding:6px 10px; border-radius:6px; font-size:12px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="WhatsApp Reachout">
-                    <i class="fab fa-whatsapp"></i> Chat
-                </a>
-                <a href="tel:${v.phone}" class="btn" style="background:#f1f5f9; color:#0f172a; padding:6px 9px; border-radius:6px; font-size:12px;" title="Call Client">
-                    <i class="fas fa-phone"></i>
-                </a>
-                <button class="btn" onclick="openVisitModal('edit', ${v.id})" style="background:#f1f5f9; color:#024442; padding:6px 9px; border-radius:6px; font-size:12px; border:none; cursor:pointer;" title="Edit Visit">
-                    <i class="fas fa-pencil-alt"></i>
-                </button>
-            </div>
-        </div>
         `;
     });
 
     container.innerHTML = html;
 }
 
+// ── Modal Handling ──
 function openVisitModal(mode, id = null) {
     document.getElementById('visitForm').reset();
     document.getElementById('f_visit_id').value = '';
-    document.querySelectorAll('.subcategories-wrap').forEach(el => el.style.display = 'none');
-    updateInterestUI('warm');
-    document.getElementById('card_warm').querySelector('input').checked = true;
+    document.querySelectorAll('.sub-box').forEach(el => el.style.display = 'none');
+    setInterestUI('warm');
+    document.getElementById('chip_warm').querySelector('input').checked = true;
 
     if (mode === 'add') {
-        document.getElementById('visitModalTitle').textContent = 'Log New Client Visit';
-        document.getElementById('modalIconWrap').innerHTML = '<i class="fas fa-user-plus"></i>';
-        document.getElementById('visitModal').classList.add('show');
+        document.getElementById('visitModalTitle').textContent = 'Log Client Field Visit';
+        document.getElementById('visitModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
         document.getElementById('f_client_name').focus();
     } else if (mode === 'edit' && id) {
-        document.getElementById('visitModalTitle').textContent = 'Edit Client Visit Record';
-        document.getElementById('modalIconWrap').innerHTML = '<i class="fas fa-pencil-alt"></i>';
-        
-        fetch(`sales_visits_api.php?action=fetch_all&filter=all`)
-            .then(res => res.json())
-            .then(data => {
-                const v = data.items.find(item => item.id == id);
-                if (!v) return;
+        document.getElementById('visitModalTitle').textContent = 'Edit Client Visit';
+        const v = allVisits.find(item => item.id == id);
+        if (!v) return;
 
-                document.getElementById('f_visit_id').value = v.id;
-                document.getElementById('f_client_name').value = v.client_name;
-                document.getElementById('f_company_name').value = v.company_name;
-                document.getElementById('f_phone').value = v.phone;
-                document.getElementById('f_whatsapp').value = v.whatsapp || v.phone;
-                document.getElementById('f_contact_availability').value = v.contact_availability;
-                document.getElementById('f_remarks').value = v.remarks || '';
-                document.getElementById('f_quick_remark').value = v.quick_remark || '';
-                document.getElementById('f_is_urgent').checked = (v.is_urgent == 1);
+        document.getElementById('f_visit_id').value             = v.id;
+        document.getElementById('f_client_name').value          = v.client_name;
+        document.getElementById('f_company_name').value         = v.company_name;
+        document.getElementById('f_phone').value                = v.phone;
+        document.getElementById('f_whatsapp').value             = v.whatsapp || v.phone;
+        document.getElementById('f_contact_availability').value = v.contact_availability;
+        document.getElementById('f_remarks').value              = v.remarks || '';
+        document.getElementById('f_quick_remark').value         = v.quick_remark || '';
+        document.getElementById('f_is_urgent').checked          = (v.is_urgent == 1);
 
-                // Interest
-                const radio = document.querySelector(`input[name="interest_level"][value="${v.interest_level}"]`);
-                if (radio) { radio.checked = true; updateInterestUI(v.interest_level); }
+        const r = document.querySelector(`input[name="interest_level"][value="${v.interest_level}"]`);
+        if (r) { r.checked = true; setInterestUI(v.interest_level); }
 
-                // Check categories
-                if (v.categories_arr) {
-                    v.categories_arr.forEach(cat => {
-                        const cb = document.querySelector(`input[name="categories[]"][value="${cat}"]`);
-                        if (cb) {
-                            cb.checked = true;
-                            const map = {
-                                'Website': 'sub_website',
-                                'Printing': 'sub_printing',
-                                'Design': 'sub_design',
-                                'Social Media Marketing': 'sub_smm',
-                                'Managing Social Media': 'sub_managing_smm'
-                            };
-                            if (map[cat]) document.getElementById(map[cat]).style.display = 'flex';
-                        }
-                    });
+        if (v.categories_arr) {
+            v.categories_arr.forEach(cat => {
+                const cb = document.querySelector(`input[name="categories[]"][value="${cat}"]`);
+                if (cb) {
+                    cb.checked = true;
+                    const map = { 'Website':'sub_web', 'Printing':'sub_print', 'Design':'sub_design', 'Social Media Marketing':'sub_smm', 'Managing Social Media':'sub_manage' };
+                    if (map[cat]) document.getElementById(map[cat]).style.display = 'flex';
                 }
-
-                // Check subcategories
-                if (v.subcategories_arr) {
-                    v.subcategories_arr.forEach(sub => {
-                        const scb = document.querySelector(`input[name="subcategories[]"][value="${sub}"]`);
-                        if (scb) scb.checked = true;
-                    });
-                }
-
-                document.getElementById('visitModal').classList.add('show');
             });
+        }
+        if (v.subcategories_arr) {
+            v.subcategories_arr.forEach(sub => {
+                const scb = document.querySelector(`input[name="subcategories[]"][value="${sub}"]`);
+                if (scb) scb.checked = true;
+            });
+        }
+
+        document.getElementById('visitModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
     }
 }
 
 function closeVisitModal() {
-    document.getElementById('visitModal').classList.remove('show');
+    document.getElementById('visitModal').classList.remove('active');
+    document.body.style.overflow = '';
 }
 
-function updateInterestUI(level) {
-    document.getElementById('card_hot').classList.remove('active-hot', 'active-warm', 'active-cold');
-    document.getElementById('card_warm').classList.remove('active-hot', 'active-warm', 'active-cold');
-    document.getElementById('card_cold').classList.remove('active-hot', 'active-warm', 'active-cold');
-
-    if (level === 'hot') document.getElementById('card_hot').classList.add('active-hot');
-    else if (level === 'warm') document.getElementById('card_warm').classList.add('active-warm');
-    else if (level === 'cold') document.getElementById('card_cold').classList.add('active-cold');
+function setInterestUI(lvl) {
+    document.querySelectorAll('.interest-chip').forEach(c => c.classList.remove('active-chip'));
+    const target = document.getElementById('chip_' + lvl);
+    if (target) target.classList.add('active-chip');
 }
 
-function copyPhoneToWhatsapp() {
+function copyPhoneToWa() {
     const p = document.getElementById('f_phone').value.trim();
     if (p) document.getElementById('f_whatsapp').value = p;
 }
 
-function setAvailabilityChip(txt) {
+function setAvailPreset(txt) {
     document.getElementById('f_contact_availability').value = txt;
 }
 
-function toggleSubcategories(id, isChecked) {
+function toggleSub(id, checked) {
     const el = document.getElementById(id);
-    if (el) el.style.display = isChecked ? 'flex' : 'none';
+    if (el) el.style.display = checked ? 'flex' : 'none';
 }
 
-function appendQuickRemark(preset) {
+function addRemark(preset) {
     document.getElementById('f_quick_remark').value = preset;
     const txt = document.getElementById('f_remarks');
     if (!txt.value.includes(preset)) {
@@ -748,45 +652,113 @@ function appendQuickRemark(preset) {
 
 function submitVisitForm(e) {
     e.preventDefault();
-    const btn = document.getElementById('submitVisitBtn');
+    const btn = document.getElementById('submitBtn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
     const formData = new FormData(document.getElementById('visitForm'));
+    fetch('sales_visits_api.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Save Visit Record';
+            if (data.success) {
+                closeVisitModal();
+                loadVisits();
+                alert('Client visit record saved successfully!');
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Save Visit Record';
+            alert('Failed to save visit record. Please try again.');
+        });
+}
 
-    fetch('sales_visits_api.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-save"></i> Save Visit Record';
+function deleteVisit(id, company) {
+    if (!confirm(`Are you sure you want to delete the visit record for "${company}"?`)) return;
+    const fd = new FormData();
+    fd.append('action', 'delete');
+    fd.append('id', id);
+    fetch('sales_visits_api.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                loadVisits();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        });
+}
 
-        if (data.success) {
-            closeVisitModal();
-            loadVisits();
-            alert('Client visit logged successfully!');
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-save"></i> Save Visit Record';
-        alert('Server error while saving visit.');
-    });
+function viewVisit(id) {
+    const v = allVisits.find(item => item.id == id);
+    if (!v) return;
+
+    const cleanWa = (v.whatsapp || v.phone || '').replace(/[^0-9]/g, '');
+    const waMsg   = encodeURIComponent(`Hello ${v.client_name}, this is Graphicafix following up on your discussion regarding ${v.company_name}.`);
+
+    let cats = (v.categories_arr && v.categories_arr.length) ? v.categories_arr.join(', ') : 'None';
+    let subs = (v.subcategories_arr && v.subcategories_arr.length) ? v.subcategories_arr.join('; ') : 'None';
+
+    document.getElementById('viewModalBody').innerHTML = `
+        <div style="margin-bottom:16px;">
+            <div style="font-size:18px; font-weight:800; color:#0f172a;">${escapeHtml(v.company_name)} ${v.is_urgent == 1 ? '<span class="badge-urg">URGENT</span>' : ''}</div>
+            <div style="color:#64748b; font-size:13.5px;">Contact: <strong>${escapeHtml(v.client_name)}</strong></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; font-size:13px;">
+            <div style="background:#f8faf9; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="color:#64748b; font-size:11.5px; font-weight:600;">PHONE</div>
+                <div style="font-weight:700; color:#0f172a;">${escapeHtml(v.phone)}</div>
+            </div>
+            <div style="background:#f8faf9; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="color:#64748b; font-size:11.5px; font-weight:600;">WHATSAPP</div>
+                <div style="font-weight:700; color:#16a34a;">${escapeHtml(v.whatsapp || v.phone)}</div>
+            </div>
+            <div style="background:#f8faf9; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="color:#64748b; font-size:11.5px; font-weight:600;">INTEREST LEVEL</div>
+                <div style="font-weight:700; text-transform:uppercase;">${v.interest_level}</div>
+            </div>
+            <div style="background:#f8faf9; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="color:#64748b; font-size:11.5px; font-weight:600;">CONTACT WINDOW</div>
+                <div style="font-weight:700; color:#0f172a;">${escapeHtml(v.contact_availability)}</div>
+            </div>
+        </div>
+        <div style="margin-bottom:12px; font-size:13px;">
+            <div style="color:#64748b; font-size:11.5px; font-weight:600;">SERVICES REQUESTED</div>
+            <div style="color:#0f172a; margin-top:2px;">${escapeHtml(cats)}</div>
+            ${subs !== 'None' ? `<div style="color:#64748b; font-size:12px; margin-top:3px;"><em>Sub-items:</em> ${escapeHtml(subs)}</div>` : ''}
+        </div>
+        <div style="margin-bottom:12px; font-size:13px;">
+            <div style="color:#64748b; font-size:11.5px; font-weight:600;">REMARKS / NOTES</div>
+            <div style="background:#f1f5f9; padding:10px; border-radius:8px; color:#334155; margin-top:4px; font-size:12.5px;">${escapeHtml(v.remarks || 'No remarks entered.')}</div>
+        </div>
+        <div style="font-size:12px; color:#94a3b8; border-top:1px solid #f1f5f9; padding-top:10px;">
+            Logged by ${escapeHtml(v.sales_rep_name)} on ${v.created_at}
+        </div>
+    `;
+
+    document.getElementById('viewModalActions').innerHTML = cleanWa ? `
+        <a href="https://wa.me/${cleanWa}?text=${waMsg}" target="_blank" class="btn btn-primary-custom" style="background:#16a34a; border-color:#16a34a;">
+            <i class="fab fa-whatsapp"></i> WhatsApp Reach Out
+        </a>
+    ` : '';
+
+    document.getElementById('viewModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeViewModal() {
+    document.getElementById('viewModal').classList.remove('active');
+    document.body.style.overflow = '';
 }
 
 function escapeHtml(str) {
     if (!str) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 </script>
 
