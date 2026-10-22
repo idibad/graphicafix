@@ -141,6 +141,10 @@ $menus = [
                 ['title' => 'Add Lead',         'link' => 'manage_leads.php?action=add', 'icon' => 'fas fa-user-tag'],
                 ['title' => 'Client Inquiries', 'link' => 'contacts.php',            'icon' => 'fas fa-address-book'],
                 ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
+                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
+                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
+                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
                 ['title' => 'Client Reviews',   'link' => 'reviews.php',             'icon' => 'fas fa-star'],
                 ['title' => 'Client Questionnaires', 'link' => 'client_questionnaires.php', 'icon' => 'fas fa-clipboard-check'],
             ]
@@ -154,6 +158,10 @@ $menus = [
                 ['title' => 'Create Invoice',   'link' => 'create_invoice.php',      'icon' => 'fas fa-plus-circle'],
                 ['title' => 'Create Quotation', 'link' => 'create_quotation.php',    'icon' => 'fas fa-file-signature'],
                 ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
+                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
+                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
+                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
                 ['title' => 'Bank Accounts',    'link' => 'manage_bank_accounts.php', 'icon' => 'fas fa-university'],
             ]
         ],
@@ -260,6 +268,10 @@ $menus = [
                 ['title' => 'Create Invoice',   'link' => 'create_invoice.php',      'icon' => 'fas fa-plus-circle'],
                 ['title' => 'Create Quotation', 'link' => 'create_quotation.php',    'icon' => 'fas fa-file-signature'],
                 ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
+                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
+                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
+                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
             ]
         ],
         [
@@ -358,6 +370,10 @@ $menus = [
             'icon'  => 'fas fa-file-invoice-dollar',
             'submenus' => [
                 ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
+                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
+                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
+                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
             ]
         ],
         [
@@ -518,6 +534,10 @@ $menus = [
             'submenus' => [
                 ['title' => 'Clients List',     'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
                 ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
+                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
+                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
+                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
                 ['title' => 'Client Reviews',   'link' => 'reviews.php',             'icon' => 'fas fa-star'],
             ]
         ],
@@ -567,6 +587,10 @@ $menus = [
             'submenus' => [
                 ['title' => 'Manage Invoices',  'link' => 'manage_invoices.php',     'icon' => 'fas fa-file-invoice'],
                 ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
+                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
+                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
+                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
             ]
         ],
         [
@@ -634,6 +658,10 @@ $menus = [
                 ['title' => 'Pipeline & Leads', 'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
                 ['title' => 'Add Lead',         'link' => 'manage_leads.php?action=add', 'icon' => 'fas fa-user-tag'],
                 ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
+                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
+                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
+                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
                 ['title' => 'Customer Inquiries', 'link' => 'contacts.php',          'icon' => 'fas fa-phone-alt'],
                 ['title' => 'Questionnaires',   'link' => 'client_questionnaires.php', 'icon' => 'fas fa-clipboard-check'],
             ]
@@ -656,6 +684,10 @@ $menus = [
                 ['title' => 'Manage Quotations','link' => 'manage_invoices.php?tab=quotations', 'icon' => 'fas fa-file-alt'],
                 ['title' => 'Create Quotation', 'link' => 'create_quotation.php',    'icon' => 'fas fa-plus-circle'],
                 ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
+                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
+                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
+                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
             ]
         ],
         [

@@ -3,24 +3,40 @@ include 'dashboard_header.php';
 
 $is_manager = in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'manager']);
 
-// Safety fallback table creation
+// Safety fallback table creation & verification with all detailed columns
 $conn->query("CREATE TABLE IF NOT EXISTS daily_progress_reports (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     report_date DATE NOT NULL,
+    hours_worked DECIMAL(4,1) DEFAULT 8.0,
+    project_id INT NULL,
     tasks_completed TEXT NOT NULL,
+    tasks_in_progress TEXT NULL,
     challenges TEXT,
+    blocker_severity VARCHAR(20) DEFAULT 'none',
+    waiting_on VARCHAR(255) NULL,
     plan_tomorrow TEXT,
+    deliverable_links TEXT NULL,
+    productivity_rating TINYINT DEFAULT 5,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY (user_id, report_date)
 )");
 
-// Fetch internal team members (exclude students and clients) for filter dropdown
+// Fetch internal team members for filter dropdown (exclude students and clients)
 $users = [];
-$users_result = $conn->query("SELECT user_id, name, role FROM users WHERE role NOT IN ('student', 'client') ORDER BY name ASC");
+$users_result = $conn->query("SELECT user_id, name, role, email FROM users WHERE role NOT IN ('student', 'client') ORDER BY name ASC");
 if ($users_result) {
     while ($u = $users_result->fetch_assoc()) {
         $users[] = $u;
+    }
+}
+
+// Fetch active projects for project association and filtering
+$projects = [];
+$projects_result = $conn->query("SELECT id, project_name FROM projects ORDER BY project_name ASC");
+if ($projects_result) {
+    while ($p = $projects_result->fetch_assoc()) {
+        $projects[] = $p;
     }
 }
 
@@ -31,7 +47,9 @@ $filter_date       = trim($_GET['date'] ?? '');
 $filter_start_date = trim($_GET['start_date'] ?? '');
 $filter_end_date   = trim($_GET['end_date'] ?? '');
 $filter_user       = (isset($_GET['user_id']) && $_GET['user_id'] !== '') ? intval($_GET['user_id']) : '';
+$filter_project    = (isset($_GET['project_id']) && $_GET['project_id'] !== '') ? intval($_GET['project_id']) : '';
 $filter_blockers   = (isset($_GET['has_blockers']) && $_GET['has_blockers'] !== '') ? intval($_GET['has_blockers']) : '';
+$filter_severity   = trim($_GET['severity'] ?? '');
 
 // Handle quick presets
 if ($preset === 'today') {
@@ -64,6 +82,10 @@ if (!$is_manager) {
     }
 }
 
+if ($filter_project !== '') {
+    $where_conditions[] = "dpr.project_id = " . intval($filter_project);
+}
+
 if (!empty($filter_date)) {
     $where_conditions[] = "dpr.report_date = '" . $conn->real_escape_string($filter_date) . "'";
 } else {
@@ -76,32 +98,42 @@ if (!empty($filter_date)) {
 }
 
 if ($filter_blockers === 1) {
-    $where_conditions[] = "dpr.challenges IS NOT NULL AND TRIM(dpr.challenges) != ''";
+    $where_conditions[] = "(dpr.blocker_severity IN ('minor', 'critical') OR (dpr.challenges IS NOT NULL AND TRIM(dpr.challenges) != ''))";
+}
+
+if (!empty($filter_severity)) {
+    $where_conditions[] = "dpr.blocker_severity = '" . $conn->real_escape_string($filter_severity) . "'";
 }
 
 if (!empty($search_q)) {
     $sq = $conn->real_escape_string($search_q);
-    $where_conditions[] = "(dpr.tasks_completed LIKE '%$sq%' OR dpr.challenges LIKE '%$sq%' OR dpr.plan_tomorrow LIKE '%$sq%' OR u.name LIKE '%$sq%')";
+    $where_conditions[] = "(dpr.tasks_completed LIKE '%$sq%' OR dpr.tasks_in_progress LIKE '%$sq%' OR dpr.challenges LIKE '%$sq%' OR dpr.waiting_on LIKE '%$sq%' OR dpr.plan_tomorrow LIKE '%$sq%' OR u.name LIKE '%$sq%' OR p.project_name LIKE '%$sq%')";
 }
 
 $where_clause = empty($where_conditions) ? "1=1" : implode(" AND ", $where_conditions);
 
 // ── KPI Metrics Queries ───────────────────────────────────────────────────────
-// 1. Total matching reports & Roadblocks
 $stats_sql = "
     SELECT 
         COUNT(*) as total_reports,
-        SUM(CASE WHEN dpr.challenges IS NOT NULL AND TRIM(dpr.challenges) != '' THEN 1 ELSE 0 END) as total_blockers
+        COALESCE(SUM(dpr.hours_worked), 0) as total_hours,
+        COALESCE(AVG(dpr.productivity_rating), 5.0) as avg_rating,
+        SUM(CASE WHEN dpr.blocker_severity IN ('minor','critical') OR (dpr.challenges IS NOT NULL AND TRIM(dpr.challenges) != '') THEN 1 ELSE 0 END) as total_blockers,
+        SUM(CASE WHEN dpr.blocker_severity = 'critical' THEN 1 ELSE 0 END) as critical_blockers
     FROM daily_progress_reports dpr
     JOIN users u ON dpr.user_id = u.user_id
+    LEFT JOIN projects p ON dpr.project_id = p.id
     WHERE $where_clause
 ";
 $stats_res = $conn->query($stats_sql);
-$stats_data = $stats_res ? $stats_res->fetch_assoc() : ['total_reports' => 0, 'total_blockers' => 0];
-$total_records = intval($stats_data['total_reports'] ?? 0);
-$total_blockers = intval($stats_data['total_blockers'] ?? 0);
+$stats_data = $stats_res ? $stats_res->fetch_assoc() : [];
+$total_records     = intval($stats_data['total_reports'] ?? 0);
+$total_hours       = floatval($stats_data['total_hours'] ?? 0);
+$avg_rating        = round(floatval($stats_data['avg_rating'] ?? 5.0), 1);
+$total_blockers    = intval($stats_data['total_blockers'] ?? 0);
+$critical_blockers = intval($stats_data['critical_blockers'] ?? 0);
 
-// 2. Today's submissions & Team compliance
+// Today's submissions & Team compliance
 $today_str = date('Y-m-d');
 if ($is_manager) {
     $today_sub_res = $conn->query("SELECT COUNT(DISTINCT user_id) as count FROM daily_progress_reports WHERE report_date = '$today_str'");
@@ -116,20 +148,12 @@ if ($is_manager) {
     $today_pending_count = $today_submitted_count > 0 ? 0 : 1;
 }
 
-// 3. This Month's volume
-$month_start = date('Y-m-01');
-if ($is_manager) {
-    $month_res = $conn->query("SELECT COUNT(*) as count FROM daily_progress_reports WHERE report_date >= '$month_start'");
-} else {
-    $month_res = $conn->query("SELECT COUNT(*) as count FROM daily_progress_reports WHERE user_id = $user_id AND report_date >= '$month_start'");
-}
-$month_reports_count = $month_res ? intval($month_res->fetch_assoc()['count']) : 0;
-
 // ── Fetch Paginated Reports ──────────────────────────────────────────────────
 $reports_sql = "
-    SELECT dpr.*, u.name as user_name, u.role as user_role, u.email as user_email
+    SELECT dpr.*, u.name as user_name, u.role as user_role, u.email as user_email, p.project_name
     FROM daily_progress_reports dpr
     JOIN users u ON dpr.user_id = u.user_id
+    LEFT JOIN projects p ON dpr.project_id = p.id
     WHERE $where_clause
     ORDER BY dpr.report_date DESC, dpr.created_at DESC
     LIMIT $limit OFFSET $offset
@@ -137,8 +161,14 @@ $reports_sql = "
 $reports_result = $conn->query($reports_sql);
 $total_pages = ceil($total_records / $limit);
 
-// Check if current user already submitted today
-$stmt = $conn->prepare("SELECT * FROM daily_progress_reports WHERE user_id = ? AND report_date = ?");
+// Check if current user already submitted today (with project details)
+$stmt = $conn->prepare("
+    SELECT dpr.*, u.name as user_name, u.role as user_role, u.email as user_email, p.project_name 
+    FROM daily_progress_reports dpr 
+    JOIN users u ON dpr.user_id = u.user_id
+    LEFT JOIN projects p ON p.id = dpr.project_id 
+    WHERE dpr.user_id = ? AND dpr.report_date = ?
+");
 $stmt->bind_param("is", $user_id, $today_str);
 $stmt->execute();
 $today_report = $stmt->get_result()->fetch_assoc();
@@ -256,6 +286,84 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     margin-top: 2px;
 }
 
+/* Featured Today's Submission Showcase Card */
+.today-showcase-card {
+    background: linear-gradient(135deg, #024442 0%, #033634 100%);
+    color: #ffffff;
+    border-radius: var(--radius-lg);
+    padding: 22px 26px;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 25px -5px rgba(2, 68, 66, 0.3);
+    border: 1px solid rgba(182, 247, 99, 0.25);
+    position: relative;
+    overflow: hidden;
+}
+.today-showcase-card::after {
+    content: '\f058';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    right: -15px;
+    bottom: -25px;
+    font-size: 140px;
+    color: rgba(255, 255, 255, 0.04);
+    pointer-events: none;
+}
+.today-showcase-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+    position: relative;
+    z-index: 2;
+}
+.today-badge-verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(182, 247, 99, 0.2);
+    color: #B6F763;
+    border: 1px solid rgba(182, 247, 99, 0.4);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+.today-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    position: relative;
+    z-index: 2;
+}
+.today-metric-cell {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(4px);
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.today-metric-cell .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.65);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+.today-metric-cell .val {
+    font-size: 15px;
+    font-weight: 800;
+    color: #ffffff;
+    margin-top: 2px;
+}
+
 /* Filter Card */
 .dpr-filter-card {
     background: #ffffff;
@@ -268,16 +376,16 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 .filter-row-top {
     display: flex;
     flex-wrap: wrap;
-    gap: 16px;
+    gap: 14px;
     align-items: flex-end;
 }
 .filter-group {
     flex: 1;
-    min-width: 180px;
+    min-width: 160px;
 }
 .filter-label {
     display: block;
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 700;
     color: #475569;
     text-transform: uppercase;
@@ -286,11 +394,11 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 }
 .filter-input {
     width: 100%;
-    padding: 9px 14px;
+    padding: 9px 12px;
     border: 1.5px solid var(--border-color);
     border-radius: 8px;
     background: #f8fafc;
-    font-size: 13.5px;
+    font-size: 13px;
     color: var(--text-dark);
     font-weight: 500;
     transition: all 0.2s;
@@ -387,18 +495,18 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 .dpr-table th {
     background: #f8fafc;
     color: #475569;
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 12px 18px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--border-color);
     text-align: left;
 }
 .dpr-table td {
-    padding: 16px 18px;
+    padding: 14px 16px;
     border-bottom: 1px solid #f1f5f9;
-    font-size: 13.5px;
+    font-size: 13px;
     vertical-align: top;
     color: #334155;
 }
@@ -410,11 +518,11 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 .dpr-user-cell {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
 }
 .dpr-avatar {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     border-radius: 10px;
     background: linear-gradient(135deg, var(--primary-color) 0%, #064e3b 100%);
     color: #ffffff;
@@ -422,7 +530,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 14px;
+    font-size: 13px;
     flex-shrink: 0;
 }
 .dpr-user-name {
@@ -431,7 +539,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     line-height: 1.2;
 }
 .dpr-user-role {
-    font-size: 11.5px;
+    font-size: 11px;
     color: #64748b;
     font-weight: 500;
 }
@@ -440,31 +548,76 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     white-space: nowrap;
 }
 .dpr-date-main {
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-dark);
+    font-size: 13px;
 }
 .dpr-date-day {
-    font-size: 12px;
+    font-size: 11.5px;
     color: #64748b;
 }
 
-.dpr-snippet {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+.dpr-tasks-list {
     line-height: 1.45;
     color: #334155;
-    font-size: 13px;
+    font-size: 12.5px;
     white-space: pre-line;
+    max-height: 75px;
+    overflow-y: auto;
 }
 
-/* Badges */
-.badge-blocker {
+/* Badges & Tags */
+.badge-hours {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f1f5f9;
+    color: #0f172a;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    margin-top: 4px;
+}
+.badge-project {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    max-width: 190px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.badge-project-general {
+    background: #f8fafc;
+    color: #64748b;
+    border-color: #e2e8f0;
+}
+.badge-blocker-critical {
     background: #fef2f2;
-    color: #dc2626;
+    color: #b91c1c;
     border: 1px solid #fecaca;
-    padding: 3px 8px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.badge-blocker-minor {
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fde68a;
+    padding: 2px 8px;
     border-radius: 6px;
     font-size: 11px;
     font-weight: 700;
@@ -476,7 +629,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     background: #f0fdf4;
     color: #16a34a;
     border: 1px solid #bbf7d0;
-    padding: 3px 8px;
+    padding: 2px 8px;
     border-radius: 6px;
     font-size: 11px;
     font-weight: 700;
@@ -487,18 +640,66 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 .badge-today {
     background: #e0f2fe;
     color: #0284c7;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 800;
-    padding: 2px 8px;
-    border-radius: 12px;
+    padding: 1px 6px;
+    border-radius: 10px;
 }
 .badge-yesterday {
     background: #f1f5f9;
     color: #475569;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+}
+.badge-rating {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fef08a;
+    padding: 2px 6px;
+    border-radius: 6px;
     font-size: 11px;
     font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 12px;
+}
+.dpr-wip-tag {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11.5px;
+    line-height: 1.35;
+    margin-top: 6px;
+    display: block;
+}
+.dpr-waiting-tag {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #c2410c;
+    border-radius: 6px;
+    padding: 3px 6px;
+    font-size: 11px;
+    margin-top: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.badge-deliverables {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f5f3ff;
+    color: #6d28d9;
+    border: 1px solid #ddd6fe;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 4px;
 }
 
 /* Action buttons */
@@ -535,7 +736,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     border-color: #fca5a5;
 }
 
-/* Modals - System Default with Scrollbar */
+/* Modals */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -558,13 +759,12 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     background: #fff;
     border-radius: 16px;
     width: 100%;
-    max-width: 600px;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     overflow: hidden;
     animation: modalSlideUp 0.3s ease-out;
     display: flex;
     flex-direction: column;
-    max-height: 90vh;
+    max-height: 92vh;
 }
 @keyframes modalSlideUp {
     from { transform: translateY(20px); opacity: 0; }
@@ -573,7 +773,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 .modal-header {
     background: var(--primary-color, #024442);
     color: #fff;
-    padding: 18px 24px;
+    padding: 16px 22px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -621,34 +821,99 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     min-height: 0;
 }
 .modal-body {
-    padding: 24px;
+    padding: 22px 24px;
     overflow-y: auto !important;
     flex: 1 1 auto;
     min-height: 0;
-    max-height: calc(88vh - 140px);
-}
-.modal-body::-webkit-scrollbar {
-    width: 7px;
-}
-.modal-body::-webkit-scrollbar-track {
-    background: #f8fafc;
-    border-radius: 4px;
-}
-.modal-body::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
-}
-.modal-body::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
 }
 .modal-footer {
-    padding: 16px 24px;
+    padding: 14px 24px;
     border-top: 1px solid #f1f5f9;
     display: flex;
     justify-content: flex-end;
     gap: 12px;
     background: #fbfcfc;
     flex-shrink: 0;
+}
+
+/* Preset Hour Pills */
+.hour-pill-btn {
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.hour-pill-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+.hour-pill-btn.active {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+}
+
+/* Rating Pill Buttons */
+.rating-pill-opt {
+    flex: 1;
+    text-align: center;
+    padding: 8px 4px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+    transition: all 0.2s;
+}
+.rating-pill-opt:hover {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+}
+.rating-pill-opt.active {
+    background: #fffbeb;
+    border-color: #f59e0b;
+    color: #b45309;
+}
+
+/* Severity Pill Buttons */
+.severity-pill-opt {
+    flex: 1;
+    text-align: center;
+    padding: 8px 6px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.severity-pill-opt.active-none {
+    background: #f0fdf4;
+    border-color: #10b981;
+    color: #047857;
+}
+.severity-pill-opt.active-minor {
+    background: #fffbeb;
+    border-color: #f59e0b;
+    color: #b45309;
+}
+.severity-pill-opt.active-critical {
+    background: #fef2f2;
+    border-color: #ef4444;
+    color: #b91c1c;
 }
 </style>
 
@@ -659,7 +924,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
         <div class="dpr-header">
             <div class="dpr-title-wrap">
                 <h1><i class="fas fa-calendar-check" style="color:var(--primary-color);"></i> Daily Progress Reports</h1>
-                <p><?= $is_manager ? 'Track team accomplishments, unblock workflow obstacles, and export executive logs' : 'Submit your daily accomplishments, log any roadblocks, and review your progress history' ?></p>
+                <p><?= $is_manager ? 'Corporate work logs, billable hours, milestone delivery, and executive operations governance' : 'Submit and monitor your daily work accomplishments, project hours, roadblocks, and next objectives' ?></p>
             </div>
             <div class="dpr-header-actions">
                 <!-- Export Dropdown / Modal Trigger -->
@@ -673,7 +938,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                         <i class="fas fa-plus-circle"></i> Submit Today's Report
                     </button>
                 <?php else: ?>
-                    <button type="button" class="btn-volt" onclick="openDprModal(true)">
+                    <button type="button" class="btn-volt" onclick="openDprModal(true, <?= htmlspecialchars(json_encode($today_report)) ?>)">
                         <i class="fas fa-edit"></i> Edit Today's Report
                     </button>
                 <?php endif; ?>
@@ -688,11 +953,21 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                 <div class="dpr-kpi-content">
                     <div class="dpr-kpi-number"><?= number_format($total_records) ?></div>
                     <div class="dpr-kpi-label"><?= ($where_clause !== '1=1') ? 'Filtered Reports' : 'Total Reports' ?></div>
-                    <div class="dpr-kpi-sub"><?= $is_manager ? 'All team logs' : 'Your submitted logs' ?></div>
+                    <div class="dpr-kpi-sub"><?= $is_manager ? 'Across all team logs' : 'Your submitted logs' ?></div>
                 </div>
             </div>
 
-            <!-- KPI 2: Today's Submissions -->
+            <!-- KPI 2: Total Hours Logged -->
+            <div class="dpr-kpi-card" style="--kpi-accent: #8b5cf6; --kpi-bg: #ede9fe;">
+                <div class="dpr-kpi-icon"><i class="fas fa-hourglass-half"></i></div>
+                <div class="dpr-kpi-content">
+                    <div class="dpr-kpi-number"><?= number_format($total_hours, 1) ?>h</div>
+                    <div class="dpr-kpi-label">Work Hours Logged</div>
+                    <div class="dpr-kpi-sub"><span style="color:#f59e0b; font-weight:700;">★ <?= number_format($avg_rating, 1) ?></span> / 5.0 Productivity</div>
+                </div>
+            </div>
+
+            <!-- KPI 3: Today's Submissions -->
             <div class="dpr-kpi-card" style="--kpi-accent: #10b981; --kpi-bg: #d1fae5;">
                 <div class="dpr-kpi-icon"><i class="fas fa-check-double"></i></div>
                 <div class="dpr-kpi-content">
@@ -700,7 +975,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                     <div class="dpr-kpi-label"><?= $is_manager ? "Submitted Today" : "Today's Status" ?></div>
                     <div class="dpr-kpi-sub">
                         <?php if ($is_manager): ?>
-                            <?= $today_pending_count > 0 ? "$today_pending_count members pending" : "All members on track" ?>
+                            <?= $today_pending_count > 0 ? "$today_pending_count members pending" : "100% compliance today" ?>
                         <?php else: ?>
                             <?= $today_report ? "Submitted at " . date('h:i A', strtotime($today_report['created_at'])) : "Pending your submission" ?>
                         <?php endif; ?>
@@ -708,35 +983,94 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                 </div>
             </div>
 
-            <!-- KPI 3: Roadblocks Flagged -->
+            <!-- KPI 4: Roadblocks Flagged -->
             <div class="dpr-kpi-card" style="--kpi-accent: #ef4444; --kpi-bg: #fee2e2;">
-                <div class="dpr-kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="dpr-kpi-icon"><i class="fas fa-shield-alt"></i></div>
                 <div class="dpr-kpi-content">
                     <div class="dpr-kpi-number" style="color:<?= $total_blockers > 0 ? '#dc2626' : 'inherit' ?>;"><?= $total_blockers ?></div>
                     <div class="dpr-kpi-label">Roadblocks Flagged</div>
-                    <div class="dpr-kpi-sub"><?= $total_blockers > 0 ? "Items needing assistance" : "No blockers reported" ?></div>
-                </div>
-            </div>
-
-            <!-- KPI 4: Month Velocity -->
-            <div class="dpr-kpi-card" style="--kpi-accent: #8b5cf6; --kpi-bg: #ede9fe;">
-                <div class="dpr-kpi-icon"><i class="fas fa-calendar-alt"></i></div>
-                <div class="dpr-kpi-content">
-                    <div class="dpr-kpi-number"><?= $month_reports_count ?></div>
-                    <div class="dpr-kpi-label">Logged This Month</div>
-                    <div class="dpr-kpi-sub">Since <?= date('M 1, Y') ?></div>
+                    <div class="dpr-kpi-sub">
+                        <?= $critical_blockers > 0 ? "<span style='color:#dc2626; font-weight:700;'>$critical_blockers critical issue(s)</span>" : ($total_blockers > 0 ? "Minor obstacles noted" : "Smooth operations") ?>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- ── FEATURED: Today's Submission Showcase Card (If Submitted) ──────── -->
+        <?php if ($today_report): ?>
+        <div class="today-showcase-card">
+            <div class="today-showcase-header">
+                <div>
+                    <div class="today-badge-verified">
+                        <i class="fas fa-check-circle"></i> Today's Report Recorded & Verified
+                    </div>
+                    <h2 style="font-size:18px; font-weight:800; margin:0 0 4px 0; color:#fff; display:flex; align-items:center; gap:8px;">
+                        <span>Work Log: <?= date('l, F j, Y', strtotime($today_report['report_date'])) ?></span>
+                    </h2>
+                    <div style="font-size:12.5px; color:rgba(255,255,255,0.75);">
+                        Submitted at <?= date('h:i A', strtotime($today_report['created_at'])) ?> &bull; Logged by <?= htmlspecialchars($today_report['user_name'] ?? 'You') ?>
+                    </div>
+                </div>
+
+                <!-- Quick Actions on Today's Card -->
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; position:relative; z-index:2;">
+                    <button type="button" class="btn-volt" style="padding:8px 14px; font-size:12.5px;" onclick="openDprModal(true, <?= htmlspecialchars(json_encode($today_report)) ?>)">
+                        <i class="fas fa-pencil-alt"></i> Edit Today's Report
+                    </button>
+                    <a href="dpr_export.php?format=pdf&id=<?= $today_report['id'] ?>&preview=1" target="_blank" class="btn-secondary-custom" style="padding:8px 14px; font-size:12.5px; background:rgba(255,255,255,0.15); color:#fff; border-color:rgba(255,255,255,0.25);" title="Preview Branded PDF Dossier">
+                        <i class="fas fa-file-pdf" style="color:#ef4444;"></i> PDF Dossier
+                    </a>
+                    <button type="button" class="btn-secondary-custom" style="padding:8px 14px; font-size:12.5px; background:rgba(255,255,255,0.15); color:#fff; border-color:rgba(255,255,255,0.25);" onclick="openViewModalFromObj(<?= htmlspecialchars(json_encode($today_report)) ?>)">
+                        <i class="fas fa-eye"></i> View Full Details
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Metrics Strip -->
+            <div class="today-metrics-grid">
+                <div class="today-metric-cell">
+                    <div class="label">Hours Worked</div>
+                    <div class="val">⏱ <?= number_format($today_report['hours_worked'] ?? 8, 1) ?>h</div>
+                </div>
+                <div class="today-metric-cell">
+                    <div class="label">Project Engagement</div>
+                    <div class="val" style="color:#B6F763; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        📁 <?= htmlspecialchars($today_report['project_name'] ?? 'General / Internal') ?>
+                    </div>
+                </div>
+                <div class="today-metric-cell">
+                    <div class="label">Productivity</div>
+                    <div class="val" style="color:#fde047;">★ <?= intval($today_report['productivity_rating'] ?? 5) ?> / 5</div>
+                </div>
+                <div class="today-metric-cell">
+                    <div class="label">Obstacle Status</div>
+                    <div class="val">
+                        <?php if (($today_report['blocker_severity'] ?? '') === 'critical'): ?>
+                            <span style="color:#fca5a5;">🔴 Critical Blocker</span>
+                        <?php elseif (($today_report['blocker_severity'] ?? '') === 'minor' || !empty(trim($today_report['challenges'] ?? ''))): ?>
+                            <span style="color:#fde047;">🟡 Minor Delay</span>
+                        <?php else: ?>
+                            <span style="color:#86efac;">🟢 Operating Smoothly</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accomplishments Snippet -->
+            <div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.1); font-size:13px; color:rgba(255,255,255,0.9); line-height:1.5; white-space:pre-line; max-height:80px; overflow-y:auto;">
+                <?= htmlspecialchars($today_report['tasks_completed']) ?>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <!-- ── Advanced Filter & Search Bar ───────────────────────────────────── -->
         <div class="dpr-filter-card">
             <form method="GET" id="filterForm">
                 <div class="filter-row-top">
                     <!-- Search Input -->
-                    <div class="filter-group" style="flex: 2; min-width: 240px;">
+                    <div class="filter-group" style="flex: 2; min-width: 220px;">
                         <label class="filter-label"><i class="fas fa-search"></i> Search Keyword</label>
-                        <input type="text" name="q" value="<?= htmlspecialchars($search_q) ?>" class="filter-input" placeholder="Search tasks, roadblocks, plans, or names...">
+                        <input type="text" name="q" value="<?= htmlspecialchars($search_q) ?>" class="filter-input" placeholder="Search tasks, deliverables, blockers, projects...">
                     </div>
 
                     <?php if ($is_manager): ?>
@@ -754,24 +1088,39 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                     </div>
                     <?php endif; ?>
 
-                    <!-- Start Date -->
+                    <!-- Project Selector -->
                     <div class="filter-group">
+                        <label class="filter-label"><i class="fas fa-folder"></i> Project</label>
+                        <select name="project_id" class="filter-input">
+                            <option value="">All Projects / Tasks</option>
+                            <?php foreach ($projects as $p): ?>
+                                <option value="<?= $p['id'] ?>" <?= $filter_project == $p['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($p['project_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <!-- Start Date -->
+                    <div class="filter-group" style="min-width: 140px;">
                         <label class="filter-label"><i class="fas fa-calendar-day"></i> From Date</label>
                         <input type="date" name="start_date" id="inputStartDate" value="<?= htmlspecialchars($filter_start_date) ?>" class="filter-input">
                     </div>
 
                     <!-- End Date -->
-                    <div class="filter-group">
+                    <div class="filter-group" style="min-width: 140px;">
                         <label class="filter-label"><i class="fas fa-calendar-day"></i> To Date</label>
                         <input type="date" name="end_date" id="inputEndDate" value="<?= htmlspecialchars($filter_end_date) ?>" class="filter-input">
                     </div>
 
-                    <!-- Blockers Filter -->
-                    <div class="filter-group" style="max-width: 170px;">
-                        <label class="filter-label"><i class="fas fa-filter"></i> Roadblocks</label>
-                        <select name="has_blockers" class="filter-input">
-                            <option value="">All Reports</option>
-                            <option value="1" <?= $filter_blockers === 1 ? 'selected' : '' ?>>⚠️ Has Blockers</option>
+                    <!-- Blockers / Severity Filter -->
+                    <div class="filter-group" style="min-width: 150px;">
+                        <label class="filter-label"><i class="fas fa-filter"></i> Severity</label>
+                        <select name="severity" class="filter-input">
+                            <option value="">All Statuses</option>
+                            <option value="none" <?= $filter_severity === 'none' ? 'selected' : '' ?>>🟢 Smooth (None)</option>
+                            <option value="minor" <?= $filter_severity === 'minor' ? 'selected' : '' ?>>🟡 Minor Blocker</option>
+                            <option value="critical" <?= $filter_severity === 'critical' ? 'selected' : '' ?>>🔴 Critical Blocker</option>
                         </select>
                     </div>
 
@@ -804,7 +1153,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                 <div>
                     <h3 class="dpr-table-title">
                         <i class="fas fa-stream" style="color:var(--primary-color);"></i>
-                        <span>Progress Reports Feed</span>
+                        <span>Corporate Progress Reports Feed</span>
                         <span class="dpr-count-badge"><?= $total_records ?> record<?= $total_records != 1 ? 's' : '' ?></span>
                     </h3>
                 </div>
@@ -825,12 +1174,14 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                     <thead>
                         <tr>
                             <?php if ($is_manager): ?>
-                                <th style="width: 22%;">Team Member</th>
+                                <th style="width: 17%;">Team Member</th>
                             <?php endif; ?>
-                            <th style="width: 14%;">Date</th>
-                            <th style="width: 32%;">Tasks Completed</th>
-                            <th style="width: 16%;">Roadblocks</th>
-                            <th style="width: 10%; text-align:right;">Actions</th>
+                            <th style="width: 13%;">Report Date</th>
+                            <th style="width: 15%;">Project Engagement</th>
+                            <th style="width: 25%;">Accomplishments & Delivery</th>
+                            <th style="width: 18%;">Roadblocks & Dependencies</th>
+                            <th style="width: 6%;">Productivity</th>
+                            <th style="width: 6%; text-align:right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -841,8 +1192,12 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                                     $is_today = ($row['report_date'] === date('Y-m-d'));
                                     $is_yesterday = ($row['report_date'] === date('Y-m-d', strtotime('-1 day')));
                                     $has_challenges = !empty(trim($row['challenges'] ?? ''));
+                                    $has_wip = !empty(trim($row['tasks_in_progress'] ?? ''));
+                                    $has_links = !empty(trim($row['deliverable_links'] ?? ''));
+                                    $has_waiting = !empty(trim($row['waiting_on'] ?? ''));
+                                    $severity = $row['blocker_severity'] ?? 'none';
                                     $can_delete = ($is_manager || $row['user_id'] == $user_id);
-                                    $can_edit = ($row['user_id'] == $user_id && $is_today);
+                                    $can_edit = ($is_manager || $row['user_id'] == $user_id);
                                 ?>
                                 <tr id="dpr-row-<?= $row['id'] ?>">
                                     <?php if ($is_manager): ?>
@@ -867,35 +1222,79 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                                                 <?php if ($is_today): ?>
                                                     <span class="badge-today">Today</span>
                                                 <?php elseif ($is_yesterday): ?>
-                                                    <span class="badge-yesterday">Yesterday</span>
+                                                    <span class="badge-yesterday">Y'day</span>
                                                 <?php endif; ?>
                                             </div>
+                                            <span class="badge-hours">
+                                                <i class="fas fa-clock" style="color:var(--primary-color);"></i> <?= number_format($row['hours_worked'] ?? 8, 1) ?>h Logged
+                                            </span>
                                         </div>
                                     </td>
 
                                     <td>
-                                        <div class="dpr-snippet" title="<?= htmlspecialchars($row['tasks_completed']) ?>">
+                                        <?php if (!empty($row['project_name'])): ?>
+                                            <span class="badge-project" title="<?= htmlspecialchars($row['project_name']) ?>">
+                                                <i class="fas fa-folder-open"></i> <?= htmlspecialchars($row['project_name']) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge-project badge-project-general">
+                                                <i class="fas fa-layer-group"></i> General Work
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <td>
+                                        <div class="dpr-tasks-list" title="<?= htmlspecialchars($row['tasks_completed']) ?>">
                                             <?= htmlspecialchars($row['tasks_completed']) ?>
                                         </div>
+                                        <?php if ($has_wip): ?>
+                                            <div class="dpr-wip-tag" title="<?= htmlspecialchars($row['tasks_in_progress']) ?>">
+                                                <i class="fas fa-spinner fa-spin"></i> <strong>In Progress:</strong> <?= htmlspecialchars(mb_strimwidth($row['tasks_in_progress'], 0, 75, '...')) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if ($has_links): ?>
+                                            <span class="badge-deliverables" title="<?= htmlspecialchars($row['deliverable_links']) ?>">
+                                                <i class="fas fa-link"></i> Deliverables Attached
+                                            </span>
+                                        <?php endif; ?>
                                     </td>
 
                                     <td>
-                                        <?php if ($has_challenges): ?>
-                                            <div class="badge-blocker" title="<?= htmlspecialchars($row['challenges']) ?>">
-                                                <i class="fas fa-exclamation-triangle"></i> Roadblock
+                                        <?php if ($severity === 'critical'): ?>
+                                            <div class="badge-blocker-critical">
+                                                <i class="fas fa-radiation"></i> Critical Block
                                             </div>
-                                            <div class="dpr-snippet" style="color:#b91c1c; font-size:12px; margin-top:4px;">
-                                                <?= htmlspecialchars($row['challenges']) ?>
+                                        <?php elseif ($severity === 'minor' || $has_challenges): ?>
+                                            <div class="badge-blocker-minor">
+                                                <i class="fas fa-exclamation-triangle"></i> Minor Delay
                                             </div>
                                         <?php else: ?>
-                                            <span class="badge-smooth"><i class="fas fa-check-circle"></i> Smooth</span>
+                                            <span class="badge-smooth"><i class="fas fa-check-circle"></i> On Track / Smooth</span>
                                         <?php endif; ?>
+
+                                        <?php if ($has_challenges): ?>
+                                            <div style="color:#b91c1c; font-size:12px; margin-top:4px; line-height:1.4;">
+                                                <?= htmlspecialchars(mb_strimwidth($row['challenges'], 0, 75, '...')) ?>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <?php if ($has_waiting): ?>
+                                            <div class="dpr-waiting-tag" title="Waiting on: <?= htmlspecialchars($row['waiting_on']) ?>">
+                                                <i class="fas fa-user-clock"></i> <strong>Wait:</strong> <?= htmlspecialchars(mb_strimwidth($row['waiting_on'], 0, 32, '...')) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <td>
+                                        <span class="badge-rating">
+                                            <i class="fas fa-star" style="color:#f59e0b;"></i> <?= intval($row['productivity_rating'] ?? 5) ?>/5
+                                        </span>
                                     </td>
 
                                     <td style="text-align:right;">
                                         <div class="dpr-actions-cell" style="justify-content:flex-end;">
                                             <!-- View Details Modal Trigger -->
-                                            <button type="button" class="btn-icon-action" title="View Full Report"
+                                            <button type="button" class="btn-icon-action" title="View Corporate Executive Dossier"
                                                 data-id="<?= $row['id'] ?>"
                                                 data-name="<?= htmlspecialchars($row['user_name'] ?? 'Team Member') ?>"
                                                 data-role="<?= htmlspecialchars(ucfirst($row['user_role'] ?? 'User')) ?>"
@@ -903,21 +1302,29 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                                                 data-date="<?= date('l, F j, Y', $report_date_ts) ?>"
                                                 data-rawdate="<?= $row['report_date'] ?>"
                                                 data-created="<?= date('M j, Y h:i A', strtotime($row['created_at'])) ?>"
+                                                data-hours="<?= number_format($row['hours_worked'] ?? 8, 1) ?>"
+                                                data-project="<?= htmlspecialchars($row['project_name'] ?? 'General / Internal Work') ?>"
+                                                data-projectid="<?= $row['project_id'] ?? '' ?>"
+                                                data-rating="<?= intval($row['productivity_rating'] ?? 5) ?>"
+                                                data-severity="<?= htmlspecialchars($row['blocker_severity'] ?? 'none') ?>"
                                                 data-tasks="<?= htmlspecialchars($row['tasks_completed']) ?>"
+                                                data-inprogress="<?= htmlspecialchars($row['tasks_in_progress'] ?? '') ?>"
                                                 data-challenges="<?= htmlspecialchars($row['challenges'] ?? '') ?>"
+                                                data-waiting="<?= htmlspecialchars($row['waiting_on'] ?? '') ?>"
+                                                data-links="<?= htmlspecialchars($row['deliverable_links'] ?? '') ?>"
                                                 data-plan="<?= htmlspecialchars($row['plan_tomorrow'] ?? '') ?>"
                                                 onclick="openViewModal(this)">
                                                 <i class="fas fa-eye"></i>
                                             </button>
 
                                             <!-- View / Print Single PDF Dossier -->
-                                            <a href="dpr_export.php?format=pdf&id=<?= $row['id'] ?>&preview=1" target="_blank" class="btn-icon-action" title="View / Print Branded PDF Dossier">
+                                            <a href="dpr_export.php?format=pdf&id=<?= $row['id'] ?>&preview=1" target="_blank" class="btn-icon-action" title="View / Print Branded Corporate PDF Dossier">
                                                 <i class="fas fa-file-pdf" style="color:#ef4444;"></i>
                                             </a>
 
                                             <?php if ($can_edit): ?>
                                             <!-- Edit Today's Report -->
-                                            <button type="button" class="btn-icon-action" title="Edit Report" onclick="openDprModal(true)">
+                                            <button type="button" class="btn-icon-action" title="Edit Report" onclick="openDprModal(true, <?= htmlspecialchars(json_encode($row)) ?>)">
                                                 <i class="fas fa-pencil-alt" style="color:var(--primary-color);"></i>
                                             </button>
                                             <?php endif; ?>
@@ -934,13 +1341,13 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="<?= $is_manager ? 5 : 4 ?>" style="text-align:center; padding: 50px 20px;">
-                                    <div style="max-width: 380px; margin: 0 auto; color: #64748b;">
+                                <td colspan="<?= $is_manager ? 7 : 6 ?>" style="text-align:center; padding: 50px 20px;">
+                                    <div style="max-width: 420px; margin: 0 auto; color: #64748b;">
                                         <div style="font-size: 42px; color: #cbd5e1; margin-bottom: 12px;">
                                             <i class="fas fa-clipboard-check"></i>
                                         </div>
                                         <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 6px;">No Progress Reports Found</h4>
-                                        <p style="font-size: 13.5px; margin-bottom: 18px;">No reports matched your current filters. Try resetting the filters or submit today's update.</p>
+                                        <p style="font-size: 13.5px; margin-bottom: 18px;">No reports matched your current filters. Try resetting your search parameters or submit today's work update.</p>
                                         <?php if (!$today_report): ?>
                                             <button type="button" class="btn-primary-custom" onclick="openDprModal(false)">
                                                 <i class="fas fa-plus"></i> Submit Today's Report
@@ -998,63 +1405,190 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<!-- MODAL 1: Submit / Edit Today's Report                                       -->
+<!-- MODAL 1: Submit / Edit Corporate Daily Progress Report                      -->
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <div id="dprModal" class="modal-overlay" onclick="if(event.target===this)closeDprModal()">
-    <div class="modal-content" style="max-width:600px;">
+    <div class="modal-content" style="max-width:740px;">
         <div class="modal-header">
             <h4>
                 <div class="modal-header-icon"><i class="fas fa-pen-alt"></i></div>
-                <span id="modalTitle">Submit Today's Report</span>
+                <span id="modalTitle">Daily Progress Report (DPR) Submission</span>
             </h4>
             <button class="modal-close" onclick="closeDprModal()"><i class="fas fa-times"></i></button>
         </div>
         <form id="dprForm">
             <input type="hidden" name="action" id="formAction" value="save_dpr">
+            <input type="hidden" name="productivity_rating" id="f_productivity_rating" value="5">
+            <input type="hidden" name="blocker_severity" id="f_blocker_severity" value="none">
+
             <div class="modal-body">
-                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:18px; font-size:13px; color:#475569; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-info-circle" style="color:var(--primary-color);"></i>
-                    <span>Reporting for: <strong><?= date('l, F j, Y') ?></strong></span>
+                <!-- Section 0: Explicit Date Selection -->
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px 18px; margin-bottom:18px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:8px;">
+                        <label style="font-size:12.5px; font-weight:800; color:#0f172a; margin:0; display:flex; align-items:center; gap:6px;">
+                            <i class="fas fa-calendar-day" style="color:var(--primary-color);"></i> Date Being Reported <span style="color:#ef4444;">*</span>
+                        </label>
+                        <div style="display:flex; gap:6px;">
+                            <button type="button" class="hour-pill-btn active" id="btnDatePresetToday" onclick="selectModalDate('<?= date('Y-m-d') ?>')">Today</button>
+                            <button type="button" class="hour-pill-btn" id="btnDatePresetYesterday" onclick="selectModalDate('<?= date('Y-m-d', strtotime('-1 day')) ?>')">Yesterday</button>
+                        </div>
+                    </div>
+                    
+                    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <input type="date" name="report_date" id="f_report_date" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required class="filter-input" style="font-weight:700; font-size:14px; max-width:210px;" onchange="onDateInputChange(this.value)">
+                        <span id="modalHumanDate" style="font-size:13px; font-weight:700; color:var(--primary-color);">
+                            <?= date('l, F j, Y') ?>
+                        </span>
+                    </div>
+
+                    <!-- Dynamic status banner when changing dates -->
+                    <div id="dateNoticeBanner" style="display:none; margin-top:10px; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600;"></div>
                 </div>
 
-                <!-- Tasks Completed -->
+                <!-- Section 1: Time, Project & Productivity Rating -->
+                <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:18px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="font-size:12px; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                        <i class="fas fa-clock"></i> Time Allocation & Project Focus
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap:16px; margin-bottom:14px;">
+                        <!-- Hours Worked -->
+                        <div>
+                            <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">
+                                Hours Worked <span style="color:#ef4444;">*</span>
+                            </label>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <input type="number" step="0.5" min="0.5" max="24" name="hours_worked" id="f_hours_worked" value="8.0" required class="filter-input" style="font-weight:700; font-size:14px; width:100px;">
+                                <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                                    <button type="button" class="hour-pill-btn" onclick="setHours(4.0)">4h</button>
+                                    <button type="button" class="hour-pill-btn" onclick="setHours(6.0)">6h</button>
+                                    <button type="button" class="hour-pill-btn active" id="btnHour8" onclick="setHours(8.0)">8h</button>
+                                    <button type="button" class="hour-pill-btn" onclick="setHours(10.0)">10h</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Associated Project -->
+                        <div>
+                            <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">
+                                Project Engagement
+                            </label>
+                            <select name="project_id" id="f_project_id" class="filter-input">
+                                <option value="">-- General / Non-Project / Multiple --</option>
+                                <?php foreach ($projects as $p): ?>
+                                    <option value="<?= $p['id'] ?>">
+                                        <?= htmlspecialchars($p['project_name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Productivity / Morale Rating -->
+                    <div>
+                        <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:6px;">
+                            Productivity & Morale Self-Assessment
+                        </label>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <div class="rating-pill-opt" onclick="setRating(1)" id="rate-1">1 • Blocked</div>
+                            <div class="rating-pill-opt" onclick="setRating(2)" id="rate-2">2 • Low</div>
+                            <div class="rating-pill-opt" onclick="setRating(3)" id="rate-3">3 • Normal</div>
+                            <div class="rating-pill-opt" onclick="setRating(4)" id="rate-4">4 • High</div>
+                            <div class="rating-pill-opt active" onclick="setRating(5)" id="rate-5">5 • Peak Velocity ★</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Tasks Completed Today -->
                 <div class="form-group" style="margin-bottom:18px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-dark); margin:0;">
-                            Tasks Completed Today <span style="color:#ef4444;">*</span>
+                            <i class="fas fa-check-circle" style="color:#10b981;"></i> Key Accomplishments & Deliverables <span style="color:#ef4444;">*</span>
                         </label>
                         <button type="button" class="btn-secondary-custom" style="padding:2px 8px; font-size:11px; border-radius:4px;" onclick="addBullet('f_tasks')">
                             + Bullet
                         </button>
                     </div>
-                    <textarea name="tasks_completed" id="f_tasks" rows="5" required class="filter-input" style="width:100%; resize:vertical; font-family:inherit; line-height:1.5;" placeholder="• Completed UI revamp for DPR&#10;• Implemented CSV and PDF export&#10;• Fixed responsive mobile layout"></textarea>
+                    <textarea name="tasks_completed" id="f_tasks" rows="4" required class="filter-input" style="width:100%; resize:vertical; font-family:inherit; line-height:1.5;" placeholder="• Completed UI revamp for DPR&#10;• Implemented CSV and PDF export with letterhead&#10;• Fixed responsive mobile layout and verified on staging"></textarea>
                 </div>
 
-                <!-- Challenges & Blockers -->
+                <!-- Section 3: In-Progress / Ongoing Work -->
                 <div class="form-group" style="margin-bottom:18px;">
-                    <label style="display:block; font-size:13px; font-weight:700; color:var(--text-dark); margin-bottom:6px;">
-                        Challenges / Roadblocks (Optional)
-                    </label>
-                    <textarea name="challenges" id="f_challenges" rows="3" class="filter-input" style="width:100%; resize:vertical; font-family:inherit; line-height:1.5;" placeholder="Any issues blocking your progress? (e.g. Waiting for client credentials, server timeout). Leave blank if none."></textarea>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <label style="display:block; font-size:13px; font-weight:700; color:var(--text-dark); margin:0;">
+                            <i class="fas fa-spinner fa-spin" style="color:#0284c7;"></i> In-Progress & Continuing Objectives (Optional)
+                        </label>
+                        <button type="button" class="btn-secondary-custom" style="padding:2px 8px; font-size:11px; border-radius:4px;" onclick="addBullet('f_inprogress')">
+                            + Bullet
+                        </button>
+                    </div>
+                    <textarea name="tasks_in_progress" id="f_inprogress" rows="2" class="filter-input" style="width:100%; resize:vertical; font-family:inherit; line-height:1.5;" placeholder="• Migrating payment gateway webhook (approx 70% complete)&#10;• Drafting new client onboarding wireframes"></textarea>
                 </div>
 
-                <!-- Plan for Tomorrow -->
+                <!-- Section 4: Roadblocks, Risks & Dependencies -->
+                <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:18px;">
+                    <div style="font-size:12px; font-weight:800; color:#dc2626; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                        <i class="fas fa-exclamation-triangle"></i> Roadblocks, Obstacles & Dependency Log
+                    </div>
+
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:6px;">
+                            Blocker Severity Classification
+                        </label>
+                        <div style="display:flex; gap:8px;">
+                            <div class="severity-pill-opt active-none" id="sev-none" onclick="setSeverity('none')">
+                                <i class="fas fa-check-circle"></i> On Track / None
+                            </div>
+                            <div class="severity-pill-opt" id="sev-minor" onclick="setSeverity('minor')">
+                                <i class="fas fa-exclamation-circle"></i> Minor Delay
+                            </div>
+                            <div class="severity-pill-opt" id="sev-critical" onclick="setSeverity('critical')">
+                                <i class="fas fa-radiation"></i> Critical Impediment
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">
+                            Obstacle Narrative / Issues Encountered (Optional)
+                        </label>
+                        <textarea name="challenges" id="f_challenges" rows="2" class="filter-input" style="width:100%; resize:vertical; font-family:inherit; line-height:1.5;" placeholder="Describe what is causing friction, delays, or blocking milestone delivery..."></textarea>
+                    </div>
+
+                    <div>
+                        <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">
+                            Waiting On / Dependency Owner (Optional)
+                        </label>
+                        <input type="text" name="waiting_on" id="f_waiting_on" class="filter-input" placeholder="e.g. Waiting on client logo vector assets, API keys, or code review from Sarah">
+                    </div>
+                </div>
+
+                <!-- Section 5: Work Proof / Deliverable Links -->
+                <div class="form-group" style="margin-bottom:18px;">
+                    <label style="display:block; font-size:13px; font-weight:700; color:var(--text-dark); margin-bottom:4px;">
+                        <i class="fas fa-link" style="color:#7c3aed;"></i> Deliverables, Artifacts & Work Proof (Optional)
+                    </label>
+                    <textarea name="deliverable_links" id="f_links" rows="2" class="filter-input" style="width:100%; resize:vertical; font-family:inherit; line-height:1.5;" placeholder="Paste URLs to GitHub PRs, Figma prototypes, Staging URLs, or Google Docs (one per line)"></textarea>
+                </div>
+
+                <!-- Section 6: Plan for Tomorrow -->
                 <div class="form-group" style="margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-dark); margin:0;">
-                            Plan for Tomorrow <span style="color:#ef4444;">*</span>
+                            <i class="fas fa-arrow-alt-circle-right" style="color:var(--primary-color);"></i> Tomorrow's Action Plan & Priorities <span style="color:#ef4444;">*</span>
                         </label>
                         <button type="button" class="btn-secondary-custom" style="padding:2px 8px; font-size:11px; border-radius:4px;" onclick="addBullet('f_plan')">
                             + Bullet
                         </button>
                     </div>
-                    <textarea name="plan_tomorrow" id="f_plan" rows="4" required class="filter-input" style="width:100%; resize:vertical; font-family:inherit; line-height:1.5;" placeholder="• QA test new features on staging&#10;• Review pending pull requests"></textarea>
+                    <textarea name="plan_tomorrow" id="f_plan" rows="3" required class="filter-input" style="width:100%; resize:vertical; font-family:inherit; line-height:1.5;" placeholder="• Finalize payment webhook deployment and verify with test credentials&#10;• Sync with product designer on mobile navigation"></textarea>
                 </div>
             </div>
+
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary-custom" onclick="closeDprModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary-custom" id="dprSubmitBtn">
-                    <span id="dprBtnText"><i class="fas fa-paper-plane"></i> Submit Report</span>
+                    <span id="dprBtnText"><i class="fas fa-paper-plane"></i> Submit Daily Report</span>
                 </button>
             </div>
         </form>
@@ -1062,66 +1596,107 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<!-- MODAL 2: View Report Details                                                -->
+<!-- MODAL 2: View Detailed Progress Report (Corporate Executive Dossier)       -->
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <div id="viewModal" class="modal-overlay" onclick="if(event.target===this)closeViewModal()">
-    <div class="modal-content" style="max-width:700px;">
+    <div class="modal-content" style="max-width:760px;">
         <div class="modal-header">
             <h4>
                 <div class="modal-header-icon"><i class="fas fa-file-alt"></i></div>
-                <span id="viewModalTitle">Daily Progress Report</span>
+                <span id="viewModalTitle">Daily Progress Report Dossier</span>
             </h4>
             <button class="modal-close" onclick="closeViewModal()"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <!-- Member Metadata Card -->
-            <div style="display:flex; align-items:center; justify-content:space-between; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px 18px; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+            <!-- Corporate Header & Member Metadata Card -->
+            <div style="display:flex; align-items:center; justify-content:space-between; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px 20px; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
                 <div style="display:flex; align-items:center; gap:12px;">
-                    <div id="viewModalAvatar" class="dpr-avatar" style="width:44px; height:44px; font-size:16px;">U</div>
+                    <div id="viewModalAvatar" class="dpr-avatar" style="width:48px; height:48px; font-size:18px;">U</div>
                     <div>
-                        <div id="viewModalUser" style="font-size:15px; font-weight:800; color:var(--text-dark);">User Name</div>
-                        <div id="viewModalRole" style="font-size:12px; color:#64748b;">Role • user@graphicafix.com</div>
+                        <div id="viewModalUser" style="font-size:16px; font-weight:800; color:var(--text-dark);">User Name</div>
+                        <div id="viewModalRole" style="font-size:12.5px; color:#64748b;">Role &bull; user@graphicafix.com</div>
                     </div>
                 </div>
                 <div style="text-align:right;">
-                    <div id="viewModalDate" style="font-weight:700; color:var(--primary-color); font-size:13.5px;">Date</div>
-                    <div id="viewModalCreated" style="font-size:11.5px; color:#94a3b8;">Submitted at</div>
+                    <div id="viewModalDate" style="font-weight:800; color:var(--primary-color); font-size:14.5px;">Date</div>
+                    <div id="viewModalCreated" style="font-size:12px; color:#94a3b8;">Logged at</div>
                 </div>
             </div>
 
-            <!-- Tasks Completed -->
-            <div style="margin-bottom:18px;">
-                <label style="display:block; font-size:12px; font-weight:800; color:#0284c7; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
-                    <i class="fas fa-check-circle"></i> Tasks Completed
-                </label>
-                <div id="viewTasks" style="font-size:14px; color:#334155; background:#f0fdf4; border:1px solid #bbf7d0; padding:14px; border-radius:8px; border-left:4px solid #10b981; white-space:pre-wrap; line-height:1.6;"></div>
+            <!-- Highlights Bar: Hours, Project, Productivity, Roadblocks -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:10px; margin-bottom:20px;">
+                <div style="background:#f1f5f9; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; text-align:center;">
+                    <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Hours Worked</div>
+                    <div id="viewHours" style="font-size:16px; font-weight:800; color:#0f172a; margin-top:2px;">8.0h</div>
+                </div>
+                <div style="background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; padding:10px 12px; text-align:center;">
+                    <div style="font-size:11px; font-weight:700; color:#065f46; text-transform:uppercase;">Project Engagement</div>
+                    <div id="viewProject" style="font-size:13.5px; font-weight:800; color:#065f46; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">General</div>
+                </div>
+                <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 12px; text-align:center;">
+                    <div style="font-size:11px; font-weight:700; color:#b45309; text-transform:uppercase;">Productivity Rating</div>
+                    <div id="viewRating" style="font-size:15px; font-weight:800; color:#b45309; margin-top:2px;">★ 5 / 5</div>
+                </div>
+                <div id="viewStatusBox" style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 12px; text-align:center;">
+                    <div style="font-size:11px; font-weight:700; color:#166534; text-transform:uppercase;">Obstacle Status</div>
+                    <div id="viewSeverity" style="font-size:13.5px; font-weight:800; color:#166534; margin-top:2px;">On Track / Smooth</div>
+                </div>
             </div>
 
-            <!-- Roadblocks / Challenges -->
+            <!-- Section 1: Tasks Completed -->
+            <div style="margin-bottom:18px;">
+                <label style="display:block; font-size:12px; font-weight:800; color:#047857; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+                    <i class="fas fa-check-circle"></i> 1. Key Accomplishments & Deliverables
+                </label>
+                <div id="viewTasks" style="font-size:13.5px; color:#14532d; background:#f0fdf4; border:1px solid #bbf7d0; padding:14px; border-radius:8px; border-left:4px solid #10b981; white-space:pre-wrap; line-height:1.6;"></div>
+            </div>
+
+            <!-- Section 2: In-Progress / Ongoing Tasks -->
+            <div style="margin-bottom:18px;" id="viewInProgressWrap">
+                <label style="display:block; font-size:12px; font-weight:800; color:#1d4ed8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+                    <i class="fas fa-spinner fa-spin"></i> 2. In-Progress & Continuing Objectives
+                </label>
+                <div id="viewInProgress" style="font-size:13.5px; color:#1e3a8a; background:#eff6ff; border:1px solid #bfdbfe; padding:14px; border-radius:8px; border-left:4px solid #3b82f6; white-space:pre-wrap; line-height:1.6;"></div>
+            </div>
+
+            <!-- Section 3: Roadblocks / Challenges -->
             <div style="margin-bottom:18px;" id="viewChallengesWrap">
                 <label style="display:block; font-size:12px; font-weight:800; color:#dc2626; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
-                    <i class="fas fa-exclamation-triangle"></i> Challenges & Roadblocks
+                    <i class="fas fa-exclamation-triangle"></i> 3. Obstacles, Roadblocks & Dependency Log
                 </label>
-                <div id="viewChallenges" style="font-size:14px; color:#7f1d1d; background:#fef2f2; border:1px solid #fecaca; padding:14px; border-radius:8px; border-left:4px solid #ef4444; white-space:pre-wrap; line-height:1.6;"></div>
+                <div id="viewChallenges" style="font-size:13.5px; color:#7f1d1d; background:#fef2f2; border:1px solid #fecaca; padding:14px; border-radius:8px; border-left:4px solid #ef4444; white-space:pre-wrap; line-height:1.6;"></div>
+                <div id="viewWaitingWrap" style="margin-top:8px;">
+                    <div style="display:inline-flex; align-items:center; gap:6px; background:#fff7ed; border:1px solid #fed7aa; color:#c2410c; padding:6px 12px; border-radius:6px; font-size:12.5px; font-weight:700;">
+                        <i class="fas fa-hourglass-half"></i> <span>Waiting On / Action Required From: <span id="viewWaiting" style="font-weight:600; color:#9a3412;"></span></span>
+                    </div>
+                </div>
             </div>
 
-            <!-- Plan Tomorrow -->
-            <div style="margin-bottom:10px;">
-                <label style="display:block; font-size:12px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
-                    <i class="fas fa-arrow-alt-circle-right"></i> Plan for Tomorrow
+            <!-- Section 4: Deliverables & Proof Links -->
+            <div style="margin-bottom:18px;" id="viewLinksWrap">
+                <label style="display:block; font-size:12px; font-weight:800; color:#6d28d9; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+                    <i class="fas fa-link"></i> 4. Deliverables, Artifacts & Work Proof Links
                 </label>
-                <div id="viewPlan" style="font-size:14px; color:#334155; background:#f8fafc; border:1px solid #e2e8f0; padding:14px; border-radius:8px; border-left:4px solid #0284c7; white-space:pre-wrap; line-height:1.6;"></div>
+                <div id="viewLinks" style="font-size:13.5px; color:#4c1d95; background:#f5f3ff; border:1px solid #ddd6fe; padding:14px; border-radius:8px; border-left:4px solid #8b5cf6; white-space:pre-wrap; line-height:1.6; word-break:break-all;"></div>
+            </div>
+
+            <!-- Section 5: Plan Tomorrow -->
+            <div style="margin-bottom:10px;">
+                <label style="display:block; font-size:12px; font-weight:800; color:#0284c7; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+                    <i class="fas fa-arrow-alt-circle-right"></i> 5. Tomorrow's Action Plan & Priorities
+                </label>
+                <div id="viewPlan" style="font-size:13.5px; color:#0c4a6e; background:#f0f9ff; border:1px solid #bae6fd; padding:14px; border-radius:8px; border-left:4px solid #0284c7; white-space:pre-wrap; line-height:1.6;"></div>
             </div>
         </div>
-        <div class="modal-footer" style="justify-content:space-between;">
+        <div class="modal-footer" style="justify-content:space-between; flex-wrap:wrap; gap:8px;">
             <div style="display:flex; gap:8px;">
                 <!-- Copy Standup text -->
                 <button type="button" class="btn-secondary-custom" id="btnCopyStandup" onclick="copyCurrentStandup()" style="font-size:13px; padding:8px 14px;">
-                    <i class="fas fa-copy"></i> Copy for Standup
+                    <i class="fas fa-copy"></i> Copy Standup Summary (Slack/WhatsApp)
                 </button>
                 <!-- View / Print Single PDF Dossier -->
                 <a id="btnDownloadSinglePdf" href="#" target="_blank" class="btn-secondary-custom" style="font-size:13px; padding:8px 14px;">
-                    <i class="fas fa-file-pdf" style="color:#ef4444;"></i> View PDF Dossier
+                    <i class="fas fa-file-pdf" style="color:#ef4444;"></i> View Branded PDF Dossier
                 </a>
             </div>
             <button type="button" class="btn-primary-custom" style="font-size:13px; padding:8px 18px;" onclick="closeViewModal()">Close</button>
@@ -1144,7 +1719,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
         <form action="dpr_export.php" method="GET" target="_blank" id="customExportForm">
             <div class="modal-body">
                 <p style="font-size:13.5px; color:#64748b; margin-top:0; margin-bottom:18px;">
-                    Configure your export parameters below to download an Excel CSV or a branded PDF dossier.
+                    Generate a corporate-standard Daily Progress Report download in Excel CSV or branded executive PDF format.
                 </p>
 
                 <!-- Export Format Radio -->
@@ -1153,18 +1728,18 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                         Select Format
                     </label>
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                        <label style="border:2px solid #e2e8f0; border-radius:10px; padding:14px; cursor:pointer; display:flex; align-items:center; gap:10px; transition:all 0.2s;" id="labelFormatCsv" class="export-format-opt">
+                        <label style="border:2px solid var(--primary-color); background:#f0fdf4; border-radius:10px; padding:14px; cursor:pointer; display:flex; align-items:center; gap:10px; transition:all 0.2s;" id="labelFormatCsv" class="export-format-opt">
                             <input type="radio" name="format" value="csv" checked onchange="toggleFormatStyle(this)">
                             <div>
                                 <div style="font-weight:700; font-size:14px; color:#0f172a;"><i class="fas fa-file-csv" style="color:#10b981;"></i> CSV Spreadsheet</div>
-                                <div style="font-size:11.5px; color:#64748b;">For Excel & Google Sheets</div>
+                                <div style="font-size:11.5px; color:#64748b;">For Microsoft Excel & Sheets</div>
                             </div>
                         </label>
-                        <label style="border:2px solid #e2e8f0; border-radius:10px; padding:14px; cursor:pointer; display:flex; align-items:center; gap:10px; transition:all 0.2s;" id="labelFormatPdf" class="export-format-opt">
+                        <label style="border:2px solid #e2e8f0; background:#fff; border-radius:10px; padding:14px; cursor:pointer; display:flex; align-items:center; gap:10px; transition:all 0.2s;" id="labelFormatPdf" class="export-format-opt">
                             <input type="radio" name="format" value="pdf" onchange="toggleFormatStyle(this)">
                             <div>
                                 <div style="font-weight:700; font-size:14px; color:#0f172a;"><i class="fas fa-file-pdf" style="color:#ef4444;"></i> PDF Document</div>
-                                <div style="font-size:11.5px; color:#64748b;">Branded Executive Dossier</div>
+                                <div style="font-size:11.5px; color:#64748b;">Branded Executive Letterhead</div>
                             </div>
                         </label>
                     </div>
@@ -1204,6 +1779,21 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                 </div>
                 <?php endif; ?>
 
+                <!-- Project Selector -->
+                <div style="margin-bottom:18px;">
+                    <label style="display:block; font-size:12px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">
+                        Filter by Project
+                    </label>
+                    <select name="project_id" class="filter-input">
+                        <option value="">All Projects</option>
+                        <?php foreach ($projects as $p): ?>
+                            <option value="<?= $p['id'] ?>" <?= $filter_project == $p['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($p['project_name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
                 <!-- Only Blockers Checkbox -->
                 <div style="margin-bottom:10px;">
                     <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13.5px; font-weight:600; color:#334155;">
@@ -1229,7 +1819,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 <!-- JAVASCRIPT LOGIC                                                            -->
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <script>
-const existingReport = <?= json_encode($today_report) ?>;
+const existingTodayReport = <?= json_encode($today_report) ?>;
 let activeModalData = null;
 
 // Preset Date Filter Helpers
@@ -1263,6 +1853,120 @@ function setPreset(preset) {
     document.getElementById('filterForm').submit();
 }
 
+// ── Rating & Severity Pill Setters ───────────────────────────────────────────
+function setHours(hrs) {
+    document.getElementById('f_hours_worked').value = parseFloat(hrs).toFixed(1);
+    document.querySelectorAll('.hour-pill-btn').forEach(btn => btn.classList.remove('active'));
+    if (hrs === 8.0) {
+        const b = document.getElementById('btnHour8');
+        if (b) b.classList.add('active');
+    }
+}
+
+function setRating(val) {
+    document.getElementById('f_productivity_rating').value = val;
+    for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById(`rate-${i}`);
+        if (el) {
+            if (i === val) el.classList.add('active');
+            else el.classList.remove('active');
+        }
+    }
+}
+
+function setSeverity(val) {
+    document.getElementById('f_blocker_severity').value = val;
+    const sNone = document.getElementById('sev-none');
+    const sMinor = document.getElementById('sev-minor');
+    const sCrit = document.getElementById('sev-critical');
+
+    sNone.className = 'severity-pill-opt' + (val === 'none' ? ' active-none' : '');
+    sMinor.className = 'severity-pill-opt' + (val === 'minor' ? ' active-minor' : '');
+    sCrit.className = 'severity-pill-opt' + (val === 'critical' ? ' active-critical' : '');
+}
+
+// ── Dynamic Date Picker & Report Auto-load ───────────────────────────────────
+function formatReadableDate(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function selectModalDate(dateStr) {
+    document.getElementById('f_report_date').value = dateStr;
+    onDateInputChange(dateStr);
+}
+
+function onDateInputChange(dateStr) {
+    document.getElementById('modalHumanDate').textContent = formatReadableDate(dateStr);
+    
+    // Toggle active preset button styling
+    const todayStr = '<?= date('Y-m-d') ?>';
+    const yestStr = '<?= date('Y-m-d', strtotime('-1 day')) ?>';
+    document.getElementById('btnDatePresetToday').classList.toggle('active', dateStr === todayStr);
+    document.getElementById('btnDatePresetYesterday').classList.toggle('active', dateStr === yestStr);
+
+    checkExistingReportForDate(dateStr);
+}
+
+function checkExistingReportForDate(dateStr) {
+    const banner = document.getElementById('dateNoticeBanner');
+    banner.style.display = 'block';
+    banner.style.background = '#f1f5f9';
+    banner.style.color = '#64748b';
+    banner.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking date records...';
+
+    fetch(`dpr_action.php?action=get_dpr_by_date&date=${dateStr}`)
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.exists && data.report) {
+            // Pre-fill existing report
+            const r = data.report;
+            setHours(r.hours_worked || 8.0);
+            document.getElementById('f_project_id').value = r.project_id || '';
+            setRating(parseInt(r.productivity_rating || 5));
+            setSeverity(r.blocker_severity || (r.challenges ? 'minor' : 'none'));
+            document.getElementById('f_tasks').value = r.tasks_completed || '';
+            document.getElementById('f_inprogress').value = r.tasks_in_progress || '';
+            document.getElementById('f_challenges').value = r.challenges || '';
+            document.getElementById('f_waiting_on').value = r.waiting_on || '';
+            document.getElementById('f_links').value = r.deliverable_links || '';
+            document.getElementById('f_plan').value = r.plan_tomorrow || '';
+
+            document.getElementById('modalTitle').textContent = `Edit Daily Report (${formatReadableDate(dateStr)})`;
+            document.getElementById('dprBtnText').innerHTML = `<i class="fas fa-save"></i> Update Report for ${dateStr}`;
+
+            banner.style.background = '#ecfdf5';
+            banner.style.color = '#065f46';
+            banner.innerHTML = `<i class="fas fa-check-circle"></i> Existing report found for <strong>${formatReadableDate(dateStr)}</strong>. You are editing this report.`;
+        } else {
+            // Fresh report for this date
+            setHours(8.0);
+            document.getElementById('f_project_id').value = '';
+            setRating(5);
+            setSeverity('none');
+            document.getElementById('f_tasks').value = '';
+            document.getElementById('f_inprogress').value = '';
+            document.getElementById('f_challenges').value = '';
+            document.getElementById('f_waiting_on').value = '';
+            document.getElementById('f_links').value = '';
+            document.getElementById('f_plan').value = '';
+
+            document.getElementById('modalTitle').textContent = `Submit Daily Report (${formatReadableDate(dateStr)})`;
+            document.getElementById('dprBtnText').innerHTML = `<i class="fas fa-paper-plane"></i> Submit Report for ${dateStr}`;
+
+            banner.style.background = '#f0f9ff';
+            banner.style.color = '#0369a1';
+            banner.innerHTML = `<i class="fas fa-info-circle"></i> Ready to submit a new Daily Progress Report for <strong>${formatReadableDate(dateStr)}</strong>.`;
+        }
+    })
+    .catch(() => {
+        banner.style.display = 'none';
+    });
+}
+
 // ── View Modal ───────────────────────────────────────────────────────────────
 function openViewModal(btn) {
     activeModalData = {
@@ -1273,20 +1977,95 @@ function openViewModal(btn) {
         date: btn.dataset.date,
         rawdate: btn.dataset.rawdate,
         created: btn.dataset.created,
+        hours: btn.dataset.hours,
+        project: btn.dataset.project,
+        projectid: btn.dataset.projectid,
+        rating: btn.dataset.rating,
+        severity: btn.dataset.severity,
         tasks: btn.dataset.tasks,
+        inprogress: btn.dataset.inprogress,
         challenges: btn.dataset.challenges,
+        waiting: btn.dataset.waiting,
+        links: btn.dataset.links,
         plan: btn.dataset.plan
     };
 
-    document.getElementById('viewModalTitle').textContent = `DPR — ${activeModalData.name} (${activeModalData.date})`;
+    renderActiveViewModal();
+}
+
+function openViewModalFromObj(row) {
+    activeModalData = {
+        id: row.id,
+        name: row.user_name || 'Team Member',
+        role: row.user_role ? (row.user_role.charAt(0).toUpperCase() + row.user_role.slice(1)) : 'Staff',
+        email: row.user_email || '',
+        date: formatReadableDate(row.report_date),
+        rawdate: row.report_date,
+        created: row.created_at,
+        hours: parseFloat(row.hours_worked || 8).toFixed(1),
+        project: row.project_name || 'General / Internal Work',
+        projectid: row.project_id || '',
+        rating: parseInt(row.productivity_rating || 5),
+        severity: row.blocker_severity || 'none',
+        tasks: row.tasks_completed || '',
+        inprogress: row.tasks_in_progress || '',
+        challenges: row.challenges || '',
+        waiting: row.waiting_on || '',
+        links: row.deliverable_links || '',
+        plan: row.plan_tomorrow || ''
+    };
+
+    renderActiveViewModal();
+}
+
+function renderActiveViewModal() {
+    if (!activeModalData) return;
+
+    document.getElementById('viewModalTitle').textContent = `Daily Progress Report — ${activeModalData.name} (${activeModalData.date})`;
     document.getElementById('viewModalAvatar').textContent = activeModalData.name.charAt(0).toUpperCase();
     document.getElementById('viewModalUser').textContent = activeModalData.name;
     document.getElementById('viewModalRole').textContent = `${activeModalData.role} • ${activeModalData.email || 'Graphicafix Staff'}`;
     document.getElementById('viewModalDate').textContent = activeModalData.date;
-    document.getElementById('viewModalCreated').textContent = `Submitted: ${activeModalData.created}`;
+    document.getElementById('viewModalCreated').textContent = `Logged: ${activeModalData.created}`;
     
+    // Highlights Bar
+    document.getElementById('viewHours').textContent = `${activeModalData.hours}h Logged`;
+    document.getElementById('viewProject').textContent = activeModalData.project || 'General / Internal Work';
+    document.getElementById('viewProject').title = activeModalData.project || 'General / Internal Work';
+    document.getElementById('viewRating').textContent = `★ ${activeModalData.rating} / 5.0`;
+
+    const statusBox = document.getElementById('viewStatusBox');
+    const sevLabel = document.getElementById('viewSeverity');
+    if (activeModalData.severity === 'critical') {
+        statusBox.style.background = '#fef2f2';
+        statusBox.style.borderColor = '#fecaca';
+        sevLabel.style.color = '#dc2626';
+        sevLabel.textContent = 'Critical Block';
+    } else if (activeModalData.severity === 'minor' || (activeModalData.challenges && activeModalData.challenges.trim() !== '')) {
+        statusBox.style.background = '#fffbeb';
+        statusBox.style.borderColor = '#fde68a';
+        sevLabel.style.color = '#b45309';
+        sevLabel.textContent = 'Minor Delay';
+    } else {
+        statusBox.style.background = '#f0fdf4';
+        statusBox.style.borderColor = '#bbf7d0';
+        sevLabel.style.color = '#166534';
+        sevLabel.textContent = 'On Track / Smooth';
+    }
+
+    // Tasks Completed
     document.getElementById('viewTasks').textContent = activeModalData.tasks;
 
+    // In-Progress Tasks
+    const wipWrap = document.getElementById('viewInProgressWrap');
+    if (activeModalData.inprogress && activeModalData.inprogress.trim() !== '') {
+        wipWrap.style.display = 'block';
+        document.getElementById('viewInProgress').textContent = activeModalData.inprogress;
+    } else {
+        wipWrap.style.display = 'none';
+    }
+
+    // Challenges & Waiting On
     const chWrap = document.getElementById('viewChallengesWrap');
     if (activeModalData.challenges && activeModalData.challenges.trim() !== '') {
         chWrap.style.display = 'block';
@@ -1295,6 +2074,28 @@ function openViewModal(btn) {
         chWrap.style.display = 'none';
     }
 
+    const waitWrap = document.getElementById('viewWaitingWrap');
+    if (activeModalData.waiting && activeModalData.waiting.trim() !== '') {
+        waitWrap.style.display = 'block';
+        document.getElementById('viewWaiting').textContent = activeModalData.waiting;
+    } else {
+        waitWrap.style.display = 'none';
+    }
+
+    // Deliverables / Links
+    const linksWrap = document.getElementById('viewLinksWrap');
+    if (activeModalData.links && activeModalData.links.trim() !== '') {
+        linksWrap.style.display = 'block';
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const linkedText = activeModalData.links.replace(urlRegex, function(url) {
+            return `<a href="${url}" target="_blank" style="color:#6d28d9; text-decoration:underline; font-weight:700;"><i class="fas fa-external-link-alt"></i> ${url}</a>`;
+        });
+        document.getElementById('viewLinks').innerHTML = linkedText;
+    } else {
+        linksWrap.style.display = 'none';
+    }
+
+    // Plan Tomorrow
     document.getElementById('viewPlan').textContent = activeModalData.plan;
     document.getElementById('btnDownloadSinglePdf').href = `dpr_export.php?format=pdf&id=${activeModalData.id}&preview=1`;
 
@@ -1309,32 +2110,81 @@ function closeViewModal() {
 
 function copyCurrentStandup() {
     if (!activeModalData) return;
-    const text = `📋 Daily Progress Report: ${activeModalData.name} (${activeModalData.date})\n\n` +
-        `✅ Tasks Completed:\n${activeModalData.tasks}\n\n` +
-        `⚠️ Challenges / Blockers:\n${activeModalData.challenges && activeModalData.challenges.trim() ? activeModalData.challenges : 'None (Smooth)'}\n\n` +
-        `🎯 Plan for Tomorrow:\n${activeModalData.plan}`;
+    let text = `📋 *Daily Progress Report — ${activeModalData.name}*\n` +
+        `📅 *Report Date:* ${activeModalData.date}\n` +
+        `📁 *Project Engagement:* ${activeModalData.project || 'General / Internal Work'}\n` +
+        `⏱ *Hours Logged:* ${activeModalData.hours}h | ⭐ *Productivity Score:* ${activeModalData.rating}/5.0\n\n` +
+        `✅ *1. Key Accomplishments & Deliverables:*\n${activeModalData.tasks}\n\n`;
+
+    if (activeModalData.inprogress && activeModalData.inprogress.trim() !== '') {
+        text += `⏳ *2. Work In Progress / Continuing:*\n${activeModalData.inprogress}\n\n`;
+    }
+
+    if (activeModalData.challenges && activeModalData.challenges.trim() !== '') {
+        text += `⚠️ *3. Roadblocks & Dependency Log [${activeModalData.severity.toUpperCase()}]:*\n${activeModalData.challenges}\n`;
+        if (activeModalData.waiting && activeModalData.waiting.trim() !== '') {
+            text += `✋ *Waiting On / Action Required From:* ${activeModalData.waiting}\n`;
+        }
+        text += '\n';
+    } else {
+        text += `🟢 *3. Roadblocks:* None (Operating Smoothly on Schedule)\n\n`;
+    }
+
+    if (activeModalData.links && activeModalData.links.trim() !== '') {
+        text += `🔗 *4. Deliverables & Proof Links:*\n${activeModalData.links}\n\n`;
+    }
+
+    text += `🎯 *5. Tomorrow's Action Plan:*\n${activeModalData.plan}`;
 
     navigator.clipboard.writeText(text).then(() => {
-        showToast('Report copied to clipboard in standup format!');
+        showToast('Corporate standup summary copied to clipboard!');
     }).catch(() => {
-        showToast('Unable to copy text', 'error');
+        showToast('Unable to copy text to clipboard', 'error');
     });
 }
 
 // ── Submit / Edit Modal ──────────────────────────────────────────────────────
-function openDprModal(isEdit = false) {
+function openDprModal(isEdit = false, customData = null) {
     const modal = document.getElementById('dprModal');
     document.getElementById('dprForm').reset();
+    
+    const todayStr = '<?= date('Y-m-d') ?>';
+    const dataToUse = customData || (isEdit ? existingTodayReport : null);
 
-    if (isEdit && existingReport) {
-        document.getElementById('modalTitle').textContent = "Edit Today's Report";
-        document.getElementById('dprBtnText').innerHTML = '<i class="fas fa-save"></i> Update Report';
-        document.getElementById('f_tasks').value = existingReport.tasks_completed;
-        document.getElementById('f_challenges').value = existingReport.challenges || '';
-        document.getElementById('f_plan').value = existingReport.plan_tomorrow;
+    if (dataToUse) {
+        document.getElementById('f_report_date').value = dataToUse.report_date;
+        document.getElementById('modalHumanDate').textContent = formatReadableDate(dataToUse.report_date);
+        document.getElementById('modalTitle').textContent = `Edit Daily Progress Report (${formatReadableDate(dataToUse.report_date)})`;
+        document.getElementById('dprBtnText').innerHTML = `<i class="fas fa-save"></i> Update Report for ${dataToUse.report_date}`;
+        
+        setHours(dataToUse.hours_worked || 8.0);
+        document.getElementById('f_project_id').value = dataToUse.project_id || '';
+        setRating(parseInt(dataToUse.productivity_rating || 5));
+        setSeverity(dataToUse.blocker_severity || (dataToUse.challenges ? 'minor' : 'none'));
+
+        document.getElementById('f_tasks').value = dataToUse.tasks_completed || '';
+        document.getElementById('f_inprogress').value = dataToUse.tasks_in_progress || '';
+        document.getElementById('f_challenges').value = dataToUse.challenges || '';
+        document.getElementById('f_waiting_on').value = dataToUse.waiting_on || '';
+        document.getElementById('f_links').value = dataToUse.deliverable_links || '';
+        document.getElementById('f_plan').value = dataToUse.plan_tomorrow || '';
+
+        const banner = document.getElementById('dateNoticeBanner');
+        banner.style.display = 'block';
+        banner.style.background = '#ecfdf5';
+        banner.style.color = '#065f46';
+        banner.innerHTML = `<i class="fas fa-check-circle"></i> Editing report for <strong>${formatReadableDate(dataToUse.report_date)}</strong>.`;
     } else {
-        document.getElementById('modalTitle').textContent = "Submit Today's Report";
-        document.getElementById('dprBtnText').innerHTML = '<i class="fas fa-paper-plane"></i> Submit Report';
+        document.getElementById('f_report_date').value = todayStr;
+        document.getElementById('modalHumanDate').textContent = '<?= date('l, F j, Y') ?>';
+        document.getElementById('modalTitle').textContent = "Submit Today's Daily Progress Report";
+        document.getElementById('dprBtnText').innerHTML = '<i class="fas fa-paper-plane"></i> Submit Daily Report';
+
+        setHours(8.0);
+        setRating(5);
+        setSeverity('none');
+        document.getElementById('f_project_id').value = '';
+        document.getElementById('dateNoticeBanner').style.display = 'none';
     }
 
     modal.classList.add('active');
@@ -1364,12 +2214,20 @@ document.getElementById('dprForm').addEventListener('submit', function(e) {
     const orig = txt.innerHTML;
 
     btn.disabled = true;
-    txt.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    txt.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recording Report...';
 
     const payload = new URLSearchParams();
     payload.append('action', 'save_dpr');
+    payload.append('report_date', document.getElementById('f_report_date').value);
+    payload.append('hours_worked', document.getElementById('f_hours_worked').value);
+    payload.append('project_id', document.getElementById('f_project_id').value);
+    payload.append('productivity_rating', document.getElementById('f_productivity_rating').value);
+    payload.append('blocker_severity', document.getElementById('f_blocker_severity').value);
     payload.append('tasks_completed', document.getElementById('f_tasks').value);
+    payload.append('tasks_in_progress', document.getElementById('f_inprogress').value);
     payload.append('challenges', document.getElementById('f_challenges').value);
+    payload.append('waiting_on', document.getElementById('f_waiting_on').value);
+    payload.append('deliverable_links', document.getElementById('f_links').value);
     payload.append('plan_tomorrow', document.getElementById('f_plan').value);
 
     fetch('dpr_action.php', {
@@ -1381,8 +2239,8 @@ document.getElementById('dprForm').addEventListener('submit', function(e) {
     .then(data => {
         if (data.success) {
             closeDprModal();
-            showToast(data.message || 'Report saved successfully!');
-            setTimeout(() => location.reload(), 800);
+            showToast(data.message || 'Daily Progress Report saved successfully!');
+            setTimeout(() => location.reload(), 700);
         } else {
             showToast(data.message || 'Error saving report', 'error');
             btn.disabled = false;
