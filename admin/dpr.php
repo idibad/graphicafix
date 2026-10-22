@@ -349,6 +349,105 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     margin-top: 2px;
 }
 
+/* ── Today's Pending Banner when not submitted yet ── */
+.today-pending-banner {
+    background: #ffffff;
+    border: 1.5px dashed #0284c7;
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.06);
+}
+.today-pending-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+    min-width: 260px;
+}
+.today-pending-icon {
+    width: 48px;
+    height: 48px;
+    background: #e0f2fe;
+    color: #0284c7;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+.today-pending-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 4px 0;
+}
+.today-pending-sub {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* ── DPR Locked Today Banner in Modal ── */
+.dpr-locked-date-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f0fdf4;
+    border: 1.5px solid #bbf7d0;
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+    gap: 12px;
+}
+.dpr-locked-icon {
+    width: 42px;
+    height: 42px;
+    background: var(--primary-color, #024442);
+    color: var(--accent-color, #B6F763);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+.dpr-locked-info {
+    flex-grow: 1;
+}
+.dpr-locked-label {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #166534;
+}
+.dpr-locked-date {
+    font-size: 15px;
+    font-weight: 800;
+    color: #0f172a;
+    margin-top: 2px;
+}
+.dpr-locked-tag {
+    background: var(--primary-color, #024442);
+    color: #ffffff;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
 /* Filter Card */
 .dpr-filter-card {
     background: #ffffff;
@@ -1046,6 +1145,20 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                 <?= htmlspecialchars($today_report['tasks_completed']) ?>
             </div>
         </div>
+        <?php else: ?>
+        <!-- ── Pending Today's Report Banner ─────────────────────────────────── -->
+        <div class="today-pending-banner">
+            <div class="today-pending-left">
+                <div class="today-pending-icon"><i class="fas fa-calendar-day"></i></div>
+                <div>
+                    <h3 class="today-pending-title">Today's Progress Report Pending &bull; <?= date('l, F j, Y') ?></h3>
+                    <p class="today-pending-sub">You have not submitted your daily work report for today yet. Keep your team and management aligned with your daily progress.</p>
+                </div>
+            </div>
+            <button type="button" class="btn-primary-custom" onclick="openDprModal(false)" style="white-space:nowrap; padding:10px 18px; font-size:13.5px;">
+                <i class="fas fa-plus-circle"></i> Submit Today's Report
+            </button>
+        </div>
         <?php endif; ?>
 
         <!-- ── Advanced Filter & Search Bar ───────────────────────────────────── -->
@@ -1407,28 +1520,20 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
             <input type="hidden" name="blocker_severity" id="f_blocker_severity" value="none">
 
             <div class="modal-body">
-                <!-- Section 0: Explicit Date Selection -->
-                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px 18px; margin-bottom:18px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:8px;">
-                        <label style="font-size:12.5px; font-weight:800; color:#0f172a; margin:0; display:flex; align-items:center; gap:6px;">
-                            <i class="fas fa-calendar-day" style="color:var(--primary-color);"></i> Date Being Reported <span style="color:#ef4444;">*</span>
-                        </label>
-                        <div style="display:flex; gap:6px;">
-                            <button type="button" class="hour-pill-btn active" id="btnDatePresetToday" onclick="selectModalDate('<?= date('Y-m-d') ?>')">Today</button>
-                            <button type="button" class="hour-pill-btn" id="btnDatePresetYesterday" onclick="selectModalDate('<?= date('Y-m-d', strtotime('-1 day')) ?>')">Yesterday</button>
-                        </div>
+                <!-- Locked Date Indicator: Strictly Today by Default -->
+                <div class="dpr-locked-date-banner">
+                    <div class="dpr-locked-icon">
+                        <i class="fas fa-calendar-check"></i>
                     </div>
-                    
-                    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                        <input type="date" name="report_date" id="f_report_date" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required class="filter-input" style="font-weight:700; font-size:14px; max-width:210px;" onchange="onDateInputChange(this.value)">
-                        <span id="modalHumanDate" style="font-size:13px; font-weight:700; color:var(--primary-color);">
-                            <?= date('l, F j, Y') ?>
-                        </span>
+                    <div class="dpr-locked-info">
+                        <div class="dpr-locked-label">Reporting For Today</div>
+                        <div class="dpr-locked-date" id="modalHumanDate"><?= date('l, F j, Y') ?></div>
                     </div>
-
-                    <!-- Dynamic status banner when changing dates -->
-                    <div id="dateNoticeBanner" style="display:none; margin-top:10px; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600;"></div>
+                    <div class="dpr-locked-tag" id="modalLockedTag">
+                        <i class="fas fa-lock"></i> Today Only
+                    </div>
                 </div>
+                <input type="hidden" name="report_date" id="f_report_date" value="<?= date('Y-m-d') ?>">
 
                 <!-- Section 1: Time, Project & Productivity Rating -->
                 <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:18px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
@@ -1870,86 +1975,13 @@ function setSeverity(val) {
     sCrit.className = 'severity-pill-opt' + (val === 'critical' ? ' active-critical' : '');
 }
 
-// ── Dynamic Date Picker & Report Auto-load ───────────────────────────────────
+// ── Date Formatter Helper ────────────────────────────────────────────────────
 function formatReadableDate(dateStr) {
     if (!dateStr) return '';
     const parts = dateStr.split('-');
     if (parts.length !== 3) return dateStr;
     const d = new Date(parts[0], parts[1] - 1, parts[2]);
     return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-}
-
-function selectModalDate(dateStr) {
-    document.getElementById('f_report_date').value = dateStr;
-    onDateInputChange(dateStr);
-}
-
-function onDateInputChange(dateStr) {
-    document.getElementById('modalHumanDate').textContent = formatReadableDate(dateStr);
-    
-    // Toggle active preset button styling
-    const todayStr = '<?= date('Y-m-d') ?>';
-    const yestStr = '<?= date('Y-m-d', strtotime('-1 day')) ?>';
-    document.getElementById('btnDatePresetToday').classList.toggle('active', dateStr === todayStr);
-    document.getElementById('btnDatePresetYesterday').classList.toggle('active', dateStr === yestStr);
-
-    checkExistingReportForDate(dateStr);
-}
-
-function checkExistingReportForDate(dateStr) {
-    const banner = document.getElementById('dateNoticeBanner');
-    banner.style.display = 'block';
-    banner.style.background = '#f1f5f9';
-    banner.style.color = '#64748b';
-    banner.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking date records...';
-
-    fetch(`dpr_action.php?action=get_dpr_by_date&date=${dateStr}`)
-    .then(r => r.json())
-    .then(data => {
-        if (data.success && data.exists && data.report) {
-            // Pre-fill existing report
-            const r = data.report;
-            setHours(r.hours_worked || 8.0);
-            document.getElementById('f_project_id').value = r.project_id || '';
-            setRating(parseInt(r.productivity_rating || 5));
-            setSeverity(r.blocker_severity || (r.challenges ? 'minor' : 'none'));
-            document.getElementById('f_tasks').value = r.tasks_completed || '';
-            document.getElementById('f_inprogress').value = r.tasks_in_progress || '';
-            document.getElementById('f_challenges').value = r.challenges || '';
-            document.getElementById('f_waiting_on').value = r.waiting_on || '';
-            document.getElementById('f_links').value = r.deliverable_links || '';
-            document.getElementById('f_plan').value = r.plan_tomorrow || '';
-
-            document.getElementById('modalTitle').textContent = `Edit Daily Report (${formatReadableDate(dateStr)})`;
-            document.getElementById('dprBtnText').innerHTML = `<i class="fas fa-save"></i> Update Report for ${dateStr}`;
-
-            banner.style.background = '#ecfdf5';
-            banner.style.color = '#065f46';
-            banner.innerHTML = `<i class="fas fa-check-circle"></i> Existing report found for <strong>${formatReadableDate(dateStr)}</strong>. You are editing this report.`;
-        } else {
-            // Fresh report for this date
-            setHours(8.0);
-            document.getElementById('f_project_id').value = '';
-            setRating(5);
-            setSeverity('none');
-            document.getElementById('f_tasks').value = '';
-            document.getElementById('f_inprogress').value = '';
-            document.getElementById('f_challenges').value = '';
-            document.getElementById('f_waiting_on').value = '';
-            document.getElementById('f_links').value = '';
-            document.getElementById('f_plan').value = '';
-
-            document.getElementById('modalTitle').textContent = `Submit Daily Report (${formatReadableDate(dateStr)})`;
-            document.getElementById('dprBtnText').innerHTML = `<i class="fas fa-paper-plane"></i> Submit Report for ${dateStr}`;
-
-            banner.style.background = '#f0f9ff';
-            banner.style.color = '#0369a1';
-            banner.innerHTML = `<i class="fas fa-info-circle"></i> Ready to submit a new Daily Progress Report for <strong>${formatReadableDate(dateStr)}</strong>.`;
-        }
-    })
-    .catch(() => {
-        banner.style.display = 'none';
-    });
 }
 
 // ── View Modal ───────────────────────────────────────────────────────────────
@@ -2134,14 +2166,20 @@ function openDprModal(isEdit = false, customData = null) {
     document.getElementById('dprForm').reset();
     
     const todayStr = '<?= date('Y-m-d') ?>';
+    const todayHuman = '<?= date('l, F j, Y') ?>';
     const dataToUse = customData || (isEdit ? existingTodayReport : null);
 
     if (dataToUse) {
-        document.getElementById('f_report_date').value = dataToUse.report_date;
-        document.getElementById('modalHumanDate').textContent = formatReadableDate(dataToUse.report_date);
-        document.getElementById('modalTitle').textContent = `Edit Daily Progress Report (${formatReadableDate(dataToUse.report_date)})`;
-        document.getElementById('dprBtnText').innerHTML = `<i class="fas fa-save"></i> Update Report for ${dataToUse.report_date}`;
+        const reportDate = dataToUse.report_date || todayStr;
+        const isToday = (reportDate === todayStr);
+        document.getElementById('f_report_date').value = reportDate;
+        document.getElementById('modalHumanDate').textContent = formatReadableDate(reportDate);
+        document.getElementById('modalTitle').textContent = isToday ? "Edit Today's Daily Progress Report" : `Edit Daily Progress Report (${formatReadableDate(reportDate)})`;
+        document.getElementById('dprBtnText').innerHTML = isToday ? '<i class="fas fa-save"></i> Save & Update Today\'s Report' : `<i class="fas fa-save"></i> Save Report for ${reportDate}`;
         
+        const tag = document.getElementById('modalLockedTag');
+        if (tag) tag.innerHTML = isToday ? '<i class="fas fa-edit"></i> Editing Today\'s Report' : `<i class="fas fa-edit"></i> Editing Report`;
+
         setHours(dataToUse.hours_worked || 8.0);
         document.getElementById('f_project_id').value = dataToUse.project_id || '';
         setRating(parseInt(dataToUse.productivity_rating || 5));
@@ -2153,23 +2191,25 @@ function openDprModal(isEdit = false, customData = null) {
         document.getElementById('f_waiting_on').value = dataToUse.waiting_on || '';
         document.getElementById('f_links').value = dataToUse.deliverable_links || '';
         document.getElementById('f_plan').value = dataToUse.plan_tomorrow || '';
-
-        const banner = document.getElementById('dateNoticeBanner');
-        banner.style.display = 'block';
-        banner.style.background = '#ecfdf5';
-        banner.style.color = '#065f46';
-        banner.innerHTML = `<i class="fas fa-check-circle"></i> Editing report for <strong>${formatReadableDate(dataToUse.report_date)}</strong>.`;
     } else {
         document.getElementById('f_report_date').value = todayStr;
-        document.getElementById('modalHumanDate').textContent = '<?= date('l, F j, Y') ?>';
+        document.getElementById('modalHumanDate').textContent = todayHuman;
         document.getElementById('modalTitle').textContent = "Submit Today's Daily Progress Report";
-        document.getElementById('dprBtnText').innerHTML = '<i class="fas fa-paper-plane"></i> Submit Daily Report';
+        document.getElementById('dprBtnText').innerHTML = '<i class="fas fa-paper-plane"></i> Submit Today\'s Report';
+        
+        const tag = document.getElementById('modalLockedTag');
+        if (tag) tag.innerHTML = '<i class="fas fa-lock"></i> Today Only';
 
         setHours(8.0);
         setRating(5);
         setSeverity('none');
         document.getElementById('f_project_id').value = '';
-        document.getElementById('dateNoticeBanner').style.display = 'none';
+        document.getElementById('f_tasks').value = '';
+        document.getElementById('f_inprogress').value = '';
+        document.getElementById('f_challenges').value = '';
+        document.getElementById('f_waiting_on').value = '';
+        document.getElementById('f_links').value = '';
+        document.getElementById('f_plan').value = '';
     }
 
     modal.classList.add('active');

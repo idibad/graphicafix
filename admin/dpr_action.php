@@ -39,21 +39,18 @@ if ($action === 'save_dpr') {
         $blocker_severity = !empty($challenges) ? 'minor' : 'none';
     }
 
-    // Validate date format YYYY-MM-DD
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $report_date)) {
-        $report_date = date('Y-m-d');
-    }
-    
-    // Ensure date cannot be in the future
-    $today = date('Y-m-d');
-    if ($report_date > $today) {
-        $report_date = $today;
-    }
-
-    // Regular users can report for today or past 30 days
+    // Date must strictly default to today. Regular users are strictly locked to today.
     if (!$is_manager) {
-        $min_allowed = date('Y-m-d', strtotime('-30 days'));
-        if ($report_date < $min_allowed) {
+        $report_date = date('Y-m-d');
+    } else {
+        // Validate date format YYYY-MM-DD
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $report_date)) {
+            $report_date = date('Y-m-d');
+        }
+        
+        // Ensure date cannot be in the future
+        $today = date('Y-m-d');
+        if ($report_date > $today) {
             $report_date = $today;
         }
     }
