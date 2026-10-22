@@ -8,6 +8,8 @@
 ob_start();
 session_start();
 require_once __DIR__ . '/../core/config.php';
+require_once __DIR__ . '/../core/dpr_schema.php';
+ensure_dpr_schema($conn);
 
 // Auth check
 if (!isset($_SESSION['user_id'])) {

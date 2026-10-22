@@ -3,24 +3,9 @@ include 'dashboard_header.php';
 
 $is_manager = in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'manager']);
 
-// Safety fallback table creation & verification with all detailed columns
-$conn->query("CREATE TABLE IF NOT EXISTS daily_progress_reports (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    report_date DATE NOT NULL,
-    hours_worked DECIMAL(4,1) DEFAULT 8.0,
-    project_id INT NULL,
-    tasks_completed TEXT NOT NULL,
-    tasks_in_progress TEXT NULL,
-    challenges TEXT,
-    blocker_severity VARCHAR(20) DEFAULT 'none',
-    waiting_on VARCHAR(255) NULL,
-    plan_tomorrow TEXT,
-    deliverable_links TEXT NULL,
-    productivity_rating TINYINT DEFAULT 5,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY (user_id, report_date)
-)");
+// Safety fallback table creation & automated schema migration for missing columns
+require_once __DIR__ . '/../core/dpr_schema.php';
+ensure_dpr_schema($conn);
 
 // Fetch internal team members for filter dropdown (exclude students and clients)
 $users = [];

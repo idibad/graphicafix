@@ -2,6 +2,8 @@
 ob_start();
 session_start();
 require_once __DIR__ . '/../core/config.php';
+require_once __DIR__ . '/../core/dpr_schema.php';
+ensure_dpr_schema($conn);
 ob_clean();
 header('Content-Type: application/json');
 
