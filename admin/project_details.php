@@ -497,50 +497,119 @@ foreach ($all_project_tasks as $tk) {
         </div>
     </div>
 
-    <!-- Clean Navigation Tabs (No Emojis, No Extra Pills) -->
-    <ul class="nav nav-tabs" style="border-bottom: 2px solid #e2e8f0; margin-bottom: 24px; background: transparent; padding: 0; display:flex; flex-wrap:wrap; gap:4px;">
-        <li class="nav-item">
-            <a class="nav-link <?= $active_tab === 'overview' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=overview" style="color: <?= $active_tab === 'overview' ? '#024442' : '#64748b' ?>; font-weight: 600; border: none; border-bottom: <?= $active_tab === 'overview' ? '3px solid #024442' : 'none' ?>; background: transparent; padding: 10px 18px;">
-                <i class="fas fa-chart-pie"></i> Overview & KPIs
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link <?= $active_tab === 'deliverables' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=deliverables" style="color: <?= $active_tab === 'deliverables' ? '#024442' : '#64748b' ?>; font-weight: 600; border: none; border-bottom: <?= $active_tab === 'deliverables' ? '3px solid #024442' : 'none' ?>; background: transparent; padding: 10px 18px;">
-                <i class="fas fa-box-open"></i> Milestones & Deliverables
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link <?= $active_tab === 'tasks' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=tasks" style="color: <?= $active_tab === 'tasks' ? '#024442' : '#64748b' ?>; font-weight: 600; border: none; border-bottom: <?= $active_tab === 'tasks' ? '3px solid #024442' : 'none' ?>; background: transparent; padding: 10px 18px;">
-                <i class="fas fa-tasks"></i> Tasks (<?= count($all_project_tasks) ?>)
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link <?= $active_tab === 'client-requests' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=client-requests" style="color: <?= $active_tab === 'client-requests' ? '#024442' : '#64748b' ?>; font-weight: 600; border: none; border-bottom: <?= $active_tab === 'client-requests' ? '3px solid #024442' : 'none' ?>; background: transparent; padding: 10px 18px;">
-                <i class="fas fa-clipboard-list"></i> Pending from Client
-                <?php if ($kpis['pending_client_requests'] > 0): ?>
-                    <span class="badge bg-danger ms-1"><?= $kpis['pending_client_requests'] ?></span>
-                <?php endif; ?>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link <?= $active_tab === 'client-queries' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=client-queries" style="color: <?= $active_tab === 'client-queries' ? '#024442' : '#64748b' ?>; font-weight: 600; border: none; border-bottom: <?= $active_tab === 'client-queries' ? '3px solid #024442' : 'none' ?>; background: transparent; padding: 10px 18px;">
-                <i class="fas fa-question-circle"></i> Client Queries
-                <?php if ($kpis['open_client_queries'] > 0): ?>
-                    <span class="badge bg-secondary ms-1"><?= $kpis['open_client_queries'] ?></span>
-                <?php endif; ?>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link <?= $active_tab === 'updates' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=updates" style="color: <?= $active_tab === 'updates' ? '#024442' : '#64748b' ?>; font-weight: 600; border: none; border-bottom: <?= $active_tab === 'updates' ? '3px solid #024442' : 'none' ?>; background: transparent; padding: 10px 18px;">
-                <i class="fas fa-bullhorn"></i> Updates & Discussion
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link <?= $active_tab === 'invoices' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=invoices" style="color: <?= $active_tab === 'invoices' ? '#024442' : '#64748b' ?>; font-weight: 600; border: none; border-bottom: <?= $active_tab === 'invoices' ? '3px solid #024442' : 'none' ?>; background: transparent; padding: 10px 18px;">
-                <i class="fas fa-file-invoice-dollar"></i> Invoices & Files
-            </a>
-        </li>
-    </ul>
+    <style>
+        .pm-nav-tabs-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            border-bottom: 2px solid #e2e8f0;
+            margin-bottom: 24px;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
+        .pm-nav-tabs-wrapper::-webkit-scrollbar {
+            height: 4px;
+        }
+        .pm-nav-tabs-wrapper::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .pm-nav-tabs-wrapper::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .pm-nav-tabs {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            white-space: nowrap !important;
+            border-bottom: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            gap: 2px;
+            list-style: none;
+        }
+        .pm-nav-tabs .nav-item {
+            flex-shrink: 0 !important;
+            display: inline-block !important;
+        }
+        .pm-nav-tabs .nav-link {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            white-space: nowrap !important;
+            padding: 12px 18px !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            border: none !important;
+            border-bottom: 3px solid transparent !important;
+            background: transparent !important;
+            color: #64748b !important;
+            margin-bottom: -2px;
+            text-decoration: none;
+            transition: color 0.15s ease, border-color 0.15s ease;
+        }
+        .pm-nav-tabs .nav-link:hover {
+            color: #024442 !important;
+        }
+        .pm-nav-tabs .nav-link.active {
+            color: #024442 !important;
+            border-bottom-color: #024442 !important;
+            background: transparent !important;
+        }
+        .pm-nav-tabs .badge {
+            font-size: 11px;
+            padding: 3px 7px;
+            border-radius: 10px;
+        }
+    </style>
+
+    <!-- Clean Navigation Tabs (Horizontally Arranged Inline) -->
+    <div class="pm-nav-tabs-wrapper">
+        <ul class="nav nav-tabs pm-nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link <?= $active_tab === 'overview' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=overview">
+                    <i class="fas fa-chart-pie"></i> Overview & KPIs
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?= $active_tab === 'deliverables' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=deliverables">
+                    <i class="fas fa-box-open"></i> Milestones & Deliverables
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?= $active_tab === 'tasks' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=tasks">
+                    <i class="fas fa-tasks"></i> Tasks (<?= count($all_project_tasks) ?>)
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?= $active_tab === 'client-requests' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=client-requests">
+                    <i class="fas fa-clipboard-list"></i> Pending from Client
+                    <?php if ($kpis['pending_client_requests'] > 0): ?>
+                        <span class="badge bg-danger ms-1"><?= $kpis['pending_client_requests'] ?></span>
+                    <?php endif; ?>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?= $active_tab === 'client-queries' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=client-queries">
+                    <i class="fas fa-question-circle"></i> Client Queries
+                    <?php if ($kpis['open_client_queries'] > 0): ?>
+                        <span class="badge bg-secondary ms-1"><?= $kpis['open_client_queries'] ?></span>
+                    <?php endif; ?>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?= $active_tab === 'updates' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=updates">
+                    <i class="fas fa-bullhorn"></i> Updates & Discussion
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?= $active_tab === 'invoices' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=invoices">
+                    <i class="fas fa-file-invoice-dollar"></i> Invoices & Files
+                </a>
+            </li>
+        </ul>
+    </div>
 
     <!-- ======================================================================= -->
     <!-- TAB 1: OVERVIEW & KPIS                                                  -->
