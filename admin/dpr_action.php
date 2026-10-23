@@ -100,6 +100,10 @@ if ($action === 'save_dpr') {
         
         if ($update_stmt->execute()) {
             $updated_id = $result->fetch_assoc()['id'] ?? 0;
+            if ($blocker_severity === 'critical') {
+                require_once __DIR__ . '/../core/notification_mailer.php';
+                notifyCriticalDPRBlocker($conn, $updated_id, $user_id, $project_id, $challenges, $waiting_on);
+            }
             echo json_encode([
                 'success' => true, 
                 'message' => 'Daily Progress Report for ' . date('M j, Y', strtotime($report_date)) . ' updated successfully!',
@@ -131,6 +135,10 @@ if ($action === 'save_dpr') {
         
         if ($insert_stmt->execute()) {
             $new_id = $insert_stmt->insert_id;
+            if ($blocker_severity === 'critical') {
+                require_once __DIR__ . '/../core/notification_mailer.php';
+                notifyCriticalDPRBlocker($conn, $new_id, $user_id, $project_id, $challenges, $waiting_on);
+            }
             echo json_encode([
                 'success' => true, 
                 'message' => 'Daily Progress Report for ' . date('M j, Y', strtotime($report_date)) . ' submitted successfully!',

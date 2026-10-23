@@ -65,6 +65,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->query("INSERT INTO project_team (project_id, user_id) VALUES ($project_id, $uid)");
     }
 
+    if (!empty($team_members)) {
+        require_once __DIR__ . '/../core/notification_mailer.php';
+        notifyProjectTeamAssigned($conn, $project_id, $team_members);
+    }
+
     // Upload gallery images
     if (!empty($_FILES['gallery']['tmp_name'])) {
         foreach ($_FILES['gallery']['tmp_name'] as $key => $tmp) {

@@ -111,6 +111,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['client_deliverable_ac
         $stmt_app->execute();
         $stmt_app->close();
 
+        // Notify agency team of formal client sign-off
+        require_once __DIR__ . '/../core/notification_mailer.php';
+        notifyDeliverableApproved($conn, $project_id, $deliverable_id, $user_id);
+
         echo "<script>alert('Deliverable approved successfully!'); window.location='client_project_details.php?id={$project_id}&tab=deliverables';</script>";
         exit;
     } elseif ($decision === 'request_revision') {

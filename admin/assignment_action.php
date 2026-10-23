@@ -30,8 +30,13 @@ if ($action === 'create') {
 
     $stmt = $conn->prepare("INSERT INTO assignments (course_id, teacher_id, title, description, due_date) VALUES (?, ?, ?, ?, ?)");
     $stmt->bind_param("iisss", $course_id, $user_id, $title, $description, $due_date);
-    if ($stmt->execute()) echo json_encode(['success' => true]);
-    else echo json_encode(['success' => false, 'message' => 'Insert failed']);
+    if ($stmt->execute()) {
+        require_once __DIR__ . '/../core/notification_mailer.php';
+        notifyCourseAssignmentPublished($conn, $course_id, $title, $due_date, $description);
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Insert failed']);
+    }
     exit;
 }
 
@@ -67,8 +72,13 @@ if ($action === 'grade') {
 
     $stmt = $conn->prepare("UPDATE assignment_submissions SET grade = ?, feedback = ? WHERE id = ?");
     $stmt->bind_param("ssi", $grade, $feedback, $sub_id);
-    if ($stmt->execute()) echo json_encode(['success' => true]);
-    else echo json_encode(['success' => false, 'message' => 'Grade update failed']);
+    if ($stmt->execute()) {
+        require_once __DIR__ . '/../core/notification_mailer.php';
+        notifyAssignmentGraded($conn, $sub_id, $grade, $feedback);
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Grade update failed']);
+    }
     exit;
 }
 

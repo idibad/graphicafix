@@ -45,6 +45,11 @@ if (isset($_POST['id'], $_POST['status'])) {
     $stmt->bind_param("si", $status, $task_id);
 
     if ($stmt->execute()) {
+        if (in_array($status, ['In Review', 'Completed'])) {
+            require_once __DIR__ . '/../core/notification_mailer.php';
+            notifyTaskStatusChanged($conn, $task_id, $status, $user_id);
+        }
+
         echo json_encode([
             'success' => true,
             'message' => "Updated task status to {$status}",

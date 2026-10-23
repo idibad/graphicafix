@@ -211,6 +211,10 @@ if (!$stmt->execute()) {
 }
 $stmt->close();
 
+// Send confirmation to client and alert to management
+require_once __DIR__ . '/../core/notification_mailer.php';
+notifyInboundProjectLead($conn, $name, $email, $phone, $projectType, $budget, $full_description);
+
 // ── Log for rate limiting (only if table exists) ──────────────────────────────
 if ($table_check > 0) {
     $lstmt = $conn->prepare("INSERT INTO form_submissions_log (ip_hash, form_name) VALUES (?, 'project_request')");

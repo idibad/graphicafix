@@ -48,11 +48,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute();
             $msg = 'Task updated successfully!';
             $redirect_id = $edit_id;
+
+            // Notify if assigned to a new user
+            if ($assigned_to && $assigned_to != ($task['assigned_to'] ?? 0)) {
+                require_once __DIR__ . '/../core/notification_mailer.php';
+                notifyTaskAssigned($conn, $edit_id);
+            }
         } else {
             $stmt = $conn->prepare("INSERT INTO tasks (title, description, priority, status, due_date, assigned_to, created_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,NOW(),NOW())");
             $stmt->bind_param("sssssii", $title, $description, $priority, $status, $due_date, $assigned_to, $user_id);
             $stmt->execute();
+            $new_task_id = $conn->insert_id;
             $msg = 'Task created successfully!';
+
+            // Notify the assigned user
+            if ($assigned_to) {
+                require_once __DIR__ . '/../core/notification_mailer.php';
+                notifyTaskAssigned($conn, $new_task_id);
+            }
         }
         echo "<script>alert('$msg'); window.location='tasks.php';</script>";
         exit;

@@ -49,6 +49,13 @@ if (isset($_POST['add_user'])) {
             
             if ($insert->execute()) {
                 $success = "Client User Added Successfully!";
+
+                if (!empty($sub_email)) {
+                    require_once __DIR__ . '/../core/notification_mailer.php';
+                    $c_info = $conn->query("SELECT company, client_name FROM clients WHERE id = {$client_id}")->fetch_assoc();
+                    $co_name = $c_info['company'] ?? ($c_info['client_name'] ?? '');
+                    notifyClientUserWelcome($sub_email, $sub_name, $sub_username, $sub_password, $co_name);
+                }
             } else {
                 $error = "Error adding user: " . $conn->error;
             }

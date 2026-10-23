@@ -10,6 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_query'])) {
     $stmt = $conn->prepare("UPDATE course_queries SET answer_text = ?, status = 'answered' WHERE id = ?");
     $stmt->bind_param("si", $answer, $qid);
     $stmt->execute();
+    require_once __DIR__ . '/../core/notification_mailer.php';
+    notifyStudentQueryAnswered($conn, $qid, $answer, $user_id);
     header("Location: student_queries.php?replied=1"); exit;
 }
 

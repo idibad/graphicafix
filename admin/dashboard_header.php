@@ -202,7 +202,7 @@ $menus = [
             'submenus' => [
                 ['title' => 'Manage Blogs',     'link' => 'manage_blogs.php',        'icon' => 'fas fa-newspaper'],
                 ['title' => 'Create Blog',      'link' => 'create_blog.php',         'icon' => 'fas fa-plus-circle'],
-                ['title' => 'Newsletter',       'link' => 'newsletter.php',          'icon' => 'fas fa-envelope-open-text'],
+                ['title' => 'Newsletter & Announcements', 'link' => 'newsletter.php', 'icon' => 'fas fa-bullhorn'],
                 ['title' => 'Correspondence',   'link' => 'correspondence.php',      'icon' => 'fas fa-envelope'],
             ]
         ],
@@ -306,7 +306,7 @@ $menus = [
             'icon'  => 'fas fa-comments',
             'submenus' => [
                 ['title' => 'Internal Messages', 'link' => 'messages.php',           'icon' => 'fas fa-envelope'],
-                ['title' => 'Newsletter Broadcast', 'link' => 'newsletter.php',      'icon' => 'fas fa-paper-plane'],
+                ['title' => 'Newsletter & Announcements', 'link' => 'newsletter.php', 'icon' => 'fas fa-bullhorn'],
                 ['title' => 'Supplies & Inventory', 'link' => 'manage_resources.php', 'icon' => 'fas fa-boxes'],
             ]
         ],
@@ -608,7 +608,7 @@ $menus = [
             'submenus' => [
                 ['title' => 'Manage Blogs',     'link' => 'manage_blogs.php',        'icon' => 'fas fa-newspaper'],
                 ['title' => 'Create Blog',      'link' => 'create_blog.php',         'icon' => 'fas fa-plus-circle'],
-                ['title' => 'Newsletter',       'link' => 'newsletter.php',          'icon' => 'fas fa-envelope-open-text'],
+                ['title' => 'Newsletter & Announcements', 'link' => 'newsletter.php', 'icon' => 'fas fa-bullhorn'],
                 ['title' => 'Correspondence',   'link' => 'correspondence.php',      'icon' => 'fas fa-envelope'],
             ]
         ],

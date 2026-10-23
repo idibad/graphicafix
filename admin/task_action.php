@@ -40,6 +40,12 @@ if ($action === 'update_status') {
     $stmt = $conn->prepare("UPDATE tasks SET status=?, updated_at=NOW() WHERE id=?");
     $stmt->bind_param("si", $new_status, $task_id);
     $stmt->execute();
+
+    if (in_array($new_status, ['In Review', 'Completed'])) {
+        require_once __DIR__ . '/../core/notification_mailer.php';
+        notifyTaskStatusChanged($conn, $task_id, $new_status, $user_id);
+    }
+
     echo json_encode(['success' => true, 'message' => 'Status updated']);
 
 } elseif ($action === 'delete_task') {

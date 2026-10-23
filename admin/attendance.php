@@ -115,6 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($upd_stmt->execute()) {
                     $_SESSION['toast_msg']  = 'Attendance override updated successfully!';
                     $_SESSION['toast_type'] = 'success';
+                    require_once __DIR__ . '/../core/notification_mailer.php';
+                    notifyAttendanceApproved($conn, $target_user_id, $attendance_date, $attendance_type, $reason, $approved_by);
                 } else {
                     $_SESSION['toast_msg']  = 'Failed to update attendance override.';
                     $_SESSION['toast_type'] = 'error';
@@ -126,6 +128,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($ins_stmt->execute()) {
                     $_SESSION['toast_msg']  = 'Attendance override added successfully!';
                     $_SESSION['toast_type'] = 'success';
+                    require_once __DIR__ . '/../core/notification_mailer.php';
+                    notifyAttendanceApproved($conn, $target_user_id, $attendance_date, $attendance_type, $reason, $approved_by);
                 } else {
                     $_SESSION['toast_msg']  = 'Failed to add attendance override.';
                     $_SESSION['toast_type'] = 'error';

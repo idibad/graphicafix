@@ -32,24 +32,31 @@ if ($check_col && $check_col->num_rows == 0) {
     $conn->query("ALTER TABLE newsletter_broadcasts ADD COLUMN target_audience VARCHAR(50) DEFAULT 'Subscribers' AFTER recipient_count");
 }
 
+$check_cat = $conn->query("SHOW COLUMNS FROM newsletter_broadcasts LIKE 'category'");
+if ($check_cat && $check_cat->num_rows == 0) {
+    $conn->query("ALTER TABLE newsletter_broadcasts ADD COLUMN category VARCHAR(100) DEFAULT 'General Announcement' AFTER subject");
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  EMAIL WRAPPER HELPER
 // ══════════════════════════════════════════════════════════════════════════════
-function buildBroadcastEmail($heading, $body_html) {
-    $siteUrl = 'https://graphicafix.com';
+function buildBroadcastEmail($heading, $body_html, $category = 'Announcement') {
+    $siteUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'https://graphicafix.com';
+    $logoUrl = $siteUrl . '/assets/images/logo.png';
     return "<!DOCTYPE html><html><head><meta charset='utf-8'></head>
-    <body style='margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;'>
-    <div style='max-width:580px;margin:36px auto;'>
-        <div style='background:#024442;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;'>
-            <div style='margin-bottom:8px;'><img src='$siteUrl/images/logo.png' alt='Logo' style='max-height:60px;'></div>
-            <h1 style='margin:0;color:#fff;font-size:1.45rem;font-weight:700;'>$heading</h1>
+    <body style='margin:0;padding:0;background:#f4f6f8;font-family:-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif;'>
+    <div style='max-width:600px;margin:36px auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 6px 20px rgba(0,0,0,0.06);'>
+        <div style='background:#024442;padding:32px 36px;text-align:center;'>
+            <div style='margin-bottom:10px;'><img src='{$logoUrl}' alt='Graphicafix' style='max-height:48px;'></div>
+            <div style='display:inline-block;background:rgba(255,255,255,0.15);color:#fff;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:3px 12px;border-radius:12px;margin-bottom:10px;'>".htmlspecialchars($category)."</div>
+            <h1 style='margin:0;color:#fff;font-size:20px;font-weight:700;'>".htmlspecialchars($heading)."</h1>
         </div>
-        <div style='background:#fff;padding:32px 40px; font-size:15px; color:#333; line-height:1.7;'>
+        <div style='padding:36px 36px 28px 36px; font-size:15px; color:#334155; line-height:1.7;'>
             $body_html
         </div>
-        <div style='background:#f7f9f5;border-radius:0 0 16px 16px;padding:14px 40px;text-align:center;border-top:1px solid #e0e0e0;'>
-            <p style='margin:0;font-size:11.5px;color:#aaa;'>You are receiving this because you subscribed to Graphicafix.</p>
-            <p style='margin:6px 0 0 0;font-size:11.5px;'><a href='$siteUrl' style='color:#024442;'>$siteUrl</a></p>
+        <div style='background:#f8fafc;padding:18px 36px;text-align:center;border-top:1px solid #e2e8f0;'>
+            <p style='margin:0;font-size:12px;color:#64748b;font-weight:600;'>Graphicafix Announcements &amp; Newsletter</p>
+            <p style='margin:4px 0 0 0;font-size:11.5px;color:#94a3b8;'><a href='$siteUrl' style='color:#024442;text-decoration:none;'>$siteUrl</a></p>
         </div>
     </div></body></html>";
 }
@@ -59,6 +66,7 @@ function buildBroadcastEmail($heading, $body_html) {
 // ══════════════════════════════════════════════════════════════════════════════
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_broadcast'])) {
     $subject = trim($_POST['subject'] ?? '');
+    $category = trim($_POST['category'] ?? 'General Announcement');
     $message = trim($_POST['message_body'] ?? '');
     $target_audience = trim($_POST['target_audience'] ?? 'Subscribers');
 
@@ -73,6 +81,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_broadcast'])) {
         if ($subs) { while ($r = $subs->fetch_assoc()) $emails[] = $r['email']; }
     } elseif ($target_audience === 'All Users') {
         $subs = $conn->query("SELECT email FROM users WHERE email IS NOT NULL AND email != ''");
+        if ($subs) { while ($r = $subs->fetch_assoc()) $emails[] = $r['email']; }
+    } elseif ($target_audience === 'All Clients') {
+        $subs = $conn->query("SELECT email FROM clients WHERE email IS NOT NULL AND email != '' UNION SELECT email FROM users WHERE role IN ('client', 'client_sub') AND email IS NOT NULL AND email != ''");
+        if ($subs) { while ($r = $subs->fetch_assoc()) $emails[] = $r['email']; }
+    } elseif ($target_audience === 'Staff & Team') {
+        $subs = $conn->query("SELECT email FROM users WHERE role IN ('super_admin', 'superadmin', 'admin', 'pm', 'user', 'hrm', 'sales', 'manager') AND email IS NOT NULL AND email != ''");
         if ($subs) { while ($r = $subs->fetch_assoc()) $emails[] = $r['email']; }
     } else {
         $role_prefix = 'Role: ';
@@ -92,21 +106,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_broadcast'])) {
     
     if (count($emails) > 0) {
         $sent_count = 0;
-        $html_content = buildBroadcastEmail($subject, $message);
+        $html_content = buildBroadcastEmail($subject, $message, $category);
         
         $headers = "MIME-Version: 1.0\r\n";
         $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-        $headers .= "From: Graphicafix <noreply@graphicafix.com>\r\n";
+        $headers .= "From: Graphicafix Announcements <noreply@graphicafix.com>\r\n";
         $headers .= "Reply-To: info@graphicafix.com\r\n";
 
         foreach ($emails as $email_addr) {
-            mail($email_addr, $subject, $html_content, $headers);
+            @mail($email_addr, $subject, $html_content, $headers);
             $sent_count++;
         }
 
         // Store History in DB
-        $stmt = $conn->prepare("INSERT INTO newsletter_broadcasts (admin_id, admin_name, subject, body_content, recipient_count, target_audience) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("isssis", $admin_id, $admin_name, $subject, $message, $sent_count, $target_audience);
+        $stmt = $conn->prepare("INSERT INTO newsletter_broadcasts (admin_id, admin_name, subject, category, body_content, recipient_count, target_audience) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("issssis", $admin_id, $admin_name, $subject, $category, $message, $sent_count, $target_audience);
         $stmt->execute();
 
         header("Location: newsletter.php?tab=broadcasts&success=sent");
@@ -181,7 +195,7 @@ function timeAgo($d) {
         <div style="display:flex;border-bottom:2px solid #f0f0f0;padding:0 24px;overflow-x:auto;">
             <?php
             $tabs = [
-                'broadcasts'  => ['<i class="fas fa-bullhorn"></i>', 'Broadcast History', $total_broadcasts],
+                'broadcasts'  => ['<i class="fas fa-bullhorn"></i>', 'Announcements & Broadcasts', $total_broadcasts],
                 'subscribers' => ['<i class="fas fa-users"></i>', 'Subscribers List', $total_subs],
             ];
             foreach ($tabs as $tk => $td): $a = ($tab === $tk); ?>
@@ -195,12 +209,13 @@ function timeAgo($d) {
 
         <?php if ($tab === 'broadcasts'): ?>
         <div class="main-header" style="margin-top:4px;">
-            <h3><i class="fas fa-bullhorn"></i> Broadcast History</h3>
-            <button class="add-client" onclick="openBroadcastModal()">+ New Broadcast</button>
+            <h3><i class="fas fa-bullhorn"></i> Announcement & Broadcast History</h3>
+            <button class="add-client" onclick="openBroadcastModal()">+ New Announcement</button>
         </div>
         <div class="main-table">
-            <div class="table-head" style="grid-template-columns: 2.5fr 1fr 1fr 1fr 0.5fr;">
+            <div class="table-head" style="grid-template-columns: 2.2fr 1.2fr 1fr 1fr 1fr 0.5fr;">
                 <span>Subject / Content</span>
+                <span>Category</span>
                 <span>Sent By</span>
                 <span>Audience / Recipients</span>
                 <span>Date Sent</span>
@@ -214,11 +229,16 @@ function timeAgo($d) {
                     $preview = strip_tags($b['body_content']);
                     $preview = strlen($preview) > 60 ? substr($preview, 0, 60) . '...' : $preview;
             ?>
-            <div class="table-row" style="grid-template-columns: 2.5fr 1fr 1fr 1fr 0.5fr;">
+            <div class="table-row" style="grid-template-columns: 2.2fr 1.2fr 1fr 1fr 1fr 0.5fr;">
                 <div style="display:flex; flex-direction:column; overflow:hidden;">
                     <strong style="font-size:14px; color:#333; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($b['subject']) ?></strong>
                     <small style="color:#888; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($preview) ?></small>
                 </div>
+                <span data-label="Category">
+                    <span style="background:#f1f5f9; color:#334155; padding:3px 10px; border-radius:12px; font-size:11.5px; font-weight:700; border:1px solid #cbd5e1;">
+                        <?= htmlspecialchars($b['category'] ?? 'General') ?>
+                    </span>
+                </span>
                 <span data-label="Sent By" style="font-size:13px; font-weight:600; color:var(--primary);">
                     <?= htmlspecialchars($b['admin_name']) ?>
                 </span>
@@ -235,7 +255,7 @@ function timeAgo($d) {
                 <div style="display:flex; gap:6px;">
                     <div id="html_content_<?= $b['id'] ?>" style="display:none;"><?= htmlspecialchars($b['body_content']) ?></div>
                     <button class="dots" title="View Broadcast" onclick="openViewModal('<?= htmlspecialchars(addslashes($b['subject'])) ?>', <?= $b['id'] ?>, '<?= htmlspecialchars(addslashes($b['admin_name'])) ?>', <?= $b['recipient_count'] ?>, '<?= date('M j, Y g:i A', strtotime($b['sent_at'])) ?>')">
-                        <i class="fas fa-eye"></i>️
+                        <i class="fas fa-eye"></i>
                     </button>
                 </div>
             </div>
@@ -304,32 +324,42 @@ function timeAgo($d) {
                         <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:6px;">Target Audience <span style="color:#ef4444;">*</span></label>
                         <select name="target_audience" id="bAudience" required style="width:100%;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;background:#f9fbfc;outline:none;font-family:inherit;">
                             <option value="Subscribers">Newsletter Subscribers</option>
+                            <option value="All Clients">All Registered Clients</option>
+                            <option value="Staff & Team">Agency Staff & Delivery Team</option>
+                            <option value="Role: student">Enrolled Students Only</option>
+                            <option value="Role: teacher">Course Instructors Only</option>
                             <option value="All Users">All Registered Users</option>
-                            <option value="Role: admin">Role: Admin</option>
-                            <option value="Role: user">Role: User (Staff)</option>
-                            <option value="Role: hrm">Role: HRM</option>
-                            <option value="Role: student">Role: Student</option>
-                            <option value="Role: teacher">Role: Teacher</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:6px;">Email Subject <span style="color:#ef4444;">*</span></label>
-                        <input type="text" name="subject" id="bSubject" required placeholder="e.g. New Masterclass Available!"
+                        <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:6px;">Announcement Category <span style="color:#ef4444;">*</span></label>
+                        <select name="category" id="bCategory" required style="width:100%;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;background:#f9fbfc;outline:none;font-family:inherit;">
+                            <option value="General Announcement">General Announcement</option>
+                            <option value="Company & Agency Update">Company & Agency Update</option>
+                            <option value="Service & Feature Launch">Service & Feature Launch</option>
+                            <option value="Operational & Holiday Notice">Operational & Holiday Notice</option>
+                            <option value="Monthly Newsletter">Monthly Newsletter</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:6px;">Announcement Subject <span style="color:#ef4444;">*</span></label>
+                        <input type="text" name="subject" id="bSubject" required placeholder="e.g. Schedule Update / New Feature Release"
                                style="width:100%;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;background:#f9fbfc;outline:none;font-family:inherit;">
                     </div>
 
                     <div class="form-group">
-                        <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:6px;">Message Content <span style="color:#ef4444;">*</span></label>
+                        <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:6px;">Announcement Content <span style="color:#ef4444;">*</span></label>
                         <div id="emailEditor" style="height: 250px;"></div>
                         <input type="hidden" name="message_body" id="message_body">
                     </div>
 
                     <div style="background:#fff4e5; padding:12px 16px; border-radius:10px; border:1px solid #fed7aa; display:flex; gap:10px; align-items:flex-start;">
-                        <span style="font-size:18px;"><i class="fas fa-exclamation-triangle"></i>️</span>
+                        <span style="font-size:16px; color:#c2410c;"><i class="fas fa-exclamation-triangle"></i></span>
                         <div>
-                            <strong style="font-size:13px; color:#9a3412; display:block; margin-bottom:2px;">Warning: Bulk Action</strong>
-                            <span style="font-size:12px; color:#c2410c;">Clicking send will instantly deliver this email to all users in the selected target group. This action cannot be undone.</span>
+                            <strong style="font-size:13px; color:#9a3412; display:block; margin-bottom:2px;">Targeted Email Dispatch</strong>
+                            <span style="font-size:12px; color:#c2410c;">Emails will be delivered strictly to members in the selected target group.</span>
                         </div>
                     </div>
 
@@ -337,7 +367,7 @@ function timeAgo($d) {
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary-custom" onclick="closeBroadcastModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary-custom" id="bSubmit"><i class="fas fa-rocket"></i> Send Broadcast</button>
+                <button type="submit" class="btn btn-primary-custom" id="bSubmit"><i class="fas fa-paper-plane"></i> Send Announcement</button>
             </div>
         </form>
     </div>
@@ -346,7 +376,7 @@ function timeAgo($d) {
 <div id="viewModal" class="modal-overlay" onclick="if(event.target===this)closeViewModal()">
     <div class="modal-content" style="max-width:650px;">
         <div class="modal-header">
-            <h4><div class="modal-header-icon"><i class="fas fa-eye"></i>️</div> View Broadcast</h4>
+            <h4><div class="modal-header-icon"><i class="fas fa-eye"></i></div> View Broadcast</h4>
             <button type="button" class="modal-close" onclick="closeViewModal()">×</button>
         </div>
         <div class="modal-body">
