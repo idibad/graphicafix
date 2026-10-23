@@ -8,9 +8,20 @@ if (!function_exists('logLogin') && file_exists(__DIR__ . '/../core/functions.ph
 $login_input = '';
 $error_message = '';
 
+if (isset($_GET['expired']) && $_GET['expired'] == '1') {
+    $error_message = 'Your session has expired due to inactivity. Please sign in again.';
+}
+
+// Redirect if already logged in (unless displaying an expired notice)
+if (!empty($_SESSION['user_id']) && empty($_GET['expired'])) {
+    header("Location: index.php");
+    exit();
+}
+
 if (isset($_POST['login'])) {
     $login_input = trim($_POST['login_input']);
     $password = trim($_POST['password']);
+    $remember_me = !empty($_POST['remember_me']);
 
     if (strlen($password) < 4) {
         $error_message = 'Please enter your account password.';
@@ -46,6 +57,14 @@ if (isset($_POST['login'])) {
                         $_SESSION['user_id'] = $user_id;
                         $_SESSION['username'] = $username;
                         $_SESSION['role'] = $role_lower;
+
+                        if ($remember_me && function_exists('createRememberToken')) {
+                            createRememberToken($conn, $user_id);
+                            $_SESSION['remember_me'] = true;
+                        } else if (function_exists('clearRememberToken')) {
+                            clearRememberToken($conn);
+                            unset($_SESSION['remember_me']);
+                        }
 
                         $updateStmt = $conn->prepare("UPDATE users SET last_login = NOW() WHERE user_id = ?");
                         $updateStmt->bind_param("i", $user_id);
@@ -276,7 +295,13 @@ if (isset($_POST['login'])) {
                         </div>
                     </div>
                 
-                    <div class="text-end">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="form-check m-0">
+                            <input class="form-check-input" type="checkbox" name="remember_me" id="portal_remember_me" value="1" style="cursor: pointer; accent-color: #024442;">
+                            <label class="form-check-label" for="portal_remember_me" style="font-size: 13.5px; font-weight: 600; color: #475569; cursor: pointer; user-select: none;">
+                                Remember me
+                            </label>
+                        </div>
                         <a href="<?= MAIN_SITE_URL ?>forgot_password.php" style="font-size: 13.5px; color: var(--primary-color); text-decoration: none; font-weight: 600;">Forgot Password?</a>
                     </div>
                 

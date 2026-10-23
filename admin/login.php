@@ -10,12 +10,26 @@ $error_message = '';
 $reset_success = '';
 $reset_error = '';
 
+// Check session expired or deactivated notice
+if (isset($_GET['expired']) && $_GET['expired'] == '1') {
+    $error_message = 'Your session has expired due to inactivity. Please sign in again.';
+} elseif (isset($_GET['error']) && $_GET['error'] === 'deactivated') {
+    $error_message = 'Your account has been deactivated. Please contact support.';
+}
+
+// Redirect if already logged in (unless displaying an expired notice)
+if (!empty($_SESSION['user_id']) && empty($_GET['expired'])) {
+    header("Location: index.php");
+    exit();
+}
+
 // ==============================================================================
 // 1. LOGIN LOGIC
 // ==============================================================================
 if (isset($_POST['login'])) {
     $login_input = trim($_POST['login_input']);
     $password = trim($_POST['password']);
+    $remember_me = !empty($_POST['remember_me']);
 
     if (strlen($password) < 8) {
         $error_message = 'Password must be at least 8 characters long.';
@@ -45,6 +59,14 @@ if (isset($_POST['login'])) {
 
                     $_SESSION['user_id'] = $user_id;
                     $_SESSION['username'] = $username;
+
+                    if ($remember_me && function_exists('createRememberToken')) {
+                        createRememberToken($conn, $user_id);
+                        $_SESSION['remember_me'] = true;
+                    } else if (function_exists('clearRememberToken')) {
+                        clearRememberToken($conn);
+                        unset($_SESSION['remember_me']);
+                    }
 
                     $updateStmt = $conn->prepare("UPDATE users SET last_login = NOW() WHERE user_id = ?");
                     $updateStmt->bind_param("i", $user_id);
@@ -97,9 +119,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_reset'])) {
             $insert = $conn->prepare("INSERT INTO password_resets (email, token) VALUES (?, ?)");
             $insert->bind_param("ss", $reset_email, $token);
             $insert->execute();
-
-            $resetLink = "https://graphicafix.com/reset_password.php?token=" . $token;
             
+            $resetLink = "https://graphicafix.com/reset_password.php?token=" . $token;
+
             $html_content = "<!DOCTYPE html><html><head><meta charset='utf-8'></head>
             <body style='margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;'>
             <div style='max-width:580px;margin:36px auto;'>
@@ -176,7 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_reset'])) {
     .modern-input.error { border-color: #ef4444; background: #fef2f2; }
     .modern-input.error:focus { border-color: #ef4444; box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1); }
     
-    .password-wrapper { position: relative; display: block; width: 100%; margin-bottom: 24px; }
+    .password-wrapper { position: relative; display: block; width: 100%; margin-bottom: 20px; }
     .password-wrapper .modern-input { margin-bottom: 0; padding-right: 50px; }
     
     .toggle-password-btn {
@@ -286,6 +308,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_reset'])) {
                             <button type="button" id="togglePassword" class="toggle-password-btn" aria-label="Toggle password visibility">
                                 <i class="fas fa-eye"></i>
                             </button>
+                        </div>
+
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:-8px; margin-bottom:24px;">
+                            <label style="display:inline-flex; align-items:center; gap:8px; font-size:13.5px; font-weight:600; color:#475569; cursor:pointer; user-select:none; margin:0;">
+                                <input type="checkbox" name="remember_me" id="rememberMe" value="1" style="width:17px; height:17px; accent-color:#024442; cursor:pointer; border-radius:4px;">
+                                <span>Remember me</span>
+                            </label>
                         </div>
                     
                         <button type="submit" name="login" class="modern-btn">

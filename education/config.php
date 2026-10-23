@@ -22,22 +22,40 @@ if (file_exists($_main_config)) {
 } else {
     // ── Standalone bootstrap (separate domain / isolated document root) ─────
     ob_start();
+
+    // Session timeout: 24 hours default, 30 days if remember_me
+    $default_timeout = isset($_ENV['SESSION_TIMEOUT']) ? intval($_ENV['SESSION_TIMEOUT']) : 86400; // 24 hours
+    $has_remember = (!empty($_COOKIE['remember_token']) || (!empty($_SESSION) && !empty($_SESSION['remember_me'])));
+    $session_lifetime = $has_remember ? (30 * 86400) : $default_timeout;
+
+    ini_set('session.gc_maxlifetime', (string)max(30 * 86400, $session_lifetime));
+
     if (session_status() === PHP_SESSION_NONE) {
+        $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+        session_set_cookie_params([
+            'lifetime' => $has_remember ? (30 * 86400) : 0,
+            'path'     => '/',
+            'domain'   => '',
+            'secure'   => $is_https,
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
         session_start();
     }
 
-    // Session timeout (30 minutes)
-    $timeout_duration = 1800;
-    if (
-        isset($_SESSION['LAST_ACTIVITY']) &&
-        (time() - $_SESSION['LAST_ACTIVITY']) > $timeout_duration
-    ) {
-        session_unset();
-        session_destroy();
-        header("Location: login.php?expired=1");
-        exit();
+    if (!empty($_SESSION['user_id']) || !empty($_SESSION['username'])) {
+        $timeout_duration = (!empty($_SESSION['remember_me'])) ? (30 * 86400) : $default_timeout;
+        if (
+            isset($_SESSION['LAST_ACTIVITY']) &&
+            (time() - $_SESSION['LAST_ACTIVITY']) > $timeout_duration
+        ) {
+            session_unset();
+            session_destroy();
+            header("Location: login.php?expired=1");
+            exit();
+        }
+        $_SESSION['LAST_ACTIVITY'] = time();
     }
-    $_SESSION['LAST_ACTIVITY'] = time();
 
     // Load .env / env file (look in portal dir first, then one level up)
     $env_paths = [
