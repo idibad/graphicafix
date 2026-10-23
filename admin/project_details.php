@@ -1,227 +1,325 @@
 <?php
 include 'dashboard_header.php';
+require_once __DIR__ . '/../core/project_pm_schema.php';
+require_once __DIR__ . '/../core/project_pm_helper.php';
 
 // Check permissions
 if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'teacher', 'user', 'manager', 'sales'])) {
-    header('location:index.php'); exit;
+    header('location:index.php');
+    exit;
 }
 
-$project_id = $_GET['id'] ?? 0;
+$project_id = intval($_GET['id'] ?? 0);
+
+// Auto-migrate PM tables
+ensure_project_pm_schema($conn);
 
 // Fetch project details
-$project_query = "SELECT p.*, c.client_name 
-                  FROM projects p 
-                  LEFT JOIN clients c ON p.client_id = c.id 
+$project_query = "SELECT p.*, c.client_name, c.email as client_email
+                  FROM projects p
+                  LEFT JOIN clients c ON p.client_id = c.id
                   WHERE p.id = ?";
 $stmt = $conn->prepare($project_query);
 $stmt->bind_param("i", $project_id);
 $stmt->execute();
 $project = $stmt->get_result()->fetch_assoc();
+$stmt->close();
 
 if (!$project) {
-    echo "<script>alert('Project not found');window.location='manage_projects.php';</script>";
+    echo "<script>alert('Project not found'); window.location='manage_projects.php';</script>";
     exit;
 }
 
-// Fetch team members
-$team_query = "SELECT u.user_id, u.name, u.email, u.role 
-               FROM project_team pt 
-               JOIN users u ON pt.user_id = u.user_id 
-               WHERE pt.project_id = ?";
-$stmt = $conn->prepare($team_query);
-$stmt->bind_param("i", $project_id);
-$stmt->execute();
-$team_members = $stmt->get_result();
-
-// Fetch gallery images
-$gallery_query = "SELECT * FROM project_gallery WHERE project_id = ? ORDER BY sort_order";
-$stmt = $conn->prepare($gallery_query);
-$stmt->bind_param("i", $project_id);
-$stmt->execute();
-$gallery = $stmt->get_result();
-
-// Fetch project files
-$files_query = "SELECT * FROM project_files WHERE project_id = ? AND file_type != 'thumbnail' ORDER BY uploaded_at DESC";
-$stmt = $conn->prepare($files_query);
-$stmt->bind_param("i", $project_id);
-$stmt->execute();
-$files = $stmt->get_result();
-
-// Fetch project statistics for quick actions report
-$stmt_task_stats = $conn->prepare("
-    SELECT 
-        COUNT(*) as total_tasks,
-        SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed_tasks
-    FROM tasks 
-    WHERE project_id = ?
-");
-$stmt_task_stats->bind_param("i", $project_id);
-$stmt_task_stats->execute();
-$task_stats = $stmt_task_stats->get_result()->fetch_assoc();
-$total_tasks_count = intval($task_stats['total_tasks']);
-$completed_tasks_count = intval($task_stats['completed_tasks']);
-$task_completion_rate = $total_tasks_count > 0 ? round(($completed_tasks_count / $total_tasks_count) * 100) : 0;
-
-$stmt_inv_stats = $conn->prepare("
-    SELECT 
-        COUNT(*) as total_invoices,
-        COALESCE(SUM(total_amount), 0) as total_billed,
-        COALESCE(SUM(amount_paid), 0) as total_paid,
-        COALESCE(SUM(amount_due), 0) as total_due
-    FROM invoices 
-    WHERE project_id = ?
-");
-$stmt_inv_stats->bind_param("i", $project_id);
-$stmt_inv_stats->execute();
-$inv_stats = $stmt_inv_stats->get_result()->fetch_assoc();
-$total_invoices_count = intval($inv_stats['total_invoices']);
-$total_billed_amount = floatval($inv_stats['total_billed']);
-$total_paid_amount = floatval($inv_stats['total_paid']);
-$total_due_amount = floatval($inv_stats['total_due']);
-
-$stmt_curr = $conn->prepare("SELECT currency FROM invoices WHERE project_id = ? LIMIT 1");
-$stmt_curr->bind_param("i", $project_id);
-$stmt_curr->execute();
-$curr_res = $stmt_curr->get_result()->fetch_assoc();
-$primary_currency = $curr_res ? $curr_res['currency'] : 'USD';
-
-$stmt_comm_count = $conn->prepare("SELECT COUNT(*) as total_comments FROM project_comments WHERE project_id = ?");
-$stmt_comm_count->bind_param("i", $project_id);
-$stmt_comm_count->execute();
-$total_comments_count = intval($stmt_comm_count->get_result()->fetch_assoc()['total_comments']);
-
-$stmt_team_count = $conn->prepare("SELECT COUNT(*) as total_team FROM project_team WHERE project_id = ?");
-$stmt_team_count->bind_param("i", $project_id);
-$stmt_team_count->execute();
-$total_team_count = intval($stmt_team_count->get_result()->fetch_assoc()['total_team']);
-
-// Role Badge Helper
-function getRoleBadge($role) {
-    $r = strtolower($role);
-    if ($r === 'admin')      return ['bg' => '#fff4e5', 'text' => '#e17055'];
-    if ($r === 'pm')         return ['bg' => '#fce7f3', 'text' => '#db2777'];
-    if ($r === 'teacher')    return ['bg' => '#e0f2fe', 'text' => '#0284c7'];
-    if ($r === 'student')    return ['bg' => '#d7f8b8', 'text' => '#2b7a2b'];
-    if ($r === 'user')       return ['bg' => '#f3e8ff', 'text' => '#7c3aed'];
-    if ($r === 'sales')      return ['bg' => '#d1fae5', 'text' => '#065f46'];
-    if ($r === 'client')     return ['bg' => '#e0f2fe', 'text' => '#0284c7'];
-    if ($r === 'client_sub') return ['bg' => '#f1f5f9', 'text' => '#475569'];
-    return ['bg' => '#f3f4f6', 'text' => '#4b5563'];
-}
-
-// Status and Priority styling
-function getStatusClass($status) {
-    $classes = [
-        'Not Started' => 'status-not-started',
-        'In Progress' => 'status-in-progress',
-        'Completed' => 'status-completed',
-        'On Hold' => 'status-on-hold'
-    ];
-    return $classes[$status] ?? 'status-default';
-}
-
-function getPriorityClass($priority) {
-    $classes = [
-        'Low' => 'priority-low',
-        'Medium' => 'priority-medium',
-        'High' => 'priority-high'
-    ];
-    return $classes[$priority] ?? 'priority-medium';
-}
-
-// High-visibility task status style helper
-function getTaskStatusStyle($status) {
-    $s = trim($status);
-    switch ($s) {
-        case 'Completed':
-            return [
-                'bg' => '#ecfdf5',
-                'text' => '#047857',
-                'border' => '#a7f3d0',
-                'icon' => 'fas fa-check-circle',
-                'label' => 'Completed',
-                'dot' => '#10b981'
-            ];
-        case 'In Progress':
-            return [
-                'bg' => '#eff6ff',
-                'text' => '#1d4ed8',
-                'border' => '#93c5fd',
-                'icon' => 'fas fa-spinner fa-spin',
-                'label' => 'In Progress',
-                'dot' => '#3b82f6'
-            ];
-        case 'In Review':
-            return [
-                'bg' => '#faf5ff',
-                'text' => '#7e22ce',
-                'border' => '#d8b4fe',
-                'icon' => 'fas fa-eye',
-                'label' => 'In Review',
-                'dot' => '#8b5cf6'
-            ];
-        case 'Cancelled':
-            return [
-                'bg' => '#fef2f2',
-                'text' => '#b91c1c',
-                'border' => '#fca5a5',
-                'icon' => 'fas fa-times-circle',
-                'label' => 'Cancelled',
-                'dot' => '#ef4444'
-            ];
-        case 'Pending':
-        case 'Not Started':
-        default:
-            return [
-                'bg' => '#fffbeb',
-                'text' => '#b45309',
-                'border' => '#fde68a',
-                'icon' => 'far fa-clock',
-                'label' => 'Pending',
-                'dot' => '#f59e0b'
-            ];
-    }
-}
-
-// Fetch ONLY active users for the task filter selector
-$active_users_stmt = $conn->prepare("
-    SELECT user_id, name, role 
-    FROM users 
-    WHERE (status = 'active' OR status IS NULL OR status = '') 
-      AND role NOT IN ('client', 'client_sub', 'student') 
-    ORDER BY name ASC
-");
-$active_users_stmt->execute();
-$active_task_users = $active_users_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-// ── Form Processing Actions ──────────────────────────────────────────────────
+// Current user details
 $username = $_SESSION['username'];
 $user_stmt = $conn->prepare("SELECT user_id, name, role FROM users WHERE username = ?");
 $user_stmt->bind_param("s", $username);
 $user_stmt->execute();
 $current_user_data = $user_stmt->get_result()->fetch_assoc();
+$user_stmt->close();
+
 $user_id = $current_user_data['user_id'];
 $role = strtolower($current_user_data['role']);
 $name = $current_user_data['name'];
 $can_edit = (in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager']));
 
+// Active staff for task assignments
+$active_users_stmt = $conn->prepare("
+    SELECT user_id, name, role
+    FROM users
+    WHERE (status = 'active' OR status IS NULL OR status = '')
+      AND role NOT IN ('client', 'client_sub', 'student')
+    ORDER BY name ASC
+");
+$active_users_stmt->execute();
+$active_task_users = $active_users_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$active_users_stmt->close();
+
+// ── Form Processing Actions ──────────────────────────────────────────────────
+
 // 1. Manual Progress Override
-if (isset($_POST['manual_progress_override']) && $can_edit) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['manual_progress_override']) && $can_edit) {
     $new_progress = intval($_POST['progress_override']);
     if ($new_progress >= 0 && $new_progress <= 100) {
         $stmt_upd = $conn->prepare("UPDATE projects SET progress = ?, updated_at = NOW() WHERE id = ?");
         $stmt_upd->bind_param("ii", $new_progress, $project_id);
         if ($stmt_upd->execute()) {
+            $stmt_upd->close();
             require_once __DIR__ . '/../core/functions.php';
             notifyClientOnProjectProgress($conn, $project_id, $new_progress);
-            echo "<script>alert('Progress updated and client notified!'); window.location='project_details.php?id={$project_id}';</script>";
+            echo "<script>alert('Progress updated and client notified.'); window.location='project_details.php?id={$project_id}&tab=overview';</script>";
             exit;
         }
     }
 }
 
-// 2. Add Project Comment
-if (isset($_POST['add_project_comment'])) {
+// 2. Create / Delete Milestone
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_milestone']) && $can_edit) {
+    $m_title = trim($_POST['milestone_title'] ?? '');
+    $m_desc = trim($_POST['milestone_desc'] ?? '');
+    $m_due = !empty($_POST['milestone_due_date']) ? $_POST['milestone_due_date'] : null;
+    $m_order = intval($_POST['milestone_order'] ?? 1);
+
+    if (!empty($m_title)) {
+        $stmt_m = $conn->prepare("INSERT INTO project_milestones (project_id, title, description, due_date, order_num, status) VALUES (?, ?, ?, ?, ?, 'pending')");
+        $stmt_m->bind_param("isssi", $project_id, $m_title, $m_desc, $m_due, $m_order);
+        $stmt_m->execute();
+        $stmt_m->close();
+        echo "<script>alert('Milestone created.'); window.location='project_details.php?id={$project_id}&tab=deliverables';</script>";
+        exit;
+    }
+}
+
+if (isset($_GET['action']) && $_GET['action'] === 'delete_milestone' && $can_edit && isset($_GET['milestone_id'])) {
+    $m_id = intval($_GET['milestone_id']);
+    $conn->query("DELETE FROM project_milestones WHERE id = {$m_id} AND project_id = {$project_id}");
+    echo "<script>alert('Milestone deleted.'); window.location='project_details.php?id={$project_id}&tab=deliverables';</script>";
+    exit;
+}
+
+if (isset($_POST['update_milestone_status']) && $can_edit) {
+    $m_id = intval($_POST['milestone_id']);
+    $m_status = $_POST['status'] ?? 'pending';
+    $stmt_ms = $conn->prepare("UPDATE project_milestones SET status = ? WHERE id = ? AND project_id = ?");
+    $stmt_ms->bind_param("sii", $m_status, $m_id, $project_id);
+    $stmt_ms->execute();
+    $stmt_ms->close();
+    echo "<script>alert('Milestone status updated.'); window.location='project_details.php?id={$project_id}&tab=deliverables';</script>";
+    exit;
+}
+
+// 3. Create / Submit / Delete Deliverable
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_deliverable']) && $can_edit) {
+    $milestone_id = intval($_POST['deliverable_milestone_id'] ?? 0);
+    $d_title = trim($_POST['deliverable_title'] ?? '');
+    $d_specs = trim($_POST['deliverable_specs'] ?? '');
+    $d_version = trim($_POST['deliverable_version'] ?? '1.0');
+    $d_preview = trim($_POST['deliverable_preview_url'] ?? '');
+    $d_file = null;
+
+    if (!empty($_FILES['deliverable_file']['name'])) {
+        $upload_dir = "uploads/projects/" . $project_id . "/deliverables/";
+        if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+        $fname = basename($_FILES['deliverable_file']['name']);
+        $d_file = $upload_dir . time() . "_" . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $fname);
+        move_uploaded_file($_FILES['deliverable_file']['tmp_name'], $d_file);
+    }
+
+    if (!empty($d_title) && $milestone_id > 0) {
+        $stmt_d = $conn->prepare("INSERT INTO project_deliverables (milestone_id, project_id, title, specs, deliverable_file, live_preview_url, version, signoff_status) VALUES (?, ?, ?, ?, ?, ?, ?, 'draft')");
+        $stmt_d->bind_param("iisssss", $milestone_id, $project_id, $d_title, $d_specs, $d_file, $d_preview, $d_version);
+        $stmt_d->execute();
+        $stmt_d->close();
+        echo "<script>alert('Deliverable added.'); window.location='project_details.php?id={$project_id}&tab=deliverables';</script>";
+        exit;
+    }
+}
+
+if (isset($_GET['action']) && $_GET['action'] === 'submit_deliverable_review' && $can_edit && isset($_GET['deliv_id'])) {
+    $d_id = intval($_GET['deliv_id']);
+    $conn->query("UPDATE project_deliverables SET signoff_status = 'pending_review' WHERE id = {$d_id} AND project_id = {$project_id}");
+
+    // Notify client
+    $sub = "Deliverable Ready for Review: " . $project['project_name'];
+    $head = "Project Deliverable Submitted for Review";
+    $msg = "<p>The agency team has published a deliverable for your review and sign-off on project <strong>" . htmlspecialchars($project['project_name']) . "</strong>.</p>
+            <p>Please log in to your client dashboard to inspect the deliverable and sign off.</p>";
+    notifyProjectClient($conn, $project_id, $sub, $head, $msg);
+
+    echo "<script>alert('Deliverable submitted for client review and client notified.'); window.location='project_details.php?id={$project_id}&tab=deliverables';</script>";
+    exit;
+}
+
+if (isset($_GET['action']) && $_GET['action'] === 'delete_deliverable' && $can_edit && isset($_GET['deliv_id'])) {
+    $d_id = intval($_GET['deliv_id']);
+    $conn->query("DELETE FROM project_deliverables WHERE id = {$d_id} AND project_id = {$project_id}");
+    echo "<script>alert('Deliverable removed.'); window.location='project_details.php?id={$project_id}&tab=deliverables';</script>";
+    exit;
+}
+
+// 4. Create / Verify Client Asset & Information Requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_client_request']) && $can_edit) {
+    $req_title = trim($_POST['request_title'] ?? '');
+    $req_type = $_POST['request_type'] ?? 'file';
+    $req_priority = $_POST['request_priority'] ?? 'normal';
+    $req_inst = trim($_POST['request_instructions'] ?? '');
+    $req_due = !empty($_POST['request_due_date']) ? $_POST['request_due_date'] : null;
+
+    if (!empty($req_title)) {
+        $stmt_req = $conn->prepare("INSERT INTO project_client_requests (project_id, request_title, request_type, instructions, priority, status, due_date, created_by) VALUES (?, ?, ?, ?, ?, 'requested', ?, ?)");
+        $stmt_req->bind_param("isssssi", $project_id, $req_title, $req_type, $req_inst, $req_priority, $req_due, $user_id);
+        $stmt_req->execute();
+        $stmt_req->close();
+
+        // Notify client
+        $sub = "Action Required: Information/Asset Needed for " . $project['project_name'];
+        $head = "Information Request from Project Team";
+        $msg = "<p>The project team requires information/assets from you to proceed with project <strong>" . htmlspecialchars($project['project_name']) . "</strong>:</p>
+                <div style='background:#f8fafc; border-left:4px solid #024442; padding:12px; margin:16px 0;'>
+                    <strong>Item:</strong> " . htmlspecialchars($req_title) . "<br>
+                    <strong>Instructions:</strong> " . nl2br(htmlspecialchars($req_inst)) . "
+                </div>
+                <p>Please log in to your client dashboard to submit this item.</p>";
+        notifyProjectClient($conn, $project_id, $sub, $head, $msg);
+
+        echo "<script>alert('Request created and client notified.'); window.location='project_details.php?id={$project_id}&tab=client-requests';</script>";
+        exit;
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_client_request']) && $can_edit) {
+    $req_id = intval($_POST['request_id']);
+    $decision = $_POST['decision'] ?? '';
+    $rej_reason = trim($_POST['rejection_reason'] ?? '');
+
+    if ($decision === 'accept') {
+        $conn->query("UPDATE project_client_requests SET status = 'accepted', verified_at = NOW(), rejection_reason = NULL WHERE id = {$req_id} AND project_id = {$project_id}");
+        echo "<script>alert('Asset accepted and unblocked.'); window.location='project_details.php?id={$project_id}&tab=client-requests';</script>";
+        exit;
+    } elseif ($decision === 'reject') {
+        $stmt_rej = $conn->prepare("UPDATE project_client_requests SET status = 'rejected', rejection_reason = ? WHERE id = ? AND project_id = ?");
+        $stmt_rej->bind_param("sii", $rej_reason, $req_id, $project_id);
+        $stmt_rej->execute();
+        $stmt_rej->close();
+
+        // Notify client
+        $sub = "Re-upload Needed: " . $project['project_name'];
+        $head = "Asset Feedback - Adjustment Required";
+        $msg = "<p>The team reviewed your submitted item for project <strong>" . htmlspecialchars($project['project_name']) . "</strong> but requires an adjustment:</p>
+                <div style='background:#fee2e2; border-left:4px solid #ef4444; padding:12px; margin:16px 0; color:#991b1b;'>" . nl2br(htmlspecialchars($rej_reason)) . "</div>";
+        notifyProjectClient($conn, $project_id, $sub, $head, $msg);
+
+        echo "<script>alert('Client notified to re-upload.'); window.location='project_details.php?id={$project_id}&tab=client-requests';</script>";
+        exit;
+    }
+}
+
+if (isset($_GET['action']) && $_GET['action'] === 'delete_client_request' && $can_edit && isset($_GET['req_id'])) {
+    $req_id = intval($_GET['req_id']);
+    $conn->query("DELETE FROM project_client_requests WHERE id = {$req_id} AND project_id = {$project_id}");
+    echo "<script>alert('Request removed.'); window.location='project_details.php?id={$project_id}&tab=client-requests';</script>";
+    exit;
+}
+
+// 5. Reply to Client Query & Status Updates
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_client_query'])) {
+    $query_id = intval($_POST['query_id'] ?? 0);
+    $q_message = trim($_POST['reply_message'] ?? '');
+    $is_internal = isset($_POST['is_internal']) ? 1 : 0;
+    $set_status = $_POST['set_query_status'] ?? '';
+
+    if (!empty($q_message) && $query_id > 0) {
+        $stmt_rep = $conn->prepare("INSERT INTO project_query_replies (query_id, user_id, is_internal, message) VALUES (?, ?, ?, ?)");
+        $stmt_rep->bind_param("iiis", $query_id, $user_id, $is_internal, $q_message);
+        $stmt_rep->execute();
+        $stmt_rep->close();
+
+        if (!empty($set_status)) {
+            $stmt_sq = $conn->prepare("UPDATE project_client_queries SET status = ?, resolved_at = (CASE WHEN ? IN ('resolved', 'closed') THEN NOW() ELSE NULL END) WHERE id = ? AND project_id = ?");
+            $stmt_sq->bind_param("ssii", $set_status, $set_status, $query_id, $project_id);
+            $stmt_sq->execute();
+            $stmt_sq->close();
+        }
+
+        // Notify client if public reply
+        if (!$is_internal) {
+            $sub = "Team Replied to Your Inquiry - " . $project['project_name'];
+            $head = "Update on Your Project Query";
+            $msg = "<p>The agency team responded to your inquiry on project <strong>" . htmlspecialchars($project['project_name']) . "</strong>:</p>
+                    <blockquote style='background:#f8fafc; border-left:4px solid #024442; padding:12px; margin:16px 0;'>" . nl2br(htmlspecialchars($q_message)) . "</blockquote>";
+            notifyProjectClient($conn, $project_id, $sub, $head, $msg);
+        }
+
+        echo "<script>alert('Response posted.'); window.location='project_details.php?id={$project_id}&tab=client-queries';</script>";
+        exit;
+    }
+}
+
+// 6. Create Project Broadcast (Weekly Update)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_project_broadcast']) && $can_edit) {
+    $b_title = trim($_POST['broadcast_title'] ?? 'Weekly Progress Update');
+    $b_done = trim($_POST['broadcast_completed'] ?? '');
+    $b_prog = trim($_POST['broadcast_in_progress'] ?? '');
+    $b_next = trim($_POST['broadcast_next'] ?? '');
+    $b_block = trim($_POST['broadcast_blockers'] ?? '');
+    $send_mail = isset($_POST['send_email_notification']) ? 1 : 0;
+
+    $stmt_bc = $conn->prepare("INSERT INTO project_broadcasts (project_id, title, completed_text, in_progress_text, next_up_text, blockers_text, created_by, sent_email) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt_bc->bind_param("isssssii", $project_id, $b_title, $b_done, $b_prog, $b_next, $b_block, $user_id, $send_mail);
+    if ($stmt_bc->execute()) {
+        $stmt_bc->close();
+
+        if ($send_mail) {
+            $sub = "Project Progress Update: " . $project['project_name'];
+            $head = htmlspecialchars($b_title);
+            $body = "<p>Here is the latest progress snapshot for <strong>" . htmlspecialchars($project['project_name']) . "</strong>:</p>";
+            if (!empty($b_done)) $body .= "<div style='margin-bottom:12px;'><strong>Completed:</strong><br>" . nl2br(htmlspecialchars($b_done)) . "</div>";
+            if (!empty($b_prog)) $body .= "<div style='margin-bottom:12px;'><strong>In Progress:</strong><br>" . nl2br(htmlspecialchars($b_prog)) . "</div>";
+            if (!empty($b_next)) $body .= "<div style='margin-bottom:12px;'><strong>Coming Up:</strong><br>" . nl2br(htmlspecialchars($b_next)) . "</div>";
+            if (!empty($b_block)) $body .= "<div style='margin-bottom:12px; color:#991b1b;'><strong>Required from Client:</strong><br>" . nl2br(htmlspecialchars($b_block)) . "</div>";
+            notifyProjectClient($conn, $project_id, $sub, $head, $body);
+        }
+
+        echo "<script>alert('Update published successfully.'); window.location='project_details.php?id={$project_id}&tab=updates';</script>";
+        exit;
+    }
+}
+
+// 7. Add Project Task
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_project_task']) && ($can_edit || $role === 'user')) {
+    $task_title = trim($_POST['task_title'] ?? '');
+    $task_desc = trim($_POST['task_desc'] ?? '');
+    $priority = $_POST['task_priority'] ?? 'Medium';
+    $due_date = !empty($_POST['task_due_date']) ? $_POST['task_due_date'] : null;
+    $assigned_to = !empty($_POST['task_assigned_to']) ? intval($_POST['task_assigned_to']) : null;
+    $milestone_id = !empty($_POST['task_milestone_id']) ? intval($_POST['task_milestone_id']) : null;
+    $estimated_hours = floatval($_POST['task_estimated_hours'] ?? 0);
+
+    if (!empty($task_title)) {
+        $stmt_task = $conn->prepare("INSERT INTO tasks (title, description, priority, status, due_date, assigned_to, created_by, project_id, milestone_id, estimated_hours) VALUES (?, ?, ?, 'Pending', ?, ?, ?, ?, ?, ?)");
+        $stmt_task->bind_param("ssssiiiid", $task_title, $task_desc, $priority, $due_date, $assigned_to, $user_id, $project_id, $milestone_id, $estimated_hours);
+        if ($stmt_task->execute()) {
+            $stmt_task->close();
+            if ($assigned_to > 0) {
+                $u_stmt = $conn->query("SELECT name, email FROM users WHERE user_id = $assigned_to");
+                if ($u_row = $u_stmt->fetch_assoc()) {
+                    if (!empty($u_row['email'])) {
+                        require_once __DIR__ . '/../core/task_email_helper.php';
+                        $heading = "New Task Assigned: " . $task_title;
+                        $body = "<p>Hello " . htmlspecialchars($u_row['name']) . ",</p>
+                                 <p>You have been assigned a task under project <strong>" . htmlspecialchars($project['project_name']) . "</strong>.</p>";
+                        sendTaskEmail($u_row['email'], $heading, $heading, $body, 0);
+                    }
+                }
+            }
+            echo "<script>alert('Task added successfully.'); window.location='project_details.php?id={$project_id}&tab=tasks';</script>";
+            exit;
+        }
+    }
+}
+
+// 8. Add Project Comment
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_project_comment'])) {
     $comment_text = trim($_POST['comment_text'] ?? '');
     if (!empty($comment_text)) {
         $file_path = null;
@@ -230,1138 +328,1253 @@ if (isset($_POST['add_project_comment'])) {
             if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
             $file_path = $upload_dir . time() . "_" . basename($_FILES['comment_file']['name']);
             move_uploaded_file($_FILES['comment_file']['tmp_name'], $file_path);
-            
-            // Also log it in project_files
+
             $stmt_file = $conn->prepare("INSERT INTO project_files (project_id, file_path, file_type, title, uploaded_by) VALUES (?, ?, 'document', ?, ?)");
             $title = "Comment Attachment - " . basename($_FILES['comment_file']['name']);
             $stmt_file->bind_param("issi", $project_id, $file_path, $title, $user_id);
             $stmt_file->execute();
+            $stmt_file->close();
         }
-        
+
         $stmt_comm = $conn->prepare("INSERT INTO project_comments (project_id, user_id, comment_text, file_path) VALUES (?, ?, ?, ?)");
         $stmt_comm->bind_param("iiss", $project_id, $user_id, $comment_text, $file_path);
         if ($stmt_comm->execute()) {
-            // Notify client ONLY if comment is posted by admin
-            if (in_array($role, ['super_admin', 'superadmin', 'admin'])) {
-                require_once __DIR__ . '/../core/functions.php';
-                $stmt_proj = $conn->prepare("SELECT p.project_name, c.email as client_email, p.client_id FROM projects p LEFT JOIN clients c ON p.client_id = c.id WHERE p.id = ?");
-                $stmt_proj->bind_param("i", $project_id);
-                $stmt_proj->execute();
-                $proj = $stmt_proj->get_result()->fetch_assoc();
-                if ($proj) {
-                    $recipients = [];
-                    if (!empty($proj['client_email'])) $recipients[] = $proj['client_email'];
-                    if (!empty($proj['client_id'])) {
-                        $u_stmt = $conn->prepare("SELECT email FROM users WHERE client_id = ? AND role = 'client'");
-                        $u_stmt->bind_param("i", $proj['client_id']);
-                        $u_stmt->execute();
-                        $u_res = $u_stmt->get_result();
-                        while ($u_row = $u_res->fetch_assoc()) {
-                            if (!empty($u_row['email']) && !in_array($u_row['email'], $recipients)) {
-                                $recipients[] = $u_row['email'];
-                            }
-                        }
-                    }
-                    if (!empty($recipients)) {
-                        require_once __DIR__ . '/../core/task_email_helper.php';
-                        $subject = "New Comment on Project: " . $proj['project_name'];
-                        $heading = "New Project Comment";
-                        $body = "<p>A new comment was posted on your project <strong>" . htmlspecialchars($proj['project_name']) . "</strong> by Admin (" . htmlspecialchars($name) . "):</p>
-                                 <blockquote style='background: #f8fafc; border-left: 4px solid #024442; padding: 12px; margin: 16px 0;'>" . nl2br(htmlspecialchars($comment_text)) . "</blockquote>";
-                        foreach ($recipients as $to_email) {
-                            sendClientEmail($to_email, $subject, $heading, $body, $project_id);
-                        }
-                    }
-                }
-            }
-            echo "<script>alert('Comment added!'); window.location='project_details.php?id={$project_id}';</script>";
+            $stmt_comm->close();
+            echo "<script>alert('Comment posted.'); window.location='project_details.php?id={$project_id}&tab=updates';</script>";
             exit;
         }
     }
 }
 
-// 3. Add Project Task
-if (isset($_POST['create_project_task']) && ($can_edit || $role === 'user')) {
-    $task_title = trim($_POST['task_title'] ?? '');
-    $task_desc = trim($_POST['task_desc'] ?? '');
-    $priority = $_POST['task_priority'] ?? 'Medium';
-    $due_date = !empty($_POST['task_due_date']) ? $_POST['task_due_date'] : null;
-    $assigned_to = !empty($_POST['task_assigned_to']) ? intval($_POST['task_assigned_to']) : null;
-    
-    if (!empty($task_title)) {
-        $stmt_task = $conn->prepare("INSERT INTO tasks (title, description, priority, status, due_date, assigned_to, created_by, project_id) VALUES (?, ?, ?, 'Pending', ?, ?, ?, ?)");
-        $stmt_task->bind_param("ssssiii", $task_title, $task_desc, $priority, $due_date, $assigned_to, $user_id, $project_id);
-        if ($stmt_task->execute()) {
-            // Task added without overwriting project progress (progress is set manually by admin)
-            if ($assigned_to > 0) {
-                $u_stmt = $conn->query("SELECT name, email FROM users WHERE user_id = $assigned_to");
-                if ($u_row = $u_stmt->fetch_assoc()) {
-                    if (!empty($u_row['email'])) {
-                        require_once __DIR__ . '/../core/task_email_helper.php';
-                        $task_id_new = $conn->insert_id;
-                        $heading = "New Task Assigned: " . $task_title;
-                        $subject = $heading;
-                        $priorityBadgeColor = ($priority === 'High' ? '#ef4444' : ($priority === 'Medium' ? '#f59e0b' : '#3b82f6'));
-                        $body = "<p>Hello " . htmlspecialchars($u_row['name']) . ",</p>
-                                 <p>You have been assigned a new task under project <strong>" . htmlspecialchars($project['project_name']) . "</strong>.</p>
-                                 <div style='background: #f8fafc; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; margin-bottom: 20px;'>
-                                     <strong>Title:</strong> " . htmlspecialchars($task_title) . "<br>
-                                     <strong>Priority:</strong> <span style='background: {$priorityBadgeColor}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px;'>$priority</span><br>
-                                     <strong>Due Date:</strong> " . ($due_date ?: 'N/A') . "
-                                 </div>";
-                        sendTaskEmail($u_row['email'], $subject, $heading, $body, $task_id_new);
-                    }
-                }
-            }
-            echo "<script>alert('Task added successfully!'); window.location='project_details.php?id={$project_id}';</script>";
-            exit;
-        }
-    }
-}
+// ── Read Data for Views ──────────────────────────────────────────────────────
+$active_tab = $_GET['tab'] ?? 'overview';
+$allowed_tabs = ['overview', 'deliverables', 'tasks', 'client-requests', 'client-queries', 'updates', 'invoices'];
+if (!in_array($active_tab, $allowed_tabs)) $active_tab = 'overview';
 
-// 4. Approve/Reject Manual Payment screenshot
-if (isset($_GET['invoice_action'], $_GET['inv_id']) && $can_edit) {
-    $inv_id = intval($_GET['inv_id']);
-    $inv_action = $_GET['invoice_action'];
-    
-    if ($inv_action === 'approve') {
-        $conn->query("UPDATE invoices SET status='paid', amount_paid=total_amount, amount_due=0, paid_at=NOW() WHERE id={$inv_id}");
-        echo "<script>alert('Payment approved and marked as Paid!'); window.location='project_details.php?id={$project_id}';</script>";
-        exit;
-    } elseif ($inv_action === 'reject') {
-        $conn->query("UPDATE invoices SET status='sent', payment_screenshot=NULL, payment_uploaded_at=NULL WHERE id={$inv_id}");
-        echo "<script>alert('Payment proof rejected.'); window.location='project_details.php?id={$project_id}';</script>";
-        exit;
+$kpis = getProjectKPIs($conn, $project_id);
+
+// Team members
+$team_stmt = $conn->prepare("SELECT u.user_id, u.name, u.email, u.role FROM project_team pt JOIN users u ON pt.user_id = u.user_id WHERE pt.project_id = ?");
+$team_stmt->bind_param("i", $project_id);
+$team_stmt->execute();
+$team_members = $team_stmt->get_result();
+$team_stmt->close();
+
+// Milestones
+$res_m = $conn->query("SELECT * FROM project_milestones WHERE project_id = {$project_id} ORDER BY order_num ASC, id ASC");
+$milestones = $res_m ? $res_m->fetch_all(MYSQLI_ASSOC) : [];
+
+// Deliverables grouped by milestone
+$res_d = $conn->query("SELECT d.*, m.title as milestone_title FROM project_deliverables d LEFT JOIN project_milestones m ON d.milestone_id = m.id WHERE d.project_id = {$project_id} ORDER BY d.id DESC");
+$deliverables = $res_d ? $res_d->fetch_all(MYSQLI_ASSOC) : [];
+
+// Client Requests (Pending Assets / Info)
+$res_reqs = $conn->query("SELECT * FROM project_client_requests WHERE project_id = {$project_id} ORDER BY CASE WHEN status = 'requested' THEN 1 WHEN status = 'submitted' THEN 2 WHEN status = 'rejected' THEN 3 ELSE 4 END, id DESC");
+$client_requests = $res_reqs ? $res_reqs->fetch_all(MYSQLI_ASSOC) : [];
+
+// Client Queries
+$res_q = $conn->query("SELECT q.*, u.name as client_name, a.name as assignee_name FROM project_client_queries q JOIN users u ON q.client_user_id = u.user_id LEFT JOIN users a ON q.assigned_to = a.user_id WHERE q.project_id = {$project_id} ORDER BY q.created_at DESC");
+$client_queries = $res_q ? $res_q->fetch_all(MYSQLI_ASSOC) : [];
+
+// Broadcasts
+$res_bc = $conn->query("SELECT b.*, u.name as author_name FROM project_broadcasts b JOIN users u ON b.created_by = u.user_id WHERE b.project_id = {$project_id} ORDER BY b.created_at DESC");
+$broadcasts = $res_bc ? $res_bc->fetch_all(MYSQLI_ASSOC) : [];
+
+// Invoices
+$stmt_invs = $conn->prepare("SELECT * FROM invoices WHERE project_id = ? ORDER BY created_at DESC");
+$stmt_invs->bind_param("i", $project_id);
+$stmt_invs->execute();
+$invoices = $stmt_invs->get_result();
+$stmt_invs->close();
+
+// Files
+$stmt_files = $conn->prepare("SELECT * FROM project_files WHERE project_id = ? AND file_type != 'thumbnail' ORDER BY uploaded_at DESC");
+$stmt_files->bind_param("i", $project_id);
+$stmt_files->execute();
+$files = $stmt_files->get_result();
+$stmt_files->close();
+
+// Tasks Query
+$stmt_tasks = $conn->prepare("
+    SELECT t.*, u.name as assigned_name, u.role as assigned_role, m.title as milestone_name
+    FROM tasks t
+    LEFT JOIN users u ON t.assigned_to = u.user_id
+    LEFT JOIN project_milestones m ON t.milestone_id = m.id
+    WHERE t.project_id = ?
+    ORDER BY
+        CASE
+            WHEN t.status = 'In Progress' THEN 1
+            WHEN t.status = 'In Review' THEN 2
+            WHEN t.status = 'Pending' THEN 3
+            WHEN t.status = 'Not Started' THEN 4
+            WHEN t.status = 'Completed' THEN 5
+            ELSE 6
+        END,
+        t.due_date ASC,
+        t.id DESC
+");
+$stmt_tasks->bind_param("i", $project_id);
+$stmt_tasks->execute();
+$all_project_tasks = $stmt_tasks->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt_tasks->close();
+
+// Tasks grouped for Kanban board
+$kanban_tasks = [
+    'Pending' => [],
+    'In Progress' => [],
+    'In Review' => [],
+    'Completed' => []
+];
+foreach ($all_project_tasks as $tk) {
+    $s = $tk['status'];
+    if ($s === 'Not Started') $s = 'Pending';
+    if (isset($kanban_tasks[$s])) {
+        $kanban_tasks[$s][] = $tk;
+    } else {
+        $kanban_tasks['Pending'][] = $tk;
     }
 }
 ?>
 
-
-<div class="height-100" >
-    <!-- Project Header -->
-    <div class="project-details-header" style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px; margin-bottom: 24px;">
-        <div class="header-details-top" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom: 20px;">
-            <div class="header-content">
-                <h1 style="margin:0; font-size:28px; font-weight:800; color:#024442;"><?= htmlspecialchars($project['project_name']) ?></h1>
-                <div class="client-name" style="margin-top:6px; color:#64748b; font-size:14.5px; font-weight:500;">
-                    <i class="fas fa-building" style="color: #024442;"></i> <?= htmlspecialchars($project['client_name']) ?>
+<div class="height-100">
+    <!-- Project Master Header (Clean, Zero Emojis) -->
+    <div style="background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px; margin-bottom: 24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+            <div>
+                <h1 style="margin: 0; font-size: 26px; font-weight: 800; color: #024442;"><?= htmlspecialchars($project['project_name']) ?></h1>
+                <div style="margin-top: 6px; color: #64748b; font-size: 14.5px;">
+                    <i class="fas fa-building text-muted"></i> <?= htmlspecialchars($project['client_name']) ?>
                 </div>
             </div>
-            <div class="header-actions" style="display:flex; gap:10px;">
-                <button class="btn btn-secondary" onclick="window.location='manage_projects.php'" style="padding: 8px 16px; font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                    ← Back
-                </button>
-                <button class="btn btn-secondary" onclick="window.location='edit_project.php?id=<?= $project_id ?>'" style="padding: 8px 16px; font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-pencil-alt"></i> Edit
-                </button>
-                <button class="btn btn-primary" style="padding: 8px 16px; font-size: 13.5px; font-weight: 600; background: #024442; border: none; display: inline-flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-upload"></i> Share
-                </button>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <a href="manage_projects.php" class="btn btn-secondary btn-sm" style="background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; font-weight:600; padding:8px 16px; border-radius:8px; text-decoration:none;">
+                    <i class="fas fa-arrow-left"></i> Back to Projects
+                </a>
+                <?php if ($can_edit): ?>
+                    <a href="edit_project.php?id=<?= $project_id ?>" class="btn btn-secondary btn-sm" style="background:#fff; border:1px solid #cbd5e1; color:#024442; font-weight:600; padding:8px 16px; border-radius:8px; text-decoration:none;">
+                        <i class="fas fa-pencil-alt"></i> Edit Project
+                    </a>
+                <?php endif; ?>
             </div>
         </div>
 
-        <div class="meta-grid">
-            <div class="meta-item">
-                <span class="meta-label">Status</span>
-                <span class="badge <?= getStatusClass($project['status']) ?>">
+        <!-- Meta Details Bar -->
+        <div style="display:flex; gap:24px; flex-wrap:wrap; margin-top:20px; border-top:1px solid #f1f5f9; padding-top:16px; font-size:13.5px; color:#64748b;">
+            <div>
+                <strong>Status:</strong>
+                <span class="badge" style="background:<?= $project['status'] === 'Completed' ? '#ecfdf5;color:#10b981;' : ($project['status'] === 'In Progress' ? '#e0f2fe;color:#0284c7;' : '#fef3c7;color:#d97706;') ?>">
                     <?= htmlspecialchars($project['status']) ?>
                 </span>
             </div>
-            <div class="meta-item">
-                <span class="meta-label">Priority</span>
-                <span class="badge <?= getPriorityClass($project['priority']) ?>">
-                    <?= htmlspecialchars($project['priority']) ?>
-                </span>
+            <div>
+                <strong>Project Health:</strong>
+                <span class="fw-bold <?= $kpis['health_class'] ?>"><?= $kpis['health_status'] ?></span>
             </div>
-            <div class="meta-item">
-                <span class="meta-label">Start Date</span>
-                <span class="meta-value">
-                    <?= !empty($project['start_date']) ? date('M d, Y', strtotime($project['start_date'])) : 'Not set' ?>
-                </span>
+            <div>
+                <strong>Priority:</strong>
+                <span class="badge bg-light text-dark border"><?= htmlspecialchars($project['priority']) ?></span>
             </div>
-            <div class="meta-item">
-                <span class="meta-label">End Date</span>
-                <span class="meta-value">
-                    <?= !empty($project['end_date']) ? date('M d, Y', strtotime($project['end_date'])) : 'Not set' ?>
-                </span>
+            <div>
+                <strong>Start Date:</strong> <?= !empty($project['start_date']) ? date('M d, Y', strtotime($project['start_date'])) : 'Not set' ?>
             </div>
-            <div class="meta-item">
-                <span class="meta-label">Visibility</span>
-                <span class="meta-value" style="text-transform: capitalize;">
-                    <?= htmlspecialchars($project['visibility']) ?>
-                </span>
+            <div>
+                <strong>End Date:</strong> <?= !empty($project['end_date']) ? date('M d, Y', strtotime($project['end_date'])) : 'Not set' ?>
+            </div>
+            <div>
+                <strong>Visibility:</strong> <span class="text-capitalize"><?= htmlspecialchars($project['visibility']) ?></span>
             </div>
         </div>
 
-        <?php if (!empty($project['start_date']) && !empty($project['end_date'])): 
-            $start = strtotime($project['start_date']);
-            $end = strtotime($project['end_date']);
-            $now = time();
-            $total_days = max(1, ($end - $start) / 86400);
-            $elapsed_days = max(0, min($total_days, ($now - $start) / 86400));
-            $progress = min(100, ($elapsed_days / $total_days) * 100);
-        ?>
-        <div class="progress-section">
-            <div class="progress-header">
-                <span class="progress-label">Project Timeline</span>
-                <span class="progress-percent"><?= round($progress) ?>%</span>
+        <!-- Progress Bar -->
+        <div style="margin-top:20px;">
+            <div style="display:flex; justify-content:space-between; font-weight:600; color:#475569; margin-bottom:6px; font-size:13px;">
+                <span>Overall Progress</span>
+                <span style="color:#024442; font-weight:700;"><?= intval($project['progress']) ?>%</span>
             </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: <?= $progress ?>%"></div>
+            <div style="background:#e2e8f0; height:10px; border-radius:6px; overflow:hidden;">
+                <div style="background:#024442; width: <?= intval($project['progress']) ?>%; height: 100%;"></div>
             </div>
         </div>
-        <?php endif; ?>
     </div>
 
-    <!-- Content Grid -->
-    <div class="content-grid">
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Description -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-edit"></i> Project Description</h2>
-                </div>
-                <?php if (!empty($project['description'])): ?>
-                    <div class="description-text">
-                        <?= nl2br(htmlspecialchars($project['description'])) ?>
-                    </div>
-                <?php else: ?>
-                    <div class="empty-state">
-                        <div class="empty-icon"><i class="fas fa-file-alt"></i></div>
-                        <div>No description provided</div>
-                    </div>
+    <!-- Clean Navigation Tabs (No Emojis, No Extra Pills) -->
+    <ul class="nav nav-tabs" style="border-bottom: 2px solid #e2e8f0; margin-bottom: 24px; background: transparent; padding: 0; display:flex; flex-wrap:wrap; gap:4px;">
+        <li class="nav-item">
+            <a class="nav-link <?= $active_tab === 'overview' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=overview" style="color: <?= $active_tab === 'overview' ? '#024442' : '#64748b' ?>; font-weight: 600; border: none; border-bottom: <?= $active_tab === 'overview' ? '3px solid #024442' : 'none' ?>; background: transparent; padding: 10px 18px;">
+                <i class="fas fa-chart-pie"></i> Overview & KPIs
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <?= $active_tab === 'deliverables' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=deliverables" style="color: <?= $active_tab === 'deliverables' ? '#024442' : '#64748b' ?>; font-weight: 600; border: none; border-bottom: <?= $active_tab === 'deliverables' ? '3px solid #024442' : 'none' ?>; background: transparent; padding: 10px 18px;">
+                <i class="fas fa-box-open"></i> Milestones & Deliverables
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <?= $active_tab === 'tasks' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=tasks" style="color: <?= $active_tab === 'tasks' ? '#024442' : '#64748b' ?>; font-weight: 600; border: none; border-bottom: <?= $active_tab === 'tasks' ? '3px solid #024442' : 'none' ?>; background: transparent; padding: 10px 18px;">
+                <i class="fas fa-tasks"></i> Tasks (<?= count($all_project_tasks) ?>)
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <?= $active_tab === 'client-requests' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=client-requests" style="color: <?= $active_tab === 'client-requests' ? '#024442' : '#64748b' ?>; font-weight: 600; border: none; border-bottom: <?= $active_tab === 'client-requests' ? '3px solid #024442' : 'none' ?>; background: transparent; padding: 10px 18px;">
+                <i class="fas fa-clipboard-list"></i> Pending from Client
+                <?php if ($kpis['pending_client_requests'] > 0): ?>
+                    <span class="badge bg-danger ms-1"><?= $kpis['pending_client_requests'] ?></span>
                 <?php endif; ?>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <?= $active_tab === 'client-queries' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=client-queries" style="color: <?= $active_tab === 'client-queries' ? '#024442' : '#64748b' ?>; font-weight: 600; border: none; border-bottom: <?= $active_tab === 'client-queries' ? '3px solid #024442' : 'none' ?>; background: transparent; padding: 10px 18px;">
+                <i class="fas fa-question-circle"></i> Client Queries
+                <?php if ($kpis['open_client_queries'] > 0): ?>
+                    <span class="badge bg-secondary ms-1"><?= $kpis['open_client_queries'] ?></span>
+                <?php endif; ?>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <?= $active_tab === 'updates' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=updates" style="color: <?= $active_tab === 'updates' ? '#024442' : '#64748b' ?>; font-weight: 600; border: none; border-bottom: <?= $active_tab === 'updates' ? '3px solid #024442' : 'none' ?>; background: transparent; padding: 10px 18px;">
+                <i class="fas fa-bullhorn"></i> Updates & Discussion
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <?= $active_tab === 'invoices' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=invoices" style="color: <?= $active_tab === 'invoices' ? '#024442' : '#64748b' ?>; font-weight: 600; border: none; border-bottom: <?= $active_tab === 'invoices' ? '3px solid #024442' : 'none' ?>; background: transparent; padding: 10px 18px;">
+                <i class="fas fa-file-invoice-dollar"></i> Invoices & Files
+            </a>
+        </li>
+    </ul>
+
+    <!-- ======================================================================= -->
+    <!-- TAB 1: OVERVIEW & KPIS                                                  -->
+    <!-- ======================================================================= -->
+    <?php if ($active_tab === 'overview'): ?>
+    <div style="display:flex; flex-direction:column; gap:24px;">
+        <!-- Clean KPI Metric Cards (Zero Emojis, High Readability) -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px;">
+                <div style="font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase;">Milestone Progress</div>
+                <div style="font-size: 26px; font-weight: 800; color: #024442; margin-top: 6px;">
+                    <?= $kpis['completed_milestones'] ?> / <?= $kpis['total_milestones'] ?>
+                    <small style="font-size: 14px; font-weight: 600; color: #64748b;">(<?= $kpis['milestone_progress'] ?>%)</small>
+                </div>
             </div>
 
-            <?php if (!empty($project['public_description'])): ?>
-            <!-- Public Description -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-eye"></i>️ Public Description</h2>
-                </div>
-                <div class="description-text">
-                    <?= strip_tags($project['public_description']) ?>
+            <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px;">
+                <div style="font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase;">Tasks Velocity</div>
+                <div style="font-size: 26px; font-weight: 800; color: #0284c7; margin-top: 6px;">
+                    <?= $kpis['completed_tasks'] ?> / <?= $kpis['total_tasks'] ?>
+                    <small style="font-size: 14px; font-weight: 600; color: #64748b;">(<?= $kpis['task_completion_rate'] ?>%)</small>
                 </div>
             </div>
-            <?php endif; ?>
 
-            <?php if (!empty($project['internal_notes'])): ?>
-            <!-- Internal Notes -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-lock"></i> Internal Notes</h2>
-                </div>
-                <div class="description-text" style="background: var(--warning-light); padding: 16px; border-radius: var(--radius);">
-                    <?= nl2br(htmlspecialchars($project['internal_notes'])) ?>
+            <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px;">
+                <div style="font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase;">Overdue Tasks</div>
+                <div style="font-size: 26px; font-weight: 800; color: <?= $kpis['overdue_tasks'] > 0 ? '#ef4444' : '#10b981' ?>; margin-top: 6px;">
+                    <?= $kpis['overdue_tasks'] ?>
                 </div>
             </div>
-            <?php endif; ?>
 
-            <!-- Gallery -->
-            <?php if ($gallery->num_rows > 0): ?>
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-image"></i>️ Project Gallery</h2>
-                    <button class="card-action">⋮</button>
-                </div>
-                <div class="gallery-grid">
-                    <?php while ($img = $gallery->fetch_assoc()): ?>
-                        <div class="gallery-item">
-                            <img src="<?= htmlspecialchars($img['image_path']) ?>" alt="Gallery image">
-                        </div>
-                    <?php endwhile; ?>
+            <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px;">
+                <div style="font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase;">Pending from Client</div>
+                <div style="font-size: 26px; font-weight: 800; color: <?= $kpis['blocker_client_requests'] > 0 ? '#ef4444' : ($kpis['pending_client_requests'] > 0 ? '#f59e0b' : '#10b981') ?>; margin-top: 6px;">
+                    <?= $kpis['pending_client_requests'] ?>
+                    <?php if ($kpis['blocker_client_requests'] > 0): ?>
+                        <small style="font-size: 12px; color: #ef4444; font-weight: 700;">(<?= $kpis['blocker_client_requests'] ?> Blockers)</small>
+                    <?php endif; ?>
                 </div>
             </div>
-            <?php endif; ?>
 
-            <!-- Files -->
-            <?php if ($files->num_rows > 0): ?>
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-paperclip"></i> Project Files</h2>
-                    <button class="card-action">⋮</button>
-                </div>
-                <div class="file-list">
-                    <?php while ($file = $files->fetch_assoc()): 
-                        $file_ext = pathinfo($file['file_path'], PATHINFO_EXTENSION);
-                        $file_name = basename($file['file_path']);
-                    ?>
-                        <div class="file-item">
-                            <div class="file-icon"><i class="fas fa-file-alt"></i></div>
-                            <div class="file-info">
-                                <div class="file-name"><?= htmlspecialchars($file_name) ?></div>
-                                <div class="file-meta">
-                                    <?= strtoupper($file_ext) ?> • 
-                                    <?= !empty($file['uploaded_at']) ? date('M d, Y', strtotime($file['uploaded_at'])) : 'Unknown' ?>
-                                </div>
-                            </div>
-                            <button class="file-download" onclick="window.open('<?= htmlspecialchars($file['file_path']) ?>', '_blank')">
-                                ⬇️
-                            </button>
-                        </div>
-                    <?php endwhile; ?>
+            <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px;">
+                <div style="font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase;">Open Client Queries</div>
+                <div style="font-size: 26px; font-weight: 800; color: <?= $kpis['open_client_queries'] > 0 ? '#f59e0b' : '#64748b' ?>; margin-top: 6px;">
+                    <?= $kpis['open_client_queries'] ?>
                 </div>
             </div>
-            <?php endif; ?>
+        </div>
 
-            <!-- Project Tasks Card -->
-            <?php
-            $stmt_tasks = $conn->prepare("
-                SELECT t.*, u.name as assigned_name, u.role as assigned_role 
-                FROM tasks t 
-                LEFT JOIN users u ON t.assigned_to = u.user_id 
-                WHERE t.project_id = ? 
-                ORDER BY 
-                    CASE 
-                        WHEN t.status = 'In Progress' THEN 1
-                        WHEN t.status = 'In Review' THEN 2
-                        WHEN t.status = 'Pending' THEN 3
-                        WHEN t.status = 'Not Started' THEN 4
-                        WHEN t.status = 'Completed' THEN 5
-                        WHEN t.status = 'Cancelled' THEN 6
-                        ELSE 7
-                    END,
-                    t.due_date ASC, 
-                    t.id DESC
-            ");
-            $stmt_tasks->bind_param("i", $project_id);
-            $stmt_tasks->execute();
-            $proj_tasks_res = $stmt_tasks->get_result();
-            $all_project_tasks = $proj_tasks_res->fetch_all(MYSQLI_ASSOC);
-
-            // Compute status count breakdown
-            $status_counts = [
-                'all' => count($all_project_tasks),
-                'Pending' => 0,
-                'In Progress' => 0,
-                'In Review' => 0,
-                'Completed' => 0,
-                'Cancelled' => 0
-            ];
-            foreach ($all_project_tasks as $tk_item) {
-                $s_norm = $tk_item['status'];
-                if ($s_norm === 'Not Started') $s_norm = 'Pending';
-                if (isset($status_counts[$s_norm])) {
-                    $status_counts[$s_norm]++;
-                } else {
-                    $status_counts['Pending']++;
-                }
-            }
-            ?>
-            <div class="card" style="margin-top: 20px;">
-                <!-- Card Header with Actions -->
-                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <h2 class="card-title" style="margin:0; display:flex; align-items:center; gap:8px;">
-                            <i class="fas fa-clipboard-list" style="color:#024442;"></i> Project Tasks
-                        </h2>
-                        <span class="badge" id="taskTotalCountBadge" style="background:#e0f2fe; color:#0284c7; font-weight:800; font-size:12px; padding:3px 10px; border-radius:12px;">
-                            <?= $status_counts['all'] ?>
-                        </span>
+        <!-- 2-Column Content Layout -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start;">
+            <div style="display:flex; flex-direction:column; gap:24px;">
+                <!-- Description -->
+                <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff;">
+                    <div class="card-header" style="background:#fff; border-bottom: 1px solid #f1f5f9; padding: 16px 20px;">
+                        <h2 class="card-title" style="margin:0; font-size:16px; font-weight:700; color:#0f172a;"><i class="fas fa-file-alt text-muted"></i> Project Scope & Description</h2>
                     </div>
-                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                        <!-- PDF Export Button -->
-                        <a href="export_project_tasks_pdf.php?id=<?= $project_id ?>" id="btnExportTaskPdf" target="_blank" class="btn btn-sm" style="background:#fef2f2; color:#dc2626; border:1.5px solid #fca5a5; font-weight:700; padding:6px 14px; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-size:13px; box-shadow:0 1px 2px rgba(0,0,0,0.03); transition:all 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'" title="Download project tasks list as a PDF report">
-                            <i class="fas fa-file-pdf"></i> Export Tasks PDF
-                        </a>
-                        <?php if ($can_edit || $role === 'user'): ?>
-                            <button class="btn btn-primary btn-sm" onclick="document.getElementById('taskFormModal').style.display='block'" style="background:#024442; border:none; padding:6px 14px; font-weight:700; font-size:13px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
-                                <i class="fas fa-plus"></i> Add Task
-                            </button>
+                    <div style="padding: 20px; font-size: 14.5px; color:#334155; line-height: 1.7;">
+                        <?= !empty($project['description']) ? nl2br(htmlspecialchars($project['description'])) : 'No internal description provided.' ?>
+                    </div>
+                </div>
+
+                <!-- Internal Notes -->
+                <?php if (!empty($project['internal_notes']) && $can_edit): ?>
+                <div class="card" style="border: 1px solid #fef3c7; border-radius: 12px; background:#fffdf5;">
+                    <div class="card-header" style="background:#fffbeb; border-bottom: 1px solid #fef3c7; padding: 14px 20px;">
+                        <h2 class="card-title" style="margin:0; font-size:15px; font-weight:700; color:#92400e;"><i class="fas fa-lock"></i> Confidential Internal Notes</h2>
+                    </div>
+                    <div style="padding: 18px; font-size: 14px; color:#78350f; line-height: 1.6;">
+                        <?= nl2br(htmlspecialchars($project['internal_notes'])) ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Milestone Roadmap Timeline -->
+                <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff;">
+                    <div class="card-header" style="background:#fff; border-bottom: 1px solid #f1f5f9; padding: 16px 20px; display:flex; justify-content:space-between; align-items:center;">
+                        <h2 class="card-title" style="margin:0; font-size:16px; font-weight:700; color:#0f172a;"><i class="fas fa-map-marker-alt text-muted"></i> Milestones Roadmap</h2>
+                        <a href="project_details.php?id=<?= $project_id ?>&tab=deliverables" style="font-size:12.5px; color:#024442; font-weight:600; text-decoration:none;">Manage Milestones →</a>
+                    </div>
+                    <div style="padding: 20px;">
+                        <?php if (!empty($milestones)): ?>
+                            <div style="display:flex; flex-direction:column; gap:16px;">
+                                <?php foreach ($milestones as $m):
+                                    $isCompleted = ($m['status'] === 'completed');
+                                    $isInProgress = ($m['status'] === 'in_progress');
+                                ?>
+                                <div style="display:flex; gap:16px; align-items:flex-start;">
+                                    <div style="width:28px; height:28px; border-radius:50%; background:<?= $isCompleted ? '#ecfdf5' : ($isInProgress ? '#eff6ff' : '#f1f5f9') ?>; color:<?= $isCompleted ? '#059669' : ($isInProgress ? '#2563eb' : '#94a3b8') ?>; border:1px solid <?= $isCompleted ? '#a7f3d0' : ($isInProgress ? '#bfdbfe' : '#e2e8f0') ?>; display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; margin-top:2px;">
+                                        <i class="fas <?= $isCompleted ? 'fa-check' : ($isInProgress ? 'fa-circle-notch fa-spin' : 'fa-circle') ?>"></i>
+                                    </div>
+                                    <div style="flex:1;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                                            <span style="font-weight:700; font-size:14.5px; color:#1e293b;"><?= htmlspecialchars($m['title']) ?></span>
+                                            <span class="badge" style="background:<?= $isCompleted ? '#ecfdf5;color:#059669;' : ($isInProgress ? '#eff6ff;color:#2563eb;' : '#f1f5f9;color:#64748b;') ?>">
+                                                <?= ucfirst($m['status']) ?>
+                                            </span>
+                                        </div>
+                                        <?php if (!empty($m['description'])): ?>
+                                            <p style="margin:4px 0 0; font-size:13px; color:#64748b;"><?= htmlspecialchars($m['description']) ?></p>
+                                        <?php endif; ?>
+                                        <div style="font-size:12px; color:#94a3b8; margin-top:4px;">
+                                            Due: <?= !empty($m['due_date']) ? date('M d, Y', strtotime($m['due_date'])) : 'Flexible' ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div style="color:#94a3b8; font-size:13.5px; text-align:center; padding:16px;">
+                                No milestones created yet. Go to <a href="project_details.php?id=<?= $project_id ?>&tab=deliverables" style="color:#024442; font-weight:600;">Milestones & Deliverables</a> to set up the project roadmap.
+                            </div>
                         <?php endif; ?>
                     </div>
                 </div>
+            </div>
 
-                <!-- Status Quick Pills Bar (High Visibility Overview) -->
-                <div style="padding: 14px 16px 4px 16px; border-bottom: 1px solid #f1f5f9; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; background: #fafbfc;">
-                    <span style="font-size: 11.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px;">Status:</span>
-                    <button type="button" class="status-quick-pill active" onclick="quickFilterStatus('all', this)" id="pillStatusAll" style="border: 1px solid #cbd5e1; background: #024442; color: #ffffff; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 6px;">
-                        All <span class="badge" style="background: rgba(255,255,255,0.25); color: #fff; font-size: 10.5px; padding: 1px 6px; border-radius: 10px;" id="countPillAll"><?= $status_counts['all'] ?></span>
-                    </button>
-                    <button type="button" class="status-quick-pill" onclick="quickFilterStatus('Pending', this)" style="border: 1px solid #fcd34d; background: #fffbeb; color: #b45309; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 6px;">
-                        ⏳ Pending <span class="badge" style="background: #fde68a; color: #92400e; font-size: 10.5px; padding: 1px 6px; border-radius: 10px;" id="countPillPending"><?= $status_counts['Pending'] ?></span>
-                    </button>
-                    <button type="button" class="status-quick-pill" onclick="quickFilterStatus('In Progress', this)" style="border: 1px solid #93c5fd; background: #eff6ff; color: #1d4ed8; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 6px;">
-                        ⚡ In Progress <span class="badge" style="background: #bfdbfe; color: #1e40af; font-size: 10.5px; padding: 1px 6px; border-radius: 10px;" id="countPillInProgress"><?= $status_counts['In Progress'] ?></span>
-                    </button>
-                    <button type="button" class="status-quick-pill" onclick="quickFilterStatus('In Review', this)" style="border: 1px solid #d8b4fe; background: #faf5ff; color: #7e22ce; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 6px;">
-                        🔍 In Review <span class="badge" style="background: #e9d5ff; color: #6b21a8; font-size: 10.5px; padding: 1px 6px; border-radius: 10px;" id="countPillInReview"><?= $status_counts['In Review'] ?></span>
-                    </button>
-                    <button type="button" class="status-quick-pill" onclick="quickFilterStatus('Completed', this)" style="border: 1px solid #a7f3d0; background: #ecfdf5; color: #047857; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 6px;">
-                        ✓ Completed <span class="badge" style="background: #bbf7d0; color: #065f46; font-size: 10.5px; padding: 1px 6px; border-radius: 10px;" id="countPillCompleted"><?= $status_counts['Completed'] ?></span>
-                    </button>
-                    <?php if ($status_counts['Cancelled'] > 0): ?>
-                    <button type="button" class="status-quick-pill" onclick="quickFilterStatus('Cancelled', this)" style="border: 1px solid #fca5a5; background: #fef2f2; color: #b91c1c; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 6px;">
-                        ✕ Cancelled <span class="badge" style="background: #fecdd3; color: #991b1b; font-size: 10.5px; padding: 1px 6px; border-radius: 10px;" id="countPillCancelled"><?= $status_counts['Cancelled'] ?></span>
-                    </button>
+            <!-- Right Column -->
+            <div style="display:flex; flex-direction:column; gap:24px;">
+                <!-- Team Members Card -->
+                <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff; padding:20px;">
+                    <h3 style="margin:0 0 16px; font-size:16px; font-weight:700; color:#0f172a;"><i class="fas fa-users text-muted"></i> Assigned Team</h3>
+                    <?php if ($team_members && $team_members->num_rows > 0): ?>
+                        <div style="display:flex; flex-direction:column; gap:12px;">
+                            <?php while ($tm = $team_members->fetch_assoc()):
+                                $init = strtoupper(substr($tm['name'], 0, 1));
+                            ?>
+                            <div style="display:flex; gap:12px; align-items:center;">
+                                <div style="width:34px; height:34px; border-radius:50%; background:#e0f2fe; color:#0369a1; font-weight:700; display:flex; align-items:center; justify-content:center; font-size:13px;">
+                                    <?= $init ?>
+                                </div>
+                                <div>
+                                    <div style="font-weight:700; font-size:13.5px; color:#1e293b;"><?= htmlspecialchars($tm['name']) ?></div>
+                                    <div style="font-size:11.5px; color:#64748b; text-transform:capitalize;"><?= htmlspecialchars($tm['role']) ?></div>
+                                </div>
+                            </div>
+                            <?php endwhile; ?>
+                        </div>
+                    <?php else: ?>
+                        <div style="color:#94a3b8; font-size:13px;">No team members assigned yet.</div>
                     <?php endif; ?>
                 </div>
 
-                <!-- Filter Toolbar Controls -->
-                <div style="padding: 14px 16px; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                        <!-- Filter 1: Active Users Selector (MUST) -->
-                        <div style="min-width: 190px; flex: 1;">
-                            <label style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block;">
-                                <i class="fas fa-user-check" style="color: #024442;"></i> Assignee (Active):
-                            </label>
-                            <select id="taskFilterUser" class="form-select form-select-sm" onchange="applyTaskFilters()" style="font-size: 12.5px; padding: 6px 10px; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 100%;">
-                                <option value="all">👥 All Assignees</option>
-                                <option value="unassigned">👤 Unassigned Tasks</option>
-                                <optgroup label="Active Users">
-                                    <?php foreach ($active_task_users as $usr): ?>
-                                        <option value="<?= $usr['user_id'] ?>">
-                                            <?= htmlspecialchars($usr['name']) ?> (<?= ucfirst($usr['role']) ?>)
-                                        </option>
-                                    <?php endforeach; ?>
-                                </optgroup>
-                            </select>
+                <!-- Progress Control -->
+                <?php if ($can_edit): ?>
+                <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff; padding:20px;">
+                    <h3 style="margin:0 0 12px; font-size:16px; font-weight:700; color:#0f172a;"><i class="fas fa-sliders-h text-muted"></i> Progress Override</h3>
+                    <form method="POST">
+                        <input type="hidden" name="manual_progress_override" value="1">
+                        <div class="mb-3">
+                            <label style="font-size:13px; color:#64748b; display:block; margin-bottom:4px;">Adjust Completed %:</label>
+                            <input type="number" name="progress_override" min="0" max="100" value="<?= intval($project['progress']) ?>" class="form-control form-control-sm" required style="font-size:13.5px;">
                         </div>
+                        <button type="submit" class="btn btn-primary btn-sm" style="width:100%; background:#024442; border:none; padding:7px 0; font-weight:600;">Update & Notify Client</button>
+                    </form>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
-                        <!-- Filter 2: Status Selector -->
-                        <div style="min-width: 145px; flex: 1;">
-                            <label style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block;">
-                                <i class="fas fa-tasks" style="color: #024442;"></i> Status:
-                            </label>
-                            <select id="taskFilterStatus" class="form-select form-select-sm" onchange="applyTaskFilters()" style="font-size: 12.5px; padding: 6px 10px; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 100%;">
-                                <option value="all">🎯 All Statuses</option>
-                                <option value="Pending">⏳ Pending</option>
-                                <option value="In Progress">⚡ In Progress</option>
-                                <option value="In Review">🔍 In Review</option>
-                                <option value="Completed">✓ Completed</option>
-                                <option value="Cancelled">✕ Cancelled</option>
-                            </select>
-                        </div>
+    <!-- ======================================================================= -->
+    <!-- TAB 2: MILESTONES & DELIVERABLES                                        -->
+    <!-- ======================================================================= -->
+    <?php if ($active_tab === 'deliverables'): ?>
+    <div style="display:flex; flex-direction:column; gap:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+                <h3 style="margin:0; font-size:18px; font-weight:700; color:#0f172a;">Project Milestones & Deliverables</h3>
+                <p style="margin:2px 0 0; font-size:13px; color:#64748b;">Package deliverables under milestones for client sign-off and review tracking.</p>
+            </div>
+            <?php if ($can_edit): ?>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-sm" onclick="document.getElementById('modalAddMilestone').style.display='flex'" style="background:#fff; border:1px solid #cbd5e1; color:#024442; font-weight:600; padding:6px 14px; border-radius:6px;">
+                    <i class="fas fa-plus"></i> Add Milestone
+                </button>
+                <button class="btn btn-sm btn-primary" onclick="document.getElementById('modalAddDeliverable').style.display='flex'" style="background:#024442; border:none; font-weight:600; padding:6px 14px; border-radius:6px;">
+                    <i class="fas fa-box-open"></i> Package Deliverable
+                </button>
+            </div>
+            <?php endif; ?>
+        </div>
 
-                        <!-- Filter 3: Priority Selector -->
-                        <div style="min-width: 130px; flex: 1;">
-                            <label style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block;">
-                                <i class="fas fa-flag" style="color: #024442;"></i> Priority:
-                            </label>
-                            <select id="taskFilterPriority" class="form-select form-select-sm" onchange="applyTaskFilters()" style="font-size: 12.5px; padding: 6px 10px; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 100%;">
-                                <option value="all">🔥 All Priorities</option>
-                                <option value="High">High Priority</option>
-                                <option value="Medium">Medium Priority</option>
-                                <option value="Low">Low Priority</option>
-                            </select>
-                        </div>
-
-                        <!-- Filter 4: Keyword Search -->
-                        <div style="min-width: 200px; flex: 1.5;">
-                            <label style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block;">
-                                <i class="fas fa-search" style="color: #024442;"></i> Search:
-                            </label>
-                            <div style="position: relative;">
-                                <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 12px;"></i>
-                                <input type="text" id="taskSearchInput" placeholder="Search title or description..." class="form-control form-control-sm" oninput="applyTaskFilters()" style="font-size: 12.5px; padding: 6px 10px 6px 30px; border: 1.5px solid #cbd5e1; border-radius: 6px; width: 100%;">
+        <?php if (!empty($milestones)): ?>
+            <div style="display:flex; flex-direction:column; gap:20px;">
+                <?php foreach ($milestones as $m):
+                    $m_id = intval($m['id']);
+                    $m_delivs = array_filter($deliverables, function($d) use ($m_id) {
+                        return intval($d['milestone_id']) === $m_id;
+                    });
+                ?>
+                <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff; overflow:hidden;">
+                    <div style="background:#fafbfc; border-bottom:1px solid #e2e8f0; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                        <div>
+                            <span style="font-size:11.5px; font-weight:700; color:#64748b; text-transform:uppercase;">Phase <?= $m['order_num'] ?></span>
+                            <h4 style="margin:2px 0 0; font-size:16px; font-weight:700; color:#0f172a;"><?= htmlspecialchars($m['title']) ?></h4>
+                            <div style="font-size:12px; color:#64748b; margin-top:2px;">
+                                Due Date: <?= !empty($m['due_date']) ? date('M d, Y', strtotime($m['due_date'])) : 'Flexible' ?>
                             </div>
                         </div>
-
-                        <!-- Filter Reset Button -->
-                        <div style="align-self: flex-end; padding-bottom: 1px;">
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="resetTaskFilters()" title="Reset all task filters" style="background: #f1f5f9; border: 1.5px solid #cbd5e1; color: #475569; padding: 6px 14px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px;">
-                                <i class="fas fa-undo"></i> Reset
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Filter Counter -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 12px; color: #64748b;">
-                        <div>
-                            Showing <strong id="visibleTaskCount" style="color: #0f172a;"><?= count($all_project_tasks) ?></strong> of <strong id="totalTaskCount" style="color: #0f172a;"><?= count($all_project_tasks) ?></strong> tasks
-                        </div>
-                        <div id="filterFeedbackText" style="font-style: italic; color: #024442; font-weight: 600;"></div>
-                    </div>
-                </div>
-
-                <!-- Tasks Table -->
-                <div class="table-responsive" style="padding: 0;">
-                    <?php if (count($all_project_tasks) > 0): ?>
-                    <table class="table" id="projectTasksTable" style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 0;">
-                        <thead>
-                            <tr style="border-bottom: 2px solid #e2e8f0; text-align: left; background: #f8fafc; color: #475569;">
-                                <th style="padding: 12px 14px; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.5px;">Task Title</th>
-                                <th style="padding: 12px 14px; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.5px;">Assigned To</th>
-                                <th style="padding: 12px 14px; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.5px;">Priority</th>
-                                <th style="padding: 12px 14px; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.5px;">Due Date</th>
-                                <th style="padding: 12px 14px; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.5px;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="projectTasksTableBody">
-                            <?php 
-                            foreach ($all_project_tasks as $tk): 
-                                $priColor = ($tk['priority'] === 'High' ? '#ef4444' : ($tk['priority'] === 'Medium' ? '#f59e0b' : '#3b82f6'));
-                                $priBg = ($tk['priority'] === 'High' ? '#fef2f2' : ($tk['priority'] === 'Medium' ? '#fffbeb' : '#eff6ff'));
-                                $priBorder = ($tk['priority'] === 'High' ? '#fca5a5' : ($tk['priority'] === 'Medium' ? '#fde68a' : '#bfdbfe'));
-                                
-                                $statusStyle = getTaskStatusStyle($tk['status']);
-                                $assigneeId = intval($tk['assigned_to'] ?? 0);
-                                $assigneeName = !empty($tk['assigned_name']) ? $tk['assigned_name'] : 'Unassigned';
-                                $assigneeRole = !empty($tk['assigned_role']) ? ucfirst($tk['assigned_role']) : '';
-                                
-                                $isOverdue = (!empty($tk['due_date']) && strtotime($tk['due_date']) < strtotime(date('Y-m-d')) && $tk['status'] !== 'Completed');
-                                $searchData = strtolower($tk['title'] . ' ' . ($tk['description'] ?? '') . ' ' . $assigneeName);
-                            ?>
-                            <tr class="task-table-row" 
-                                id="task-row-<?= $tk['id'] ?>"
-                                data-task-id="<?= $tk['id'] ?>"
-                                data-user-id="<?= $assigneeId ?>"
-                                data-status="<?= htmlspecialchars($tk['status']) ?>"
-                                data-priority="<?= htmlspecialchars($tk['priority']) ?>"
-                                data-search="<?= htmlspecialchars($searchData) ?>"
-                                style="border-bottom: 1px solid #f1f5f9; border-left: 4px solid <?= $statusStyle['border'] ?>; transition: all 0.15s ease;">
-                                
-                                <!-- Task Details -->
-                                <td style="padding: 12px 14px;">
-                                    <div style="font-weight: 700; color: #0f172a; font-size: 14px;"><?= htmlspecialchars($tk['title']) ?></div>
-                                    <?php if (!empty($tk['description'])): ?>
-                                        <div style="font-size: 12px; color: #64748b; margin-top: 3px; max-width: 320px; line-height: 1.4;">
-                                            <?= htmlspecialchars(mb_strimwidth($tk['description'], 0, 90, '...')) ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </td>
-
-                                <!-- Assigned To -->
-                                <td style="padding: 12px 14px;">
-                                    <?php if ($assigneeId > 0): ?>
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <div style="width: 30px; height: 30px; border-radius: 50%; background: #e0f2fe; color: #0284c7; font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                                <?= strtoupper(substr($assigneeName, 0, 1)) ?>
-                                            </div>
-                                            <div>
-                                                <div style="font-weight: 600; color: #1e293b; font-size: 13.5px;"><?= htmlspecialchars($assigneeName) ?></div>
-                                                <?php if (!empty($assigneeRole)): ?>
-                                                    <div style="font-size: 11px; color: #94a3b8;"><?= htmlspecialchars($assigneeRole) ?></div>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                    <?php else: ?>
-                                        <span style="color: #94a3b8; font-style: italic; font-size: 13px; display: inline-flex; align-items: center; gap: 5px;">
-                                            <i class="far fa-user"></i> Unassigned
-                                        </span>
-                                    <?php endif; ?>
-                                </td>
-
-                                <!-- Priority -->
-                                <td style="padding: 12px 14px;">
-                                    <span class="badge" style="color: <?= $priColor ?>; background: <?= $priBg ?>; border: 1.5px solid <?= $priBorder ?>; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 800; display: inline-flex; align-items: center; gap: 5px;">
-                                        <i class="fas fa-flag" style="font-size: 10px;"></i> <?= htmlspecialchars($tk['priority']) ?>
-                                    </span>
-                                </td>
-
-                                <!-- Due Date -->
-                                <td style="padding: 12px 14px; white-space: nowrap;">
-                                    <?php if (!empty($tk['due_date'])): ?>
-                                        <div style="font-size: 13px; font-weight: 600; color: <?= $isOverdue ? '#dc2626' : '#334155' ?>; display: flex; align-items: center; gap: 6px;">
-                                            <i class="far fa-calendar-alt" style="color: <?= $isOverdue ? '#dc2626' : '#94a3b8' ?>;"></i>
-                                            <?= date('M d, Y', strtotime($tk['due_date'])) ?>
-                                        </div>
-                                        <?php if ($isOverdue): ?>
-                                            <span class="badge" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-top: 3px; display: inline-block;">
-                                                Overdue
-                                            </span>
-                                        <?php endif; ?>
-                                    <?php else: ?>
-                                        <span style="color: #94a3b8; font-size: 13px;">N/A</span>
-                                    <?php endif; ?>
-                                </td>
-
-                                <!-- Status (High Visibility) -->
-                                <td style="padding: 12px 14px;">
-                                    <?php if ($can_edit || $role === 'user' || $tk['assigned_to'] == $user_id): ?>
-                                        <!-- Interactive High-Visibility Status Dropdown -->
-                                        <div class="task-status-dropdown-wrap" style="position: relative; display: inline-block;">
-                                            <select class="form-select form-select-sm task-status-select" 
-                                                    id="task-status-select-<?= $tk['id'] ?>"
-                                                    data-task-id="<?= $tk['id'] ?>" 
-                                                    onchange="onTaskStatusDropdownChange(this, <?= $tk['id'] ?>)" 
-                                                    style="font-size: 12.5px; font-weight: 800; padding: 6px 28px 6px 12px; border-radius: 20px; cursor: pointer; transition: all 0.2s ease; outline: none; appearance: none; -webkit-appearance: none; -moz-appearance: none; background-color: <?= $statusStyle['bg'] ?>; color: <?= $statusStyle['text'] ?>; border: 1.5px solid <?= $statusStyle['border'] ?>; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                                                <option value="Pending" <?= ($tk['status'] === 'Pending' || $tk['status'] === 'Not Started') ? 'selected' : '' ?> style="background:#fff; color:#b45309; font-weight:700;">⏳ Pending</option>
-                                                <option value="In Progress" <?= $tk['status'] === 'In Progress' ? 'selected' : '' ?> style="background:#fff; color:#1d4ed8; font-weight:700;">⚡ In Progress</option>
-                                                <option value="In Review" <?= $tk['status'] === 'In Review' ? 'selected' : '' ?> style="background:#fff; color:#7e22ce; font-weight:700;">🔍 In Review</option>
-                                                <option value="Completed" <?= $tk['status'] === 'Completed' ? 'selected' : '' ?> style="background:#fff; color:#047857; font-weight:700;">✓ Completed</option>
-                                                <option value="Cancelled" <?= $tk['status'] === 'Cancelled' ? 'selected' : '' ?> style="background:#fff; color:#b91c1c; font-weight:700;">✕ Cancelled</option>
-                                            </select>
-                                            <i class="fas fa-chevron-down" id="task-status-icon-<?= $tk['id'] ?>" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 9px; pointer-events: none; color: <?= $statusStyle['text'] ?>; opacity: 0.85;"></i>
-                                        </div>
-                                    <?php else: ?>
-                                        <!-- Read-Only High-Visibility Status Pill -->
-                                        <span class="badge" style="background: <?= $statusStyle['bg'] ?>; color: <?= $statusStyle['text'] ?>; border: 1.5px solid <?= $statusStyle['border'] ?>; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
-                                            <i class="<?= $statusStyle['icon'] ?>"></i> <?= htmlspecialchars($statusStyle['label']) ?>
-                                        </span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-
-                            <!-- Empty Search/Filter Row -->
-                            <tr id="taskFilterEmptyRow" style="display: none;">
-                                <td colspan="5" style="text-align: center; padding: 36px 16px; color: #94a3b8; background: #fff;">
-                                    <div style="font-size: 26px; margin-bottom: 8px;">🔍</div>
-                                    <div style="font-weight: 700; color: #334155; font-size: 15px;">No tasks match the selected filters.</div>
-                                    <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Try changing the assignee, status, priority, or clearing search keywords.</div>
-                                    <button type="button" class="btn btn-sm" onclick="resetTaskFilters()" style="margin-top: 14px; background: #024442; color: #ffffff; border: none; padding: 6px 18px; border-radius: 6px; font-weight: 700; font-size: 12.5px;">
-                                        Clear All Filters
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <?php else: ?>
-                        <div style="text-align: center; color: #94a3b8; padding: 36px 20px;">
-                            <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
-                            <div style="font-weight: 700; color: #475569; font-size: 15px;">No tasks created for this project yet.</div>
-                            <?php if ($can_edit || $role === 'user'): ?>
-                                <p style="font-size: 13px; color: #94a3b8; margin-top: 4px;">Click "+ Add Task" above to create your first task for this project.</p>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <form method="POST" style="margin:0; display:inline-block;">
+                                <input type="hidden" name="update_milestone_status" value="1">
+                                <input type="hidden" name="milestone_id" value="<?= $m['id'] ?>">
+                                <select name="status" onchange="this.form.submit()" class="form-select form-select-sm" style="font-size:12px; padding:4px 8px; width:auto; display:inline-block;">
+                                    <option value="pending" <?= $m['status'] === 'pending' ? 'selected' : '' ?>>Pending</option>
+                                    <option value="in_progress" <?= $m['status'] === 'in_progress' ? 'selected' : '' ?>>In Progress</option>
+                                    <option value="completed" <?= $m['status'] === 'completed' ? 'selected' : '' ?>>Completed</option>
+                                </select>
+                            </form>
+                            <?php if ($can_edit): ?>
+                                <a href="project_details.php?id=<?= $project_id ?>&tab=deliverables&action=delete_milestone&milestone_id=<?= $m['id'] ?>" onclick="return confirm('Delete this milestone?')" class="text-danger" style="font-size:13px; text-decoration:none;" title="Delete Milestone">
+                                    <i class="fas fa-trash-alt"></i>
+                                </a>
                             <?php endif; ?>
                         </div>
-                    <?php endif; ?>
+                    </div>
+
+                    <div style="padding:20px;">
+                        <?php if (!empty($m['description'])): ?>
+                            <p style="font-size:13.5px; color:#475569; margin-bottom:16px; line-height:1.6;"><?= nl2br(htmlspecialchars($m['description'])) ?></p>
+                        <?php endif; ?>
+
+                        <!-- Deliverables in Milestone -->
+                        <h5 style="font-size:13px; font-weight:700; color:#64748b; text-transform:uppercase; margin-bottom:12px;">Deliverable Items</h5>
+                        <?php if (!empty($m_delivs)): ?>
+                            <div style="display:flex; flex-direction:column; gap:10px;">
+                                <?php foreach ($m_delivs as $del): ?>
+                                <div style="border:1px solid #e2e8f0; border-radius:8px; padding:14px; background:#fff; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                                    <div>
+                                        <div style="font-weight:700; font-size:14px; color:#1e293b;">
+                                            <?= htmlspecialchars($del['title']) ?>
+                                            <span style="font-size:12px; font-weight:600; color:#64748b;">(v<?= htmlspecialchars($del['version']) ?>)</span>
+                                        </div>
+                                        <?php if (!empty($del['specs'])): ?>
+                                            <div style="font-size:12.5px; color:#64748b; margin-top:2px;"><?= htmlspecialchars($del['specs']) ?></div>
+                                        <?php endif; ?>
+                                        <div style="display:flex; gap:12px; margin-top:6px; font-size:12px;">
+                                            <?php if (!empty($del['deliverable_file'])): ?>
+                                                <a href="<?= htmlspecialchars($del['deliverable_file']) ?>" target="_blank" style="color:#024442; text-decoration:none; font-weight:600;">
+                                                    <i class="fas fa-file-download"></i> Download File
+                                                </a>
+                                            <?php endif; ?>
+                                            <?php if (!empty($del['live_preview_url'])): ?>
+                                                <a href="<?= htmlspecialchars($del['live_preview_url']) ?>" target="_blank" style="color:#2563eb; text-decoration:none; font-weight:600;">
+                                                    <i class="fas fa-external-link-alt"></i> Preview Link
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <?php if ($del['signoff_status'] === 'approved'): ?>
+                                            <span class="badge bg-success"><i class="fas fa-check"></i> Approved</span>
+                                        <?php elseif ($del['signoff_status'] === 'pending_review'): ?>
+                                            <span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> Client Reviewing</span>
+                                        <?php elseif ($del['signoff_status'] === 'revision_requested'): ?>
+                                            <span class="badge bg-danger"><i class="fas fa-redo"></i> Revisions Requested</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-light text-muted border">Draft</span>
+                                        <?php endif; ?>
+
+                                        <?php if ($can_edit): ?>
+                                            <?php if ($del['signoff_status'] === 'draft' || $del['signoff_status'] === 'revision_requested'): ?>
+                                                <a href="project_details.php?id=<?= $project_id ?>&tab=deliverables&action=submit_deliverable_review&deliv_id=<?= $del['id'] ?>" class="btn btn-sm btn-outline-primary" style="font-size:12px; padding:3px 10px; border-radius:5px;">
+                                                    Submit to Client
+                                                </a>
+                                            <?php endif; ?>
+                                            <a href="project_details.php?id=<?= $project_id ?>&tab=deliverables&action=delete_deliverable&deliv_id=<?= $del['id'] ?>" onclick="return confirm('Remove deliverable?')" class="text-muted" title="Delete">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div style="font-size:13px; color:#94a3b8; font-style:italic;">No deliverable items packaged for this phase yet.</div>
+                        <?php endif; ?>
+                    </div>
                 </div>
+                <?php endforeach; ?>
             </div>
-            <?php if(in_array($role, ['super_admin', 'superadmin', 'admin'])): ?>
-            <!-- Project Invoices & Payments Card -->
-            <div class="card" style="margin-top: 20px;">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-file-invoice-dollar"></i> Project Invoices & Receipts</h2>
+        <?php else: ?>
+            <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff; padding:36px; text-align:center; color:#94a3b8;">
+                <p style="margin:0; font-size:14px;">No milestones created yet. Add your first milestone phase above.</p>
+            </div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- ======================================================================= -->
+    <!-- TAB 3: TASKS & KANBAN BOARD                                             -->
+    <!-- ======================================================================= -->
+    <?php if ($active_tab === 'tasks'):
+        $view_mode = $_GET['view'] ?? 'table';
+    ?>
+    <div style="display:flex; flex-direction:column; gap:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+                <h3 style="margin:0; font-size:18px; font-weight:700; color:#0f172a;">Project Tasks</h3>
+                <p style="margin:2px 0 0; font-size:13px; color:#64748b;">Manage production backlog, task execution, and assignments.</p>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <!-- View Switcher -->
+                <div class="btn-group" role="group">
+                    <a href="project_details.php?id=<?= $project_id ?>&tab=tasks&view=table" class="btn btn-sm <?= $view_mode === 'table' ? 'btn-primary' : 'btn-outline-secondary' ?>" style="<?= $view_mode === 'table' ? 'background:#024442; border-color:#024442;' : '' ?>">
+                        <i class="fas fa-list"></i> Table View
+                    </a>
+                    <a href="project_details.php?id=<?= $project_id ?>&tab=tasks&view=kanban" class="btn btn-sm <?= $view_mode === 'kanban' ? 'btn-primary' : 'btn-outline-secondary' ?>" style="<?= $view_mode === 'kanban' ? 'background:#024442; border-color:#024442;' : '' ?>">
+                        <i class="fas fa-columns"></i> Kanban Board
+                    </a>
                 </div>
-                <div class="table-responsive" style="padding: 16px;">
-                    <?php
-                    $stmt_invs = $conn->prepare("SELECT * FROM invoices WHERE project_id = ? ORDER BY created_at DESC");
-                    $stmt_invs->bind_param("i", $project_id);
-                    $stmt_invs->execute();
-                    $proj_invs = $stmt_invs->get_result();
-                    if ($proj_invs->num_rows > 0):
-                    ?>
-                    <table class="table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <a href="export_project_tasks_pdf.php?id=<?= $project_id ?>" target="_blank" class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-file-pdf"></i> Export PDF
+                </a>
+                <?php if ($can_edit || $role === 'user'): ?>
+                <button class="btn btn-sm btn-primary" onclick="document.getElementById('taskFormModal').style.display='flex'" style="background:#024442; border:none;">
+                    <i class="fas fa-plus"></i> Add Task
+                </button>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <?php if ($view_mode === 'kanban'): ?>
+            <!-- Kanban View (Clean 4 Columns) -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start;">
+                <?php
+                $col_titles = [
+                    'Pending' => 'Pending',
+                    'In Progress' => 'In Progress',
+                    'In Review' => 'In Review',
+                    'Completed' => 'Completed'
+                ];
+                foreach ($col_titles as $status_key => $col_label):
+                    $col_items = $kanban_tasks[$status_key] ?? [];
+                ?>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; min-height: 480px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
+                        <span style="font-weight:700; font-size:13.5px; color:#334155; text-transform:uppercase;"><?= $col_label ?></span>
+                        <span class="badge bg-secondary" style="font-size:11px;"><?= count($col_items) ?></span>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <?php if (!empty($col_items)): ?>
+                            <?php foreach ($col_items as $tk):
+                                $prioColor = ($tk['priority'] === 'High' ? '#ef4444' : ($tk['priority'] === 'Medium' ? '#f59e0b' : '#3b82f6'));
+                            ?>
+                            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:12px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+                                    <span style="font-weight:700; font-size:13.5px; color:#1e293b;"><?= htmlspecialchars($tk['title']) ?></span>
+                                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:<?= $prioColor ?>;" title="<?= htmlspecialchars($tk['priority']) ?> Priority"></span>
+                                </div>
+                                <?php if (!empty($tk['milestone_name'])): ?>
+                                    <div style="font-size:11px; color:#0284c7; font-weight:600; margin-bottom:4px;">
+                                        <i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($tk['milestone_name']) ?>
+                                    </div>
+                                <?php endif; ?>
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; color:#64748b; margin-top:8px; border-top:1px solid #f1f5f9; padding-top:6px;">
+                                    <span><?= !empty($tk['assigned_name']) ? htmlspecialchars($tk['assigned_name']) : 'Unassigned' ?></span>
+                                    <span><?= !empty($tk['due_date']) ? date('M d', strtotime($tk['due_date'])) : 'No date' ?></span>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div style="text-align:center; padding:20px; font-size:12px; color:#94a3b8;">No tasks</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <!-- Table View -->
+            <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff; overflow:hidden;">
+                <div class="table-responsive">
+                    <table class="table" style="width:100%; margin:0; font-size:13.5px; border-collapse:collapse;">
                         <thead>
-                            <tr style="border-bottom: 2px solid #e2e8f0; text-align: left; color: #475569;">
-                                <th style="padding: 10px;">Invoice #</th>
-                                <th style="padding: 10px;">Due Date</th>
-                                <th style="padding: 10px;">Total Amount</th>
-                                <th style="padding: 10px;">Status</th>
-                                <th style="padding: 10px;">Payment Proof</th>
-                                <th style="padding: 10px;">Actions</th>
+                            <tr style="background:#fafbfc; border-bottom:2px solid #e2e8f0; color:#475569; text-align:left;">
+                                <th style="padding:12px 16px;">Task Title</th>
+                                <th style="padding:12px 16px;">Milestone</th>
+                                <th style="padding:12px 16px;">Assignee</th>
+                                <th style="padding:12px 16px;">Priority</th>
+                                <th style="padding:12px 16px;">Due Date</th>
+                                <th style="padding:12px 16px;">Status</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($inv = $proj_invs->fetch_assoc()): ?>
-                            <tr style="border-bottom: 1px solid #f1f5f9;">
-                                <td style="padding: 10px; font-weight: 600;"><?= htmlspecialchars($inv['invoice_number']) ?></td>
-                                <td style="padding: 10px;"><?= date('M d, Y', strtotime($inv['due_date'])) ?></td>
-                                <td style="padding: 10px;"><?= number_format($inv['total_amount'], 2) ?> <?= $inv['currency'] ?></td>
-                                <td style="padding: 10px;">
-                                    <span class="badge" style="text-transform: capitalize; background: <?= $inv['status'] === 'paid' ? '#ecfdf5;color:#10b981;' : ($inv['status'] === 'overdue' ? '#fef2f2;color:#ef4444;' : '#fef3c7;color:#d97706;') ?>"><?= htmlspecialchars($inv['status']) ?></span>
-                                </td>
-                                <td style="padding: 10px;">
-                                    <?php if ($inv['payment_screenshot']): ?>
-                                        <a href="javascript:void(0)" onclick="showScreenshot('<?= htmlspecialchars($inv['payment_screenshot']) ?>')" style="color: #024442; text-decoration: underline; font-weight: 600;">
-                                            <i class="fas fa-image"></i> View Screenshot
-                                        </a>
-                                        <br><small style="color: #64748b;">Uploaded: <?= date('M d, Y H:i', strtotime($inv['payment_uploaded_at'])) ?></small>
-                                    <?php else: ?>
-                                        <span style="color: #94a3b8; font-style: italic;">No payment proof</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td style="padding: 10px;">
-                                    <div style="display: flex; gap: 8px;">
-                                        <a href="generate_invoice_pdf.php?id=<?= $inv['id'] ?>" class="btn btn-secondary btn-sm" target="_blank" title="Download Invoice/Receipt">
-                                            ⬇️ PDF
-                                        </a>
-                                        <?php if ($inv['payment_screenshot'] && $inv['status'] !== 'paid' && $can_edit): ?>
-                                            <a href="project_details.php?id=<?= $project_id ?>&inv_id=<?= $inv['id'] ?>&invoice_action=approve" class="btn btn-success btn-sm" onclick="return confirm('Approve payment for this invoice?')" style="background: #10b981; color: white; border: none; padding: 2px 8px; border-radius: 4px; text-decoration: none; font-size:12px;">Approve</a>
-                                            <a href="project_details.php?id=<?= $project_id ?>&inv_id=<?= $inv['id'] ?>&invoice_action=reject" class="btn btn-danger btn-sm" onclick="return confirm('Reject this screenshot proof?')" style="background: #ef4444; color: white; border: none; padding: 2px 8px; border-radius: 4px; text-decoration: none; font-size:12px;">Reject</a>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                            </tr>
-                            <?php endwhile; ?>
+                            <?php if (!empty($all_project_tasks)): ?>
+                                <?php foreach ($all_project_tasks as $tk):
+                                    $pClass = ($tk['priority'] === 'High' ? 'text-danger' : ($tk['priority'] === 'Medium' ? 'text-warning' : 'text-info'));
+                                ?>
+                                <tr style="border-bottom:1px solid #f1f5f9;">
+                                    <td style="padding:12px 16px; font-weight:600; color:#1e293b;">
+                                        <?= htmlspecialchars($tk['title']) ?>
+                                    </td>
+                                    <td style="padding:12px 16px; color:#64748b;">
+                                        <?= htmlspecialchars($tk['milestone_name'] ?? 'General') ?>
+                                    </td>
+                                    <td style="padding:12px 16px; color:#334155;">
+                                        <?= htmlspecialchars($tk['assigned_name'] ?? 'Unassigned') ?>
+                                    </td>
+                                    <td style="padding:12px 16px; font-weight:600;" class="<?= $pClass ?>">
+                                        <?= htmlspecialchars($tk['priority']) ?>
+                                    </td>
+                                    <td style="padding:12px 16px; color:#64748b;">
+                                        <?= !empty($tk['due_date']) ? date('M d, Y', strtotime($tk['due_date'])) : 'None' ?>
+                                    </td>
+                                    <td style="padding:12px 16px;">
+                                        <select onchange="onTaskStatusDropdownChange(this, <?= $tk['id'] ?>)" class="form-select form-select-sm" style="font-size:12.5px; padding:3px 8px; width:auto;">
+                                            <option value="Pending" <?= $tk['status'] === 'Pending' || $tk['status'] === 'Not Started' ? 'selected' : '' ?>>Pending</option>
+                                            <option value="In Progress" <?= $tk['status'] === 'In Progress' ? 'selected' : '' ?>>In Progress</option>
+                                            <option value="In Review" <?= $tk['status'] === 'In Review' ? 'selected' : '' ?>>In Review</option>
+                                            <option value="Completed" <?= $tk['status'] === 'Completed' ? 'selected' : '' ?>>Completed</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="6" style="text-align:center; padding:32px; color:#94a3b8;">No tasks created for this project yet.</td>
+                                </tr>
+                            <?php endif; ?>
                         </tbody>
                     </table>
-                    <?php else: ?>
-                        <div style="text-align: center; color: #94a3b8; padding: 20px;">No invoices generated for this project yet.</div>
-                    <?php endif; ?>
                 </div>
             </div>
-            <?php endif;?>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 
-            <!-- Project Comments / Discussion Card -->
-            <div class="card" style="margin-top: 20px;">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-comments"></i> Project Discussion</h2>
-                </div>
-                <div style="padding: 16px;">
-                    <!-- Add Comment Form -->
-                    <form method="POST" enctype="multipart/form-data" style="margin-bottom: 24px; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0;">
-                        <input type="hidden" name="add_project_comment" value="1">
-                        <div class="form-group" style="margin-bottom: 12px;">
-                            <label style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px;">Post an update or feedback:</label>
-                            <textarea name="comment_text" rows="3" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font-family: inherit; font-size: 14px;" placeholder="Type your comment here..." required></textarea>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                            <div class="form-group" style="margin: 0; display:flex; align-items:center; gap:8px;">
-                                <label style="font-size: 13px; color: #64748b; font-weight: 500;"><i class="fas fa-paperclip"></i> Attach File: </label>
-                                <input type="file" name="comment_file" style="font-size: 12.5px;">
-                            </div>
-                            <button type="submit" class="btn btn-primary btn-sm" style="padding: 8px 20px; background:#024442; border:none;">Submit Comment</button>
-                        </div>
-                    </form>
-
-                    <!-- Comments List -->
-                    <div style="display: flex; flex-direction: column; gap: 16px;">
-                        <?php
-                        $stmt_comments = $conn->prepare("
-                            SELECT pc.*, u.name, u.role 
-                            FROM project_comments pc 
-                            JOIN users u ON pc.user_id = u.user_id 
-                            WHERE pc.project_id = ? 
-                            ORDER BY pc.created_at DESC
-                        ");
-                        $stmt_comments->bind_param("i", $project_id);
-                        $stmt_comments->execute();
-                        $proj_comms = $stmt_comments->get_result();
-                        if ($proj_comms->num_rows > 0):
-                            while ($comm = $proj_comms->fetch_assoc()):
-                                $initial = strtoupper(substr($comm['name'], 0, 1));
-                                $roleBadge = getRoleBadge($comm['role']);
-                        ?>
-                                <?php
-                                $isAgency = in_array(strtolower($comm['role']), ['super_admin', 'superadmin', 'admin', 'pm', 'teacher', 'user']);
-                                $cardBg = $isAgency ? '#f0f5f4' : '#f8fafc';
-                                $borderColor = $isAgency ? '#024442' : '#0284c7';
-                                ?>
-                                <div style="display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start;">
-                                    <!-- Avatar -->
-                                    <div style="width: 42px; height: 42px; background: <?= $isAgency ? '#024442' : '#0284c7' ?>; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                                        <?= $initial ?>
-                                    </div>
-                                    <!-- Bubble -->
-                                    <div style="flex-grow: 1; background: <?= $cardBg ?>; border-left: 4px solid <?= $borderColor ?>; border-radius: 0 12px 12px 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); position: relative;">
-                                        <!-- Header info -->
-                                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; border-bottom: 1px dashed rgba(0,0,0,0.08); padding-bottom: 6px;">
-                                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                                <span style="font-weight: 700; color: #1e293b; font-size: 14px;"><?= htmlspecialchars($comm['name']) ?></span>
-                                                <span style="background: <?= $roleBadge['bg'] ?>; color: <?= $roleBadge['text'] ?>; font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px;"><?= $comm['role'] ?></span>
-                                            </div>
-                                            <span style="color: #64748b; font-size: 11px; font-weight: 500;"><i class="far fa-clock"></i> <?= date('M d, Y H:i', strtotime($comm['created_at'])) ?></span>
-                                        </div>
-                                        <!-- Comment text -->
-                                        <div style="font-size: 14px; color: #334155; line-height: 1.6; white-space: pre-wrap; font-family: inherit;"><?= htmlspecialchars($comm['comment_text']) ?></div>
-                                        <!-- Attachment -->
-                                        <?php if ($comm['file_path']): ?>
-                                            <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.05);">
-                                                <a href="<?= htmlspecialchars($comm['file_path']) ?>" target="_blank" style="background: white; border-radius: 8px; padding: 8px 16px; font-size: 12.5px; color: #024442; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; border: 1px solid #cbd5e1; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                                                    <i class="fas fa-paperclip" style="color: <?= $borderColor ?>;"></i> <?= htmlspecialchars(basename($comm['file_path'])) ?>
-                                                </a>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                        <?php 
-                            endwhile;
-                        else:
-                        ?>
-                            <div style="text-align: center; color: #94a3b8; padding: 20px; font-style: italic;">No comments posted yet. Start the conversation!</div>
-                        <?php endif; ?>
-                    </div>
-                </div>
+    <!-- ======================================================================= -->
+    <!-- TAB 4: PENDING FROM CLIENT (ASSET & INFORMATION REQUESTS)              -->
+    <!-- ======================================================================= -->
+    <?php if ($active_tab === 'client-requests'): ?>
+    <div style="display:flex; flex-direction:column; gap:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+                <h3 style="margin:0; font-size:18px; font-weight:700; color:#0f172a;">Client Information & Asset Requests</h3>
+                <p style="margin:2px 0 0; font-size:13px; color:#64748b;">Track missing client assets and credentials that are blocking milestone delivery.</p>
             </div>
-
-            <?php if ($can_edit || $role === 'user'): ?>
-                <!-- Add Task Modal -->
-                <div id="taskFormModal" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); padding-top: 60px;">
-                    <div class="modal-content" style="background-color: #fefefe; margin: 5% auto; padding: 24px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 20px;">
-                            <h3 style="margin: 0; color: #1e293b;"><i class="fas fa-plus"></i> Add Project Task</h3>
-                            <span style="font-size: 24px; font-weight: bold; cursor: pointer;" onclick="document.getElementById('taskFormModal').style.display='none'">&times;</span>
-                        </div>
-                        <form method="POST">
-                            <input type="hidden" name="create_project_task" value="1">
-                            <div class="form-group" style="margin-bottom: 16px;">
-                                <label style="font-weight: 600; display: block; margin-bottom: 6px; font-size: 13.5px;">Task Title <span style="color:#ef4444;">*</span></label>
-                                <input type="text" name="task_title" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;" required placeholder="e.g. Design Logo Concepts">
-                            </div>
-                            <div class="form-group" style="margin-bottom: 16px;">
-                                <label style="font-weight: 600; display: block; margin-bottom: 6px; font-size: 13.5px;">Description</label>
-                                <textarea name="task_desc" rows="3" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;" placeholder="Details about this task..."></textarea>
-                            </div>
-                            <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-                                <div class="form-group" style="margin: 0;">
-                                    <label style="font-weight: 600; display: block; margin-bottom: 6px; font-size: 13.5px;">Priority</label>
-                                    <select name="task_priority" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;">
-                                        <option value="Low">Low</option>
-                                        <option value="Medium" selected>Medium</option>
-                                        <option value="High">High</option>
-                                    </select>
-                                </div>
-                                <div class="form-group" style="margin: 0;">
-                                    <label style="font-weight: 600; display: block; margin-bottom: 6px; font-size: 13.5px;">Due Date</label>
-                                    <input type="date" name="task_due_date" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;">
-                                </div>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 24px;">
-                                <label style="font-weight: 600; display: block; margin-bottom: 6px; font-size: 13.5px;">Assign To</label>
-                                <select name="task_assigned_to" style="width: 100%; padding: 8px 12px; border: 1.5px solid #cbd5e1; border-radius: 6px; font-size: 14px;">
-                                    <option value="">Unassigned</option>
-                                    <?php
-                                    // 1. Active project team members
-                                    $res_assign = $conn->prepare("
-                                        SELECT u.user_id, u.name, u.role
-                                        FROM project_team pt 
-                                        JOIN users u ON pt.user_id = u.user_id 
-                                        WHERE pt.project_id = ? AND u.role != 'student' AND (u.status = 'active' OR u.status IS NULL OR u.status = '')
-                                        ORDER BY u.name ASC
-                                    ");
-                                    $res_assign->bind_param("i", $project_id);
-                                    $res_assign->execute();
-                                    $users_assign = $res_assign->get_result();
-                                    $assigned_team_ids = [];
-                                    if ($users_assign->num_rows > 0) {
-                                        echo "<optgroup label='Project Team (Active)'>";
-                                        while ($usr = $users_assign->fetch_assoc()) {
-                                            $assigned_team_ids[] = $usr['user_id'];
-                                            echo "<option value='{$usr['user_id']}'>{$usr['name']} (" . ucfirst($usr['role']) . ")</option>";
-                                        }
-                                        echo "</optgroup>";
-                                    }
-
-                                    // 2. Other Active Agency Staff
-                                    $other_active = array_filter($active_task_users, function($au) use ($assigned_team_ids) {
-                                        return !in_array($au['user_id'], $assigned_team_ids);
-                                    });
-                                    if (!empty($other_active)) {
-                                        echo "<optgroup label='Other Active Staff'>";
-                                        foreach ($other_active as $o_usr) {
-                                            echo "<option value='{$o_usr['user_id']}'>{$o_usr['name']} (" . ucfirst($o_usr['role']) . ")</option>";
-                                        }
-                                        echo "</optgroup>";
-                                    }
-                                    ?>
-                                </select>
-                            </div>
-                            <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
-                                <button type="button" class="btn btn-secondary" onclick="document.getElementById('taskFormModal').style.display='none'">Cancel</button>
-                                <button type="submit" class="btn btn-primary" style="background: #024442; border: none; padding: 8px 20px;">Save Task</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+            <?php if ($can_edit): ?>
+            <button class="btn btn-sm btn-primary" onclick="document.getElementById('modalAddClientRequest').style.display='flex'" style="background:#024442; border:none; font-weight:600; padding:6px 16px; border-radius:6px;">
+                <i class="fas fa-plus"></i> Request Item from Client
+            </button>
             <?php endif; ?>
         </div>
 
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <!-- Team Members -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-users"></i> Team Members</h2>
-                    <button class="card-action">+</button>
-                </div>
-                <?php if ($team_members->num_rows > 0): ?>
-                    <div class="team-list">
-                        <?php while ($member = $team_members->fetch_assoc()): 
-                            $initial = strtoupper(substr($member['name'], 0, 1));
-                        ?>
-                            <div class="team-member">
-                                <div class="team-avatar"><?= $initial ?></div>
-                                <div class="team-info">
-                                    <div class="team-name"><?= htmlspecialchars($member['name']) ?></div>
-                                    <div class="team-role"><?= htmlspecialchars($member['role']) ?></div>
-                                </div>
+        <?php if (!empty($client_requests)): ?>
+            <div style="display:flex; flex-direction:column; gap:16px;">
+                <?php foreach ($client_requests as $req):
+                    $isPending = ($req['status'] === 'requested' || $req['status'] === 'rejected');
+                    $isSubmitted = ($req['status'] === 'submitted');
+                    $isAccepted = ($req['status'] === 'accepted');
+                ?>
+                <div class="card" style="border: 1px solid <?= $isPending && $req['priority'] === 'blocker' ? '#fecaca' : '#e2e8f0' ?>; border-radius: 10px; padding: 20px; background:#fff;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:10px;">
+                        <div>
+                            <?php if ($req['priority'] === 'blocker'): ?>
+                                <span class="badge bg-danger text-uppercase me-2" style="font-size:10.5px;">Blocker</span>
+                            <?php endif; ?>
+                            <strong style="font-size:15px; color:#0f172a;"><?= htmlspecialchars($req['request_title']) ?></strong>
+                            <div style="font-size:12px; color:#64748b; margin-top:2px;">
+                                Type: <span class="text-capitalize"><?= htmlspecialchars($req['request_type']) ?></span> • Due: <?= !empty($req['due_date']) ? date('M d, Y', strtotime($req['due_date'])) : 'Flexible' ?>
                             </div>
+                        </div>
+                        <div>
+                            <?php if ($isAccepted): ?>
+                                <span class="badge bg-success"><i class="fas fa-check"></i> Accepted & Verified</span>
+                            <?php elseif ($isSubmitted): ?>
+                                <span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> Client Submitted - Needs Verification</span>
+                            <?php elseif ($req['status'] === 'rejected'): ?>
+                                <span class="badge bg-danger"><i class="fas fa-redo"></i> Re-upload Requested</span>
+                            <?php else: ?>
+                                <span class="badge bg-light text-muted border">Waiting for Client</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($req['instructions'])): ?>
+                        <div style="font-size:13px; color:#475569; margin-bottom:12px; line-height:1.5;">
+                            <strong>Instructions:</strong> <?= nl2br(htmlspecialchars($req['instructions'])) ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Submitted Data Preview & Actions -->
+                    <?php if ($isSubmitted || $isAccepted): ?>
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 16px; margin-top:10px;">
+                        <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:6px;">Client Submission:</div>
+                        <?php if (!empty($req['submitted_file'])): ?>
+                            <div style="margin-bottom:6px;">
+                                <a href="<?= htmlspecialchars($req['submitted_file']) ?>" target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size:12px;">
+                                    <i class="fas fa-download"></i> Download Submitted Asset (<?= basename($req['submitted_file']) ?>)
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($req['submitted_text'])): ?>
+                            <div style="font-size:13px; color:#334155; background:#fff; border:1px solid #e2e8f0; padding:8px 12px; border-radius:4px; white-space:pre-wrap;">
+                                <?= htmlspecialchars($req['submitted_text']) ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Verification Controls -->
+                        <?php if ($isSubmitted && $can_edit): ?>
+                        <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
+                            <form method="POST" style="margin:0;">
+                                <input type="hidden" name="verify_client_request" value="1">
+                                <input type="hidden" name="request_id" value="<?= $req['id'] ?>">
+                                <input type="hidden" name="decision" value="accept">
+                                <button type="submit" class="btn btn-sm btn-success" style="font-size:12px; padding:4px 14px;">
+                                    <i class="fas fa-check"></i> Accept Asset
+                                </button>
+                            </form>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="openRejectModal(<?= $req['id'] ?>)" style="font-size:12px; padding:4px 14px;">
+                                <i class="fas fa-times"></i> Request Re-upload
+                            </button>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff; padding:36px; text-align:center; color:#94a3b8;">
+                <p style="margin:0; font-size:14px;">No asset or information requests created yet.</p>
+            </div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- ======================================================================= -->
+    <!-- TAB 5: CLIENT QUERIES (HELPDESK TICKETS)                                -->
+    <!-- ======================================================================= -->
+    <?php if ($active_tab === 'client-queries'): ?>
+    <div style="display:flex; flex-direction:column; gap:20px;">
+        <div>
+            <h3 style="margin:0; font-size:18px; font-weight:700; color:#0f172a;">Client Inquiries & Clarifications</h3>
+            <p style="margin:2px 0 0; font-size:13px; color:#64748b;">Direct questions from client contacts with threaded team responses and internal notes.</p>
+        </div>
+
+        <?php if (!empty($client_queries)): ?>
+            <div style="display:flex; flex-direction:column; gap:16px;">
+                <?php foreach ($client_queries as $q):
+                    $q_id = intval($q['id']);
+                ?>
+                <div class="card" style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; background:#fff;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; border-bottom:1px solid #f1f5f9; padding-bottom:12px; margin-bottom:12px;">
+                        <div>
+                            <span class="badge bg-light text-dark border text-capitalize me-2"><?= htmlspecialchars($q['category']) ?></span>
+                            <strong style="font-size:15px; color:#0f172a;"><?= htmlspecialchars($q['subject']) ?></strong>
+                            <div style="font-size:12px; color:#64748b; margin-top:2px;">
+                                Asked by <?= htmlspecialchars($q['client_name']) ?> • <?= date('M d, Y H:i', strtotime($q['created_at'])) ?>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="badge <?= $q['status'] === 'resolved' || $q['status'] === 'closed' ? 'bg-success' : 'bg-warning text-dark' ?> text-capitalize">
+                                <?= htmlspecialchars($q['status']) ?>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Replies Thread -->
+                    <?php
+                    $reps = $conn->query("
+                        SELECT qr.*, u.name as user_name, u.role as user_role
+                        FROM project_query_replies qr
+                        JOIN users u ON qr.user_id = u.user_id
+                        WHERE qr.query_id = {$q_id}
+                        ORDER BY qr.created_at ASC
+                    ");
+                    if ($reps && $reps->num_rows > 0):
+                    ?>
+                    <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+                        <?php while ($r = $reps->fetch_assoc()):
+                            $isInternal = intval($r['is_internal']) === 1;
+                        ?>
+                        <div style="background:<?= $isInternal ? '#fffdf5' : '#f8fafc' ?>; border:1px solid <?= $isInternal ? '#fef3c7' : '#e2e8f0' ?>; border-left:3px solid <?= $isInternal ? '#f59e0b' : '#024442' ?>; padding:10px 14px; border-radius:6px;">
+                            <div style="display:flex; justify-content:space-between; font-size:12px; color:#64748b; margin-bottom:4px;">
+                                <strong>
+                                    <?= htmlspecialchars($r['user_name']) ?> (<?= ucfirst($r['user_role']) ?>)
+                                    <?php if ($isInternal): ?>
+                                        <span class="badge bg-warning text-dark ms-1" style="font-size:10px;">Internal Note (Hidden from client)</span>
+                                    <?php endif; ?>
+                                </strong>
+                                <span><?= date('M d, H:i', strtotime($r['created_at'])) ?></span>
+                            </div>
+                            <div style="font-size:13.5px; color:#334155; line-height:1.5;"><?= nl2br(htmlspecialchars($r['message'])) ?></div>
+                        </div>
                         <?php endwhile; ?>
                     </div>
-                <?php else: ?>
-                    <div class="empty-state">
-                        <div class="empty-icon"><i class="fas fa-user"></i></div>
-                        <div>No team members assigned</div>
-                    </div>
-                <?php endif; ?>
-            </div>
-
-            <!-- Project Timeline -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-calendar-alt"></i> Timeline</h2>
-                </div>
-                <div class="timeline">
-                    <div class="timeline-item">
-                        <div class="timeline-dot" style="background: var(--success);"></div>
-                        <div class="timeline-content">
-                            <div class="timeline-title">Project Created</div>
-                            <div class="timeline-date">
-                                <?= date('M d, Y', strtotime($project['created_at'])) ?>
-                            </div>
-                        </div>
-                    </div>
-                    <?php if (!empty($project['start_date'])): ?>
-                    <div class="timeline-item">
-                        <div class="timeline-dot" style="background: var(--info);"></div>
-                        <div class="timeline-content">
-                            <div class="timeline-title">Start Date</div>
-                            <div class="timeline-date">
-                                <?= date('M d, Y', strtotime($project['start_date'])) ?>
-                            </div>
-                        </div>
-                    </div>
                     <?php endif; ?>
-                    <?php if (!empty($project['end_date'])): ?>
-                    <div class="timeline-item">
-                        <div class="timeline-dot" style="background: var(--warning);"></div>
-                        <div class="timeline-content">
-                            <div class="timeline-title">Target End Date</div>
-                            <div class="timeline-date">
-                                <?= date('M d, Y', strtotime($project['end_date'])) ?>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-                </div>
-            </div>
 
-            <!-- Project Progress Override (For Admin/PM) -->
-            <?php if ($can_edit): ?>
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-chart-line"></i> Actual Progress</h2>
-                </div>
-                <div style="padding: 16px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                        <span style="font-weight: 600; color:#334155;">Current Progress:</span>
-                        <span style="font-size: 20px; font-weight: 800; color: #024442;"><?= intval($project['progress']) ?>%</span>
-                    </div>
-                    <form method="POST">
-                        <input type="hidden" name="manual_progress_override" value="1">
-                        <div class="form-group" style="margin-bottom:12px;">
-                            <label style="font-size: 13px; color:#64748b; display:block; margin-bottom:4px;">Set Progress manually (%):</label>
-                            <input type="number" name="progress_override" min="0" max="100" value="<?= intval($project['progress']) ?>" style="width:100%; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:14px;" required>
+                    <!-- Reply Form -->
+                    <form method="POST" style="background:#fafbfc; border:1px solid #e2e8f0; border-radius:8px; padding:14px;">
+                        <input type="hidden" name="reply_client_query" value="1">
+                        <input type="hidden" name="query_id" value="<?= $q['id'] ?>">
+
+                        <div class="mb-2">
+                            <textarea name="reply_message" rows="2" class="form-control form-control-sm" placeholder="Write response to client (or check Internal Note below)..." required style="font-size:13px;"></textarea>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-sm" style="width:100%; justify-content:center; background:#024442; border:none; padding:8px 0; font-weight:700;">Update Progress</button>
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                            <div style="display:flex; align-items:center; gap:16px;">
+                                <label style="font-size:12.5px; color:#475569; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                                    <input type="checkbox" name="is_internal" value="1"> Internal Note (Team Only)
+                                </label>
+                                <select name="set_query_status" class="form-select form-select-sm" style="font-size:12px; width:auto;">
+                                    <option value="">Keep Status (<?= ucfirst($q['status']) ?>)</option>
+                                    <option value="in_progress">Set In Progress</option>
+                                    <option value="resolved">Mark Resolved</option>
+                                    <option value="closed">Close Ticket</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-primary" style="background:#024442; border:none; padding:5px 16px; font-weight:600; font-size:12.5px;">
+                                Send Reply
+                            </button>
+                        </div>
                     </form>
-                    <small style="color:#94a3b8; display:block; margin-top:8px; line-height:1.4;">Updating manually will send a branded progress email to the client.</small>
                 </div>
+                <?php endforeach; ?>
             </div>
-            <?php else: ?>
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-chart-line"></i> Actual Progress</h2>
-                </div>
-                <div style="padding: 16px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-weight: 600; color:#334155;">Current Progress:</span>
-                    <span style="font-size: 20px; font-weight: 800; color: #024442;"><?= intval($project['progress']) ?>%</span>
-                </div>
+        <?php else: ?>
+            <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff; padding:36px; text-align:center; color:#94a3b8;">
+                <p style="margin:0; font-size:14px;">No client inquiries on this project yet.</p>
             </div>
-            <?php endif; ?>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 
-            <!-- Quick Actions -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-bolt"></i> Quick Actions</h2>
+    <!-- ======================================================================= -->
+    <!-- TAB 6: UPDATES & DISCUSSION                                             -->
+    <!-- ======================================================================= -->
+    <?php if ($active_tab === 'updates'): ?>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px; align-items:start;">
+        <!-- Left: Compose & Broadcast Updates -->
+        <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff; padding:20px;">
+            <h3 style="margin:0 0 16px; font-size:17px; font-weight:700; color:#0f172a;"><i class="fas fa-bullhorn text-muted"></i> Broadcast Progress Update</h3>
+            <form method="POST">
+                <input type="hidden" name="create_project_broadcast" value="1">
+
+                <div class="mb-3">
+                    <label style="font-size:13px; font-weight:600; color:#334155; display:block; margin-bottom:4px;">Update Title</label>
+                    <input type="text" name="broadcast_title" class="form-control form-control-sm" value="Weekly Progress Update - <?= date('M d') ?>" required style="font-size:13.5px;">
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <button class="btn btn-secondary" style="width: 100%; justify-content: center;" onclick="document.querySelector('input[name=\'comment_file\']').scrollIntoView({ behavior: 'smooth', block: 'center' }); document.querySelector('input[name=\'comment_file\']').focus();">
-                        <i class="fas fa-upload"></i> Upload Files
-                    </button>
-                    <button class="btn btn-secondary" style="width: 100%; justify-content: center;" onclick="document.querySelector('textarea[name=\'comment_text\']').scrollIntoView({ behavior: 'smooth', block: 'center' }); document.querySelector('textarea[name=\'comment_text\']').focus();">
-                        <i class="fas fa-comment"></i> Add Comment
-                    </button>
-                    <a href="export_project_tasks_pdf.php?id=<?= $project_id ?>" target="_blank" class="btn btn-secondary" style="width: 100%; justify-content: center; text-decoration: none; display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-file-pdf" style="color: #ef4444;"></i> Export Tasks PDF
-                    </a>
-                    <button class="btn btn-secondary" style="width: 100%; justify-content: center;" onclick="showProjectReport()">
-                        <i class="fas fa-chart-bar"></i> View Reports
-                    </button>
-                    <button class="btn btn-danger" style="width: 100%; justify-content: center;" onclick="deleteProject(<?= $project_id ?>)">
-                        <i class="fas fa-trash"></i>️ Delete Project
-                    </button>
+
+                <div class="mb-3">
+                    <label style="font-size:13px; font-weight:600; color:#065f46; display:block; margin-bottom:4px;">Completed This Week</label>
+                    <textarea name="broadcast_completed" rows="3" class="form-control form-control-sm" placeholder="List completed tasks, features, or assets..." style="font-size:13px;"></textarea>
                 </div>
+
+                <div class="mb-3">
+                    <label style="font-size:13px; font-weight:600; color:#1e40af; display:block; margin-bottom:4px;">Currently In Progress</label>
+                    <textarea name="broadcast_in_progress" rows="3" class="form-control form-control-sm" placeholder="List tasks currently active..." style="font-size:13px;"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label style="font-size:13px; font-weight:600; color:#6b21a8; display:block; margin-bottom:4px;">Coming Up Next</label>
+                    <textarea name="broadcast_next" rows="2" class="form-control form-control-sm" placeholder="Next scheduled milestone deliverables..." style="font-size:13px;"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label style="font-size:13px; font-weight:600; color:#92400e; display:block; margin-bottom:4px;">Items Required from Client</label>
+                    <textarea name="broadcast_blockers" rows="2" class="form-control form-control-sm" placeholder="Any pending feedback or assets..." style="font-size:13px;"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label style="font-size:13px; color:#475569; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                        <input type="checkbox" name="send_email_notification" value="1" checked> Send formatted HTML update email to client
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-sm btn-primary" style="background:#024442; border:none; padding:8px 20px; font-weight:600; width:100%;">
+                    Publish Update
+                </button>
+            </form>
+        </div>
+
+        <!-- Right: Comments & Discussion -->
+        <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff; padding:20px;">
+            <h3 style="margin:0 0 16px; font-size:17px; font-weight:700; color:#0f172a;"><i class="fas fa-comments text-muted"></i> Project Discussion</h3>
+
+            <form method="POST" enctype="multipart/form-data" style="margin-bottom:20px; background:#f8fafc; border:1px solid #e2e8f0; padding:14px; border-radius:8px;">
+                <input type="hidden" name="add_project_comment" value="1">
+                <div class="mb-2">
+                    <textarea name="comment_text" rows="3" class="form-control form-control-sm" placeholder="Post a comment or discussion message..." required style="font-size:13px;"></textarea>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <input type="file" name="comment_file" style="font-size:12px;">
+                    <button type="submit" class="btn btn-sm btn-primary" style="background:#024442; border:none; padding:4px 14px; font-size:12px; font-weight:600;">Post</button>
+                </div>
+            </form>
+
+            <?php
+            $stmt_comms = $conn->prepare("SELECT pc.*, u.name, u.role FROM project_comments pc JOIN users u ON pc.user_id = u.user_id WHERE pc.project_id = ? ORDER BY pc.created_at DESC");
+            $stmt_comms->bind_param("i", $project_id);
+            $stmt_comms->execute();
+            $comms_res = $stmt_comms->get_result();
+            $stmt_comms->close();
+            ?>
+            <div style="display:flex; flex-direction:column; gap:12px; max-height:500px; overflow-y:auto;">
+                <?php if ($comms_res && $comms_res->num_rows > 0): ?>
+                    <?php while ($c = $comms_res->fetch_assoc()):
+                        $init = strtoupper(substr($c['name'], 0, 1));
+                    ?>
+                    <div style="background:#fafbfc; border:1px solid #e2e8f0; padding:10px 12px; border-radius:6px; font-size:13px;">
+                        <div style="display:flex; justify-content:space-between; color:#64748b; font-size:11.5px; margin-bottom:4px;">
+                            <strong><?= htmlspecialchars($c['name']) ?> (<?= ucfirst($c['role']) ?>)</strong>
+                            <span><?= date('M d, H:i', strtotime($c['created_at'])) ?></span>
+                        </div>
+                        <div style="color:#334155; line-height:1.5;"><?= nl2br(htmlspecialchars($c['comment_text'])) ?></div>
+                        <?php if (!empty($c['file_path'])): ?>
+                            <div style="margin-top:6px;">
+                                <a href="<?= htmlspecialchars($c['file_path']) ?>" target="_blank" style="font-size:11.5px; color:#024442; text-decoration:none;">
+                                    <i class="fas fa-paperclip"></i> <?= htmlspecialchars(basename($c['file_path'])) ?>
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <?php endwhile; ?>
+                <?php else: ?>
+                    <div style="text-align:center; padding:20px; color:#94a3b8; font-size:13px;">No comments posted yet.</div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
+    <?php endif; ?>
+
+    <!-- ======================================================================= -->
+    <!-- TAB 7: INVOICES & FILES                                                 -->
+    <!-- ======================================================================= -->
+    <?php if ($active_tab === 'invoices'): ?>
+    <div style="display:flex; flex-direction:column; gap:24px;">
+        <!-- Invoices Card -->
+        <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff; padding:20px;">
+            <h3 style="margin:0 0 16px; font-size:17px; font-weight:700; color:#0f172a;"><i class="fas fa-file-invoice-dollar text-muted"></i> Project Invoices</h3>
+            <div class="table-responsive">
+                <table class="table" style="width:100%; margin:0; font-size:13.5px;">
+                    <thead>
+                        <tr style="background:#fafbfc; border-bottom:2px solid #e2e8f0; color:#475569;">
+                            <th style="padding:10px;">Invoice #</th>
+                            <th style="padding:10px;">Due Date</th>
+                            <th style="padding:10px;">Amount</th>
+                            <th style="padding:10px;">Status</th>
+                            <th style="padding:10px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if ($invoices && $invoices->num_rows > 0): ?>
+                            <?php while ($inv = $invoices->fetch_assoc()): ?>
+                            <tr style="border-bottom:1px solid #f1f5f9;">
+                                <td style="padding:10px; font-weight:600;"><?= htmlspecialchars($inv['invoice_number']) ?></td>
+                                <td style="padding:10px;"><?= date('M d, Y', strtotime($inv['due_date'])) ?></td>
+                                <td style="padding:10px; font-weight:600;"><?= number_format($inv['total_amount'], 2) ?> <?= $inv['currency'] ?></td>
+                                <td style="padding:10px;">
+                                    <span class="badge" style="background:<?= $inv['status'] === 'paid' ? '#ecfdf5;color:#10b981;' : '#fef3c7;color:#d97706;' ?> text-capitalize">
+                                        <?= htmlspecialchars($inv['status']) ?>
+                                    </span>
+                                </td>
+                                <td style="padding:10px;">
+                                    <a href="generate_invoice_pdf.php?id=<?= $inv['id'] ?>" target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size:12px; padding:3px 10px;">
+                                        PDF
+                                    </a>
+                                </td>
+                            </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">No invoices generated for this project.</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Files Card -->
+        <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff; padding:20px;">
+            <h3 style="margin:0 0 16px; font-size:17px; font-weight:700; color:#0f172a;"><i class="fas fa-folder-open text-muted"></i> Project Files</h3>
+            <?php if ($files && $files->num_rows > 0): ?>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <?php while ($f = $files->fetch_assoc()): ?>
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:#fafbfc; border:1px solid #e2e8f0; padding:10px 14px; border-radius:6px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <i class="fas fa-file-alt text-muted"></i>
+                            <div>
+                                <strong style="font-size:13.5px;"><?= htmlspecialchars($f['title'] ?: basename($f['file_path'])) ?></strong>
+                                <div style="font-size:11.5px; color:#94a3b8;"><?= date('M d, Y', strtotime($f['uploaded_at'])) ?></div>
+                            </div>
+                        </div>
+                        <a href="<?= htmlspecialchars($f['file_path']) ?>" target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size:12px;">Download</a>
+                    </div>
+                    <?php endwhile; ?>
+                </div>
+            <?php else: ?>
+                <div style="text-align:center; padding:20px; color:#94a3b8; font-size:13px;">No files uploaded.</div>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 </div>
 
-<!-- Task Toast Notification Container -->
-<div id="taskToastContainer" style="position: fixed; top: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;"></div>
+<!-- ======================================================================= -->
+<!-- MODALS                                                                  -->
+<!-- ======================================================================= -->
+
+<!-- Modal: Add Milestone -->
+<div id="modalAddMilestone" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:12px; padding:24px; max-width:500px; width:90%; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:16px;">
+            <h4 style="margin:0; font-size:16px; font-weight:700; color:#0f172a;">Add Project Milestone</h4>
+            <span style="font-size:22px; cursor:pointer; color:#64748b;" onclick="document.getElementById('modalAddMilestone').style.display='none'">&times;</span>
+        </div>
+        <form method="POST">
+            <input type="hidden" name="create_milestone" value="1">
+            <div class="mb-3">
+                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Milestone Title</label>
+                <input type="text" name="milestone_title" placeholder="e.g. Discovery & Wireframing" class="form-control form-control-sm" required style="font-size:13.5px;">
+            </div>
+            <div class="mb-3">
+                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Description / Scope</label>
+                <textarea name="milestone_desc" rows="3" class="form-control form-control-sm" placeholder="Brief outline of milestone objectives..." style="font-size:13px;"></textarea>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+                <div>
+                    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Due Date</label>
+                    <input type="date" name="milestone_due_date" class="form-control form-control-sm" style="font-size:13px;">
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Phase Order #</label>
+                    <input type="number" name="milestone_order" value="<?= count($milestones) + 1 ?>" min="1" class="form-control form-control-sm" style="font-size:13px;">
+                </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('modalAddMilestone').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-sm btn-primary" style="background:#024442; border:none; font-weight:600;">Save Milestone</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Add Deliverable -->
+<div id="modalAddDeliverable" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:12px; padding:24px; max-width:550px; width:90%; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:16px;">
+            <h4 style="margin:0; font-size:16px; font-weight:700; color:#0f172a;">Package Deliverable for Client</h4>
+            <span style="font-size:22px; cursor:pointer; color:#64748b;" onclick="document.getElementById('modalAddDeliverable').style.display='none'">&times;</span>
+        </div>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="create_deliverable" value="1">
+            <div class="mb-3">
+                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Select Milestone</label>
+                <select name="deliverable_milestone_id" class="form-select form-select-sm" required style="font-size:13px;">
+                    <?php foreach ($milestones as $m): ?>
+                        <option value="<?= $m['id'] ?>">Phase <?= $m['order_num'] ?>: <?= htmlspecialchars($m['title']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px; margin-bottom:12px;">
+                <div>
+                    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Deliverable Title</label>
+                    <input type="text" name="deliverable_title" placeholder="e.g. Brand Identity Guidelines & Vector Pack" class="form-control form-control-sm" required style="font-size:13px;">
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Version</label>
+                    <input type="text" name="deliverable_version" value="1.0" class="form-control form-control-sm" style="font-size:13px;">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Specifications / Notes</label>
+                <textarea name="deliverable_specs" rows="2" class="form-control form-control-sm" placeholder="Included formats, dimensions, instructions..." style="font-size:13px;"></textarea>
+            </div>
+            <div class="mb-3">
+                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Attach Deliverable File (ZIP, PDF, etc.)</label>
+                <input type="file" name="deliverable_file" class="form-control form-control-sm" style="font-size:12.5px;">
+            </div>
+            <div class="mb-3">
+                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Live Preview URL (Optional)</label>
+                <input type="url" name="deliverable_preview_url" placeholder="https://figma.com/... or staging link" class="form-control form-control-sm" style="font-size:13px;">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('modalAddDeliverable').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-sm btn-primary" style="background:#024442; border:none; font-weight:600;">Save Deliverable</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Add Client Request (Missing Asset / Info) -->
+<div id="modalAddClientRequest" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:12px; padding:24px; max-width:500px; width:90%; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:16px;">
+            <h4 style="margin:0; font-size:16px; font-weight:700; color:#0f172a;">Request Asset or Info from Client</h4>
+            <span style="font-size:22px; cursor:pointer; color:#64748b;" onclick="document.getElementById('modalAddClientRequest').style.display='none'">&times;</span>
+        </div>
+        <form method="POST">
+            <input type="hidden" name="create_client_request" value="1">
+            <div class="mb-3">
+                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Item Title</label>
+                <input type="text" name="request_title" placeholder="e.g. High-res Vector Logo (SVG/EPS)" class="form-control form-control-sm" required style="font-size:13.5px;">
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div>
+                    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Request Type</label>
+                    <select name="request_type" class="form-select form-select-sm" style="font-size:13px;">
+                        <option value="file">File Upload</option>
+                        <option value="credentials">Credentials / Passwords</option>
+                        <option value="text">Content / Copy</option>
+                        <option value="feedback">Approval / Feedback</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Priority</label>
+                    <select name="request_priority" class="form-select form-select-sm" style="font-size:13px;">
+                        <option value="normal">Normal</option>
+                        <option value="blocker">Blocker (Halts Delivery)</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Instructions for Client</label>
+                <textarea name="request_instructions" rows="3" class="form-control form-control-sm" placeholder="Specify format, requirements, or what is needed..." style="font-size:13px;"></textarea>
+            </div>
+            <div class="mb-3">
+                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Due Date</label>
+                <input type="date" name="request_due_date" class="form-control form-control-sm" style="font-size:13px;">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('modalAddClientRequest').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-sm btn-primary" style="background:#024442; border:none; font-weight:600;">Send Request to Client</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Re-upload / Reject Request -->
+<div id="modalRejectRequest" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:12px; padding:24px; max-width:480px; width:90%; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:16px;">
+            <h4 style="margin:0; font-size:16px; font-weight:700; color:#0f172a;">Request Re-upload from Client</h4>
+            <span style="font-size:22px; cursor:pointer; color:#64748b;" onclick="document.getElementById('modalRejectRequest').style.display='none'">&times;</span>
+        </div>
+        <form method="POST">
+            <input type="hidden" name="verify_client_request" value="1">
+            <input type="hidden" name="decision" value="reject">
+            <input type="hidden" name="request_id" id="rejectRequestId" value="">
+
+            <div class="mb-3">
+                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Feedback / Rejection Reason</label>
+                <textarea name="rejection_reason" rows="3" class="form-control form-control-sm" placeholder="e.g. The PNG is too low resolution, please provide the original vector EPS/SVG..." required style="font-size:13px;"></textarea>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('modalRejectRequest').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-sm btn-danger" style="font-weight:600;">Request Re-upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Add Task -->
+<div id="taskFormModal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:12px; padding:24px; max-width:550px; width:90%; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:16px;">
+            <h4 style="margin:0; font-size:16px; font-weight:700; color:#0f172a;">Add Project Task</h4>
+            <span style="font-size:22px; cursor:pointer; color:#64748b;" onclick="document.getElementById('taskFormModal').style.display='none'">&times;</span>
+        </div>
+        <form method="POST">
+            <input type="hidden" name="create_project_task" value="1">
+
+            <div class="mb-3">
+                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Task Title</label>
+                <input type="text" name="task_title" placeholder="e.g. Design responsive navbar component" class="form-control form-control-sm" required style="font-size:13.5px;">
+            </div>
+
+            <div class="mb-3">
+                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Milestone Phase</label>
+                <select name="task_milestone_id" class="form-select form-select-sm" style="font-size:13px;">
+                    <option value="">General (No Milestone)</option>
+                    <?php foreach ($milestones as $m): ?>
+                        <option value="<?= $m['id'] ?>">Phase <?= $m['order_num'] ?>: <?= htmlspecialchars($m['title']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div>
+                    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Priority</label>
+                    <select name="task_priority" class="form-select form-select-sm" style="font-size:13px;">
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Due Date</label>
+                    <input type="date" name="task_due_date" class="form-control form-control-sm" style="font-size:13px;">
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px; margin-bottom:16px;">
+                <div>
+                    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Assignee</label>
+                    <select name="task_assigned_to" class="form-select form-select-sm" style="font-size:13px;">
+                        <option value="">Unassigned</option>
+                        <?php foreach ($active_task_users as $u): ?>
+                            <option value="<?= $u['user_id'] ?>"><?= htmlspecialchars($u['name']) ?> (<?= ucfirst($u['role']) ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Est. Hours</label>
+                    <input type="number" step="0.5" name="task_estimated_hours" value="0" class="form-control form-control-sm" style="font-size:13px;">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Description / Details</label>
+                <textarea name="task_desc" rows="3" class="form-control form-control-sm" placeholder="Task requirements..." style="font-size:13px;"></textarea>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('taskFormModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-sm btn-primary" style="background:#024442; border:none; font-weight:600;">Save Task</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script>
-const TASK_BASE_PDF_URL = 'export_project_tasks_pdf.php?id=<?= $project_id ?>';
-
-const TASK_STATUS_STYLES = {
-    'Completed':   { bg: '#ecfdf5', text: '#047857', border: '#a7f3d0' },
-    'In Progress': { bg: '#eff6ff', text: '#1d4ed8', border: '#93c5fd' },
-    'In Review':   { bg: '#faf5ff', text: '#7e22ce', border: '#d8b4fe' },
-    'Cancelled':   { bg: '#fef2f2', text: '#b91c1c', border: '#fca5a5' },
-    'Pending':     { bg: '#fffbeb', text: '#b45309', border: '#fde68a' },
-    'Not Started': { bg: '#fffbeb', text: '#b45309', border: '#fde68a' }
-};
-
-function deleteProject(id) {
-    if (!confirm('Are you sure? This will permanently delete the project and all files.')) return;
-    window.location = 'delete_project.php?id=' + id;
+function openRejectModal(id) {
+    document.getElementById('rejectRequestId').value = id;
+    document.getElementById('modalRejectRequest').style.display = 'flex';
 }
 
-// ── Tasks Multi-Criteria Filter Logic ──────────────────────────────────────────
-function applyTaskFilters() {
-    const userFilter = document.getElementById('taskFilterUser') ? document.getElementById('taskFilterUser').value : 'all';
-    const statusFilter = document.getElementById('taskFilterStatus') ? document.getElementById('taskFilterStatus').value : 'all';
-    const priorityFilter = document.getElementById('taskFilterPriority') ? document.getElementById('taskFilterPriority').value : 'all';
-    const searchKeyword = document.getElementById('taskSearchInput') ? document.getElementById('taskSearchInput').value.trim().toLowerCase() : '';
-
-    const rows = document.querySelectorAll('.task-table-row');
-    let visibleCount = 0;
-
-    rows.forEach(row => {
-        const rowUserId = parseInt(row.getAttribute('data-user-id')) || 0;
-        const rowStatus = (row.getAttribute('data-status') || '').trim();
-        const rowPriority = (row.getAttribute('data-priority') || '').trim();
-        const rowSearch = (row.getAttribute('data-search') || '').toLowerCase();
-
-        // 1. User / Assignee match
-        let userMatch = false;
-        if (userFilter === 'all') {
-            userMatch = true;
-        } else if (userFilter === 'unassigned') {
-            userMatch = (rowUserId === 0);
-        } else {
-            userMatch = (String(rowUserId) === String(userFilter));
-        }
-
-        // 2. Status match
-        let statusMatch = false;
-        if (statusFilter === 'all') {
-            statusMatch = true;
-        } else if (statusFilter === 'Pending') {
-            statusMatch = (rowStatus === 'Pending' || rowStatus === 'Not Started');
-        } else {
-            statusMatch = (rowStatus.toLowerCase() === statusFilter.toLowerCase());
-        }
-
-        // 3. Priority match
-        let priorityMatch = false;
-        if (priorityFilter === 'all') {
-            priorityMatch = true;
-        } else {
-            priorityMatch = (rowPriority.toLowerCase() === priorityFilter.toLowerCase());
-        }
-
-        // 4. Keyword search match
-        let searchMatch = false;
-        if (!searchKeyword) {
-            searchMatch = true;
-        } else {
-            searchMatch = rowSearch.includes(searchKeyword);
-        }
-
-        if (userMatch && statusMatch && priorityMatch && searchMatch) {
-            row.style.display = '';
-            visibleCount++;
-        } else {
-            row.style.display = 'none';
-        }
-    });
-
-    // Update Counter
-    const counterEl = document.getElementById('visibleTaskCount');
-    if (counterEl) counterEl.textContent = visibleCount;
-
-    // Show/Hide Empty Filter State Row
-    const emptyRow = document.getElementById('taskFilterEmptyRow');
-    if (emptyRow) {
-        emptyRow.style.display = (visibleCount === 0 && rows.length > 0) ? '' : 'none';
-    }
-
-    // Sync Quick-Filter Pills Active State
-    document.querySelectorAll('.status-quick-pill').forEach(pill => {
-        pill.classList.remove('active');
-        pill.style.boxShadow = 'none';
-        pill.style.opacity = '0.85';
-    });
-    
-    if (statusFilter === 'all') {
-        const pAll = document.getElementById('pillStatusAll');
-        if (pAll) { pAll.classList.add('active'); pAll.style.opacity = '1'; pAll.style.boxShadow = '0 2px 6px rgba(2,68,66,0.3)'; }
-    } else {
-        document.querySelectorAll('.status-quick-pill').forEach(pill => {
-            if (pill.textContent.includes(statusFilter)) {
-                pill.classList.add('active');
-                pill.style.opacity = '1';
-                pill.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
-            }
-        });
-    }
-
-    // Dynamically update PDF export button URL with current filters
-    updatePdfExportUrl(userFilter, statusFilter, priorityFilter, searchKeyword);
-}
-
-function updatePdfExportUrl(userFilter, statusFilter, priorityFilter, searchKeyword) {
-    const pdfBtn = document.getElementById('btnExportTaskPdf');
-    if (!pdfBtn) return;
-
-    let url = TASK_BASE_PDF_URL;
-    if (userFilter && userFilter !== 'all') {
-        url += '&user_id=' + encodeURIComponent(userFilter);
-    }
-    if (statusFilter && statusFilter !== 'all') {
-        url += '&status=' + encodeURIComponent(statusFilter);
-    }
-    if (priorityFilter && priorityFilter !== 'all') {
-        url += '&priority=' + encodeURIComponent(priorityFilter);
-    }
-    if (searchKeyword && searchKeyword.trim() !== '') {
-        url += '&search=' + encodeURIComponent(searchKeyword);
-    }
-    pdfBtn.href = url;
-}
-
-function quickFilterStatus(status, btnElement) {
-    const statusSelect = document.getElementById('taskFilterStatus');
-    if (statusSelect) {
-        statusSelect.value = status;
-    }
-    applyTaskFilters();
-}
-
-function resetTaskFilters() {
-    if (document.getElementById('taskFilterUser')) document.getElementById('taskFilterUser').value = 'all';
-    if (document.getElementById('taskFilterStatus')) document.getElementById('taskFilterStatus').value = 'all';
-    if (document.getElementById('taskFilterPriority')) document.getElementById('taskFilterPriority').value = 'all';
-    if (document.getElementById('taskSearchInput')) document.getElementById('taskSearchInput').value = '';
-    applyTaskFilters();
-    showTaskToast('Filters have been reset', 'info');
-}
-
-// ── Interactive High-Visibility Status Dropdown Change ───────────────────────
 function onTaskStatusDropdownChange(selectEl, taskId) {
     const newStatus = selectEl.value;
-    const style = TASK_STATUS_STYLES[newStatus] || TASK_STATUS_STYLES['Pending'];
-    const prevStatus = selectEl.getAttribute('data-prev-status') || '';
-
-    // 1. Immediately update select element styling
-    selectEl.style.backgroundColor = style.bg;
-    selectEl.style.color = style.text;
-    selectEl.style.borderColor = style.border;
-
-    const iconEl = document.getElementById('task-status-icon-' + taskId);
-    if (iconEl) iconEl.style.color = style.text;
-
-    // 2. Immediately update table row border and attributes
-    const rowEl = document.getElementById('task-row-' + taskId);
-    if (rowEl) {
-        rowEl.style.borderLeftColor = style.border;
-        rowEl.setAttribute('data-status', newStatus);
-        
-        // Update search data attribute
-        const currentSearch = rowEl.getAttribute('data-search') || '';
-        rowEl.setAttribute('data-search', currentSearch + ' ' + newStatus.toLowerCase());
-    }
-
-    // 3. Update quick filter count chips dynamically
-    refreshStatusPillCounts();
-
-    // 4. Send AJAX request to persist update
     selectEl.disabled = true;
-    selectEl.style.opacity = '0.7';
 
     const formData = new FormData();
     formData.append('id', taskId);
@@ -1371,201 +1584,18 @@ function onTaskStatusDropdownChange(selectEl, taskId) {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
         selectEl.disabled = false;
-        selectEl.style.opacity = '1';
-        selectEl.setAttribute('data-prev-status', newStatus);
-
-        if (data.success) {
-            showTaskToast('✓ Task status updated to "' + newStatus + '"', 'success');
-        } else {
-            showTaskToast('Failed: ' + (data.message || 'Error updating status'), 'error');
-            if (prevStatus) {
-                selectEl.value = prevStatus;
-                onTaskStatusDropdownChange(selectEl, taskId);
-            }
+        if (!data.success) {
+            alert('Failed to update task status: ' + (data.message || 'Error'));
         }
     })
-    .catch(error => {
+    .catch(err => {
         selectEl.disabled = false;
-        selectEl.style.opacity = '1';
-        console.error('Error updating task status:', error);
-        showTaskToast('Network or server error updating task status', 'error');
+        console.error(err);
     });
-}
-
-function refreshStatusPillCounts() {
-    const rows = document.querySelectorAll('.task-table-row');
-    const counts = {
-        'all': rows.length,
-        'Pending': 0,
-        'In Progress': 0,
-        'In Review': 0,
-        'Completed': 0,
-        'Cancelled': 0
-    };
-
-    rows.forEach(r => {
-        let s = (r.getAttribute('data-status') || '').trim();
-        if (s === 'Not Started') s = 'Pending';
-        if (counts.hasOwnProperty(s)) {
-            counts[s]++;
-        } else {
-            counts['Pending']++;
-        }
-    });
-
-    if (document.getElementById('countPillAll')) document.getElementById('countPillAll').textContent = counts['all'];
-    if (document.getElementById('countPillPending')) document.getElementById('countPillPending').textContent = counts['Pending'];
-    if (document.getElementById('countPillInProgress')) document.getElementById('countPillInProgress').textContent = counts['In Progress'];
-    if (document.getElementById('countPillInReview')) document.getElementById('countPillInReview').textContent = counts['In Review'];
-    if (document.getElementById('countPillCompleted')) document.getElementById('countPillCompleted').textContent = counts['Completed'];
-    if (document.getElementById('countPillCancelled')) document.getElementById('countPillCancelled').textContent = counts['Cancelled'];
-    if (document.getElementById('taskTotalCountBadge')) document.getElementById('taskTotalCountBadge').textContent = counts['all'];
-}
-
-function showTaskToast(message, type = 'success') {
-    const container = document.getElementById('taskToastContainer');
-    if (!container) return;
-
-    const toast = document.createElement('div');
-    toast.style.pointerEvents = 'auto';
-    toast.style.padding = '10px 18px';
-    toast.style.borderRadius = '8px';
-    toast.style.fontSize = '13.5px';
-    toast.style.fontWeight = '700';
-    toast.style.display = 'flex';
-    toast.style.alignItems = 'center';
-    toast.style.gap = '10px';
-    toast.style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)';
-    toast.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
-    toast.style.transform = 'translateY(-10px)';
-    toast.style.opacity = '0';
-
-    if (type === 'success') {
-        toast.style.background = '#024442';
-        toast.style.color = '#ffffff';
-        toast.style.border = '1px solid #047857';
-    } else if (type === 'error') {
-        toast.style.background = '#ef4444';
-        toast.style.color = '#ffffff';
-        toast.style.border = '1px solid #dc2626';
-    } else {
-        toast.style.background = '#1e293b';
-        toast.style.color = '#ffffff';
-    }
-
-    toast.innerHTML = '<span>' + message + '</span>';
-    container.appendChild(toast);
-
-    requestAnimationFrame(() => {
-        toast.style.transform = 'translateY(0)';
-        toast.style.opacity = '1';
-    });
-
-    setTimeout(() => {
-        toast.style.transform = 'translateY(-10px)';
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 300);
-    }, 3200);
-}
-
-function showScreenshot(src) {
-    document.getElementById('screenshotImg').style.display = 'none';
-    document.getElementById('screenshotSpinner').style.display = 'flex';
-    document.getElementById('screenshotImg').src = src;
-    const modal = document.getElementById('screenshotModal');
-    modal.style.display = 'flex';
-}
-function closeScreenshotModal() {
-    document.getElementById('screenshotModal').style.display = 'none';
-}
-function showProjectReport() {
-    document.getElementById('reportModal').style.display = 'flex';
-}
-function closeReportModal() {
-    document.getElementById('reportModal').style.display = 'none';
 }
 </script>
 
-<!-- Screenshot Preview Modal -->
-<div id="screenshotModal" class="modal-overlay" onclick="if(event.target===this)closeScreenshotModal()" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
-    <div style="background:#fff; border-radius:12px; padding:16px; max-width:600px; width:90%; position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.2);">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-bottom:12px;">
-            <h4 style="margin:0; color:#1e293b;"><i class="fas fa-image"></i> Payment Proof Screenshot</h4>
-            <span style="font-size:24px; font-weight:bold; cursor:pointer;" onclick="closeScreenshotModal()">&times;</span>
-        </div>
-        <div style="text-align:center; position:relative; min-height:150px; display:flex; align-items:center; justify-content:center;">
-            <div id="screenshotSpinner" style="display:flex; align-items:center; justify-content:center; position:absolute; left:0; right:0; top:0; bottom:0;">
-                <i class="fas fa-spinner fa-spin" style="font-size: 32px; color: #024442;"></i>
-            </div>
-            <img id="screenshotImg" src="" alt="Screenshot Proof" style="max-width:100%; max-height:450px; object-fit:contain; border-radius:6px; border:1px solid #cbd5e1; display:none;" onload="document.getElementById('screenshotSpinner').style.display='none'; this.style.display='inline-block';">
-        </div>
-    </div>
-</div>
-
-<!-- Project Report Modal -->
-<div id="reportModal" class="modal-overlay" onclick="if(event.target===this)closeReportModal()" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
-    <div style="background:#fff; border-radius:16px; padding:24px; max-width:550px; width:90%; position:relative; box-shadow:0 10px 30px rgba(0,0,0,0.25); border: 1px solid #cbd5e1;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:20px;">
-            <h4 style="margin:0; color:#024442; font-weight:800; display:flex; align-items:center; gap:8px;"><i class="fas fa-chart-pie"></i> Project Analytics Report</h4>
-            <span style="font-size:24px; font-weight:bold; cursor:pointer; color:#64748b;" onclick="closeReportModal()">&times;</span>
-        </div>
-        
-        <div style="display:flex; flex-direction:column; gap:20px;">
-            <!-- Tasks Report -->
-            <div style="background:#f8fafc; border-radius:10px; padding:16px; border:1px solid #e2e8f0;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-weight:600; color:#1e293b;">
-                    <span>Tasks Completed</span>
-                    <span style="color:#024442;"><?= $completed_tasks_count ?> / <?= $total_tasks_count ?> (<?= $task_completion_rate ?>%)</span>
-                </div>
-                <div style="width:100%; height:8px; background:#cbd5e1; border-radius:10px; overflow:hidden;">
-                    <div style="width:<?= $task_completion_rate ?>%; height:100%; background:#024442; border-radius:10px;"></div>
-                </div>
-            </div>
-            
-            <!-- Invoices / Finances -->
-            <div style="background:#f8fafc; border-radius:10px; padding:16px; border:1px solid #e2e8f0; display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; text-align:center;">
-                <div>
-                    <div style="font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase;">Total Billed</div>
-                    <div style="font-size:15px; font-weight:700; color:#0f172a; margin-top:4px;"><?= number_format($total_billed_amount, 2) ?> <small style="font-size:10px;"><?= htmlspecialchars($primary_currency) ?></small></div>
-                </div>
-                <div>
-                    <div style="font-size:15px; font-weight:700; color:#10b981; margin-top:4px;"><?= number_format($total_paid_amount, 2) ?> <small style="font-size:10px;"><?= htmlspecialchars($primary_currency) ?></small></div>
-                    <div style="font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase;">Total Paid</div>
-                </div>
-                <div>
-                    <div style="font-size:15px; font-weight:700; color:#ef4444; margin-top:4px;"><?= number_format($total_due_amount, 2) ?> <small style="font-size:10px;"><?= htmlspecialchars($primary_currency) ?></small></div>
-                    <div style="font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase;">Outstanding</div>
-                </div>
-            </div>
-            
-            <!-- Other Stats -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-                <div style="background:#f8fafc; border-radius:10px; padding:12px; border:1px solid #e2e8f0; display:flex; align-items:center; gap:12px;">
-                    <div style="width:36px; height:36px; background:#e0f2fe; color:#0284c7; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px;"><i class="fas fa-users"></i></div>
-                    <div>
-                        <div style="font-size:18px; font-weight:800; color:#0f172a;"><?= $total_team_count ?></div>
-                        <div style="font-size:12px; color:#64748b; font-weight:500;">Team Assigned</div>
-                    </div>
-                </div>
-                <div style="background:#f8fafc; border-radius:10px; padding:12px; border:1px solid #e2e8f0; display:flex; align-items:center; gap:12px;">
-                    <div style="width:36px; height:36px; background:#f3e8ff; color:#7c3aed; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px;"><i class="fas fa-comments"></i></div>
-                    <div>
-                        <div style="font-size:18px; font-weight:800; color:#0f172a;"><?= $total_comments_count ?></div>
-                        <div style="font-size:12px; color:#64748b; font-weight:500;">Discussion Posts</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div style="margin-top:24px; text-align:right;">
-            <button onclick="closeReportModal()" style="background:#024442; border:none; color:#fff; padding:8px 24px; font-weight:700; border-radius:8px; cursor:pointer;">Close</button>
-        </div>
-    </div>
-</div>
-
-<?php 
-include('dashboard_footer.php');
-?>
+<?php include 'dashboard_footer.php'; ?>

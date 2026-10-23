@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 include 'dashboard_header.php';
 
@@ -105,7 +105,7 @@ $due_week  = $stats['due_week']  ?? 0;
                 <?php endif; ?>
             </div>
             <div class="stat-card">
-                <div class="stat-icon">⏰</div>
+                <div class="stat-icon"><i class="fas fa-clock"></i></div>
                 <div class="stat-number"><?= $due_week ?></div>
                 <div class="stat-label">Due This Week</div>
                 <?php if ($is_admin): ?>
@@ -159,7 +159,7 @@ $due_week  = $stats['due_week']  ?? 0;
 
                     <div class="project-meta">
                         <div class="project-deadline">
-                            ⏰ Due: <?= date('M d, Y', strtotime($project['end_date'])) ?>
+                            <i class="far fa-calendar-alt me-1"></i> Due: <?= date('M d, Y', strtotime($project['end_date'])) ?>
                         </div>
                         <div class="project-team">
                         <?php
