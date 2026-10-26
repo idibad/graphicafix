@@ -392,6 +392,9 @@ include 'dashboard_header.php';
     align-items: center;
     justify-content: center;
     padding: 20px;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
 }
 .modal-overlay.active {
     display: flex;
@@ -401,8 +404,11 @@ include 'dashboard_header.php';
     border-radius: 16px;
     width: 100%;
     max-width: 500px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    overflow: hidden;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
     animation: modalSlideUp 0.3s ease-out;
 }
 @keyframes modalSlideUp {
@@ -450,6 +456,9 @@ include 'dashboard_header.php';
 }
 .modal-body {
     padding: 24px;
+    overflow-y: auto !important;
+    flex: 1 1 auto;
+    -webkit-overflow-scrolling: touch;
 }
 .modal-footer {
     padding: 16px 24px;

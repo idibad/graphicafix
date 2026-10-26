@@ -565,6 +565,9 @@ while ($row = $result->fetch_assoc()) {
             align-items: center;
             justify-content: center;
             padding: 20px;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+            box-sizing: border-box;
         }
 
         .modal.active {
@@ -613,6 +616,9 @@ while ($row = $result->fetch_assoc()) {
 
         .modal-body {
             padding: 24px;
+            overflow-y: auto !important;
+            flex: 1 1 auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .form-group {

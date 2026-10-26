@@ -1160,8 +1160,8 @@ $global_sales_init_id = intval(($global_last_id_q && $r = $global_last_id_q->fet
     $att_needs_checkin = (empty($today_attendance) || empty($today_attendance['check_in_time']));
     $user_gender = $user_meta['gender'] ?? 'Male';
 ?>
-<div id="dailyCheckInModal" class="att-modal-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:99999; display:none; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#fff; border-radius:18px; width:100%; max-width:480px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); overflow:hidden; border:1px solid #f1f5f9; text-align:center;">
+<div id="dailyCheckInModal" class="att-modal-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:99999; display:none; align-items:center; justify-content:center; padding:20px; overflow-y:auto;">
+    <div style="background:#fff; border-radius:18px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); border:1px solid #f1f5f9; text-align:center;">
         <div style="background:linear-gradient(135deg, var(--primary, #024442) 0%, #035e5b 100%); color:#fff; padding:24px 20px;">
             <div style="width:54px; height:54px; border-radius:50%; background:rgba(255,255,255,0.15); display:inline-flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:10px;">
                 📍

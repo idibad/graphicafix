@@ -595,20 +595,22 @@ $total_records = count($attendance_records);
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px);
     z-index: 9999; display: none; align-items: center; justify-content: center; padding: 20px;
+    overflow-y: auto !important; -webkit-overflow-scrolling: touch; box-sizing: border-box;
 }
 .modal-overlay.active { display: flex; }
 .modal-content {
-    background: #fff; border-radius: 16px; width: 100%; max-width: 520px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); overflow: hidden;
+    background: #fff; border-radius: 16px; width: 100%; max-width: 520px; max-height: 90vh !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); overflow-y: auto !important;
+    display: flex; flex-direction: column; box-sizing: border-box;
 }
 .modal-header {
     background: var(--primary, #024442); color: #fff; padding: 18px 24px;
-    display: flex; justify-content: space-between; align-items: center;
+    display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
 }
 .modal-header h4 { margin: 0; font-size: 1.15rem; font-weight: 700; display:flex; align-items:center; gap:8px;}
-.modal-body { padding: 24px; }
+.modal-body { padding: 24px; overflow-y: auto !important; flex: 1 1 auto; min-height: 0; }
 .modal-footer {
-    padding: 16px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px; background: #fbfcfc;
+    padding: 16px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px; background: #fbfcfc; flex-shrink: 0;
 }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; font-weight: 600; font-size: 13px; color: #334155; margin-bottom: 5px; }

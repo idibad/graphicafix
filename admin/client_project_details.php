@@ -1022,8 +1022,8 @@ $stmt_files->close();
 </div>
 
 <!-- Modal: Request Changes / Revisions on Deliverable -->
-<div id="revisionModal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
-    <div style="background:#fff; border-radius:12px; padding:24px; max-width:500px; width:90%; position:relative; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+<div id="revisionModal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; overflow-y:auto; padding:20px;">
+    <div style="background:#fff; border-radius:12px; padding:24px; max-width:500px; width:90%; max-height:90vh; overflow-y:auto; position:relative; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:16px;">
             <h4 style="margin:0; font-size:16px; font-weight:700; color:#0f172a;">Request Deliverable Revision</h4>
             <span style="font-size:22px; cursor:pointer; color:#64748b;" onclick="closeRevisionModal()">&times;</span>

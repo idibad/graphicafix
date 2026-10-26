@@ -435,6 +435,9 @@ function cleanPhoneForWa($p) {
     align-items: center;
     justify-content: center;
     padding: 20px;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
 }
 
 .modal-overlay-client.active {
@@ -450,7 +453,8 @@ function cleanPhoneForWa($p) {
     display: flex;
     flex-direction: column;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
+    overflow-y: auto !important;
+    box-sizing: border-box;
     animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.15);
 }
 
