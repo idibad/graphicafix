@@ -46,10 +46,13 @@ try {
 }
 
 function toggleUserStatus($conn) {
-    // Auto-patch status column check
+    // Auto-patch status and gender columns check
     $cols = array_column($conn->query("SHOW COLUMNS FROM users")->fetch_all(MYSQLI_ASSOC), 'Field');
     if (!in_array('status', $cols)) {
         $conn->query("ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'");
+    }
+    if (!in_array('gender', $cols)) {
+        $conn->query("ALTER TABLE users ADD COLUMN gender VARCHAR(10) NOT NULL DEFAULT 'Male' AFTER name");
     }
 
     $user_id = intval($_GET['id'] ?? ($_POST['user_id'] ?? 0));
@@ -112,13 +115,21 @@ function fetchUser($conn) {
         return;
     }
     
-    // Auto-patch status column check
+    // Auto-patch status and gender columns check
     $cols = array_column($conn->query("SHOW COLUMNS FROM users")->fetch_all(MYSQLI_ASSOC), 'Field');
+    if (!in_array('status', $cols)) {
+        $conn->query("ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'");
+    }
+    if (!in_array('gender', $cols)) {
+        $conn->query("ALTER TABLE users ADD COLUMN gender VARCHAR(10) NOT NULL DEFAULT 'Male' AFTER name");
+    }
+
+
     $has_status = in_array('status', $cols);
     
     $query = $has_status ? 
-        "SELECT user_id, name, email, username, role, status, client_id FROM users WHERE user_id = ?" : 
-        "SELECT user_id, name, email, username, role, client_id FROM users WHERE user_id = ?";
+        "SELECT user_id, name, gender, email, username, role, status, client_id FROM users WHERE user_id = ?" : 
+        "SELECT user_id, name, gender, email, username, role, client_id FROM users WHERE user_id = ?";
         
     $stmt = $conn->prepare($query);
     if (!$stmt) {
@@ -135,6 +146,7 @@ function fetchUser($conn) {
         if (!isset($user['status'])) {
             $user['status'] = 'active';
         }
+        $user['gender'] = !empty($user['gender']) ? ucfirst(strtolower(trim($user['gender']))) : 'Male';
         // Add success flag to the response
         $user['success'] = true;
         echo json_encode($user);
@@ -148,6 +160,7 @@ function fetchUser($conn) {
 function saveUser($conn) {
     $user_id = intval($_POST['user_id'] ?? 0);
     $name = trim($_POST['name'] ?? '');
+    $gender = (strcasecmp(trim($_POST['gender'] ?? ''), 'Female') === 0) ? 'Female' : 'Male';
     $email = trim($_POST['email'] ?? '');
     $username = trim($_POST['username'] ?? '');
     $role = trim($_POST['role'] ?? 'User');
@@ -171,6 +184,9 @@ function saveUser($conn) {
     $cols = array_column($conn->query("SHOW COLUMNS FROM users")->fetch_all(MYSQLI_ASSOC), 'Field');
     if (!in_array('status', $cols)) {
         $conn->query("ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'");
+    }
+    if (!in_array('gender', $cols)) {
+        $conn->query("ALTER TABLE users ADD COLUMN gender VARCHAR(10) NOT NULL DEFAULT 'Male' AFTER name");
     }
     
     if ($user_id > 0) {
@@ -204,11 +220,11 @@ function saveUser($conn) {
             }
             
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, role = ?, status = ?, password = ?, client_id = ? WHERE user_id = ?");
-            $stmt->bind_param("sssssii", $name, $email, $role, $status, $hashed_password, $client_id, $user_id);
+            $stmt = $conn->prepare("UPDATE users SET name = ?, gender = ?, email = ?, role = ?, status = ?, password = ?, client_id = ? WHERE user_id = ?");
+            $stmt->bind_param("ssssssii", $name, $gender, $email, $role, $status, $hashed_password, $client_id, $user_id);
         } else {
-            $stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, role = ?, status = ?, client_id = ? WHERE user_id = ?");
-            $stmt->bind_param("ssssii", $name, $email, $role, $status, $client_id, $user_id);
+            $stmt = $conn->prepare("UPDATE users SET name = ?, gender = ?, email = ?, role = ?, status = ?, client_id = ? WHERE user_id = ?");
+            $stmt->bind_param("sssssii", $name, $gender, $email, $role, $status, $client_id, $user_id);
         }
         
         if ($stmt->execute()) {
@@ -267,8 +283,8 @@ function saveUser($conn) {
         
         // Hash password and insert
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $conn->prepare("INSERT INTO users (name, email, username, role, status, password, client_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
-        $stmt->bind_param("ssssssi", $name, $email, $username, $role, $status, $hashed_password, $client_id);
+        $stmt = $conn->prepare("INSERT INTO users (name, gender, email, username, role, status, password, client_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->bind_param("sssssssi", $name, $gender, $email, $username, $role, $status, $hashed_password, $client_id);
         
         if ($stmt->execute()) {
             // Send welcome email
@@ -292,6 +308,10 @@ function saveUser($conn) {
         <tr>
             <td style='padding: 8px 0; color: #64748b; font-weight: 600; font-size: 13.5px; width: 130px; border-bottom: 1px solid #f1f5f9;'>Name:</td>
             <td style='padding: 8px 0; color: #0f172a; font-weight: 700; font-size: 14.5px; border-bottom: 1px solid #f1f5f9;'>" . htmlspecialchars($name) . "</td>
+        </tr>
+        <tr>
+            <td style='padding: 8px 0; color: #64748b; font-weight: 600; font-size: 13.5px; border-bottom: 1px solid #f1f5f9;'>Gender:</td>
+            <td style='padding: 8px 0; color: #0f172a; font-weight: 700; font-size: 14.5px; border-bottom: 1px solid #f1f5f9;'>" . htmlspecialchars($gender) . "</td>
         </tr>
         <tr>
             <td style='padding: 8px 0; color: #64748b; font-weight: 600; font-size: 13.5px; border-bottom: 1px solid #f1f5f9;'>Username:</td>

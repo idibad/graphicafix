@@ -174,8 +174,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $hash    = password_hash($raw_pw, PASSWORD_DEFAULT);
                     $uname   = preg_replace('/[^a-zA-Z0-9]/', '', explode('@', $em)[0]) . rand(100, 999);
                     $nm      = $en['student_name'];
-                    $ins     = $conn->prepare("INSERT INTO users (name,email,username,password,role) VALUES (?,?,?,?,'student')");
-                    $ins->bind_param("ssss", $nm, $em, $uname, $hash); $ins->execute();
+                    $gnd     = !empty($en['gender']) ? (strcasecmp(trim($en['gender']), 'Female') === 0 ? 'Female' : 'Male') : 'Male';
+                    $ins     = $conn->prepare("INSERT INTO users (name,gender,email,username,password,role) VALUES (?,?,?,?,?,'student')");
+                    $ins->bind_param("sssss", $nm, $gnd, $em, $uname, $hash); $ins->execute();
                     if ($ins->affected_rows > 0) {
                         $siteUrl = defined('SITE_URL') ? SITE_URL : 'https://graphicafix.com';
                         $account_details = ['email'=>$en['student_email'],'password'=>$raw_pw,'login_url'=>"$siteUrl/login.php"];

@@ -21,6 +21,7 @@ $phone = $data['phone'];
 $email = $data['email'];
 $hashed_password = $data['password'];
 $role = $data['role'];
+$gender = !empty($data['gender']) ? ucfirst(strtolower(trim($data['gender']))) : 'Male';
 
 $alert = '';
 
@@ -28,6 +29,7 @@ if (isset($_POST['update'])) {
     $up_name = mysqli_real_escape_string($conn, $_POST['up_name'] ?? '');
     $up_email = mysqli_real_escape_string($conn, $_POST['up_email'] ?? '');
     $up_phone = mysqli_real_escape_string($conn, $_POST['up_phone'] ?? '');
+    $up_gender = (strcasecmp(trim($_POST['up_gender'] ?? 'Male'), 'Female') === 0) ? 'Female' : 'Male';
     $current_password = $_POST['current_password'] ?? '';
     $new_password = $_POST['new_password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
@@ -52,13 +54,13 @@ if (isset($_POST['update'])) {
     if (empty($alert)) {
         // Build update query
         if ($update_password) {
-            $update = "UPDATE users SET name=?, email=?, phone=?, password=? WHERE username=?";
+            $update = "UPDATE users SET name=?, gender=?, email=?, phone=?, password=? WHERE username=?";
             $stmt = $conn->prepare($update);
-            $stmt->bind_param('sssss', $up_name, $up_email, $up_phone, $hashed_password, $username);
+            $stmt->bind_param('ssssss', $up_name, $up_gender, $up_email, $up_phone, $hashed_password, $username);
         } else {
-            $update = "UPDATE users SET name=?, email=?, phone=? WHERE username=?";
+            $update = "UPDATE users SET name=?, gender=?, email=?, phone=? WHERE username=?";
             $stmt = $conn->prepare($update);
-            $stmt->bind_param('ssss', $up_name, $up_email, $up_phone, $username);
+            $stmt->bind_param('sssss', $up_name, $up_gender, $up_email, $up_phone, $username);
         }
 
         if ($stmt->execute()) {
@@ -67,6 +69,7 @@ if (isset($_POST['update'])) {
             $name = $up_name;
             $email = $up_email;
             $phone = $up_phone;
+            $gender = $up_gender;
         } else {
             $alert = 'Failed to update profile!';
         }
@@ -105,6 +108,14 @@ if (isset($_POST['update'])) {
             <div class="profile-row">
                 <label>Phone</label>
                 <input type="text" name="up_phone" value="<?= htmlspecialchars($phone) ?>">
+            </div>
+
+            <div class="profile-row">
+                <label>Gender</label>
+                <select name="up_gender" style="flex:1;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;background:#f8fafc;outline:none;font-family:inherit;">
+                    <option value="Male" <?= $gender === 'Male' ? 'selected' : '' ?>>Male</option>
+                    <option value="Female" <?= $gender === 'Female' ? 'selected' : '' ?>>Female</option>
+                </select>
             </div>
 
             <div class="section-divider"></div>

@@ -15,9 +15,12 @@ $cols = array_column($conn->query("SHOW COLUMNS FROM users")->fetch_all(MYSQLI_A
 if (!in_array('status', $cols)) {
     $conn->query("ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'");
 }
+if (!in_array('gender', $cols)) {
+    $conn->query("ALTER TABLE users ADD COLUMN gender VARCHAR(10) NOT NULL DEFAULT 'Male' AFTER name");
+}
 
 // Fetch all users
-$sql = "SELECT user_id, name, email, username, role, status, last_login, created_at FROM users ORDER BY created_at DESC";
+$sql = "SELECT user_id, name, gender, email, username, role, status, last_login, created_at FROM users ORDER BY created_at DESC";
 $result = $conn->query($sql);
 
 function getStatus($last_login, $user_status = 'active') {
@@ -178,7 +181,17 @@ $role_titles = [
                                 <div class="client">
                                     <div class="avatar"><?= strtoupper(substr($row['name'], 0, 1)) ?></div>
                                     <div>
-                                        <strong><?= htmlspecialchars($row['name']) ?></strong>
+                                        <div style="display:flex;align-items:center;gap:6px;">
+                                            <strong><?= htmlspecialchars($row['name']) ?></strong>
+                                            <?php 
+                                                $g_val = !empty($row['gender']) ? ucfirst(strtolower(trim($row['gender']))) : 'Male';
+                                                $g_bg = ($g_val === 'Female') ? '#fce7f3' : '#e0f2fe';
+                                                $g_color = ($g_val === 'Female') ? '#be185d' : '#0369a1';
+                                            ?>
+                                            <span style="display:inline-block;padding:1px 7px;border-radius:10px;font-size:10.5px;font-weight:700;background:<?= $g_bg ?>;color:<?= $g_color ?>;letter-spacing:0.3px;">
+                                                <?= htmlspecialchars($g_val) ?>
+                                            </span>
+                                        </div>
                                         <small><?= htmlspecialchars($row['username']) ?></small>
                                     </div>
                                 </div>
@@ -247,6 +260,14 @@ $role_titles = [
                         <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:7px;">Full Name <span style="color:#ef4444;">*</span></label>
                         <input type="text" name="name" id="f_name" placeholder="Enter full name" required
                             style="width:100%;padding:11px 14px;border:2px solid #f0f0f0;border-radius:10px;font-size:14px;background:#f8f9fa;outline:none;box-sizing:border-box;font-family:inherit;">
+                    </div>
+                    <div class="form-group">
+                        <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:7px;">Gender <span style="color:#ef4444;">*</span></label>
+                        <select name="gender" id="f_gender" required
+                            style="width:100%;padding:11px 14px;border:2px solid #f0f0f0;border-radius:10px;font-size:14px;background:#f8f9fa;outline:none;box-sizing:border-box;font-family:inherit;">
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:7px;">Username <span style="color:#ef4444;">*</span></label>
@@ -358,6 +379,7 @@ function openUserModal(type, id = null) {
         document.getElementById('f_username').disabled          = false;
         document.getElementById('f_role').value                 = 'student'; // Default to student
         document.getElementById('f_status').value               = 'active';
+        document.getElementById('f_gender').value               = 'Male';
         document.getElementById('passwordRequired').style.display = 'inline';
         document.getElementById('passwordHint').innerHTML       = '<i class="fas fa-lock" style="color: var(--primary);"></i> Minimum 8 characters required';
     } else {
@@ -381,6 +403,7 @@ function openUserModal(type, id = null) {
                     if (data && data.user_id) {
                         document.getElementById('user_id').value   = data.user_id;
                         document.getElementById('f_name').value    = data.name      || '';
+                        document.getElementById('f_gender').value  = data.gender    || 'Male';
                         document.getElementById('f_email').value   = data.email    || '';
                         document.getElementById('f_username').value = data.username || '';
                         document.getElementById('f_role').value    = data.role      || 'student';
