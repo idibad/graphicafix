@@ -369,26 +369,38 @@ $stmt_files->close();
     <style>
         .pm-nav-tabs-wrapper {
             width: 100%;
+            max-width: 100%;
             overflow-x: auto;
             overflow-y: hidden;
             -webkit-overflow-scrolling: touch;
             border-bottom: 2px solid #e2e8f0;
             margin-bottom: 24px;
             scrollbar-width: thin;
-            scrollbar-color: #cbd5e1 transparent;
+            scrollbar-color: #cbd5e1 #f8fafc;
+            padding-bottom: 2px;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .pm-nav-tabs-wrapper.is-dragging {
+            cursor: grabbing;
         }
         .pm-nav-tabs-wrapper::-webkit-scrollbar {
-            height: 4px;
+            height: 6px;
         }
         .pm-nav-tabs-wrapper::-webkit-scrollbar-track {
-            background: transparent;
+            background: #f8fafc;
+            border-radius: 4px;
         }
         .pm-nav-tabs-wrapper::-webkit-scrollbar-thumb {
             background: #cbd5e1;
             border-radius: 4px;
         }
+        .pm-nav-tabs-wrapper::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
         .pm-nav-tabs {
-            display: flex !important;
+            display: inline-flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             white-space: nowrap !important;
@@ -424,6 +436,7 @@ $stmt_files->close();
         .pm-nav-tabs .nav-link.active {
             color: #024442 !important;
             border-bottom-color: #024442 !important;
+            font-weight: 700 !important;
             background: transparent !important;
         }
         .pm-nav-tabs .badge {
@@ -433,7 +446,7 @@ $stmt_files->close();
         }
     </style>
 
-    <!-- Navigation Tabs (Horizontally Arranged Inline) -->
+    <!-- Navigation Tabs (Horizontally Scrollable Inline) -->
     <div class="pm-nav-tabs-wrapper">
         <ul class="nav nav-tabs pm-nav-tabs">
             <li class="nav-item">
@@ -1041,6 +1054,69 @@ function openRevisionModal(id) {
 function closeRevisionModal() {
     document.getElementById('revisionModal').style.display = 'none';
 }
+
+// ── Horizontal Tabs Scrolling & Active Center ───────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    const tabsWrapper = document.querySelector('.pm-nav-tabs-wrapper');
+    if (tabsWrapper) {
+        // 1. Mouse wheel horizontal scrolling
+        tabsWrapper.addEventListener('wheel', function(e) {
+            if (e.deltaY !== 0) {
+                e.preventDefault();
+                this.scrollLeft += e.deltaY;
+            }
+        }, { passive: false });
+
+        // 2. Mouse drag-to-scroll (pan)
+        let isDown = false;
+        let startX = 0;
+        let scrollStart = 0;
+        let hasDragged = false;
+
+        tabsWrapper.addEventListener('mousedown', function(e) {
+            isDown = true;
+            hasDragged = false;
+            tabsWrapper.classList.add('is-dragging');
+            startX = e.pageX - tabsWrapper.offsetLeft;
+            scrollStart = tabsWrapper.scrollLeft;
+        });
+
+        window.addEventListener('mouseup', function() {
+            if (isDown) {
+                isDown = false;
+                tabsWrapper.classList.remove('is-dragging');
+            }
+        });
+
+        tabsWrapper.addEventListener('mousemove', function(e) {
+            if (!isDown) return;
+            const x = e.pageX - tabsWrapper.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            if (Math.abs(walk) > 4) {
+                hasDragged = true;
+                e.preventDefault();
+                tabsWrapper.scrollLeft = scrollStart - walk;
+            }
+        });
+
+        tabsWrapper.querySelectorAll('a.nav-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                if (hasDragged) {
+                    e.preventDefault();
+                    hasDragged = false;
+                }
+            });
+        });
+
+        // 3. Center active tab into view on load
+        const activeLink = tabsWrapper.querySelector('.nav-link.active');
+        if (activeLink) {
+            setTimeout(function() {
+                activeLink.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }, 100);
+        }
+    }
+});
 </script>
 
 <?php include 'dashboard_footer.php'; ?>

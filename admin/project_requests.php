@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'sales', 'manager'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 // ── Handle actions ────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 

@@ -18,6 +18,11 @@ $username = $_SESSION['username'] ?? '';
 $user_id  = $_SESSION['user_id'] ?? 0;
 $role     = strtolower($_SESSION['role'] ?? 'user');
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'sales'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 // Ensure tables exist
 if (isset($conn) && $conn instanceof mysqli) {
     init_print_database($conn);
@@ -34,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order_status']
         $stmt->bind_param("si", $new_status, $order_id);
         $stmt->execute();
         $msg = "Order status updated to " . ucfirst(str_replace('_', ' ', $new_status));
+        logActivity($conn, 'update_print_order_status', "Updated order #$order_id status to '$new_status'", 'print_order', $order_id);
     }
 }
 

@@ -5,6 +5,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+$user_id = $_SESSION['user_id'] ?? 0;
+if ($user_id && function_exists('logActivity') && isset($conn)) {
+    logActivity($conn, 'portal_logout', "User logged out from portal", 'user', $user_id);
+}
+
 // Clear Remember Me token from DB and delete the persistent cookie
 if (function_exists('clearRememberToken') && isset($conn)) {
     clearRememberToken($conn);

@@ -4,6 +4,11 @@ ini_set('display_errors', '1');
 
 include 'dashboard_header.php';
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'manager', 'sales'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 $admin_id   = $_SESSION['user_id'] ?? 0;
 $admin_name = $_SESSION['name'] ?? 'Admin';
 

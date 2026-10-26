@@ -35,12 +35,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_action'])) {
         $stmt = $conn->prepare("UPDATE tasks SET status=?, updated_at=NOW() WHERE id=?");
         $stmt->bind_param("si", $new_status, $task_id);
         $stmt->execute();
+        logActivity($conn, 'update_task_status', "Updated task #$task_id status to '$new_status'", 'task', $task_id);
         echo json_encode(['success' => true, 'message' => 'Status updated']);
 
     } elseif ($action === 'delete_task') {
+        if (!$is_admin && $t['created_by'] != $user_id) {
+            echo json_encode(['success' => false, 'message' => 'Only admins or task creators can delete tasks']); exit;
+        }
         $stmt = $conn->prepare("DELETE FROM tasks WHERE id=?");
         $stmt->bind_param("i", $task_id);
         $stmt->execute();
+        logActivity($conn, 'delete_task', "Deleted task #$task_id", 'task', $task_id);
         echo json_encode(['success' => true, 'message' => 'Task deleted']);
 
     } else {

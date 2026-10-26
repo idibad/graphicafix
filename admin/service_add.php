@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager'])) {
+    header("Location: manage_services.php?error=unauthorized");
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $title            = $_POST['title'];
@@ -29,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $stmt->execute();
     $service_id = $conn->insert_id;
+    logActivity($conn, 'create_service', "Created service: '$title' (ID: $service_id)", 'service', $service_id);
 
     // ── Packages ─────────────────────────────────────────────────────────────
     if (!empty($_POST['packages']) && is_array($_POST['packages'])) {

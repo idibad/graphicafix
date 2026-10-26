@@ -5,6 +5,11 @@ ini_set('display_errors', '0');
 
 include 'dashboard_header.php';
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'sales', 'manager', 'hrm'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 // ── Auto-patch contacts table safely (No fetch_all) ───────────────────────────
 $cCols = array();
 $cResult = @$conn->query("SHOW COLUMNS FROM contacts");

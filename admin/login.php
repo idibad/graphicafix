@@ -56,6 +56,7 @@ if (isset($_POST['login'])) {
                     }
 
                     logLogin($conn, $user_id, 'success');
+                    logActivity($conn, 'login_success', "User logged into admin portal", 'user', $user_id, $user_id, $username);
 
                     $_SESSION['user_id'] = $user_id;
                     $_SESSION['username'] = $username;
@@ -80,13 +81,16 @@ if (isset($_POST['login'])) {
 
             if ($is_deactivated_account) {
                 logLogin($conn, NULL, 'failed');
+                logActivity($conn, 'login_failed', "Login failed: Account deactivated for '$login_input'", 'user', null, null, $login_input, 'guest');
                 $error_message = 'Your account has been deactivated. Please contact support.';
             } else if (!$found_user && empty($error_message)) {
                 logLogin($conn, NULL, 'failed');
+                logActivity($conn, 'login_failed', "Login failed: Incorrect password for '$login_input'", 'user', null, null, $login_input, 'guest');
                 $error_message = 'Incorrect password. Please try again.';
             }
         } else {
             logLogin($conn, NULL, 'failed');
+            logActivity($conn, 'login_failed', "Login failed: User not found for '$login_input'", 'user', null, null, $login_input, 'guest');
             $error_message = 'User not found. Please check your username or email.';
         }
         $stmt->close();

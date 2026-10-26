@@ -18,6 +18,11 @@ $username = $_SESSION['username'] ?? '';
 $user_id  = $_SESSION['user_id'] ?? 0;
 $role     = strtolower($_SESSION['role'] ?? 'user');
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'sales'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 // Ensure tables exist & check expirations
 if (isset($conn) && $conn instanceof mysqli) {
     init_print_database($conn);

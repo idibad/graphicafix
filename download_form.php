@@ -26,6 +26,23 @@ $inv = $stmt->get_result()->fetch_assoc();
 
 if (!$inv) die('Enrollment record not found.');
 
+// ── Authorization & Ownership Verification ──
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$is_authenticated = !empty($_SESSION['user_id']);
+$user_role = strtolower($_SESSION['role'] ?? '');
+$user_email = strtolower(trim($_SESSION['email'] ?? ''));
+$is_staff = in_array($user_role, ['super_admin', 'superadmin', 'admin', 'pm', 'teacher', 'manager']);
+$is_owner = ($is_authenticated && !empty($user_email) && $user_email === strtolower(trim($inv['student_email'])));
+
+if (!$is_staff && !$is_owner) {
+    http_response_code(403);
+    die('Access Denied. You do not have permission to download this enrollment confirmation. Please log in with your registered account.');
+}
+
+logActivity($conn, 'download_student_admission_slip', "Downloaded enrollment admission slip for enrollment #$eid ({$inv['student_name']})", 'enrollment', $eid);
+
 // Define colors based on general enrollment status
 $sc = match($inv['status']) {
     'active', 'completed' => '#16a34a', // Green

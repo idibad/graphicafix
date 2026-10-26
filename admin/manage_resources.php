@@ -37,6 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_resource'])) {
         $stmt->bind_param("i", $id);
         $stmt->execute();
     }
+    if ($id) {
+        logActivity($conn, 'delete_resource', "Deleted resource #$id", 'resource', $id);
+    }
     header('Location: manage_resources.php?deleted=1'); exit;
 }
 
@@ -60,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_resource'])) {
             $stmt->bind_param("sss", $title, $description, $link);
         }
         $stmt->execute();
+        logActivity($conn, $rid ? 'edit_resource' : 'create_resource', ($rid ? "Updated resource #$rid" : "Created resource") . ": '$title'", 'resource', $rid ?: $conn->insert_id);
         header('Location: manage_resources.php?saved=1'); exit;
     }
 }

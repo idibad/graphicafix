@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+if (!in_array($role, ['teacher', 'super_admin', 'superadmin', 'admin', 'pm'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 $user_id = intval($_SESSION['user_id'] ?? 0);
 
 // Get instructor courses

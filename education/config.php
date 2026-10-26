@@ -170,4 +170,8 @@ if (!defined('PORTAL_UPLOADS_PATH')) {
 if (!defined('PORTAL_UPLOADS_URL')) {
     define('PORTAL_UPLOADS_URL', rtrim(PORTAL_URL, '/') . '/uploads/');
 }
+
+if (!function_exists('logActivity') && file_exists(__DIR__ . '/../core/activity_logger.php')) {
+    require_once __DIR__ . '/../core/activity_logger.php';
+}
 ?>

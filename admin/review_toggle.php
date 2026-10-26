@@ -2,12 +2,17 @@
 
 header('Content-Type: application/json');
 
-    require_once '../core/config.php';
+require_once '../core/config.php';
 if (empty($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;
 }
 
+$role = strtolower($_SESSION['role'] ?? '');
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'sales'])) {
+    echo json_encode(['success' => false, 'message' => 'Forbidden']);
+    exit;
+}
 
 $id      = intval($_POST['id']      ?? 0);
 $visible = intval($_POST['visible'] ?? 0); // 1 or 0
@@ -21,6 +26,7 @@ $stmt = $conn->prepare("UPDATE reviews SET visible = ? WHERE id = ?");
 $stmt->bind_param("ii", $visible, $id);
 
 if ($stmt->execute()) {
+    logActivity($conn, 'toggle_review_visibility', "Set review #$id visibility to $visible", 'review', $id);
     echo json_encode(['success' => true, 'visible' => $visible]);
 } else {
     echo json_encode(['success' => false, 'message' => 'Update failed']);

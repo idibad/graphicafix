@@ -3,6 +3,11 @@
 require_once __DIR__ . '/../core/config.php';
 include '../templates/dashboard_header.php';
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager'])) {
+    header("Location: ../admin/index.php?error=unauthorized");
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $project_name = $_POST['project_name'];
@@ -53,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $stmt->execute();
     $project_id = $stmt->insert_id;
+    logActivity($conn, 'create_project', "Created project '$project_name' (ID: $project_id)", 'project', $project_id);
 
     // Insert team members
     foreach ($team_members as $uid) {

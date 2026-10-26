@@ -1,9 +1,17 @@
 <?php
 require_once __DIR__ . '/../core/config.php';
+require_once __DIR__ . '/../core/attendance_helper.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
+}
+
+// Automatically record daily checkout signout time before ending session
+$logout_user_id = $_SESSION['user_id'] ?? 0;
+if ($logout_user_id && isset($conn)) {
+    recordDailyCheckOut($conn, $logout_user_id);
+    logActivity($conn, 'logout', "User logged out of session", 'user', $logout_user_id);
 }
 
 // Clear Remember Me token from DB and delete the persistent cookie

@@ -53,6 +53,9 @@ if (isset($_POST['login'])) {
                         if (function_exists('logLogin')) {
                             logLogin($conn, $user_id, 'success');
                         }
+                        if (function_exists('logActivity')) {
+                            logActivity($conn, 'portal_login_success', "User '$username' logged into portal", 'user', $user_id, $user_id, $username, $role_lower);
+                        }
 
                         $_SESSION['user_id'] = $user_id;
                         $_SESSION['username'] = $username;
@@ -81,13 +84,16 @@ if (isset($_POST['login'])) {
 
             if ($is_deactivated_account) {
                 if (function_exists('logLogin')) logLogin($conn, NULL, 'failed');
+                if (function_exists('logActivity')) logActivity($conn, 'portal_login_failed', "Portal login failed: Deactivated account '$login_input'", 'user', null, null, $login_input, 'guest');
                 $error_message = 'Your account has been deactivated. Please contact support.';
             } else if (!$found_user && empty($error_message)) {
                 if (function_exists('logLogin')) logLogin($conn, NULL, 'failed');
+                if (function_exists('logActivity')) logActivity($conn, 'portal_login_failed', "Portal login failed: Incorrect password for '$login_input'", 'user', null, null, $login_input, 'guest');
                 $error_message = 'Incorrect password. Please try again.';
             }
         } else {
             if (function_exists('logLogin')) logLogin($conn, NULL, 'failed');
+            if (function_exists('logActivity')) logActivity($conn, 'portal_login_failed', "Portal login failed: Account not found for '$login_input'", 'user', null, null, $login_input, 'guest');
             $error_message = 'Account not found. Please check your username or email.';
         }
 

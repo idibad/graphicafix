@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'manager', 'pm'])) {
+    header("Location: manage_services.php?error=unauthorized");
+    exit;
+}
+
 $service_id = intval($_GET['id'] ?? 0);
 
 if (!$service_id) {
@@ -39,6 +44,8 @@ $stmt->execute();
 $stmt = $conn->prepare("DELETE FROM services WHERE id = ?");
 $stmt->bind_param("i", $service_id);
 $stmt->execute();
+
+logActivity($conn, 'delete_service', "Deleted service #$service_id ('" . addslashes($service['title']) . "')", 'service', $service_id);
 
 if ($conn->affected_rows >= 0) {
     echo "<script>alert('Service \"" . addslashes($service['title']) . "\" has been deleted successfully.');window.location='manage_services.php';</script>";

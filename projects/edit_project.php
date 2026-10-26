@@ -3,6 +3,11 @@ require_once __DIR__ . '/../core/config.php';
 
 require_once '../templates/dashboard_header.php';
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager'])) {
+    header("Location: ../admin/index.php?error=unauthorized");
+    exit;
+}
+
 
 // Get project ID from URL
 $id = $_GET['id'] ?? 0;
@@ -51,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute();
 
     // Update team members
+    logActivity($conn, 'edit_project', "Updated project #$id: '$project_name'", 'project', $id);
     $conn->query("DELETE FROM project_team WHERE project_id = $id");
 
 foreach ($team_members as $uid) {

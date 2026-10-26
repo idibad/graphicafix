@@ -50,6 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         WHERE id=?");
     $stmt->bind_param("sssssssi", $title, $description, $icon, $icon_style, $status, $starting_price, $discount_percent, $service_id);
     $stmt->execute();
+    logActivity($conn, 'edit_service', "Updated service #$service_id: '$title'", 'service', $service_id);
+
 
     // ── Packages ─────────────────────────────────────────────────────────────
     $submitted_pkg_ids = []; // track which existing packages are kept

@@ -7,6 +7,10 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id   = intval($_SESSION['user_id']);
 $user_role = $role;
+if (!in_array($user_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'sales', 'user'])) {
+    header('Location: index.php?error=unauthorized');
+    exit;
+}
 $is_admin  = (in_array($user_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'sales']));
 
 // Edit mode?
@@ -47,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param("sssssii", $title, $description, $priority, $status, $due_date, $assigned_to, $edit_id);
             $stmt->execute();
             $msg = 'Task updated successfully!';
+            logActivity($conn, 'edit_task', "Updated task #$edit_id: '$title'", 'task', $edit_id);
             $redirect_id = $edit_id;
 
             // Notify if assigned to a new user
@@ -60,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute();
             $new_task_id = $conn->insert_id;
             $msg = 'Task created successfully!';
+            logActivity($conn, 'create_task', "Created task: '$title'", 'task', $new_task_id);
 
             // Notify the assigned user
             if ($assigned_to) {

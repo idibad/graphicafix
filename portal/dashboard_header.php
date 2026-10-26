@@ -11,9 +11,14 @@ if (!isset($_SESSION['username'])) {
     exit;
 }
 
-$username = mysqli_real_escape_string($conn, $_SESSION['username']);
-$result   = mysqli_query($conn, "SELECT * FROM users WHERE username = '$username'");
-$data     = mysqli_fetch_assoc($result);
+$username = trim($_SESSION['username'] ?? '');
+$stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
+$stmt->bind_param("s", $username);
+$stmt->execute();
+$data = $stmt->get_result()->fetch_assoc();
+
+
+
 
 $user_status = strtolower(trim($data['status'] ?? 'active'));
 if (!$data || $user_status !== 'active') {

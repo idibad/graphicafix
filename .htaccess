@@ -81,7 +81,7 @@ DirectoryIndex index.php index.html courses.php blogs.php
 # ----------------------------------------------
 # 6. SECURITY (SAFE FOR SHARED HOSTING & APACHE 2.4)
 # ----------------------------------------------
-<FilesMatch "^\.|\.env$|composer\.(json|lock)$|wp-config\.php">
+<FilesMatch "^\.|\.env$|\.(sql|log|bak|swp|ini|md)$|composer\.(json|lock)$|wp-config\.php">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>

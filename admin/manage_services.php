@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'sales'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 // ------------------ HANDLE DISCOUNT CRUD ------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
@@ -20,12 +25,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if($stmt) {
                 $stmt->bind_param("ssssdss", $title, $name, $description, $code, $discount_percent, $status, $expires_date);
                 $stmt->execute();
+                logActivity($conn, 'create_discount', "Created discount '$name' (code: $code, percent: $discount_percent%)", 'discount', $conn->insert_id);
             }
         } else {
             $stmt = $conn->prepare("UPDATE discounts SET title=?, name=?, description=?, code=?, discount_percent=?, status=?, expires_date=?, updated_at=NOW() WHERE id=?");
             if($stmt) {
                 $stmt->bind_param("ssssdssi", $title, $name, $description, $code, $discount_percent, $status, $expires_date, $id);
                 $stmt->execute();
+                logActivity($conn, 'edit_discount', "Updated discount #$id '$name' (code: $code, percent: $discount_percent%)", 'discount', $id);
             }
         }
         header("Location: " . $_SERVER['PHP_SELF'] . "?tab=ms-discounts");
@@ -39,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if($stmt) {
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
+                logActivity($conn, 'delete_discount', "Deleted discount #$id", 'discount', $id);
             }
         }
         header("Location: " . $_SERVER['PHP_SELF'] . "?tab=ms-discounts");

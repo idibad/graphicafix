@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+if (!in_array($role, ['teacher', 'super_admin', 'superadmin', 'admin', 'pm'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 $user_id = intval($_SESSION['user_id'] ?? 0);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['post_notice'])) {
@@ -11,12 +16,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['post_notice'])) {
     $stmt = $conn->prepare("INSERT INTO notices (notice_title, content, `date`, created_at, created_by) VALUES (?, ?, CURDATE(), NOW(), ?)");
     $stmt->bind_param("sss", $title, $msg, $by);
     $stmt->execute();
+    logActivity($conn, 'post_teacher_announcement', "Posted announcement '$title'", 'announcement', $conn->insert_id);
     header("Location: teacher_announcements.php?posted=1"); exit;
 }
 
 if (isset($_GET['del'])) {
     $del = intval($_GET['del']);
     @$conn->query("DELETE FROM notices WHERE notice_id = $del");
+    logActivity($conn, 'delete_teacher_announcement', "Deleted announcement #$del", 'announcement', $del);
     header("Location: teacher_announcements.php?deleted=1"); exit;
 }
 

@@ -28,6 +28,25 @@ function send_json($data) {
     exit;
 }
 
+// ── Authentication & RBAC Enforcement ──
+if (!isset($_SESSION['user_id'])) {
+    send_json(['success' => false, 'message' => 'Unauthorized: Please log in']);
+}
+
+$current_role = strtolower($_SESSION['role'] ?? '');
+if (empty($current_role) && isset($conn)) {
+    $u_stmt = $conn->prepare("SELECT role FROM users WHERE user_id = ?");
+    $u_uid = intval($_SESSION['user_id']);
+    $u_stmt->bind_param("i", $u_uid);
+    $u_stmt->execute();
+    $current_role = strtolower($u_stmt->get_result()->fetch_assoc()['role'] ?? 'user');
+    $_SESSION['role'] = $current_role;
+}
+
+if (!in_array($current_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'sales'])) {
+    send_json(['success' => false, 'message' => 'Forbidden: Insufficient privileges for print procurement']);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Get Products and Specifications Taxonomy
 // ─────────────────────────────────────────────────────────────────────────────

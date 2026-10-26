@@ -47,10 +47,21 @@ $recent_notices = $recent_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             <h1 class="td-title"><?= htmlspecialchars($notice['notice_title']) ?></h1>
             <div class="td-subtitle">
                 <span class="badge" style="background:var(--primary-color); color:white; font-size:10px;"><i class="fas fa-calendar-alt"></i> Posted: <?= date('M d, Y', strtotime($notice['date'])) ?></span>
+                <?php if (!empty($notice['created_by'])): ?>
+                    <span class="badge" style="background:#e2e8f0; color:#334155; font-size:10px; margin-left:6px;"><i class="fas fa-user"></i> By: <?= htmlspecialchars($notice['created_by']) ?></span>
+                <?php endif; ?>
             </div>
         </div>
-        <div class="td-header-right">
-            <a href="manage_notices.php" class="btn-secondary-custom"><i class="fas fa-arrow-left"></i> Back to Board</a>
+        <div class="td-header-right" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <a href="print_notice.php?id=<?= $notice['notice_id'] ?>&auto=1" target="_blank" class="btn-primary-custom" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none; padding:9px 18px; border-radius:10px; font-weight:700; font-size:13.5px; background:var(--primary-color); color:#fff; box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+                <i class="fas fa-print"></i> Print Notice (PDF)
+            </a>
+            <a href="print_notice.php?id=<?= $notice['notice_id'] ?>&pdf=1" class="btn-secondary-custom" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none; padding:9px 16px; border-radius:10px; font-weight:600; font-size:13.5px;" title="Download Official PDF file directly">
+                <i class="fas fa-file-pdf" style="color:#ef4444;"></i> Download PDF
+            </a>
+            <a href="manage_notices.php" class="btn-secondary-custom" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none; padding:9px 16px; border-radius:10px; font-weight:600; font-size:13.5px;">
+                <i class="fas fa-arrow-left"></i> Back to Board
+            </a>
         </div>
     </div>
 
@@ -67,8 +78,24 @@ $recent_notices = $recent_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             </div>
         </div>
 
-        <!-- Right: Recent Notices Sidebar -->
+        <!-- Right: Actions & Recent Notices Sidebar -->
         <div class="td-sidebar">
+            <!-- Official Document Actions Card -->
+            <div class="td-meta-card">
+                <div class="td-section-title"><i class="fas fa-file-contract"></i> Official Notice Actions</div>
+                <p style="font-size:12.5px; color:#64748b; margin:0 0 16px 0; line-height:1.5;">
+                    Print an official notice document featuring the Graphicafix logo on top left, date, subject, description, and signature authorization.
+                </p>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <a href="print_notice.php?id=<?= $notice['notice_id'] ?>&auto=1" target="_blank" class="btn-primary-custom" style="display:flex; justify-content:center; align-items:center; gap:8px; text-decoration:none; padding:10px 14px; border-radius:8px; font-weight:700; font-size:13px; background:var(--primary-color); color:#fff;">
+                        <i class="fas fa-print"></i> Print Clean PDF
+                    </a>
+                    <a href="print_notice.php?id=<?= $notice['notice_id'] ?>&pdf=1" class="btn-secondary-custom" style="display:flex; justify-content:center; align-items:center; gap:8px; text-decoration:none; padding:9px 14px; border-radius:8px; font-weight:600; font-size:13px;">
+                        <i class="fas fa-file-download" style="color:#0ea5e9;"></i> Download PDF (mPDF)
+                    </a>
+                </div>
+            </div>
+
             <div class="td-meta-card">
                 <div class="td-section-title"><i class="fas fa-history"></i> Recent Notices</div>
                 <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 10px;">

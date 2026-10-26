@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'sales', 'manager'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 // ── Handle delete ─────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_contact'])) {
     $del_id = intval($_POST['contact_id'] ?? 0);

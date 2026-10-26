@@ -1,57 +1,63 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/../core/config.php';
 
-// Check if user is authenticated
-if (!isset($_SESSION['username'])) {
+header('Content-Type: application/json');
+
+if (!isset($_SESSION['user_id']) && !isset($_SESSION['username'])) {
+    http_response_code(401);
     echo json_encode(['status' => 'error', 'message' => 'User not authenticated']);
     exit();
 }
 
-// Database connection details
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "ishalmany";
+$userId = intval($_SESSION['user_id'] ?? 0);
+$role   = strtolower($_SESSION['role'] ?? '');
 
-// Establish connection
-$conn = new mysqli($servername, $username, $password, $dbname);
-
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+if (empty($role) && $conn) {
+    $u_stmt = $conn->prepare("SELECT role FROM users WHERE user_id = ?");
+    $u_stmt->bind_param("i", $userId);
+    $u_stmt->execute();
+    $role = strtolower($u_stmt->get_result()->fetch_assoc()['role'] ?? 'user');
+    $_SESSION['role'] = $role;
 }
 
-// Fetch user ID based on username from session
-$username = $_SESSION['username'];
-$stmt = $conn->prepare("SELECT user_id FROM users WHERE username = ?");
-$stmt->bind_param("s", $username);
-$stmt->execute();
-$result = $stmt->get_result();
-
-if ($result->num_rows > 0) {
-    $row = $result->fetch_assoc();
-    $userId = $row['user_id'];
-} else {
-    echo json_encode(['status' => 'error', 'message' => 'User not found']);
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'hrm', 'sales', 'user'])) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Forbidden: Internal staff only']);
     exit();
 }
 
-$stmt->close();
-
-// Retrieve message from request body
-$data = json_decode(file_get_contents('php://input'), true);
-$message = $data['message'];
-
-// Insert message into messages table
-$stmt = $conn->prepare("INSERT INTO messages (user_id, message) VALUES (?, ?)");
-$stmt->bind_param("is", $userId, $message);
-
-if ($stmt->execute()) {
-    echo json_encode(['status' => 'success']);
-} else {
-    echo json_encode(['status' => 'error', 'message' => 'Failed to send message']);
+if (!$conn) {
+    echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
+    exit();
 }
 
-$stmt->close();
-$conn->close();
+$conn->query("CREATE TABLE IF NOT EXISTS messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    message TEXT NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
+$raw = file_get_contents('php://input');
+$data = json_decode($raw, true) ?: $_POST;
+$message = trim($data['message'] ?? '');
+
+if (empty($message)) {
+    echo json_encode(['status' => 'error', 'message' => 'Message cannot be empty']);
+    exit();
+}
+
+$stmt = $conn->prepare("INSERT INTO messages (user_id, message) VALUES (?, ?)");
+if ($stmt) {
+    $stmt->bind_param("is", $userId, $message);
+    if ($stmt->execute()) {
+        echo json_encode(['status' => 'success']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Failed to send message']);
+    }
+    $stmt->close();
+} else {
+    echo json_encode(['status' => 'error', 'message' => 'Query preparation failed']);
+}
+exit();
 ?>

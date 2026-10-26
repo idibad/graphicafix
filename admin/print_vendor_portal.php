@@ -17,10 +17,12 @@ if (isset($conn) && $conn instanceof mysqli) {
     run_rates_expiration_check($conn);
 }
 
-// Authentication: Either vendor session, token parameter, or admin preview
+// Authentication: Either vendor session, verified token parameter, or privileged admin preview
 $token = trim($_GET['token'] ?? ($_SESSION['vendor_token'] ?? ''));
-$vendor_id = intval($_SESSION['vendor_id'] ?? ($_GET['vendor_id'] ?? 0));
-$admin_logged_in = isset($_SESSION['user_id']) || isset($_SESSION['username']);
+$vendor_id = intval($_SESSION['vendor_id'] ?? 0);
+$admin_logged_in = !empty($_SESSION['user_id']);
+$admin_role = strtolower($_SESSION['role'] ?? '');
+$is_admin_allowed = $admin_logged_in && in_array($admin_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'sales']);
 
 $vendor = null;
 if (!empty($token)) {
@@ -28,11 +30,22 @@ if (!empty($token)) {
     $stmt->bind_param("s", $token);
     $stmt->execute();
     $vendor = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+} elseif ($is_admin_allowed && isset($_GET['vendor_id'])) {
+    // Admin previewing a specific vendor portal
+    $preview_vid = intval($_GET['vendor_id']);
+    $stmt = $conn->prepare("SELECT * FROM print_vendors WHERE id = ?");
+    $stmt->bind_param("i", $preview_vid);
+    $stmt->execute();
+    $vendor = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
 } elseif ($vendor_id > 0) {
+    // Authenticated vendor session
     $stmt = $conn->prepare("SELECT * FROM print_vendors WHERE id = ?");
     $stmt->bind_param("i", $vendor_id);
     $stmt->execute();
     $vendor = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
 }
 
 // If not authenticated, redirect to vendor login

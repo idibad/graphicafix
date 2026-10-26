@@ -8,8 +8,25 @@
 error_reporting(0);
 ini_set('display_errors', '0');
 
-require_once '../vendor/autoload.php';
-include '../core/config.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../core/config.php';
+
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(403);
+    die('Access Denied. Please log in.');
+}
+
+$user_id = intval($_SESSION['user_id']);
+$u_stmt = $conn->prepare("SELECT role FROM users WHERE user_id = ?");
+$u_stmt->bind_param("i", $user_id);
+$u_stmt->execute();
+$u_row = $u_stmt->get_result()->fetch_assoc();
+$role = strtolower($u_row['role'] ?? '');
+
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'hrm', 'sales', 'user'])) {
+    http_response_code(403);
+    die('Access Denied. Insufficient permissions to view official letters.');
+}
 
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 if (!$id) die('Invalid Document ID.');
@@ -135,7 +152,7 @@ $mpdf->SetAuthor('Graphicafix');
 $mpdf->WriteHTML($html);
 
 // Save copy to disk securely
-$dir = '../letters/';
+$dir = __DIR__ . '/../letters/';
 if (!is_dir($dir)) @mkdir($dir, 0755, true);
 $file = $dir . $finalFileName;
 $mpdf->Output($file, 'F');

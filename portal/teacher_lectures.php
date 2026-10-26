@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+if (!in_array($role, ['teacher', 'super_admin', 'superadmin', 'admin', 'pm'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 $user_id = intval($_SESSION['user_id'] ?? 0);
 
 // Ensure vimeo_api_token column exists in users table
@@ -108,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_lecture'])) {
         $stmt = $conn->prepare("INSERT INTO recorded_lectures (course_id, teacher_id, title, description, file_path, video_type, vimeo_id, video_url, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
         $stmt->bind_param("iissssss", $cid, $user_id, $title, $desc, $file_path, $video_type, $vimeo_id, $video_url);
         $stmt->execute();
+        logActivity($conn, 'upload_lecture', "Uploaded lecture '$title' for course #$cid", 'lecture', $conn->insert_id);
         header("Location: teacher_lectures.php?uploaded=1"); exit;
     }
 }
@@ -116,6 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_lecture'])) {
 if (isset($_GET['delete_id'])) {
     $del = intval($_GET['delete_id']);
     $conn->query("DELETE FROM recorded_lectures WHERE id = $del AND teacher_id = $user_id");
+    logActivity($conn, 'delete_lecture', "Deleted lecture #$del", 'lecture', $del);
     header("Location: teacher_lectures.php?deleted=1"); exit;
 }
 

@@ -47,3 +47,8 @@ admin/images/uploads/*
 !admin/images/uploads/.gitkeep
 admin/uploads/*
 !admin/uploads/.gitkeep
+
+
+# Local logs and planning
+logs/
+.planning/

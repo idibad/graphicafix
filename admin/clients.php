@@ -1,6 +1,11 @@
 <?php
     include 'dashboard_header.php'; 
 
+    if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'sales', 'manager'])) {
+        header("Location: index.php?error=unauthorized");
+        exit;
+    } 
+
     $clients_query = "SELECT * FROM clients ORDER BY client_id";
     $clients_result = mysqli_query($conn, $clients_query);
 ?>

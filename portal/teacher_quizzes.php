@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+if (!in_array($role, ['teacher', 'super_admin', 'superadmin', 'admin', 'pm'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 $user_id = intval($_SESSION['user_id'] ?? 0);
 
 // Handle Create Quiz
@@ -12,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_quiz'])) {
     $stmt = $conn->prepare("INSERT INTO course_quizzes (course_id, teacher_id, title, description, created_at) VALUES (?, ?, ?, ?, NOW())");
     $stmt->bind_param("iiss", $cid, $user_id, $title, $desc);
     $stmt->execute();
+    logActivity($conn, 'create_quiz', "Created quiz '$title' for course #$cid", 'quiz', $conn->insert_id);
     header("Location: teacher_quizzes.php?created=1"); exit;
 }
 
@@ -28,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_question'])) {
     $stmt = $conn->prepare("INSERT INTO quiz_questions (quiz_id, question_text, option_a, option_b, option_c, option_d, correct_option) VALUES (?, ?, ?, ?, ?, ?, ?)");
     $stmt->bind_param("issssss", $qid, $qtext, $opa, $opb, $opc, $opd, $cop);
     $stmt->execute();
+    logActivity($conn, 'add_quiz_question', "Added question to quiz #$qid", 'quiz', $qid);
     header("Location: teacher_quizzes.php?added=1"); exit;
 }
 

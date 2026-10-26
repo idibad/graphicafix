@@ -27,33 +27,45 @@ if ($action === 'delete') {
     
     $stmt = $conn->prepare("DELETE FROM teacher_documents WHERE id = ? AND teacher_id = ? AND status = 'pending'");
     $stmt->bind_param("ii", $id, $user_id);
-    if ($stmt->execute() && $stmt->affected_rows > 0) echo json_encode(['success' => true]);
-    else echo json_encode(['success' => false, 'message' => 'Cannot delete — already reviewed or not found']);
+    if ($stmt->execute() && $stmt->affected_rows > 0) {
+        logActivity($conn, 'delete_teacher_document', "Deleted teacher document #$id", 'teacher_document', $id);
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Cannot delete — already reviewed or not found']);
+    }
     exit;
 }
 
 // Approve document (admin only)
 if ($action === 'approve') {
-    if ($user_role !== 'admin') { echo json_encode(['success' => false, 'message' => 'Admin only']); exit; }
+    if (!in_array($user_role, ['admin', 'super_admin', 'superadmin'])) { echo json_encode(['success' => false, 'message' => 'Admin only']); exit; }
     $id = intval($_POST['id'] ?? 0);
     $notes = trim($_POST['notes'] ?? '');
     $stmt = $conn->prepare("UPDATE teacher_documents SET status = 'approved', admin_notes = ?, reviewed_at = NOW() WHERE id = ?");
     $stmt->bind_param("si", $notes, $id);
-    if ($stmt->execute()) echo json_encode(['success' => true]);
-    else echo json_encode(['success' => false, 'message' => 'Update failed']);
+    if ($stmt->execute()) {
+        logActivity($conn, 'approve_teacher_document', "Approved teacher document #$id", 'teacher_document', $id);
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Update failed']);
+    }
     exit;
 }
 
 // Reject document (admin only)
 if ($action === 'reject') {
-    if ($user_role !== 'admin') { echo json_encode(['success' => false, 'message' => 'Admin only']); exit; }
+    if (!in_array($user_role, ['admin', 'super_admin', 'superadmin'])) { echo json_encode(['success' => false, 'message' => 'Admin only']); exit; }
     $id = intval($_POST['id'] ?? 0);
     $notes = trim($_POST['notes'] ?? '');
     if (!$notes) { echo json_encode(['success' => false, 'message' => 'Please provide a reason for rejection']); exit; }
     $stmt = $conn->prepare("UPDATE teacher_documents SET status = 'rejected', admin_notes = ?, reviewed_at = NOW() WHERE id = ?");
     $stmt->bind_param("si", $notes, $id);
-    if ($stmt->execute()) echo json_encode(['success' => true]);
-    else echo json_encode(['success' => false, 'message' => 'Update failed']);
+    if ($stmt->execute()) {
+        logActivity($conn, 'reject_teacher_document', "Rejected teacher document #$id. Reason: $notes", 'teacher_document', $id);
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Update failed']);
+    }
     exit;
 }
 

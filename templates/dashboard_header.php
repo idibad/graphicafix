@@ -15,15 +15,33 @@ if(!isset($_SESSION['username'])){
 
 // Fetch logged-in user details
 $username = $_SESSION['username'];
-$query = "SELECT * FROM users WHERE username = '$username'";
-$result = mysqli_query($conn, $query);
-$data = mysqli_fetch_assoc($result);
+$stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
+$stmt->bind_param("s", $username);
+$stmt->execute();
+$data = $stmt->get_result()->fetch_assoc();
+
+
+
+
 
 $name = $data['name'];
 $phone = $data['phone'];
 $email = $data['email'];
 $user_id = $data['user_id'];
-$role = $data['role']; // admin, team_member, client
+$role = strtolower($data['role'] ?? '');
+
+if (in_array($role, ['client', 'client_sub'])) {
+    header("Location: ../admin/client_projects.php");
+    exit;
+}
+if ($role === 'student') {
+    header("Location: ../portal/");
+    exit;
+}
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'teacher', 'hrm', 'sales', 'user'])) {
+    header("Location: ../admin/login.php?error=unauthorized");
+    exit;
+}
 
 // ── Helper: check active state for menu / subitems ────────────────────────────
 if (!function_exists('isMenuItemActive')) {

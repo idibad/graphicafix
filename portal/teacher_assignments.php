@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+if (!in_array($role, ['teacher', 'super_admin', 'superadmin', 'admin', 'pm'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 $user_id = intval($_SESSION['user_id'] ?? 0);
 
 // Handle Create Assignment
@@ -13,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_assign'])) {
     $stmt = $conn->prepare("INSERT INTO assignments (course_id, teacher_id, title, description, due_date, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
     $stmt->bind_param("iisss", $cid, $user_id, $title, $desc, $due);
     $stmt->execute();
+    logActivity($conn, 'create_assignment', "Created assignment '$title' for course #$cid", 'assignment', $conn->insert_id);
     header("Location: teacher_assignments.php?created=1"); exit;
 }
 
@@ -25,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['grade_sub'])) {
     $stmt = $conn->prepare("UPDATE assignment_submissions SET grade = ?, feedback = ? WHERE id = ?");
     $stmt->bind_param("ssi", $grade, $fb, $sid);
     $stmt->execute();
+    logActivity($conn, 'grade_assignment', "Graded submission #$sid with grade '$grade'", 'assignment_submission', $sid);
     header("Location: teacher_assignments.php?graded=1"); exit;
 }
 

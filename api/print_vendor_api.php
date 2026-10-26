@@ -96,6 +96,7 @@ if ($action === 'vendor_login') {
     $_SESSION['vendor_id']        = intval($found_vendor['id']);
     $_SESSION['vendor_name']      = $found_vendor['company_name'];
     $_SESSION['vendor_token']     = $found_vendor['access_token'];
+    logActivity($conn, 'vendor_login', "Vendor '{$found_vendor['company_name']}' logged in", 'vendor', $found_vendor['id'], null, $found_vendor['company_name'], 'vendor');
 
     send_json([
         'success' => true,
@@ -118,6 +119,7 @@ if ($action === 'vendor_logout') {
     unset($_SESSION['vendor_id']);
     unset($_SESSION['vendor_name']);
     unset($_SESSION['vendor_token']);
+    logActivity($conn, 'vendor_logout', "Vendor logged out", 'vendor');
     send_json(['success' => true, 'redirect_url' => 'vendor_login.php']);
 }
 
@@ -297,6 +299,7 @@ if ($action === 'update_rates_batch') {
     $log_stmt->bind_param("iiss", $vendor_id, $updated_count, $new_expires_at, $ip);
     $log_stmt->execute();
 
+    logActivity($conn, 'update_vendor_rates_batch', "Updated {$updated_count} rate card(s) for vendor '{$vendor['company_name']}'", 'vendor', $vendor_id);
     send_json([
         'success' => true,
         'message' => "Successfully updated {$updated_count} rate card(s)! Prices are active and extended for {$freq_days} days.",
@@ -348,6 +351,7 @@ if ($action === 'add_rate') {
 
     $conn->query("UPDATE print_vendors SET last_price_refresh_at = '{$now}' WHERE id = {$vendor_id}");
 
+    logActivity($conn, 'add_vendor_rate', "Added rate card #$rate_id for vendor '{$vendor['company_name']}'", 'vendor', $vendor_id);
     send_json([
         'success' => true,
         'message' => 'New rate card added and verified as active!',
@@ -374,6 +378,7 @@ if ($action === 'delete_rate') {
 
     $conn->query("DELETE FROM print_vendor_rates WHERE id = {$rate_id} AND vendor_id = {$vendor_id}");
 
+    logActivity($conn, 'delete_vendor_rate', "Deleted rate card #$rate_id for vendor #$vendor_id", 'vendor', $vendor_id);
     send_json([
         'success' => true, 
         'message' => 'Rate card removed.',
@@ -420,6 +425,7 @@ if ($action === 'confirm_rates') {
     $log_stmt->bind_param("iiss", $vendor_id, $affected, $new_expires_at, $ip);
     $log_stmt->execute();
 
+    logActivity($conn, 'confirm_vendor_rates', "Confirmed {$affected} rate(s) for vendor '{$vendor['company_name']}'", 'vendor', $vendor_id);
     send_json([
         'success' => true,
         'message' => "All pricing confirmed! Rates extended by {$freq_days} day(s) until " . date('M d, Y h:i A', strtotime($new_expires_at)),

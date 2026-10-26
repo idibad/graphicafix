@@ -13,8 +13,11 @@ if (!isset($_SESSION['username'])) {
 
 // ── Fetch user ────────────────────────────────────────────────────────────────
 $username = $_SESSION['username'];
-$result   = mysqli_query($conn, "SELECT * FROM users WHERE username = '$username'");
-$data     = mysqli_fetch_assoc($result);
+$stmt_curr = $conn->prepare("SELECT * FROM users WHERE username = ?");
+$stmt_curr->bind_param("s", $username);
+$stmt_curr->execute();
+$data = $stmt_curr->get_result()->fetch_assoc();
+$stmt_curr->close();
 
 $user_status = strtolower(trim($data['status'] ?? 'active'));
 if (!$data || $user_status !== 'active') {
@@ -33,10 +36,44 @@ $_SESSION['role'] = $role;
 
 $is_super_admin   = ($role === 'super_admin' || $role === 'superadmin');
 $is_admin_officer = ($role === 'admin');
+$is_admin         = ($is_super_admin || $is_admin_officer);
+$is_manager       = ($role === 'manager');
+$is_pm            = ($role === 'pm');
+$is_hrm           = ($role === 'hrm');
 $is_any_admin     = ($is_super_admin || $is_admin_officer);
 
 $can_edit = ($is_super_admin || $is_admin_officer || $role === 'pm' || $role === 'manager');
 $can_create_project = ($is_super_admin || $role === 'pm');
+
+// ── Centralized Role-Based Access Control (RBAC) Enforcement ──────────────────
+$current_admin_script = basename($_SERVER['PHP_SELF'] ?? '');
+
+// 1. Students belong strictly to the LMS Portal (/portal/)
+if ($role === 'student') {
+    $portal_redirect = (defined('PORTAL_URL') ? PORTAL_URL : (defined('BASE_URL') ? BASE_URL . 'portal/' : '../portal/'));
+    header("Location: " . $portal_redirect);
+    exit;
+}
+
+// 2. Clients and Client Sub-users are strictly confined to client portal pages
+if ($role === 'client' || $role === 'client_sub') {
+    $allowed_client_scripts = [
+        'index.php',
+        'client_projects.php',
+        'client_project_details.php',
+        'client_invoices.php',
+        'client_users.php',
+        'client_info.php',
+        'client_approval.php',
+        'profile.php',
+        'profile_edit.php',
+        'logout.php'
+    ];
+    if (!in_array($current_admin_script, $allowed_client_scripts)) {
+        header("Location: index.php?error=unauthorized");
+        exit;
+    }
+}
 
 // Auto-patch notices table schema
 $existing_not_cols = @array_column(
@@ -46,6 +83,13 @@ $existing_not_cols = @array_column(
 if ($existing_not_cols && !in_array('created_by', $existing_not_cols)) {
     @$conn->query("ALTER TABLE notices ADD COLUMN created_by VARCHAR(100) DEFAULT 'Admin'");
 }
+
+// Attendance & Payroll Integration
+require_once __DIR__ . '/../core/attendance_schema.php';
+require_once __DIR__ . '/../core/attendance_helper.php';
+ensure_attendance_schema($conn);
+$today_attendance = getTodayAttendanceRecord($conn, $user_id);
+$user_meta        = getUserAttendanceMeta($conn, $user_id);
 
 // ── Helper: check active state for menu / subitems ────────────────────────────
 if (!function_exists('isMenuItemActive')) {
@@ -82,314 +126,249 @@ if (!function_exists('isMenuItemActive')) {
     }
 }
 
-// ── Role-based menus ──────────────────────────────────────────────────────────
+// ── Role-based menus (Departmental Architecture) ──────────────────────────
 $menus = [
     'super_admin' => [
         [
-            'title' => 'Dashboard',
+            'title' => 'Executive & Dashboard',
             'link'  => 'index.php',
             'icon'  => 'fas fa-tachometer-alt',
             'submenus' => [
-                ['title' => 'Overview',         'link' => 'index.php',               'icon' => 'fas fa-home'],
-                ['title' => 'Daily Reports',    'link' => 'dpr.php',                 'icon' => 'fas fa-calendar-check'],
-                ['title' => 'Notice Board',     'link' => 'manage_notices.php',      'icon' => 'fas fa-bullhorn'],
-                ['title' => 'Notifications',    'link' => 'manage_notifications.php', 'icon' => 'fas fa-bell'],
-                ['title' => 'Attendance',       'link' => 'attendance.php',          'icon' => 'fas fa-clock'],
+                ['title' => 'Overview',             'link' => 'index.php',               'icon' => 'fas fa-home'],
+                ['title' => 'Daily Reports (DPR)',  'link' => 'dpr.php',                 'icon' => 'fas fa-calendar-check'],
+                ['title' => 'Company Notices',      'link' => 'manage_notices.php',      'icon' => 'fas fa-bullhorn'],
+                ['title' => 'Notifications',        'link' => 'manage_notifications.php', 'icon' => 'fas fa-bell'],
+                ['title' => 'Entertainment Hub',    'link' => 'entertainment.php',       'icon' => 'fas fa-gamepad'],
+                ['title' => 'Visitor Widget',       'link' => 'visitor_widget.php',      'icon' => 'fas fa-chart-line'],
             ]
         ],
         [
-            'title' => 'Users & Staff',
+            'title' => 'Human Resources (HRM)',
             'link'  => '#',
             'icon'  => 'fas fa-users-cog',
             'submenus' => [
-                ['title' => 'Manage Users',     'link' => 'manage_users.php',        'icon' => 'fas fa-user-shield'],
-                ['title' => 'Team & Staff',      'link' => 'manage_team.php',         'icon' => 'fas fa-id-badge'],
-                ['title' => 'Add User',         'link' => 'manage_users.php?action=add', 'icon' => 'fas fa-user-plus'],
-                ['title' => 'Login History',    'link' => 'login_history.php',       'icon' => 'fas fa-history'],
+                ['title' => 'Staff Directory & Team', 'link' => 'manage_team.php',       'icon' => 'fas fa-id-badge'],
+                ['title' => 'Staff Attendance',       'link' => 'attendance.php',        'icon' => 'fas fa-user-clock'],
+                ['title' => 'Payroll & Salaries',     'link' => 'salaries.php',          'icon' => 'fas fa-file-invoice-dollar'],
+                ['title' => 'Deduction Tickets',      'link' => 'deduction_tickets.php', 'icon' => 'fas fa-ticket-alt'],
+                ['title' => 'Job Applications',      'link' => 'manage_applications.php','icon' => 'fas fa-file-alt'],
+                ['title' => 'System User Accounts',   'link' => 'manage_users.php',      'icon' => 'fas fa-user-shield'],
+                ['title' => 'Add User / Staff',       'link' => 'manage_users.php?action=add', 'icon' => 'fas fa-user-plus'],
+                ['title' => 'Teacher Documents',      'link' => 'admin_teacher_docs.php','icon' => 'fas fa-folder-open'],
+                ['title' => 'Activity Logs',          'link' => 'activity_logs.php',     'icon' => 'fas fa-clipboard-list'],
             ]
         ],
         [
-            'title' => 'Projects Management',
+            'title' => 'Projects & Operations',
             'link'  => '#',
             'icon'  => 'fas fa-tasks',
             'submenus' => [
-                ['title' => 'Manage Projects',  'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
-                ['title' => 'Add New Project',  'link' => 'project_add.php',         'icon' => 'fas fa-folder-plus'],
-                ['title' => 'Project Requests', 'link' => 'project_requests.php',    'icon' => 'fas fa-paper-plane'],
+                ['title' => 'All Projects',           'link' => 'manage_projects.php',   'icon' => 'fas fa-folder-open'],
+                ['title' => 'Add New Project',        'link' => 'project_add.php',       'icon' => 'fas fa-folder-plus'],
+                ['title' => 'Project Requests',       'link' => 'project_requests.php',  'icon' => 'fas fa-paper-plane'],
+                ['title' => 'Task Board',             'link' => 'tasks.php',             'icon' => 'fas fa-clipboard-list'],
+                ['title' => 'Create New Task',        'link' => 'create_task.php',       'icon' => 'fas fa-plus-circle'],
+                ['title' => 'Task Performance Reports','link' => 'task_reports.php',     'icon' => 'fas fa-chart-pie'],
+                ['title' => 'Services Catalog',       'link' => 'manage_services.php',   'icon' => 'fas fa-concierge-bell'],
+                ['title' => 'Add Service',            'link' => 'service_add.php',       'icon' => 'fas fa-plus-circle'],
             ]
         ],
         [
-            'title' => 'Tasks & Workflow',
-            'link'  => '#',
-            'icon'  => 'fas fa-check-square',
-            'submenus' => [
-                ['title' => 'Task Board',       'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
-                ['title' => 'Create New Task',  'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
-                ['title' => 'Task Reports',     'link' => 'task_reports.php',        'icon' => 'fas fa-chart-pie'],
-            ]
-        ],
-        [
-            'title' => 'Clients & Leads',
+            'title' => 'Sales & CRM',
             'link'  => '#',
             'icon'  => 'fas fa-user-tie',
             'submenus' => [
-                ['title' => 'Sales Response Unit', 'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish'],
-                ['title' => 'Client Field Visits', 'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
-                ['title' => 'Manage Clients',   'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
-                ['title' => 'Add Client',       'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-plus-square'],
-                ['title' => 'CRM & Leads',      'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
-                ['title' => 'Add Lead',         'link' => 'manage_leads.php?action=add', 'icon' => 'fas fa-user-tag'],
-                ['title' => 'Client Inquiries', 'link' => 'contacts.php',            'icon' => 'fas fa-address-book'],
-                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
-                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
-                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
-                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
-                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
-                ['title' => 'Client Reviews',   'link' => 'reviews.php',             'icon' => 'fas fa-star'],
-                ['title' => 'Client Questionnaires', 'link' => 'client_questionnaires.php', 'icon' => 'fas fa-clipboard-check'],
+                ['title' => 'Sales Response Unit',    'link' => 'sales_response_unit.php','icon' => 'fas fa-satellite-dish'],
+                ['title' => 'Client Field Visits',    'link' => 'sales_visits.php',      'icon' => 'fas fa-street-view'],
+                ['title' => 'Clients Database',       'link' => 'manage_clients.php',    'icon' => 'fas fa-building'],
+                ['title' => 'Add Client',             'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-plus-square'],
+                ['title' => 'Pipeline & Leads (CRM)', 'link' => 'manage_leads.php',      'icon' => 'fas fa-filter'],
+                ['title' => 'Add Lead',               'link' => 'manage_leads.php?action=add', 'icon' => 'fas fa-user-tag'],
+                ['title' => 'Client Inquiries',       'link' => 'contacts.php',          'icon' => 'fas fa-address-book'],
+                ['title' => 'Client Reviews',         'link' => 'reviews.php',           'icon' => 'fas fa-star'],
+                ['title' => 'Client Questionnaires',  'link' => 'client_questionnaires.php','icon' => 'fas fa-clipboard-check'],
             ]
         ],
         [
-            'title' => 'Invoices & Quotes',
+            'title' => 'Finance & Procurement',
             'link'  => '#',
             'icon'  => 'fas fa-file-invoice-dollar',
             'submenus' => [
-                ['title' => 'Manage Invoices',  'link' => 'manage_invoices.php',     'icon' => 'fas fa-file-invoice'],
-                ['title' => 'Create Invoice',   'link' => 'create_invoice.php',      'icon' => 'fas fa-plus-circle'],
-                ['title' => 'Create Quotation', 'link' => 'create_quotation.php',    'icon' => 'fas fa-file-signature'],
-                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
-                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
-                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
-                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
-                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
-                ['title' => 'Bank Accounts',    'link' => 'manage_bank_accounts.php', 'icon' => 'fas fa-university'],
+                ['title' => 'Invoices Management',    'link' => 'manage_invoices.php',   'icon' => 'fas fa-file-invoice'],
+                ['title' => 'Create Invoice',         'link' => 'create_invoice.php',    'icon' => 'fas fa-plus-circle'],
+                ['title' => 'Create Quotation',       'link' => 'create_quotation.php',  'icon' => 'fas fa-file-signature'],
+                ['title' => 'Price Calculator',       'link' => 'price_calculator.php',  'icon' => 'fas fa-calculator'],
+                ['title' => 'Procurement Sheet',      'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
+                ['title' => 'Vendors Directory',      'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
+                ['title' => 'Purchase Orders (POs)',  'link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
+                ['title' => 'Vendor Rate Portal',     'link' => 'vendor_login.php',      'icon' => 'fas fa-sign-in-alt'],
+                ['title' => 'Bank Accounts',          'link' => 'manage_bank_accounts.php','icon' => 'fas fa-university'],
             ]
         ],
         [
-            'title' => 'Services Catalog',
-            'link'  => '#',
-            'icon'  => 'fas fa-cogs',
-            'submenus' => [
-                ['title' => 'Manage Services',  'link' => 'manage_services.php',     'icon' => 'fas fa-concierge-bell'],
-                ['title' => 'Add Service',      'link' => 'service_add.php',         'icon' => 'fas fa-plus-circle'],
-            ]
-        ],
-        [
-            'title' => 'HR Management',
-            'link'  => '#',
-            'icon'  => 'fas fa-briefcase',
-            'submenus' => [
-                ['title' => 'Team & Staff',      'link' => 'manage_team.php',         'icon' => 'fas fa-id-badge'],
-                ['title' => 'Job Applications', 'link' => 'manage_applications.php', 'icon' => 'fas fa-file-alt'],
-                ['title' => 'Staff Attendance', 'link' => 'attendance.php',          'icon' => 'fas fa-user-clock'],
-                ['title' => 'Teacher Documents','link' => 'admin_teacher_docs.php',  'icon' => 'fas fa-folder-open'],
-            ]
-        ],
-        [
-            'title' => 'LMS & Courses',
+            'title' => 'Academics & LMS',
             'link'  => '#',
             'icon'  => 'fas fa-graduation-cap',
             'submenus' => [
-                ['title' => 'Manage Courses',   'link' => 'manage_courses.php',      'icon' => 'fas fa-book-reader'],
-                ['title' => 'Recorded Lectures','link' => 'admin_lectures.php',      'icon' => 'fas fa-video'],
-                ['title' => 'LMS Portal',       'link' => '../portal/index.php',     'icon' => 'fas fa-external-link-alt'],
+                ['title' => 'Manage Courses',         'link' => 'manage_courses.php',    'icon' => 'fas fa-book-reader'],
+                ['title' => 'Recorded Lectures',      'link' => 'admin_lectures.php',    'icon' => 'fas fa-video'],
+                ['title' => 'LMS Student Portal',     'link' => '../portal/index.php',   'icon' => 'fas fa-external-link-alt'],
             ]
         ],
         [
-            'title' => 'Content & Blogs',
+            'title' => 'Media & Marketing',
             'link'  => '#',
-            'icon'  => 'fas fa-blog',
+            'icon'  => 'fas fa-bullhorn',
             'submenus' => [
-                ['title' => 'Manage Blogs',     'link' => 'manage_blogs.php',        'icon' => 'fas fa-newspaper'],
-                ['title' => 'Create Blog',      'link' => 'create_blog.php',         'icon' => 'fas fa-plus-circle'],
-                ['title' => 'Newsletter & Announcements', 'link' => 'newsletter.php', 'icon' => 'fas fa-bullhorn'],
-                ['title' => 'Correspondence',   'link' => 'correspondence.php',      'icon' => 'fas fa-envelope'],
+                ['title' => 'Company Blogs',          'link' => 'manage_blogs.php',      'icon' => 'fas fa-newspaper'],
+                ['title' => 'Write Blog',             'link' => 'create_blog.php',       'icon' => 'fas fa-plus-circle'],
+                ['title' => 'Newsletter & Campaigns', 'link' => 'newsletter.php',        'icon' => 'fas fa-bullhorn'],
+                ['title' => 'Official Correspondence','link' => 'correspondence.php',    'icon' => 'fas fa-envelope'],
             ]
         ],
         [
-            'title' => 'Entertainment Hub',
-            'link'  => '#',
-            'icon'  => 'fas fa-gamepad',
-            'submenus' => [
-                ['title' => 'Entertainment',    'link' => 'entertainment.php',       'icon' => 'fas fa-dice'],
-                ['title' => 'Visitor Widget',   'link' => 'visitor_widget.php',      'icon' => 'fas fa-chart-line'],
-            ]
-        ],
-        [
-            'title' => 'Settings',
+            'title' => 'Account & Settings',
             'link'  => 'profile.php',
             'icon'  => 'fas fa-cog',
             'submenus' => [
-                ['title' => 'My Profile',       'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
-                ['title' => 'Login History',    'link' => 'login_history.php',       'icon' => 'fas fa-shield-alt'],
+                ['title' => 'My Profile',             'link' => 'profile.php',           'icon' => 'fas fa-user-circle'],
+                ['title' => 'Login History',          'link' => 'login_history.php',     'icon' => 'fas fa-history'],
             ]
         ],
     ],
     'superadmin' => &$menus['super_admin'],
-    'admin' => [ // Admin Officer (Operations, Records, Attendance, Supplies, Invoices, CRM)
+    'admin' => [ // Admin Officer (Operations, HR, Finance, Procurement, CRM)
         [
-            'title' => 'Dashboard',
+            'title' => 'Executive & Dashboard',
             'link'  => 'index.php',
             'icon'  => 'fas fa-tachometer-alt',
             'submenus' => [
-                ['title' => 'Overview',         'link' => 'index.php',               'icon' => 'fas fa-home'],
-                ['title' => 'Daily Reports (DPR)', 'link' => 'dpr.php',              'icon' => 'fas fa-calendar-check'],
-                ['title' => 'Notice Board',     'link' => 'manage_notices.php',      'icon' => 'fas fa-bullhorn'],
-                ['title' => 'Notifications',    'link' => 'manage_notifications.php', 'icon' => 'fas fa-bell'],
-                ['title' => 'Staff Attendance', 'link' => 'attendance.php',          'icon' => 'fas fa-clock'],
+                ['title' => 'Overview',             'link' => 'index.php',               'icon' => 'fas fa-home'],
+                ['title' => 'Daily Reports (DPR)',  'link' => 'dpr.php',                 'icon' => 'fas fa-calendar-check'],
+                ['title' => 'Company Notices',      'link' => 'manage_notices.php',      'icon' => 'fas fa-bullhorn'],
+                ['title' => 'Notifications',        'link' => 'manage_notifications.php', 'icon' => 'fas fa-bell'],
+                ['title' => 'Entertainment Hub',    'link' => 'entertainment.php',       'icon' => 'fas fa-gamepad'],
             ]
         ],
         [
-            'title' => 'Documentation & Files',
+            'title' => 'Human Resources (HRM)',
             'link'  => '#',
-            'icon'  => 'fas fa-folder-open',
+            'icon'  => 'fas fa-users-cog',
             'submenus' => [
-                ['title' => 'Official Correspondence', 'link' => 'correspondence.php', 'icon' => 'fas fa-envelope-open-text'],
-                ['title' => 'Office Resources & Files', 'link' => 'manage_resources.php', 'icon' => 'fas fa-archive'],
-                ['title' => 'Notice Board',            'link' => 'manage_notices.php',   'icon' => 'fas fa-bullhorn'],
+                ['title' => 'Staff Directory & Team', 'link' => 'manage_team.php',       'icon' => 'fas fa-id-badge'],
+                ['title' => 'Staff Attendance',       'link' => 'attendance.php',        'icon' => 'fas fa-clock'],
+                ['title' => 'Payroll & Salaries',     'link' => 'salaries.php',          'icon' => 'fas fa-file-invoice-dollar'],
+                ['title' => 'Deduction Tickets',      'link' => 'deduction_tickets.php', 'icon' => 'fas fa-ticket-alt'],
+                ['title' => 'Job Applications',      'link' => 'manage_applications.php','icon' => 'fas fa-file-alt'],
             ]
         ],
         [
-            'title' => 'Attendance & HR',
-            'link'  => '#',
-            'icon'  => 'fas fa-user-clock',
-            'submenus' => [
-                ['title' => 'Staff Attendance', 'link' => 'attendance.php',          'icon' => 'fas fa-clock'],
-                ['title' => 'Employee Records', 'link' => 'manage_team.php',         'icon' => 'fas fa-id-badge'],
-                ['title' => 'Job Applications', 'link' => 'manage_applications.php', 'icon' => 'fas fa-file-alt'],
-            ]
-        ],
-        [
-            'title' => 'Invoices & Quotes',
-            'link'  => '#',
-            'icon'  => 'fas fa-file-invoice-dollar',
-            'submenus' => [
-                ['title' => 'Manage Invoices',  'link' => 'manage_invoices.php',     'icon' => 'fas fa-file-invoice'],
-                ['title' => 'Create Invoice',   'link' => 'create_invoice.php',      'icon' => 'fas fa-plus-circle'],
-                ['title' => 'Create Quotation', 'link' => 'create_quotation.php',    'icon' => 'fas fa-file-signature'],
-                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
-                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
-                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
-                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
-                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
-            ]
-        ],
-        [
-            'title' => 'Customer Relations',
-            'link'  => '#',
-            'icon'  => 'fas fa-user-friends',
-            'submenus' => [
-                ['title' => 'Sales Response Unit', 'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish'],
-                ['title' => 'Client Field Visits', 'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
-                ['title' => 'Clients Database', 'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
-                ['title' => 'Add Client',       'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-user-plus'],
-                ['title' => 'CRM & Leads',      'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
-                ['title' => 'Add Lead',         'link' => 'manage_leads.php?action=add', 'icon' => 'fas fa-user-tag'],
-                ['title' => 'Customer Inquiries', 'link' => 'contacts.php',          'icon' => 'fas fa-phone-alt'],
-                ['title' => 'Customer Reviews', 'link' => 'reviews.php',             'icon' => 'fas fa-star'],
-                ['title' => 'Questionnaires',   'link' => 'client_questionnaires.php', 'icon' => 'fas fa-clipboard-check'],
-            ]
-        ],
-        [
-            'title' => 'Tasks & Coordination',
+            'title' => 'Projects & Operations',
             'link'  => '#',
             'icon'  => 'fas fa-tasks',
             'submenus' => [
-                ['title' => 'Task Board',       'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
-                ['title' => 'Create Task',      'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
-                ['title' => 'Task Reports',     'link' => 'task_reports.php',        'icon' => 'fas fa-chart-bar'],
+                ['title' => 'Manage Projects',      'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
+                ['title' => 'Project Requests',     'link' => 'project_requests.php',    'icon' => 'fas fa-paper-plane'],
+                ['title' => 'Task Board',           'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
+                ['title' => 'Create Task',          'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
+                ['title' => 'Task Reports',         'link' => 'task_reports.php',        'icon' => 'fas fa-chart-bar'],
+                ['title' => 'Services Catalog',     'link' => 'manage_services.php',     'icon' => 'fas fa-concierge-bell'],
+                ['title' => 'Office Resources & Files','link' => 'manage_resources.php', 'icon' => 'fas fa-archive'],
             ]
         ],
         [
-            'title' => 'Office Communication',
+            'title' => 'Sales & CRM',
             'link'  => '#',
-            'icon'  => 'fas fa-comments',
+            'icon'  => 'fas fa-user-tie',
             'submenus' => [
-                ['title' => 'Internal Messages', 'link' => 'messages.php',           'icon' => 'fas fa-envelope'],
-                ['title' => 'Newsletter & Announcements', 'link' => 'newsletter.php', 'icon' => 'fas fa-bullhorn'],
-                ['title' => 'Supplies & Inventory', 'link' => 'manage_resources.php', 'icon' => 'fas fa-boxes'],
+                ['title' => 'Sales Response Unit',  'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish'],
+                ['title' => 'Client Field Visits',  'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
+                ['title' => 'Clients Database',     'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
+                ['title' => 'Add Client',           'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-user-plus'],
+                ['title' => 'CRM & Leads',          'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
+                ['title' => 'Add Lead',             'link' => 'manage_leads.php?action=add', 'icon' => 'fas fa-user-tag'],
+                ['title' => 'Customer Inquiries',   'link' => 'contacts.php',          'icon' => 'fas fa-phone-alt'],
+                ['title' => 'Customer Reviews',     'link' => 'reviews.php',             'icon' => 'fas fa-star'],
+                ['title' => 'Questionnaires',       'link' => 'client_questionnaires.php', 'icon' => 'fas fa-clipboard-check'],
             ]
         ],
         [
-            'title' => 'Projects & Services',
+            'title' => 'Finance & Procurement',
             'link'  => '#',
-            'icon'  => 'fas fa-project-diagram',
+            'icon'  => 'fas fa-file-invoice-dollar',
             'submenus' => [
-                ['title' => 'Manage Projects',  'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
-                ['title' => 'Project Requests', 'link' => 'project_requests.php',    'icon' => 'fas fa-inbox'],
-                ['title' => 'Services Catalog', 'link' => 'manage_services.php',     'icon' => 'fas fa-concierge-bell'],
+                ['title' => 'Manage Invoices',      'link' => 'manage_invoices.php',     'icon' => 'fas fa-file-invoice'],
+                ['title' => 'Create Invoice',       'link' => 'create_invoice.php',      'icon' => 'fas fa-plus-circle'],
+                ['title' => 'Create Quotation',     'link' => 'create_quotation.php',    'icon' => 'fas fa-file-signature'],
+                ['title' => 'Price Calculator',     'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+                ['title' => 'Print Procurement',    'link' => 'print_procurement.php',   'icon' => 'fas fa-print'],
+                ['title' => 'Print Vendors',        'link' => 'print_vendors.php',       'icon' => 'fas fa-warehouse'],
+                ['title' => 'Print Orders (POs)',   'link' => 'print_orders.php',        'icon' => 'fas fa-boxes'],
+                ['title' => 'Vendor Rate Portal',   'link' => 'vendor_login.php',        'icon' => 'fas fa-sign-in-alt'],
             ]
         ],
         [
-            'title' => 'Entertainment Hub',
+            'title' => 'Media & Marketing',
             'link'  => '#',
-            'icon'  => 'fas fa-gamepad',
+            'icon'  => 'fas fa-bullhorn',
             'submenus' => [
-                ['title' => 'Entertainment',    'link' => 'entertainment.php',       'icon' => 'fas fa-dice'],
+                ['title' => 'Official Correspondence', 'link' => 'correspondence.php',   'icon' => 'fas fa-envelope-open-text'],
+                ['title' => 'Internal Messages',    'link' => 'messages.php',           'icon' => 'fas fa-envelope'],
+                ['title' => 'Newsletter & Announcements', 'link' => 'newsletter.php',    'icon' => 'fas fa-bullhorn'],
             ]
         ],
         [
-            'title' => 'Settings',
+            'title' => 'Account & Settings',
             'link'  => 'profile.php',
             'icon'  => 'fas fa-cog',
             'submenus' => [
-                ['title' => 'My Profile',       'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
-                ['title' => 'Login History',    'link' => 'login_history.php',       'icon' => 'fas fa-history'],
+                ['title' => 'My Profile',           'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
+                ['title' => 'Login History',        'link' => 'login_history.php',       'icon' => 'fas fa-history'],
+                ['title' => 'Activity Logs',        'link' => 'activity_logs.php',       'icon' => 'fas fa-clipboard-list'],
             ]
         ],
     ],
     'user' => [ // Standard Staff
         [
-            'title' => 'Dashboard',
+            'title' => 'Dashboard & Self-Service',
             'link'  => 'index.php',
             'icon'  => 'fas fa-tachometer-alt',
             'submenus' => [
-                ['title' => 'Overview',         'link' => 'index.php',               'icon' => 'fas fa-home'],
-                ['title' => 'Daily Reports',    'link' => 'dpr.php',                 'icon' => 'fas fa-calendar-check'],
+                ['title' => 'Overview',             'link' => 'index.php',               'icon' => 'fas fa-home'],
+                ['title' => 'Daily Reports (DPR)',  'link' => 'dpr.php',                 'icon' => 'fas fa-calendar-check'],
+                ['title' => 'My Attendance',        'link' => 'attendance.php',          'icon' => 'fas fa-user-clock'],
+                ['title' => 'My Salary & Slips',    'link' => 'my_salary.php',           'icon' => 'fas fa-receipt'],
+                ['title' => 'Dispute Tickets',      'link' => 'deduction_tickets.php',   'icon' => 'fas fa-ticket-alt'],
+                ['title' => 'Entertainment Hub',    'link' => 'entertainment.php',       'icon' => 'fas fa-dice'],
             ]
         ],
         [
-            'title' => 'Projects Management',
+            'title' => 'Projects & Tasks',
             'link'  => '#',
             'icon'  => 'fas fa-tasks',
             'submenus' => [
-                ['title' => 'My Projects',      'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
+                ['title' => 'My Projects',          'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
+                ['title' => 'My Tasks',             'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
             ]
         ],
         [
-            'title' => 'Tasks & Workflow',
-            'link'  => '#',
-            'icon'  => 'fas fa-check-square',
-            'submenus' => [
-                ['title' => 'My Tasks',         'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
-            ]
-        ],
-        [
-            'title' => 'Sales & Quotes',
+            'title' => 'Sales & Tools',
             'link'  => '#',
             'icon'  => 'fas fa-file-invoice-dollar',
             'submenus' => [
-                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
-                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
-                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
-                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
-                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
+                ['title' => 'Price Calculator',     'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+                ['title' => 'Print Procurement',    'link' => 'print_procurement.php',   'icon' => 'fas fa-print'],
+                ['title' => 'Print Vendors',        'link' => 'print_vendors.php',       'icon' => 'fas fa-warehouse'],
+                ['title' => 'Print Orders (POs)',   'link' => 'print_orders.php',        'icon' => 'fas fa-boxes'],
+                ['title' => 'Vendor Rate Portal',   'link' => 'vendor_login.php',        'icon' => 'fas fa-sign-in-alt'],
             ]
         ],
         [
-            'title' => 'Entertainment Hub',
-            'link'  => '#',
-            'icon'  => 'fas fa-gamepad',
-            'submenus' => [
-                ['title' => 'Entertainment',    'link' => 'entertainment.php',       'icon' => 'fas fa-dice'],
-            ]
-        ],
-        [
-            'title' => 'Settings',
+            'title' => 'Account & Settings',
             'link'  => 'profile.php',
             'icon'  => 'fas fa-cog',
             'submenus' => [
-                ['title' => 'My Profile',       'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
+                ['title' => 'My Profile',           'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
             ]
         ],
     ],
@@ -462,259 +441,207 @@ $menus = [
             ]
         ],
     ],
-    'hrm' => [ // Student / HR Role
+    'hrm' => [ // Human Resources Role
         [
-            'title' => 'Dashboard',
+            'title' => 'Executive & Dashboard',
             'link'  => 'index.php',
             'icon'  => 'fas fa-tachometer-alt',
             'submenus' => [
-                ['title' => 'Overview',         'link' => 'index.php',               'icon' => 'fas fa-home'],
-                ['title' => 'Daily Reports',    'link' => 'dpr.php',                 'icon' => 'fas fa-calendar-check'],
+                ['title' => 'Overview',             'link' => 'index.php',               'icon' => 'fas fa-home'],
+                ['title' => 'Daily Reports (DPR)',  'link' => 'dpr.php',                 'icon' => 'fas fa-calendar-check'],
+                ['title' => 'Entertainment Hub',    'link' => 'entertainment.php',       'icon' => 'fas fa-dice'],
             ]
         ],
         [
-            'title' => 'HR Management',
+            'title' => 'Human Resources (HRM)',
             'link'  => '#',
-            'icon'  => 'fas fa-briefcase',
+            'icon'  => 'fas fa-users-cog',
             'submenus' => [
-                ['title' => 'Team & Staff',      'link' => 'manage_team.php',         'icon' => 'fas fa-id-badge'],
-                ['title' => 'Job Applications', 'link' => 'manage_applications.php', 'icon' => 'fas fa-file-alt'],
-                ['title' => 'Staff Attendance', 'link' => 'attendance.php',          'icon' => 'fas fa-user-clock'],
+                ['title' => 'Staff Directory & Team', 'link' => 'manage_team.php',       'icon' => 'fas fa-id-badge'],
+                ['title' => 'Staff Attendance',       'link' => 'attendance.php',        'icon' => 'fas fa-user-clock'],
+                ['title' => 'Payroll & Salaries',     'link' => 'salaries.php',          'icon' => 'fas fa-file-invoice-dollar'],
+                ['title' => 'Deduction Tickets',      'link' => 'deduction_tickets.php', 'icon' => 'fas fa-ticket-alt'],
+                ['title' => 'Job Applications',      'link' => 'manage_applications.php','icon' => 'fas fa-file-alt'],
             ]
         ],
         [
-            'title' => 'Entertainment Hub',
-            'link'  => '#',
-            'icon'  => 'fas fa-gamepad',
-            'submenus' => [
-                ['title' => 'Entertainment',    'link' => 'entertainment.php',       'icon' => 'fas fa-dice'],
-            ]
-        ],
-        [
-            'title' => 'Settings',
+            'title' => 'Account & Settings',
             'link'  => 'profile.php',
             'icon'  => 'fas fa-cog',
             'submenus' => [
-                ['title' => 'My Profile',       'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
+                ['title' => 'My Profile',           'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
             ]
         ],
     ],
-    'pm' => [
+    'pm' => [ // Project Manager Role
         [
-            'title' => 'Dashboard',
+            'title' => 'Executive & Dashboard',
             'link'  => 'index.php',
             'icon'  => 'fas fa-tachometer-alt',
             'submenus' => [
-                ['title' => 'Overview',         'link' => 'index.php',               'icon' => 'fas fa-home'],
-                ['title' => 'Daily Reports',    'link' => 'dpr.php',                 'icon' => 'fas fa-calendar-check'],
+                ['title' => 'Overview',             'link' => 'index.php',               'icon' => 'fas fa-home'],
+                ['title' => 'Daily Reports (DPR)',  'link' => 'dpr.php',                 'icon' => 'fas fa-calendar-check'],
             ]
         ],
         [
-            'title' => 'Projects Management',
+            'title' => 'Projects & Operations',
             'link'  => '#',
             'icon'  => 'fas fa-tasks',
             'submenus' => [
-                ['title' => 'Manage Projects',  'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
-                ['title' => 'Project Requests', 'link' => 'project_requests.php',    'icon' => 'fas fa-paper-plane'],
+                ['title' => 'Manage Projects',      'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
+                ['title' => 'Project Requests',     'link' => 'project_requests.php',    'icon' => 'fas fa-paper-plane'],
+                ['title' => 'Task Board',           'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
+                ['title' => 'Create New Task',      'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
             ]
         ],
         [
-            'title' => 'Tasks & Workflow',
-            'link'  => '#',
-            'icon'  => 'fas fa-check-square',
-            'submenus' => [
-                ['title' => 'Task Board',       'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
-                ['title' => 'Create New Task',  'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
-            ]
-        ],
-        [
-            'title' => 'Clients Management',
+            'title' => 'Clients & Procurement',
             'link'  => '#',
             'icon'  => 'fas fa-user-tie',
             'submenus' => [
-                ['title' => 'Clients List',     'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
-                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
-                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
-                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
-                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
-                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
-                ['title' => 'Client Reviews',   'link' => 'reviews.php',             'icon' => 'fas fa-star'],
+                ['title' => 'Clients List',         'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
+                ['title' => 'Price Calculator',     'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+                ['title' => 'Print Procurement',    'link' => 'print_procurement.php',   'icon' => 'fas fa-print'],
+                ['title' => 'Print Vendors',        'link' => 'print_vendors.php',       'icon' => 'fas fa-warehouse'],
+                ['title' => 'Print Orders (POs)',   'link' => 'print_orders.php',        'icon' => 'fas fa-boxes'],
+                ['title' => 'Vendor Rate Portal',   'link' => 'vendor_login.php',        'icon' => 'fas fa-sign-in-alt'],
+                ['title' => 'Client Reviews',       'link' => 'reviews.php',             'icon' => 'fas fa-star'],
             ]
         ],
         [
-            'title' => 'Settings',
+            'title' => 'Account & Settings',
             'link'  => 'profile.php',
             'icon'  => 'fas fa-cog',
             'submenus' => [
-                ['title' => 'My Profile',       'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
+                ['title' => 'My Profile',           'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
             ]
         ],
     ],
     'manager' => [
         [
-            'title' => 'Dashboard',
+            'title' => 'Executive & Dashboard',
             'link'  => 'index.php',
             'icon'  => 'fas fa-tachometer-alt',
             'submenus' => [
-                ['title' => 'Overview',         'link' => 'index.php',               'icon' => 'fas fa-home'],
-                ['title' => 'Daily Reports',    'link' => 'dpr.php',                 'icon' => 'fas fa-calendar-check'],
-                ['title' => 'Notice Board',     'link' => 'manage_notices.php',      'icon' => 'fas fa-bullhorn'],
-                ['title' => 'Notifications',    'link' => 'manage_notifications.php', 'icon' => 'fas fa-bell'],
+                ['title' => 'Overview',             'link' => 'index.php',               'icon' => 'fas fa-home'],
+                ['title' => 'Daily Reports (DPR)',  'link' => 'dpr.php',                 'icon' => 'fas fa-calendar-check'],
+                ['title' => 'Company Notices',      'link' => 'manage_notices.php',      'icon' => 'fas fa-bullhorn'],
+                ['title' => 'Notifications',        'link' => 'manage_notifications.php', 'icon' => 'fas fa-bell'],
+                ['title' => 'Entertainment Hub',    'link' => 'entertainment.php',       'icon' => 'fas fa-dice'],
             ]
         ],
         [
-            'title' => 'Projects Management',
+            'title' => 'Projects & Operations',
             'link'  => '#',
             'icon'  => 'fas fa-tasks',
             'submenus' => [
-                ['title' => 'Manage Projects',  'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
-                ['title' => 'Project Requests', 'link' => 'project_requests.php',    'icon' => 'fas fa-paper-plane'],
+                ['title' => 'Manage Projects',      'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
+                ['title' => 'Project Requests',     'link' => 'project_requests.php',    'icon' => 'fas fa-paper-plane'],
+                ['title' => 'Task Board',           'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
+                ['title' => 'Create New Task',      'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
             ]
         ],
         [
-            'title' => 'Tasks & Workflow',
+            'title' => 'Human Resources (HRM)',
             'link'  => '#',
-            'icon'  => 'fas fa-check-square',
+            'icon'  => 'fas fa-users-cog',
             'submenus' => [
-                ['title' => 'Task Board',       'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
-                ['title' => 'Create New Task',  'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
+                ['title' => 'Staff Attendance',     'link' => 'attendance.php',          'icon' => 'fas fa-user-clock'],
             ]
         ],
         [
-            'title' => 'Invoices & Sales',
+            'title' => 'Finance & Procurement',
             'link'  => '#',
             'icon'  => 'fas fa-file-invoice-dollar',
             'submenus' => [
-                ['title' => 'Manage Invoices',  'link' => 'manage_invoices.php',     'icon' => 'fas fa-file-invoice'],
-                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
-                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
-                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
-                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
-                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
+                ['title' => 'Manage Invoices',      'link' => 'manage_invoices.php',     'icon' => 'fas fa-file-invoice'],
+                ['title' => 'Price Calculator',     'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+                ['title' => 'Print Procurement',    'link' => 'print_procurement.php',   'icon' => 'fas fa-print'],
+                ['title' => 'Print Vendors',        'link' => 'print_vendors.php',       'icon' => 'fas fa-warehouse'],
+                ['title' => 'Print Orders (POs)',   'link' => 'print_orders.php',        'icon' => 'fas fa-boxes'],
+                ['title' => 'Vendor Rate Portal',   'link' => 'vendor_login.php',        'icon' => 'fas fa-sign-in-alt'],
             ]
         ],
         [
-            'title' => 'HR Management',
+            'title' => 'Media & Marketing',
             'link'  => '#',
-            'icon'  => 'fas fa-briefcase',
+            'icon'  => 'fas fa-bullhorn',
             'submenus' => [
-                ['title' => 'Staff Attendance', 'link' => 'attendance.php',          'icon' => 'fas fa-user-clock'],
+                ['title' => 'Company Blogs',        'link' => 'manage_blogs.php',        'icon' => 'fas fa-newspaper'],
+                ['title' => 'Create Blog',          'link' => 'create_blog.php',         'icon' => 'fas fa-plus-circle'],
+                ['title' => 'Newsletter & Announcements', 'link' => 'newsletter.php',    'icon' => 'fas fa-bullhorn'],
+                ['title' => 'Correspondence',       'link' => 'correspondence.php',      'icon' => 'fas fa-envelope'],
             ]
         ],
         [
-            'title' => 'Content & Blogs',
-            'link'  => '#',
-            'icon'  => 'fas fa-blog',
-            'submenus' => [
-                ['title' => 'Manage Blogs',     'link' => 'manage_blogs.php',        'icon' => 'fas fa-newspaper'],
-                ['title' => 'Create Blog',      'link' => 'create_blog.php',         'icon' => 'fas fa-plus-circle'],
-                ['title' => 'Newsletter & Announcements', 'link' => 'newsletter.php', 'icon' => 'fas fa-bullhorn'],
-                ['title' => 'Correspondence',   'link' => 'correspondence.php',      'icon' => 'fas fa-envelope'],
-            ]
-        ],
-        [
-            'title' => 'Entertainment Hub',
-            'link'  => '#',
-            'icon'  => 'fas fa-gamepad',
-            'submenus' => [
-                ['title' => 'Entertainment',    'link' => 'entertainment.php',       'icon' => 'fas fa-dice'],
-            ]
-        ],
-        [
-            'title' => 'Settings',
+            'title' => 'Account & Settings',
             'link'  => 'profile.php',
             'icon'  => 'fas fa-cog',
             'submenus' => [
-                ['title' => 'My Profile',       'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
-                ['title' => 'Login History',    'link' => 'login_history.php',       'icon' => 'fas fa-shield-alt'],
+                ['title' => 'My Profile',           'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
+                ['title' => 'Login History',        'link' => 'login_history.php',       'icon' => 'fas fa-shield-alt'],
             ]
         ],
     ],
     'sales' => [
         [
-            'title' => 'Dashboard',
+            'title' => 'Executive & Dashboard',
             'link'  => 'index.php',
             'icon'  => 'fas fa-tachometer-alt',
             'submenus' => [
-                ['title' => 'Overview',         'link' => 'index.php',               'icon' => 'fas fa-home'],
-                ['title' => 'Daily Reports (DPR)', 'link' => 'dpr.php',              'icon' => 'fas fa-calendar-check'],
-                ['title' => 'Notice Board',     'link' => 'manage_notices.php',      'icon' => 'fas fa-bullhorn'],
+                ['title' => 'Overview',             'link' => 'index.php',               'icon' => 'fas fa-home'],
+                ['title' => 'Daily Reports (DPR)',  'link' => 'dpr.php',                 'icon' => 'fas fa-calendar-check'],
+                ['title' => 'Company Notices',      'link' => 'manage_notices.php',      'icon' => 'fas fa-bullhorn'],
             ]
         ],
         [
-            'title' => 'Client Visits',
-            'link'  => '#',
-            'icon'  => 'fas fa-street-view',
-            'submenus' => [
-                ['title' => 'Log Client Visit',   'link' => 'sales_visits.php?log=1',  'icon' => 'fas fa-plus-circle'],
-                ['title' => 'My Field Visits',    'link' => 'sales_visits.php',        'icon' => 'fas fa-list-alt'],
-            ]
-        ],
-        [
-            'title' => 'CRM & Leads',
-            'link'  => '#',
-            'icon'  => 'fas fa-filter',
-            'submenus' => [
-                ['title' => 'Pipeline & Leads', 'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
-                ['title' => 'Add Lead',         'link' => 'manage_leads.php?action=add', 'icon' => 'fas fa-user-tag'],
-                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
-                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
-                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
-                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
-                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
-                ['title' => 'Customer Inquiries', 'link' => 'contacts.php',          'icon' => 'fas fa-phone-alt'],
-                ['title' => 'Questionnaires',   'link' => 'client_questionnaires.php', 'icon' => 'fas fa-clipboard-check'],
-            ]
-        ],
-        [
-            'title' => 'Clients',
+            'title' => 'Sales & CRM',
             'link'  => '#',
             'icon'  => 'fas fa-user-tie',
             'submenus' => [
-                ['title' => 'Clients Database', 'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
-                ['title' => 'Add Client',       'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-user-plus'],
-                ['title' => 'Client Reviews',   'link' => 'reviews.php',             'icon' => 'fas fa-star'],
+                ['title' => 'Pipeline & Leads (CRM)','link' => 'manage_leads.php',       'icon' => 'fas fa-filter'],
+                ['title' => 'Add Lead',             'link' => 'manage_leads.php?action=add', 'icon' => 'fas fa-user-tag'],
+                ['title' => 'Log Client Visit',     'link' => 'sales_visits.php?log=1',  'icon' => 'fas fa-plus-circle'],
+                ['title' => 'My Field Visits',      'link' => 'sales_visits.php',        'icon' => 'fas fa-list-alt'],
+                ['title' => 'Clients Database',     'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
+                ['title' => 'Add Client',           'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-user-plus'],
+                ['title' => 'Customer Inquiries',   'link' => 'contacts.php',          'icon' => 'fas fa-phone-alt'],
+                ['title' => 'Client Reviews',       'link' => 'reviews.php',             'icon' => 'fas fa-star'],
+                ['title' => 'Questionnaires',       'link' => 'client_questionnaires.php', 'icon' => 'fas fa-clipboard-check'],
             ]
         ],
         [
-            'title' => 'Quotations',
+            'title' => 'Quotations & Finance',
             'link'  => '#',
-            'icon'  => 'fas fa-file-signature',
+            'icon'  => 'fas fa-file-invoice-dollar',
             'submenus' => [
-                ['title' => 'Manage Quotations','link' => 'manage_invoices.php?tab=quotations', 'icon' => 'fas fa-file-alt'],
-                ['title' => 'Create Quotation', 'link' => 'create_quotation.php',    'icon' => 'fas fa-plus-circle'],
-                ['title' => 'Price Calculator', 'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
-                ['title' => 'Print Procurement', 'link' => 'print_procurement.php', 'icon' => 'fas fa-print'],
-                ['title' => 'Print Vendors',     'link' => 'print_vendors.php',     'icon' => 'fas fa-warehouse'],
-                ['title' => 'Print Orders (POs)','link' => 'print_orders.php',      'icon' => 'fas fa-boxes'],
-                ['title' => 'Vendor Rate Portal', 'link' => 'vendor_login.php',     'icon' => 'fas fa-sign-in-alt'],
+                ['title' => 'Manage Quotations',    'link' => 'manage_invoices.php?tab=quotations', 'icon' => 'fas fa-file-alt'],
+                ['title' => 'Create Quotation',     'link' => 'create_quotation.php',    'icon' => 'fas fa-plus-circle'],
+                ['title' => 'Price Calculator',     'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
+                ['title' => 'Print Procurement',    'link' => 'print_procurement.php',   'icon' => 'fas fa-print'],
+                ['title' => 'Print Vendors',        'link' => 'print_vendors.php',       'icon' => 'fas fa-warehouse'],
+                ['title' => 'Print Orders (POs)',   'link' => 'print_orders.php',        'icon' => 'fas fa-boxes'],
+                ['title' => 'Vendor Rate Portal',   'link' => 'vendor_login.php',        'icon' => 'fas fa-sign-in-alt'],
             ]
         ],
         [
-            'title' => 'Tasks & Projects',
+            'title' => 'Projects & Tasks',
             'link'  => '#',
             'icon'  => 'fas fa-tasks',
             'submenus' => [
-                ['title' => 'My Tasks',         'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
-                ['title' => 'Create Task',      'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
-                ['title' => 'Projects List',    'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
+                ['title' => 'My Tasks',             'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
+                ['title' => 'Create Task',          'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
+                ['title' => 'Projects List',        'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
+                ['title' => 'Internal Messages',    'link' => 'messages.php',           'icon' => 'fas fa-envelope'],
             ]
         ],
         [
-            'title' => 'Office Communication',
-            'link'  => '#',
-            'icon'  => 'fas fa-comments',
-            'submenus' => [
-                ['title' => 'Internal Messages', 'link' => 'messages.php',           'icon' => 'fas fa-envelope'],
-            ]
-        ],
-        [
-            'title' => 'Settings',
+            'title' => 'Account & Settings',
             'link'  => 'profile.php',
             'icon'  => 'fas fa-cog',
             'submenus' => [
-                ['title' => 'My Profile',       'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
-                ['title' => 'Login History',    'link' => 'login_history.php',       'icon' => 'fas fa-shield-alt'],
+                ['title' => 'My Profile',           'link' => 'profile.php',             'icon' => 'fas fa-user-circle'],
+                ['title' => 'Login History',        'link' => 'login_history.php',       'icon' => 'fas fa-shield-alt'],
             ]
         ],
     ],
@@ -807,6 +734,35 @@ $notifications_html = ob_get_clean();
 
     <div class="header-right">
 
+        <?php if ($role !== 'client' && $role !== 'student'): 
+            $att_is_checked_in = (!empty($today_attendance) && !empty($today_attendance['check_in_time']));
+            $att_is_checked_out = (!empty($today_attendance) && !empty($today_attendance['check_out_time']));
+            $att_loc_display = !empty($today_attendance['location_denied']) ? 'Denied Loc' : ucfirst($today_attendance['location_type'] ?? 'Onsite');
+        ?>
+        <div class="header-attendance-widget" id="headerAttWidget" style="display:flex; align-items:center; gap:8px;">
+            <?php if (!$att_is_checked_in): ?>
+                <button type="button" class="btn btn-sm" onclick="openDailyCheckInModal()" style="background:linear-gradient(135deg, var(--accent, #b8f35a), #87bd0a); color:var(--primary, #024442); font-weight:800; font-size:12px; padding:6px 12px; border-radius:8px; border:none; display:inline-flex; align-items:center; gap:6px; cursor:pointer; box-shadow:0 2px 6px rgba(184,243,90,0.3);">
+                    <i class="fas fa-map-marker-alt"></i> Check In Today
+                </button>
+            <?php else: ?>
+                <div style="background:<?= $today_attendance['is_late'] ? '#fee2e2' : '#f0fdf4' ?>; border:1px solid <?= $today_attendance['is_late'] ? '#fecaca' : '#bbf7d0' ?>; padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; color:<?= $today_attendance['is_late'] ? '#dc2626' : '#15803d' ?>; display:flex; align-items:center; gap:6px;">
+                    <span style="width:8px; height:8px; border-radius:50%; background:<?= $today_attendance['is_late'] ? '#dc2626' : '#16a34a' ?>; display:inline-block;"></span>
+                    <span>In: <?= date('h:i A', strtotime($today_attendance['check_in_time'])) ?></span>
+                    <small style="color:#64748b; font-weight:600;">(<?= htmlspecialchars($att_loc_display) ?>)</small>
+                </div>
+                <?php if (!$att_is_checked_out): ?>
+                    <button type="button" class="btn btn-sm" onclick="doHeaderCheckOut()" id="headerCheckoutBtn" style="background:#fff; border:1.5px solid #cbd5e1; color:#475569; font-weight:700; font-size:11.5px; padding:5px 10px; border-radius:8px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;" title="Sign out / Check out for today">
+                        <i class="fas fa-sign-out-alt"></i> Check Out
+                    </button>
+                <?php else: ?>
+                    <div style="background:#f1f5f9; border:1px solid #e2e8f0; padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; color:#475569;">
+                        Out: <?= date('h:i A', strtotime($today_attendance['check_out_time'])) ?>
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
         <?= $notifications_html ?>
 
         <?php
@@ -845,6 +801,9 @@ $notifications_html = ob_get_clean();
                 <div class="header-dropdown-divider"></div>
                 <a class="header-dropdown-item" href="profile.php"><i class="fas fa-user"></i> My Profile</a>
                 <a class="header-dropdown-item" href="login_history.php"><i class="fas fa-clock"></i> Login History</a>
+                <?php if (!empty($is_admin) || !empty($is_super_admin) || !empty($is_manager)): ?>
+                <a class="header-dropdown-item" href="activity_logs.php"><i class="fas fa-clipboard-list"></i> Activity Logs</a>
+                <?php endif; ?>
                 <div class="header-dropdown-divider"></div>
                 <a class="header-dropdown-item header-dropdown-logout" href="logout.php">🚪 Logout</a>
             </div>
@@ -1195,3 +1154,171 @@ $global_sales_init_id = intval(($global_last_id_q && $r = $global_last_id_q->fet
     setInterval(pollGlobalRadar, 4000);
 })();
 </script>
+
+<!-- Daily Attendance Geolocation Modal & Engine -->
+<?php if ($role !== 'client' && $role !== 'student'): 
+    $att_needs_checkin = (empty($today_attendance) || empty($today_attendance['check_in_time']));
+    $user_gender = $user_meta['gender'] ?? 'Male';
+?>
+<div id="dailyCheckInModal" class="att-modal-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:99999; display:none; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#fff; border-radius:18px; width:100%; max-width:480px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); overflow:hidden; border:1px solid #f1f5f9; text-align:center;">
+        <div style="background:linear-gradient(135deg, var(--primary, #024442) 0%, #035e5b 100%); color:#fff; padding:24px 20px;">
+            <div style="width:54px; height:54px; border-radius:50%; background:rgba(255,255,255,0.15); display:inline-flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:10px;">
+                📍
+            </div>
+            <h3 style="margin:0; font-size:1.3rem; font-weight:800; color:#fff;">Daily Attendance Check-In</h3>
+            <div style="font-size:13px; opacity:0.85; margin-top:4px;"><?= date('l, d F Y') ?></div>
+        </div>
+
+        <div style="padding:24px 22px;">
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px; margin-bottom:18px; text-align:left; font-size:13px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                    <span style="color:#64748b;">Employee:</span>
+                    <strong style="color:#0f172a;"><?= htmlspecialchars($name) ?></strong>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#64748b;">Office Start Time:</span>
+                    <strong style="color:#0f172a;">09:00 AM</strong>
+                </div>
+            </div>
+
+            <p style="font-size:13.5px; color:#475569; margin:0 0 16px; line-height:1.45;">
+                Graphicafix requires your location to verify whether you are working <strong>On-site</strong> or <strong>Remote</strong>. If you decline location access, your attendance will be recorded as <strong>"Denied Location"</strong>.
+            </p>
+
+            <div id="checkInLoadingStatus" style="display:none; font-size:13px; color:#0284c7; font-weight:700; margin-bottom:14px;">
+                <i class="fas fa-spinner fa-spin"></i> Detecting your coordinates...
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <button type="button" id="allowLocCheckInBtn" onclick="executeDailyCheckIn(true)" style="background:linear-gradient(135deg, var(--accent, #b8f35a), #87bd0a); color:var(--primary, #024442); font-weight:800; font-size:14px; padding:12px 20px; border-radius:10px; border:none; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 12px rgba(184,243,90,0.35);">
+                    <i class="fas fa-location-arrow"></i> Allow Location & Check In
+                </button>
+                <button type="button" id="denyLocCheckInBtn" onclick="executeDailyCheckIn(false)" style="background:#f8fafc; color:#64748b; font-weight:600; font-size:13px; padding:9px 16px; border-radius:10px; border:1px solid #e2e8f0; cursor:pointer;">
+                    Deny Location Access & Check In
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const shouldPromptCheckIn = <?= $att_needs_checkin ? 'true' : 'false' ?>;
+
+    window.openDailyCheckInModal = function() {
+        const m = document.getElementById('dailyCheckInModal');
+        if (m) m.style.display = 'flex';
+    };
+
+    window.closeDailyCheckInModal = function() {
+        const m = document.getElementById('dailyCheckInModal');
+        if (m) m.style.display = 'none';
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (shouldPromptCheckIn && !sessionStorage.getItem('att_prompt_dismissed')) {
+            openDailyCheckInModal();
+        }
+    });
+
+    window.executeDailyCheckIn = function(requestLocation) {
+        const loading = document.getElementById('checkInLoadingStatus');
+        const btnAllow = document.getElementById('allowLocCheckInBtn');
+        const btnDeny = document.getElementById('denyLocCheckInBtn');
+
+        btnAllow.disabled = true;
+        btnDeny.disabled = true;
+        if (loading) loading.style.display = 'block';
+
+        if (requestLocation && ("geolocation" in navigator)) {
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    sendCheckInPayload({
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude,
+                        accuracy: pos.coords.accuracy,
+                        denied: 0
+                    });
+                },
+                function(err) {
+                    sendCheckInPayload({ denied: 1, lat: null, lng: null });
+                },
+                { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+            );
+        } else {
+            sendCheckInPayload({ denied: 1, lat: null, lng: null });
+        }
+    };
+
+    function sendCheckInPayload(payload) {
+        const fd = new FormData();
+        fd.append('action', 'check_in');
+        if (payload.lat) fd.append('lat', payload.lat);
+        if (payload.lng) fd.append('lng', payload.lng);
+        if (payload.accuracy) fd.append('accuracy', payload.accuracy);
+        if (payload.denied) fd.append('denied', '1');
+
+        fetch('attendance_api.php', {
+            method: 'POST',
+            body: fd
+        })
+        .then(r => r.json())
+        .then(data => {
+            closeDailyCheckInModal();
+            sessionStorage.setItem('att_prompt_dismissed', '1');
+            if (data.success) {
+                let msg = data.message;
+                if (data.penalty_amount > 0) {
+                    msg += ' (Late arrival - PKR ' + data.penalty_amount + ' penalty recorded)';
+                }
+                alert(msg);
+                window.location.reload();
+            } else {
+                alert(data.message || 'Check-in error.');
+                window.location.reload();
+            }
+        })
+        .catch(() => {
+            closeDailyCheckInModal();
+            alert('Attendance check-in completed.');
+            window.location.reload();
+        });
+    }
+
+    window.doHeaderCheckOut = function() {
+        if (!confirm('Are you ready to sign out / check out for today?')) return;
+        const btn = document.getElementById('headerCheckoutBtn');
+        if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking out...';
+
+        fetch('attendance_api.php?action=check_out', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Sign out time recorded: ' + (data.check_out_time || 'Done'));
+                    window.location.reload();
+                } else {
+                    alert('Could not record sign out.');
+                }
+            })
+            .catch(() => window.location.reload());
+    };
+
+    // Periodic Heartbeat every 3 minutes
+    setInterval(function() {
+        fetch('attendance_api.php?action=heartbeat', { method: 'POST' }).catch(() => {});
+    }, 180000);
+
+    // Send beacon on page unload to ensure latest activity is preserved
+    window.addEventListener('beforeunload', function() {
+        try {
+            if (navigator.sendBeacon) {
+                const fd = new FormData();
+                fd.append('action', 'heartbeat');
+                navigator.sendBeacon('attendance_api.php', fd);
+            }
+        } catch(e) {}
+    });
+})();
+</script>
+<?php endif; ?>

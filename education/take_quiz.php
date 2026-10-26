@@ -10,6 +10,16 @@ $qz_res = $conn->query("SELECT q.*, c.title as course_title FROM course_quizzes 
 $quiz = $qz_res ? $qz_res->fetch_assoc() : null;
 if (!$quiz) die("Quiz not found.");
 
+$safe_email = mysqli_real_escape_string($conn, strtolower(trim($_SESSION['email'] ?? '')));
+$cid = intval($quiz['course_id']);
+$is_admin_or_teacher = in_array($role, ['teacher', 'super_admin', 'superadmin', 'admin']);
+if (!$is_admin_or_teacher) {
+    $enr_check = $conn->query("SELECT id FROM course_enrollments WHERE course_id = $cid AND LOWER(TRIM(student_email)) = '$safe_email' AND LOWER(status) = 'active'");
+    if (!$enr_check || $enr_check->num_rows === 0) {
+        die("<div style='padding:40px; text-align:center; font-family:sans-serif;'><h3>Access Denied</h3><p>You must be actively enrolled in this course to take this quiz.</p><a href='student_courses.php'>Return to My Courses</a></div>");
+    }
+}
+
 // Handle submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_quiz'])) {
     $q_res = $conn->query("SELECT id, correct_option FROM quiz_questions WHERE quiz_id = $quiz_id");
@@ -23,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_quiz'])) {
     $stmt = $conn->prepare("INSERT INTO student_quiz_results (quiz_id, student_id, score, total_questions, taken_at) VALUES (?, ?, ?, ?, NOW())");
     $stmt->bind_param("iiii", $quiz_id, $user_id, $score, $total);
     $stmt->execute();
+    logActivity($conn, 'submit_quiz', "Student completed quiz #$quiz_id for course '{$quiz['course_title']}' (Score: $score / $total)", 'quiz_result', $quiz_id);
     header("Location: take_quiz.php?quiz_id=$quiz_id&result=$score&tot=$total"); exit;
 }
 

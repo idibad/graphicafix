@@ -18,6 +18,11 @@ $username = $_SESSION['username'] ?? '';
 $user_id  = $_SESSION['user_id'] ?? 0;
 $role     = strtolower($_SESSION['role'] ?? 'user');
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'sales'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 // Ensure tables exist & check expirations
 if (isset($conn) && $conn instanceof mysqli) {
     init_print_database($conn);
@@ -58,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['vendor_action'])) {
                 }
 
                 $msg = "Vendor details updated successfully.";
+                logActivity($conn, 'edit_vendor', "Updated vendor details for '$company' (ID: $v_id)", 'vendor', $v_id);
             } else {
                 $token = bin2hex(random_bytes(16));
                 $now = date('Y-m-d H:i:s');
@@ -66,6 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['vendor_action'])) {
                 $stmt->bind_param("ssssssssisss", $company, $contact, $phone, $whatsapp, $email, $city, $address, $specialties, $frequency, $now, $token, $p_hash);
                 $stmt->execute();
                 $msg = "New print vendor registered successfully (Default login password: " . (!empty($raw_pass) ? htmlspecialchars($raw_pass) : 'vendor123') . ").";
+                logActivity($conn, 'create_vendor', "Created vendor '$company'", 'vendor', $conn->insert_id);
             }
         }
     }

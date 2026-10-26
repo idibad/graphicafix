@@ -1,6 +1,11 @@
 <?php
 include 'dashboard_header.php';
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'manager', 'pm'])) {
+    header("Location: manage_services.php?error=unauthorized");
+    exit;
+}
+
 $package_id = intval($_GET['id'] ?? 0);
 $service_id = intval($_GET['service_id'] ?? 0);
 
@@ -32,6 +37,8 @@ $stmt->execute();
 $stmt = $conn->prepare("DELETE FROM service_packages WHERE id = ?");
 $stmt->bind_param("i", $package_id);
 $stmt->execute();
+
+logActivity($conn, 'delete_package', "Deleted package #$package_id ('" . addslashes($package['name']) . "') for service #$service_id", 'package', $package_id);
 
 if ($conn->affected_rows >= 0) {
     echo "<script>alert('Package \"" . addslashes($package['name']) . "\" has been deleted successfully.');window.location='service_details.php?id={$service_id}';</script>";

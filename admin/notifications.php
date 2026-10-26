@@ -19,8 +19,15 @@ if (isset($_GET['notif_action'])) {
 
     if ($_GET['notif_action'] === 'mark_read' && isset($_GET['id'])) {
         $id   = intval($_GET['id']);
-        $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ?");
-        $stmt->bind_param("i", $id);
+        if ($_notif_is_admin) {
+            $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ?");
+            $stmt->bind_param("i", $id);
+    
+        } else {
+            $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND (user_id = ? OR user_id = 0)");
+            $stmt->bind_param("ii", $id, $_notif_uid);
+        }
+
         echo json_encode(['success' => $stmt->execute()]);
         exit;
     }
@@ -39,8 +46,14 @@ if (isset($_GET['notif_action'])) {
 
     if ($_GET['notif_action'] === 'delete' && isset($_GET['id'])) {
         $id   = intval($_GET['id']);
-        $stmt = $conn->prepare("UPDATE notifications SET is_deleted = 1 WHERE id = ?");
-        $stmt->bind_param("i", $id);
+        if ($_notif_is_admin) {
+            $stmt = $conn->prepare("UPDATE notifications SET is_deleted = 1 WHERE id = ?");
+            $stmt->bind_param("i", $id);
+        } else {
+            $stmt = $conn->prepare("UPDATE notifications SET is_deleted = 1 WHERE id = ? AND (user_id = ? OR user_id = 0)");
+            $stmt->bind_param("ii", $id, $_notif_uid);
+        }
+
         echo json_encode(['success' => $stmt->execute()]);
         exit;
     }

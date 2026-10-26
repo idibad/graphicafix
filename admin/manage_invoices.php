@@ -3,9 +3,14 @@ ob_start();
 
 include 'dashboard_header.php';
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'manager'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+
 // ── Quick actions ─────────────────────────────────────────────────────────────
 if (isset($_GET['action'], $_GET['id'])) {
-    if ($role === 'manager') {
+    if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm'])) {
         header("Location: manage_invoices.php?error=unauthorized");
         exit;
     }
@@ -30,6 +35,7 @@ if (isset($_GET['action'], $_GET['id'])) {
             default       => null,
         };
     }
+    logActivity($conn, $type . '_' . $_GET['action'], "Performed action '{$_GET['action']}' on {$type} #{$id}", $type, $id);
     echo "<script>alert('Action completed successfully');</script>";
     header("Location: manage_invoices.php" . (isset($_GET['tab']) ? "?tab={$_GET['tab']}" : ""));
     exit;

@@ -2,6 +2,12 @@
 
 include 'dashboard_header.php';
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'manager', 'hrm', 'pm', 'sales', 'user'])) {
+    header("Location: index.php?error=unauthorized");
+    exit;
+}
+$can_manage_notices = in_array($role, ['super_admin', 'superadmin', 'admin', 'manager', 'hrm', 'pm']);
+
 $total_notices = $conn->query("SELECT COUNT(*) AS c FROM notices")->fetch_assoc()['c'] ?? 0;
 $today_notices = $conn->query("SELECT COUNT(*) AS c FROM notices WHERE DATE(`date`) = CURDATE()")->fetch_assoc()['c'] ?? 0;
 $week_notices  = $conn->query("SELECT COUNT(*) AS c FROM notices WHERE `date` >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)")->fetch_assoc()['c'] ?? 0;
@@ -33,11 +39,13 @@ $notices_result = $conn->query("SELECT * FROM notices ORDER BY `date` DESC");
     <div class="main-card">
         <div class="main-header">
             <h3><i class="fas fa-bullhorn"></i> All Notices</h3>
+            <?php if ($can_manage_notices): ?>
             <button class="add-client" onclick="openModal()">+ Post Notice</button>
+            <?php endif; ?>
         </div>
 
         <div class="main-table">
-            <div class="table-head" style="grid-template-columns:2.5fr 1fr 1.2fr 0.8fr;">
+            <div class="table-head" style="grid-template-columns:2.5fr 1fr 1.2fr 0.9fr;">
                 <span>Notice</span>
                 <span>Date</span>
                 <span>Posted By</span>
@@ -50,7 +58,7 @@ $notices_result = $conn->query("SELECT * FROM notices ORDER BY `date` DESC");
                     $postedBy     = $row['created_by'] ?? 'Admin';
                     $dateClass    = $noticeDate >= strtotime('today') ? 'today' : ($noticeDate >= strtotime('-7 days') ? 'recent' : '');
             ?>
-            <div class="table-row" style="grid-template-columns:2.5fr 1fr 1.2fr 0.8fr;">
+            <div class="table-row" style="grid-template-columns:2.5fr 1fr 1.2fr 0.9fr;">
                 <div>
                     <a href="notice_details.php?id=<?= $row['notice_id'] ?>" style="display:block;font-size:14px;color:var(--primary-color);font-weight:700;text-decoration:none;"><?= htmlspecialchars($row['notice_title']) ?></a>
                     <?php if (!empty($row['content'])): ?>
@@ -74,9 +82,14 @@ $notices_result = $conn->query("SELECT * FROM notices ORDER BY `date` DESC");
                         <?= htmlspecialchars($postedBy) ?>
                     </div>
                 </span>
-                <div style="display:flex;gap:6px;">
-                    <button class="dots" onclick="openEditModal(<?= $row['notice_id'] ?>)" title="Edit"><i class="fas fa-pencil-alt"></i>️</button>
-                    <button class="dots" onclick="deleteNotice(<?= $row['notice_id'] ?>)" title="Delete" style="color:#ef4444;"><i class="fas fa-trash"></i>️</button>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <a href="print_notice.php?id=<?= $row['notice_id'] ?>&auto=1" target="_blank" class="dots" title="Print Official Notice (PDF)" style="color:var(--primary-color);display:inline-flex;align-items:center;justify-content:center;text-decoration:none;">
+                        <i class="fas fa-print"></i>
+                    </a>
+                    <?php if ($can_manage_notices): ?>
+                    <button class="dots" onclick="openEditModal(<?= $row['notice_id'] ?>)" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="dots" onclick="deleteNotice(<?= $row['notice_id'] ?>)" title="Delete" style="color:#ef4444;"><i class="fas fa-trash"></i></button>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php endwhile; else: ?>
@@ -112,7 +125,7 @@ $notices_result = $conn->query("SELECT * FROM notices ORDER BY `date` DESC");
                     </div>
                     <div class="form-group">
                         <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:7px;">Body / Details</label>
-                        <textarea id="f_body" name="notice_body" rows="3" placeholder="Additional details (optional)"
+                        <textarea id="f_body" name="notice_body" rows="4" placeholder="Additional details or full announcement"
                             style="width:100%;padding:11px 14px;border:2px solid #f0f0f0;border-radius:10px;font-size:14px;background:#f8f9fa;outline:none;resize:vertical;transition:border-color .2s;box-sizing:border-box;font-family:inherit;"></textarea>
                     </div>
                     <div class="form-group">
@@ -121,6 +134,15 @@ $notices_result = $conn->query("SELECT * FROM notices ORDER BY `date` DESC");
                         </label>
                         <input type="date" id="f_date" name="date" required
                             style="width:100%;padding:11px 14px;border:2px solid #f0f0f0;border-radius:10px;font-size:14px;background:#f8f9fa;outline:none;box-sizing:border-box;font-family:inherit;">
+                    </div>
+                    <div class="form-group" id="emailOptionGroup" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-top:6px;">
+                        <label style="display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#1e293b;cursor:pointer;margin:0;">
+                            <input type="checkbox" id="f_send_email" name="send_email" value="1" checked style="accent-color:var(--primary-color);width:16px;height:16px;cursor:pointer;">
+                            <span>Send Email Notification to Team Members</span>
+                        </label>
+                        <div style="font-size:11.5px;color:#64748b;margin-top:4px;margin-left:24px;">
+                            Dispatches official notice email to active staff and administrators immediately.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -140,21 +162,29 @@ document.getElementById('f_date').value = new Date().toISOString().split('T')[0]
 
 function openModal() {
     document.getElementById('modalTitle').textContent  = 'Post Notice';
-    document.getElementById('modalIcon').textContent   = '<i class="fas fa-bullhorn"></i>';
-    document.getElementById('saveBtn').textContent     = '<i class="fas fa-bullhorn"></i> Post Notice';
+    document.getElementById('modalIcon').innerHTML      = '<i class="fas fa-bullhorn"></i>';
+    document.getElementById('saveBtn').innerHTML        = '<i class="fas fa-bullhorn"></i> Post Notice';
     document.getElementById('notice_id').value         = '';
     document.getElementById('noticeForm').reset();
     document.getElementById('f_date').value = new Date().toISOString().split('T')[0];
+    const emailGroup = document.getElementById('emailOptionGroup');
+    if (emailGroup) {
+        emailGroup.style.display = 'block';
+        document.getElementById('f_send_email').checked = true;
+    }
     document.getElementById('noticeModal').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
 
 function openEditModal(id) {
     document.getElementById('modalTitle').textContent  = 'Edit Notice';
-    document.getElementById('modalIcon').textContent   = '<i class="fas fa-pencil-alt"></i>️';
-    document.getElementById('saveBtn').textContent     = '<i class="fas fa-pencil-alt"></i>️ Update Notice';
+    document.getElementById('modalIcon').innerHTML      = '<i class="fas fa-pencil-alt"></i>';
+    document.getElementById('saveBtn').innerHTML        = '<i class="fas fa-pencil-alt"></i> Update Notice';
     document.getElementById('saveBtn').style.opacity   = '.6';
     document.getElementById('saveBtn').style.pointerEvents = 'none';
+    const emailGroup = document.getElementById('emailOptionGroup');
+    if (emailGroup) emailGroup.style.display = 'none';
+
     document.getElementById('noticeModal').classList.add('active');
     document.body.style.overflow = 'hidden';
 
@@ -211,8 +241,8 @@ document.getElementById('noticeForm').addEventListener('submit', function(e) {
                 showToast(res.message || 'Failed to save', 'error');
             }
         } catch(e) { showToast('Server error', 'error'); }
-        btn.textContent = id ? '<i class="fas fa-pencil-alt"></i>️ Update Notice' : '<i class="fas fa-bullhorn"></i> Post Notice';
-        btn.disabled    = false;
+        btn.innerHTML = id ? '<i class="fas fa-pencil-alt"></i> Update Notice' : '<i class="fas fa-bullhorn"></i> Post Notice';
+        btn.disabled  = false;
     });
 });
 

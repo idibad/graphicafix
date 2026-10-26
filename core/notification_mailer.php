@@ -724,3 +724,74 @@ if (!function_exists('notifyStudentQueryAnswered')) {
         return sendNotificationEmail($q['student_email'], $subject, $heading, $body, "Open Course Discussions", $ctaUrl);
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 12. NOTICE PUBLISHED NOTIFICATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+if (!function_exists('notifyNoticePublished')) {
+    /**
+     * Sends an email notification to active team members / staff when a new notice is published.
+     */
+    function notifyNoticePublished($conn, $notice_id, $title, $content, $date, $posted_by = 'Management') {
+        $notice_id = intval($notice_id);
+        if (!$conn || empty($title)) return false;
+
+        $siteUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'https://graphicafix.com';
+        $ctaUrl  = $siteUrl . '/admin/notice_details.php?id=' . $notice_id;
+
+        $subject = "Official Notice: " . $title;
+        $heading = "New Official Notice Published";
+
+        $formattedDate = !empty($date) ? date('M d, Y', strtotime($date)) : date('M d, Y');
+        $postedByClean = !empty($posted_by) ? htmlspecialchars($posted_by) : 'Management';
+
+        $body = "
+        <p style='margin:0 0 16px 0;'>Dear Team Member,</p>
+        <p style='margin:0 0 20px 0;'>A new official notice has been published on the Graphicafix portal:</p>
+        
+        <table style='width:100%; border-collapse:collapse; margin-bottom:20px; font-size:14px;'>
+            <tr>
+                <td style='padding:8px 0; color:#64748b; font-weight:600; width:130px; border-bottom:1px solid #f1f5f9;'>Subject:</td>
+                <td style='padding:8px 0; color:#0f172a; font-weight:700; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($title) . "</td>
+            </tr>
+            <tr>
+                <td style='padding:8px 0; color:#64748b; font-weight:600; border-bottom:1px solid #f1f5f9;'>Date:</td>
+                <td style='padding:8px 0; color:#0f172a; font-weight:600; border-bottom:1px solid #f1f5f9;'>{$formattedDate}</td>
+            </tr>
+            <tr>
+                <td style='padding:8px 0; color:#64748b; font-weight:600;'>Posted By:</td>
+                <td style='padding:8px 0; color:#024442; font-weight:700;'>{$postedByClean}</td>
+            </tr>
+        </table>";
+
+        if (!empty($content)) {
+            $body .= "
+            <div style='background:#f8fafc; border-left:3px solid #024442; padding:14px 18px; margin-bottom:20px; color:#334155; line-height:1.7; font-size:14px;'>
+                " . nl2br(htmlspecialchars($content)) . "
+            </div>";
+        }
+
+        // Fetch all active internal staff/users with valid emails
+        $usersRes = $conn->query("
+            SELECT DISTINCT email, name 
+            FROM users 
+            WHERE email IS NOT NULL 
+              AND email != '' 
+              AND email LIKE '%@%'
+              AND role IN ('super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user', 'teacher')
+        ");
+
+        $sentCount = 0;
+        if ($usersRes && $usersRes->num_rows > 0) {
+            while ($u = $usersRes->fetch_assoc()) {
+                if (!empty($u['email'])) {
+                    @sendNotificationEmail($u['email'], $subject, $heading, $body, "View Notice & Print PDF", $ctaUrl);
+                    $sentCount++;
+                }
+            }
+        }
+
+        return $sentCount;
+    }
+}

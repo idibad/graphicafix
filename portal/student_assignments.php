@@ -9,6 +9,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_assignment']))
     $assign_id = intval($_POST['assignment_id']);
     $notes = trim($_POST['notes']);
     
+    $chk_assign = $conn->query("
+        SELECT a.id FROM assignments a 
+        JOIN course_enrollments e ON a.course_id = e.course_id 
+        WHERE a.id = $assign_id AND LOWER(TRIM(e.student_email)) = '$safe_email' AND LOWER(e.status) = 'active'
+    ");
+    if (!$chk_assign || $chk_assign->num_rows === 0) {
+        $error = "Unauthorized: You are not enrolled in the course for this assignment.";
+    } else
+    
     if (!empty($_FILES['sub_file']['name'])) {
         $upload_dir = PORTAL_UPLOADS_PATH . 'assignments/' . date('Y_m');
         if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
@@ -19,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_assignment']))
             $stmt = $conn->prepare("INSERT INTO assignment_submissions (assignment_id, student_id, file_path, notes, submitted_at) VALUES (?, ?, ?, ?, NOW())");
             $stmt->bind_param("iiss", $assign_id, $user_id, $file_path, $notes);
             $stmt->execute();
+            logActivity($conn, 'submit_assignment', "Submitted assignment #$assign_id (File: $file_name)", 'assignment_submission', $assign_id);
             header("Location: student_assignments.php?submitted=1"); exit;
         } else {
             $error = "File upload failed.";

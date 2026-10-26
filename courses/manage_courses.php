@@ -2,6 +2,11 @@
 require_once __DIR__ . '/../core/config.php';
 include '../templates/dashboard_header.php';
 
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'teacher'])) {
+    header("Location: ../admin/index.php?error=unauthorized");
+    exit;
+}
+
 // ── Inline email helper functions ─────────────────────────────────────────────
 // (copy the sendStatusUpdateEmail + buildEmailWrapper functions inline here)
 function buildEmailWrapper($icon,$heading,$body_html,$btn_text='',$btn_url=''){

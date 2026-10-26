@@ -1,79 +1,18 @@
 <?php
-// Hide errors to prevent visual 500 crashes
+// Hide errors to prevent visual crashes
 error_reporting(0);
 ini_set('display_errors', '0');
 
 include 'dashboard_header.php';
+require_once __DIR__ . '/../core/attendance_schema.php';
+require_once __DIR__ . '/../core/attendance_helper.php';
 
-$is_admin = ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $role === 'manager');
+ensure_attendance_schema($conn);
+
+$is_admin = ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $role === 'hrm' || $role === 'manager');
 $user_id  = $_SESSION['user_id'] ?? 0;
 
-// ── Configuration ─────────────────────────────────────────────────────────────
-// Array of allowed Office IPs (including localhost for XAMPP testing, supports wildcards* and CIDR ranges)
-$office_ips = [
-    '2402:e000:6ad:80d8:c46f:951c:5385:fcd9', // Original Public IPv6
-    '127.0.0.1',                              // Localhost IPv4
-    '::1'                                     // Localhost IPv6
-]; 
-$late_cutoff_time = '09:30:00'; // 9:30 AM
-
-// Helper function to check if IP matches whitelists/wildcards/CIDRs
-function isIpInRange($user_ip, $allowed_ips) {
-    $user_ip = trim($user_ip);
-    if (empty($user_ip)) return false;
-    
-    foreach ($allowed_ips as $allowed) {
-        $allowed = trim($allowed);
-        if (empty($allowed)) continue;
-        
-        // Exact match
-        if ($allowed === $user_ip) {
-            return true;
-        }
-        
-        // Wildcard match (e.g. 192.168.1.* or 2402:e000:6ad:80d8:*)
-        if (strpos($allowed, '*') !== false) {
-            $prefix = str_replace('*', '', $allowed);
-            if (strpos($user_ip, $prefix) === 0) {
-                return true;
-            }
-        }
-        
-        // CIDR notation (e.g. 192.168.1.0/24 or 2402:e000:6ad:80d8::/64)
-        if (strpos($allowed, '/') !== false) {
-            list($subnet, $bits) = explode('/', $allowed);
-            $bits = intval($bits);
-            
-            // IPv4 CIDR
-            if (filter_var($user_ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && 
-                filter_var($subnet, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-                $ip_dec = ip2long($user_ip);
-                $subnet_dec = ip2long($subnet);
-                $mask = ~((1 << (32 - $bits)) - 1);
-                if (($ip_dec & $mask) === ($subnet_dec & $mask)) {
-                    return true;
-                }
-            } 
-            // IPv6 CIDR
-            elseif (filter_var($user_ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) && 
-                    filter_var($subnet, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
-                $user_bytes = inet_pton($user_ip);
-                $subnet_bytes = inet_pton($subnet);
-                if ($user_bytes === false || $subnet_bytes === false) continue;
-                
-                $user_hex = unpack("H*", $user_bytes)[1];
-                $subnet_hex = unpack("H*", $subnet_bytes)[1];
-                $chars_to_match = ceil($bits / 4);
-                if (substr($user_hex, 0, $chars_to_match) === substr($subnet_hex, 0, $chars_to_match)) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
-// Default to current month if no filter is applied
+// Filter month
 $filter_month = $_GET['month'] ?? date('Y-m');
 
 $toast_message = '';
@@ -98,38 +37,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $target_user_id  = intval($_POST['user_id'] ?? 0);
         $attendance_date = $_POST['attendance_date'] ?? '';
         $attendance_type = $_POST['attendance_type'] ?? '';
+        $leave_category  = $_POST['leave_category'] ?? 'casual';
         $reason          = trim($_POST['reason'] ?? '');
         $approved_by     = $user_id;
         
         if ($target_user_id > 0 && !empty($attendance_date) && !empty($attendance_type)) {
-            // Check if duplicate override exists
             $dup_stmt = $conn->prepare("SELECT id FROM attendance_overrides WHERE user_id = ? AND attendance_date = ?");
             $dup_stmt->bind_param("is", $target_user_id, $attendance_date);
             $dup_stmt->execute();
             $dup_res = $dup_stmt->get_result()->fetch_assoc();
             
             if ($dup_res) {
-                // Update existing override
-                $upd_stmt = $conn->prepare("UPDATE attendance_overrides SET attendance_type = ?, reason = ?, approved_by = ? WHERE id = ?");
-                $upd_stmt->bind_param("ssii", $attendance_type, $reason, $approved_by, $dup_res['id']);
+                $upd_stmt = $conn->prepare("UPDATE attendance_overrides SET attendance_type = ?, leave_category = ?, reason = ?, approved_by = ? WHERE id = ?");
+                $upd_stmt->bind_param("sssii", $attendance_type, $leave_category, $reason, $approved_by, $dup_res['id']);
                 if ($upd_stmt->execute()) {
                     $_SESSION['toast_msg']  = 'Attendance override updated successfully!';
                     $_SESSION['toast_type'] = 'success';
-                    require_once __DIR__ . '/../core/notification_mailer.php';
-                    notifyAttendanceApproved($conn, $target_user_id, $attendance_date, $attendance_type, $reason, $approved_by);
                 } else {
                     $_SESSION['toast_msg']  = 'Failed to update attendance override.';
                     $_SESSION['toast_type'] = 'error';
                 }
             } else {
-                // Insert new override
-                $ins_stmt = $conn->prepare("INSERT INTO attendance_overrides (user_id, attendance_date, attendance_type, reason, approved_by, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-                $ins_stmt->bind_param("isssi", $target_user_id, $attendance_date, $attendance_type, $reason, $approved_by);
+                $ins_stmt = $conn->prepare("INSERT INTO attendance_overrides (user_id, attendance_date, attendance_type, leave_category, reason, approved_by, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+                $ins_stmt->bind_param("issssi", $target_user_id, $attendance_date, $attendance_type, $leave_category, $reason, $approved_by);
                 if ($ins_stmt->execute()) {
                     $_SESSION['toast_msg']  = 'Attendance override added successfully!';
                     $_SESSION['toast_type'] = 'success';
-                    require_once __DIR__ . '/../core/notification_mailer.php';
-                    notifyAttendanceApproved($conn, $target_user_id, $attendance_date, $attendance_type, $reason, $approved_by);
                 } else {
                     $_SESSION['toast_msg']  = 'Failed to add attendance override.';
                     $_SESSION['toast_type'] = 'error';
@@ -141,7 +74,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         header("Location: attendance.php" . (isset($_GET['month']) ? "?month={$_GET['month']}" : ""));
         exit;
-    } elseif ($action === 'delete_override') {
+    }
+    
+    if ($action === 'delete_override') {
         $override_id = intval($_POST['override_id'] ?? 0);
         if ($override_id > 0) {
             $del_stmt = $conn->prepare("DELETE FROM attendance_overrides WHERE id = ?");
@@ -159,19 +94,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// ── Query & Merge Logs with Overrides ──────────────────────────────────────────
-$attendance_records = [];
-$stat_present = 0;
-$stat_late    = 0;
-$stat_onsite  = 0;
-$stat_remote  = 0;
-$stat_field   = 0;
-$stat_leave   = 0;
-
-// Fetch active users list (for admin override dropdown)
+// ── Query Active Users ─────────────────────────────────────────────────────────
 $users_list = [];
 if ($is_admin) {
-    $u_res = $conn->query("SELECT user_id, name, username, role FROM users WHERE status = 'active' ORDER BY name ASC");
+    $u_res = $conn->query("SELECT user_id, name, username, gender, role, department FROM users WHERE status = 'active' AND role NOT IN ('client', 'client_sub', 'student') ORDER BY name ASC");
     if ($u_res) {
         while ($u_row = $u_res->fetch_assoc()) {
             $users_list[] = $u_row;
@@ -179,122 +105,99 @@ if ($is_admin) {
     }
 }
 
-// Fetch Overrides for current month
+// ── Fetch Overrides for Month ─────────────────────────────────────────────────
 $overrides = [];
 if ($is_admin) {
     $stmt_ov = $conn->prepare("
-        SELECT o.*, u.name, u.username
+        SELECT o.*, u.name, u.username, u.gender, u.role
         FROM attendance_overrides o
-        LEFT JOIN users u ON CAST(o.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
-        WHERE DATE_FORMAT(o.attendance_date, '%Y-%m') = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
+        LEFT JOIN users u ON o.user_id = u.user_id
+        WHERE DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
     ");
-    if ($stmt_ov) {
-        $stmt_ov->bind_param("s", $filter_month);
-    }
+    if ($stmt_ov) $stmt_ov->bind_param("s", $filter_month);
 } else {
     $stmt_ov = $conn->prepare("
-        SELECT o.*, u.name, u.username
+        SELECT o.*, u.name, u.username, u.gender, u.role
         FROM attendance_overrides o
-        LEFT JOIN users u ON CAST(o.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
-        WHERE CAST(o.user_id AS UNSIGNED) = CAST(? AS UNSIGNED)
-          AND DATE_FORMAT(o.attendance_date, '%Y-%m') = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
+        LEFT JOIN users u ON o.user_id = u.user_id
+        WHERE o.user_id = ? AND DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
     ");
-    if ($stmt_ov) {
-        $user_id_str = (string)$user_id;
-        $stmt_ov->bind_param("ss", $user_id_str, $filter_month);
-    }
+    if ($stmt_ov) $stmt_ov->bind_param("is", $user_id, $filter_month);
 }
 
 if ($stmt_ov && $stmt_ov->execute()) {
     $res_ov = $stmt_ov->get_result();
-    if ($res_ov) {
-        while ($row = $res_ov->fetch_assoc()) {
-            $key = $row['user_id'] . '_' . $row['attendance_date'];
-            $overrides[$key] = $row;
-        }
+    while ($row = $res_ov->fetch_assoc()) {
+        $key = $row['user_id'] . '_' . $row['attendance_date'];
+        $overrides[$key] = $row;
     }
+    $stmt_ov->close();
 }
 
-// Fetch Logins (Exact first login per user per day)
-$logins = [];
-if ($is_admin) {
-    $stmt_log = $conn->prepare("
-        SELECT l.user_id, l.login_time, l.ip_address, u.name, u.username
-        FROM login_logs l
-        LEFT JOIN users u ON CAST(l.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
-        WHERE l.status = 'success' 
-          AND DATE_FORMAT(l.login_time, '%Y-%m') = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
-          AND l.login_time = (
-              SELECT MIN(login_time) 
-              FROM login_logs l2 
-              WHERE CAST(l2.user_id AS UNSIGNED) = CAST(l.user_id AS UNSIGNED) 
-                AND DATE(l2.login_time) = DATE(l.login_time) 
-                AND l2.status = 'success'
-          )
-        ORDER BY l.login_time DESC
-    ");
-    if ($stmt_log) {
-        $stmt_log->bind_param("s", $filter_month);
-    }
-} else {
-    $stmt_log = $conn->prepare("
-        SELECT l.user_id, l.login_time, l.ip_address, u.name, u.username
-        FROM login_logs l
-        LEFT JOIN users u ON CAST(l.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
-        WHERE l.status = 'success' 
-          AND CAST(l.user_id AS UNSIGNED) = CAST(? AS UNSIGNED)
-          AND DATE_FORMAT(l.login_time, '%Y-%m') = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
-          AND l.login_time = (
-              SELECT MIN(login_time) 
-              FROM login_logs l2 
-              WHERE CAST(l2.user_id AS UNSIGNED) = CAST(l.user_id AS UNSIGNED) 
-                AND DATE(l2.login_time) = DATE(l.login_time) 
-                AND l2.status = 'success'
-          )
-        ORDER BY l.login_time DESC
-    ");
-    if ($stmt_log) {
-        $user_id_str = (string)$user_id;
-        $stmt_log->bind_param("ss", $user_id_str, $filter_month);
-    }
-}
-
+// ── Fetch Enhanced Attendance Records (`attendance_records`) ─────────────────
 $final_records = [];
 
-if ($stmt_log && $stmt_log->execute()) {
-    $res_log = $stmt_log->get_result();
-    if ($res_log) {
-        while ($row = $res_log->fetch_assoc()) {
-            $login_date = date('Y-m-d', strtotime($row['login_time']));
-            $key = $row['user_id'] . '_' . $login_date;
-            
-            $row['attendance_date'] = $login_date;
-            $row['is_override'] = false;
-            
-            $final_records[$key] = $row;
-        }
-    }
+if ($is_admin) {
+    $stmt_att = $conn->prepare("
+        SELECT a.*, u.name, u.username, u.gender, u.role
+        FROM attendance_records a
+        LEFT JOIN users u ON a.user_id = u.user_id
+        WHERE DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
+        ORDER BY a.attendance_date DESC, a.check_in_time DESC
+    ");
+    if ($stmt_att) $stmt_att->bind_param("s", $filter_month);
+} else {
+    $stmt_att = $conn->prepare("
+        SELECT a.*, u.name, u.username, u.gender, u.role
+        FROM attendance_records a
+        LEFT JOIN users u ON a.user_id = u.user_id
+        WHERE a.user_id = ? AND DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
+        ORDER BY a.attendance_date DESC, a.check_in_time DESC
+    ");
+    if ($stmt_att) $stmt_att->bind_param("is", $user_id, $filter_month);
 }
 
-// Merge Overrides
+if ($stmt_att && $stmt_att->execute()) {
+    $res_att = $stmt_att->get_result();
+    while ($row = $res_att->fetch_assoc()) {
+        $key = $row['user_id'] . '_' . $row['attendance_date'];
+        $row['is_override'] = false;
+        $final_records[$key] = $row;
+    }
+    $stmt_att->close();
+}
+
+// ── Merge Overrides ───────────────────────────────────────────────────────────
 foreach ($overrides as $key => $ov) {
     if (isset($final_records[$key])) {
-        $final_records[$key]['is_override'] = true;
-        $final_records[$key]['override_id'] = $ov['id'];
+        $final_records[$key]['is_override']     = true;
+        $final_records[$key]['override_id']     = $ov['id'];
         $final_records[$key]['attendance_type'] = $ov['attendance_type'];
-        $final_records[$key]['reason'] = $ov['reason'];
+        $final_records[$key]['leave_category']  = $ov['leave_category'] ?? 'casual';
+        $final_records[$key]['reason']          = $ov['reason'];
     } else {
         $final_records[$key] = [
-            'user_id' => $ov['user_id'],
-            'login_time' => null,
-            'ip_address' => null,
-            'name' => $ov['name'],
-            'username' => $ov['username'],
-            'attendance_date' => $ov['attendance_date'],
-            'is_override' => true,
-            'override_id' => $ov['id'],
-            'attendance_type' => $ov['attendance_type'],
-            'reason' => $ov['reason']
+            'user_id'           => $ov['user_id'],
+            'attendance_date'   => $ov['attendance_date'],
+            'check_in_time'     => null,
+            'check_out_time'    => null,
+            'last_heartbeat'    => null,
+            'status'            => ($ov['attendance_type'] === 'leave') ? 'on_leave' : 'present',
+            'is_late'           => 0,
+            'penalty_amount'    => 0,
+            'location_type'     => $ov['attendance_type'],
+            'location_denied'   => 0,
+            'distance_meters'   => null,
+            'ip_address'        => null,
+            'name'              => $ov['name'],
+            'username'          => $ov['username'],
+            'gender'            => $ov['gender'] ?? 'Male',
+            'role'              => $ov['role'] ?? 'user',
+            'is_override'       => true,
+            'override_id'       => $ov['id'],
+            'attendance_type'   => $ov['attendance_type'],
+            'leave_category'    => $ov['leave_category'] ?? 'casual',
+            'reason'            => $ov['reason']
         ];
     }
 }
@@ -304,9 +207,56 @@ uasort($final_records, function($a, $b) {
     return strcmp($b['attendance_date'], $a['attendance_date']);
 });
 
-// Calculate stats and format display variables
+// ── Calculate Stats ───────────────────────────────────────────────────────────
+$stat_present    = 0;
+$stat_on_time    = 0;
+$stat_grace      = 0;
+$stat_late       = 0;
+$stat_penalties  = 0.00;
+$stat_onsite     = 0;
+$stat_remote     = 0;
+$stat_denied_loc = 0;
+$stat_leave      = 0;
+$stat_medical    = 0;
+
+$attendance_records = [];
+
 foreach ($final_records as $row) {
-    if ($row['is_override']) {
+    $row['gender'] = !empty($row['gender']) ? ucfirst(strtolower(trim($row['gender']))) : 'Male';
+
+    // Effective signout time: either check_out_time or last_heartbeat
+    $effective_out = $row['check_out_time'] ?? null;
+    $time_out_str  = '—';
+    $hours_worked  = '—';
+
+    if (!empty($row['check_in_time'])) {
+        $in_ts = strtotime($row['attendance_date'] . ' ' . $row['check_in_time']);
+        $row['time_in_str'] = date('h:i A', $in_ts);
+
+        if (!empty($effective_out)) {
+            $out_ts = strtotime($row['attendance_date'] . ' ' . $effective_out);
+            $time_out_str = date('h:i A', $out_ts);
+            $diff_hours = max(0, round(($out_ts - $in_ts) / 3600, 1));
+            $hours_worked = $diff_hours . ' hrs';
+        } elseif (!empty($row['last_heartbeat']) && date('Y-m-d', strtotime($row['last_heartbeat'])) === $row['attendance_date']) {
+            $hb_ts = strtotime($row['last_heartbeat']);
+            $diff_hb = time() - $hb_ts;
+            if ($diff_hb < 900) { // Active in last 15 mins
+                $time_out_str = '<span style="color:#16a34a; font-weight:700;"><i class="fas fa-dot-circle fa-fade"></i> Active</span>';
+            } else {
+                $time_out_str = date('h:i A', $hb_ts) . ' <small style="color:#94a3b8;">(auto)</small>';
+                $diff_hours = max(0, round(($hb_ts - $in_ts) / 3600, 1));
+                $hours_worked = $diff_hours . ' hrs';
+            }
+        }
+    } else {
+        $row['time_in_str'] = '—';
+    }
+    $row['time_out_str'] = $time_out_str;
+    $row['hours_worked'] = $hours_worked;
+
+    // Resolve Status and Badges
+    if (!empty($row['is_override'])) {
         switch ($row['attendance_type']) {
             case 'onsite':
                 $row['att_status'] = 'Present';
@@ -333,34 +283,52 @@ foreach ($final_records as $row) {
                 $row['loc_class']  = 'loc-field-work';
                 $row['loc_icon']   = '💼';
                 $stat_present++;
-                $stat_field++;
                 break;
             case 'leave':
-                $row['att_status'] = 'On Leave';
-                $row['att_class']  = 'leave';
+                $is_med = ($row['leave_category'] === 'medical' || stripos($row['reason'] ?? '', 'medical') !== false);
+                $row['att_status'] = $is_med ? 'Medical Leave' : 'On Leave';
+                $row['att_class']  = $is_med ? 'medical-leave' : 'leave';
                 $row['loc_text']   = '—';
                 $row['loc_class']  = 'loc-leave';
-                $row['loc_icon']   = '🌴';
+                $row['loc_icon']   = $is_med ? '🏥' : '🌴';
                 $stat_leave++;
+                if ($is_med) $stat_medical++;
                 break;
         }
     } else {
-        $login_timestamp = strtotime($row['login_time']);
-        $time_only = date('H:i:s', $login_timestamp);
-        
-        if ($time_only <= $late_cutoff_time) {
-            $row['att_status'] = 'Present';
-            $row['att_class']  = 'present';
-            $stat_present++;
-        } else {
+        // Based on attendance record
+        if ($row['status'] === 'on_leave') {
+            $row['att_status'] = ($row['leave_type'] === 'medical') ? 'Medical Leave' : 'On Leave';
+            $row['att_class']  = ($row['leave_type'] === 'medical') ? 'medical-leave' : 'leave';
+            $row['loc_text']   = '—';
+            $row['loc_class']  = 'loc-leave';
+            $row['loc_icon']   = '🌴';
+            $stat_leave++;
+        } elseif ($row['is_late']) {
             $row['att_status'] = 'Late';
             $row['att_class']  = 'late';
             $stat_late++;
+            $stat_penalties += floatval($row['penalty_amount'] ?? 100);
+        } else {
+            $row['att_status'] = 'On Time';
+            $row['att_class']  = 'present';
+            if (!empty($row['is_grace_period'])) {
+                $stat_grace++;
+            } else {
+                $stat_on_time++;
+            }
+            $stat_present++;
         }
 
-        $user_ip = trim($row['ip_address'] ?? '');
-        if (isIpInRange($user_ip, $office_ips)) {
-            $row['loc_text']  = 'On-site';
+        // Location determination
+        if (!empty($row['location_denied']) || $row['location_type'] === 'denied') {
+            $row['loc_text']  = 'Denied Location';
+            $row['loc_class'] = 'loc-denied';
+            $row['loc_icon']  = '⚠️';
+            $stat_denied_loc++;
+        } elseif ($row['location_type'] === 'onsite') {
+            $dist_text = !empty($row['distance_meters']) ? " (" . round($row['distance_meters']) . "m)" : "";
+            $row['loc_text']  = 'On-site' . $dist_text;
             $row['loc_class'] = 'loc-onsite';
             $row['loc_icon']  = '<i class="fas fa-building"></i>';
             $stat_onsite++;
@@ -371,16 +339,7 @@ foreach ($final_records as $row) {
             $stat_remote++;
         }
     }
-    
-    if ($row['login_time']) {
-        $login_timestamp = strtotime($row['login_time']);
-        $row['date_str'] = date('d M Y', $login_timestamp);
-        $row['time_str'] = date('h:i A', $login_timestamp);
-    } else {
-        $row['date_str'] = date('d M Y', strtotime($row['attendance_date']));
-        $row['time_str'] = '—';
-    }
-    
+
     $attendance_records[] = $row;
 }
 
@@ -388,7 +347,6 @@ $total_records = count($attendance_records);
 ?>
 
 <style>
-/* ── UI/UX OVERHAUL STYLES ── */
 .main-card { 
     background: #fff; 
     border-radius: 16px; 
@@ -396,7 +354,6 @@ $total_records = count($attendance_records);
     overflow: hidden; 
     border: 1px solid #f0f3f2; 
 }
-
 .page-top-actions { 
     display: flex; 
     justify-content: space-between; 
@@ -407,390 +364,353 @@ $total_records = count($attendance_records);
     border-bottom: 1px solid #f4f5f4; 
     background: #fff; 
 }
-
 .page-top-actions h2 {
     margin: 0;
     font-size: 1.5rem;
     font-weight: 800;
-    color: var(--primary);
+    color: var(--primary, #024442);
 }
-
 .filter-bar {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+    flex-wrap: wrap;
 }
-
 .filter-bar input[type="month"] {
     padding: 8px 14px;
     border: 1.5px solid #e2e8f0;
     border-radius: 8px;
     font-family: inherit;
     font-size: 13.5px;
-    color: #333;
     outline: none;
     background: #f8fafc;
 }
 
-.filter-bar input[type="month"]:focus {
-    border-color: var(--primary);
-}
-
-.table-head {
-    background: #f8faf9;
-    padding: 16px 28px;
-    border-bottom: 2px solid rgba(0,0,0,0.03);
-    font-size: 0.8rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    color: #64748b;
-    display: grid;
-    grid-template-columns: <?php echo $is_admin ? '1.8fr 1.2fr 1fr 1.2fr 1.2fr 1fr 0.6fr' : '1.2fr 1fr 1.2fr 1.2fr 1fr'; ?>;
-    gap: 16px;
-}
-
-.table-row {
-    padding: 16px 28px;
-    border-bottom: 1px solid #f1f5f9;
-    display: grid;
-    grid-template-columns: <?php echo $is_admin ? '1.8fr 1.2fr 1fr 1.2fr 1.2fr 1fr 0.6fr' : '1.2fr 1fr 1.2fr 1.2fr 1fr'; ?>;
-    gap: 16px;
-    align-items: center;
-    transition: background 0.2s ease;
-}
-.table-row:hover { background: #fbfdfc; }
-
-/* Attendance Badges */
-.status.present { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; text-align: center; }
-.status.late    { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; text-align: center; }
-.status.field-work { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; text-align: center; }
-.status.leave   { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; text-align: center; }
-
-/* Location Badges */
-.loc-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 8px; }
-.loc-onsite { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
-.loc-remote { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
-.loc-field-work { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-.loc-leave { background: #f8fafc; color: #94a3b8; border: 1px solid #e2e8f0; }
-
-.user-chip { display: flex; align-items: center; gap: 12px; }
-.user-chip .mini-avatar {
-    width: 36px; height: 36px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent, #b8f35a), #87bd0a);
-    color: var(--primary); font-size: 14px; font-weight: 800;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    box-shadow: 0 4px 10px rgba(184,243,90,0.3);
-}
-.user-chip small { color: #888; font-size: 12px; display: block; font-weight: 500; margin-top: 2px;}
-
-/* Stats cards styling */
+/* Stats grid */
 .stats-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
     margin-bottom: 24px;
 }
 .stat-card {
     background: #fff;
-    border-radius: 16px;
-    padding: 24px;
+    border-radius: 14px;
+    padding: 20px;
     border: 1px solid #f0f3f2;
     display: flex;
     align-items: center;
-    gap: 16px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 10px 25px -3px rgba(0, 0, 0, 0.04);
+    gap: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
 }
 .stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    flex-shrink: 0;
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
 }
-.stat-info {
-    display: flex;
-    flex-direction: column;
+.stat-number { font-size: 22px; font-weight: 800; line-height: 1.1; margin-bottom: 2px; }
+.stat-label { font-size: 12px; font-weight: 600; color: #64748b; }
+
+/* Table Head and Rows */
+.att-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
 }
-.stat-number {
-    font-size: 24px;
+.att-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-size: 11px;
     font-weight: 800;
-    line-height: 1;
-    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 14px 18px;
+    border-bottom: 2px solid #e2e8f0;
+    white-space: nowrap;
 }
-.stat-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #64748b;
+.att-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #1e293b;
+    vertical-align: middle;
+}
+.att-table tr:hover td { background: #fbfdfc; }
+
+/* Status badges */
+.status { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; display: inline-block; }
+.status.present       { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
+.status.grace         { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
+.status.late          { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+.status.late-pattern  { background: #fff1f2; color: #be123c; border: 1px solid #fda4af; }
+.status.medical-leave { background: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+.status.leave         { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+.status.field-work    { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+
+/* Location Badges */
+.loc-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 8px; }
+.loc-onsite { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.loc-remote { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+.loc-denied { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; font-weight:800; }
+.loc-field-work { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.loc-leave { background: #f8fafc; color: #94a3b8; border: 1px solid #e2e8f0; }
+
+.gender-tag {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-left: 4px;
+}
+.gender-tag.Male { background: #e0f2fe; color: #0369a1; }
+.gender-tag.Female { background: #fce7f3; color: #be185d; }
+
+.penalty-tag {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
-/* Modals layout */
+/* Modals */
 .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(15, 23, 42, 0.5);
-    backdrop-filter: blur(4px);
-    z-index: 9999;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px);
+    z-index: 9999; display: none; align-items: center; justify-content: center; padding: 20px;
 }
-.modal-overlay.active {
-    display: flex;
-}
+.modal-overlay.active { display: flex; }
 .modal-content {
-    background: #fff;
-    border-radius: 16px;
-    width: 100%;
-    max-width: 500px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    overflow: hidden;
-    animation: modalSlideUp 0.3s ease-out;
-}
-@keyframes modalSlideUp {
-    from { transform: translateY(20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    background: #fff; border-radius: 16px; width: 100%; max-width: 520px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); overflow: hidden;
 }
 .modal-header {
-    background: var(--primary-color);
-    color: #fff;
-    padding: 20px 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    background: var(--primary, #024442); color: #fff; padding: 18px 24px;
+    display: flex; justify-content: space-between; align-items: center;
 }
-.modal-header h4 {
-    margin: 0;
-    font-size: 1.15rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.modal-header-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: rgba(255,255,255,0.15);
-    border-radius: 8px;
-    font-size: 14px;
-}
-.modal-close {
-    background: none;
-    border: none;
-    color: rgba(255,255,255,0.7);
-    font-size: 24px;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0;
-    transition: color 0.2s;
-}
-.modal-close:hover {
-    color: #fff;
-}
-.modal-body {
-    padding: 24px;
-}
+.modal-header h4 { margin: 0; font-size: 1.15rem; font-weight: 700; display:flex; align-items:center; gap:8px;}
+.modal-body { padding: 24px; }
 .modal-footer {
-    padding: 16px 24px;
-    border-top: 1px solid #f1f5f9;
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    background: #fbfcfc;
+    padding: 16px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px; background: #fbfcfc;
 }
-.form-group {
-    margin-bottom: 18px;
-}
-.form-group label {
-    display: block;
-    font-weight: 600;
-    font-size: 13px;
-    color: #334155;
-    margin-bottom: 6px;
-}
-.form-group input, .form-group select {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 8px;
-    font-family: inherit;
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.2s;
-    background-color: #fff;
-}
-.form-group input:focus, .form-group select:focus {
-    border-color: var(--primary-color);
-}
-.dots {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: none;
-    background: #f1f5f9;
-    color: #475569;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.dots:hover {
-    background: #e2e8f0;
-    color: #0f172a;
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-weight: 600; font-size: 13px; color: #334155; margin-bottom: 5px; }
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 10px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-family: inherit; font-size: 13.5px; outline: none; background: #fff;
 }
 </style>
 
 <div class="height-100">
 
-    <?php if (isset($db_error)): ?>
-    <div style="background:#fee2e2; border:1px solid #fca5a5; color:#dc2626; padding:16px 20px; border-radius:12px; margin-bottom:24px; font-weight:600;">
-        <i class="fas fa-exclamation-triangle"></i> System Error: <?php echo htmlspecialchars($db_error); ?>
-    </div>
-    <?php endif; ?>
-
-    <!-- Stats row -->
+    <!-- Summary Stats Row -->
     <div class="stats-row">
         <div class="stat-card">
-            <div class="stat-icon" style="background:#dcfce7;color:#16a34a;"><i class="fas fa-check-circle"></i></div>
-            <div class="stat-info">
-                <div class="stat-number" style="color:#16a34a;"><?php echo $stat_present; ?></div>
-                <div class="stat-label">On Time</div>
+            <div class="stat-icon" style="background:#dcfce7; color:#16a34a;"><i class="fas fa-check-circle"></i></div>
+            <div>
+                <div class="stat-number" style="color:#16a34a;"><?= $stat_on_time ?></div>
+                <div class="stat-label">On Time Arrivals</div>
             </div>
         </div>
+
         <div class="stat-card">
-            <div class="stat-icon" style="background:#fee2e2;color:#dc2626;">⏰</div>
-            <div class="stat-info">
-                <div class="stat-number" style="color:#dc2626;"><?php echo $stat_late; ?></div>
-                <div class="stat-label">Late Logins</div>
+            <div class="stat-icon" style="background:#e0f2fe; color:#0284c7;"><i class="fas fa-stopwatch"></i></div>
+            <div>
+                <div class="stat-number" style="color:#0284c7;"><?= $stat_grace ?></div>
+                <div class="stat-label">Grace Arrivals</div>
             </div>
         </div>
+
         <div class="stat-card">
-            <div class="stat-icon" style="background:#e0f2fe;color:#0369a1;"><i class="fas fa-building"></i></div>
-            <div class="stat-info">
-                <div class="stat-number" style="color:#0369a1;"><?php echo ($stat_onsite + $stat_field); ?></div>
-                <div class="stat-label">On-site / Field</div>
+            <div class="stat-icon" style="background:#fee2e2; color:#dc2626;"><i class="fas fa-clock"></i></div>
+            <div>
+                <div class="stat-number" style="color:#dc2626;"><?= $stat_late ?></div>
+                <div class="stat-label">Late Arrivals / Flagged</div>
             </div>
         </div>
+
         <div class="stat-card">
-            <div class="stat-icon" style="background:#f1f5f9;color:#475569;">🌴</div>
-            <div class="stat-info">
-                <div class="stat-number" style="color:#475569;"><?php echo $stat_leave; ?></div>
-                <div class="stat-label">Approved Leaves</div>
+            <div class="stat-icon" style="background:#fff1f2; color:#be123c;"><i class="fas fa-money-bill-wave"></i></div>
+            <div>
+                <div class="stat-number" style="color:#be123c;">PKR <?= number_format($stat_penalties) ?></div>
+                <div class="stat-label">Late Penalties Incurred</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#f0fdf4; color:#15803d;"><i class="fas fa-building"></i></div>
+            <div>
+                <div class="stat-number" style="color:#15803d;"><?= $stat_onsite ?> / <?= $stat_remote ?></div>
+                <div class="stat-label">On-site / Remote</div>
+            </div>
+        </div>
+
+        <?php if ($stat_denied_loc > 0): ?>
+        <div class="stat-card" style="border-left: 3px solid #f59e0b;">
+            <div class="stat-icon" style="background:#fef3c7; color:#b45309;">⚠️</div>
+            <div>
+                <div class="stat-number" style="color:#b45309;"><?= $stat_denied_loc ?></div>
+                <div class="stat-label">Denied Location</div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#f3e8ff; color:#7e22ce;"><i class="fas fa-clinic-medical"></i></div>
+            <div>
+                <div class="stat-number" style="color:#7e22ce;"><?= $stat_medical ?> <small style="font-size:12px; font-weight:600; color:#94a3b8;">/ 1 mo</small></div>
+                <div class="stat-label">Medical Leaves</div>
             </div>
         </div>
     </div>
 
-    <!-- Main Card -->
+    <!-- Main Attendance Register Card -->
     <div class="main-card">
         <div class="page-top-actions">
             <div>
-                <h2><i class="fas fa-calendar-alt"></i> <?php echo $is_admin ? 'Team Attendance Register' : 'My Attendance Record'; ?></h2>
-                <span style="font-size:13.5px; color:#64748b; font-weight: 500;">Showing integrated login logs and approved overrides.</span>
+                <h2><i class="fas fa-calendar-check"></i> <?= $is_admin ? 'Staff Attendance & Work Register' : 'My Attendance & Work Register' ?></h2>
+                <span style="font-size:13px; color:#64748b; font-weight: 500;">
+                    Tracking daily work hours, sign-in and sign-out times, and location status.
+                </span>
             </div>
             
             <div class="filter-bar">
                 <form method="GET" style="display: flex; gap: 8px; align-items: center; margin: 0;">
-                    <input type="month" name="month" value="<?php echo htmlspecialchars($filter_month); ?>" onchange="this.form.submit()">
+                    <input type="month" name="month" value="<?= htmlspecialchars($filter_month) ?>" onchange="this.form.submit()">
                 </form>
+
                 <?php if ($is_admin): ?>
-                    <button class="btn-primary-custom" onclick="openOverrideModal()" style="padding: 9px 18px; border-radius: 8px; font-size: 13px; border: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                        <i class="fas fa-plus-circle"></i> Add Override
+                    <button class="btn btn-primary-custom" onclick="openOverrideModal()" style="padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-plus-circle"></i> Add Override / Leave
                     </button>
+                    <a href="salaries.php?month=<?= htmlspecialchars($filter_month) ?>" class="btn" style="background:#dc2626; color:#fff; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:5px;" onclick="localStorage.setItem('open_add_penalty', '1')">
+                        <i class="fas fa-minus-circle"></i> Add Penalty / Deduction
+                    </a>
+                    <a href="salaries.php?month=<?= htmlspecialchars($filter_month) ?>" class="btn btn-secondary-custom" style="padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;">
+                        <i class="fas fa-money-bill-wave"></i> Payroll Table
+                    </a>
                 <?php endif; ?>
-                <button class="btn-secondary-custom" onclick="window.print()" style="padding: 9px 18px; border-radius: 8px; font-size: 13px;">
-                    <i class="fas fa-download"></i> Export
+
+                <button class="btn btn-secondary-custom" onclick="window.print()" style="padding: 8px 16px; border-radius: 8px; font-size: 13px;">
+                    <i class="fas fa-download"></i> Export / Print
                 </button>
             </div>
         </div>
 
-        <div class="main-table">
-            <div class="table-head">
-                <?php if ($is_admin): ?>
-                <span>Employee</span>
-                <?php endif; ?>
-                <span>Date</span>
-                <span>Time In</span>
-                <span>IP Address</span>
-                <span>Location</span>
-                <span>Status</span>
-                <?php if ($is_admin): ?>
-                <span>Actions</span>
-                <?php endif; ?>
-            </div>
-
-            <?php if ($total_records === 0): ?>
-            <div style="text-align:center;padding:80px 24px;color:#888;">
-                <div style="font-size:3rem;margin-bottom:12px;"><i class="fas fa-envelope-open"></i></div>
-                <h4 style="color: #333; font-weight: 700;">No Records Found</h4>
-                <p style="margin:0;">No attendance records found for <?php echo date('F Y', strtotime($filter_month . '-01')); ?>.</p>
-            </div>
-            <?php else: ?>
-            <?php foreach ($attendance_records as $row): ?>
-            <div class="table-row">
-                <?php if ($is_admin): ?>
-                <div class="user-chip">
-                    <div class="mini-avatar"><?php echo strtoupper(substr($row['name'], 0, 1)); ?></div>
-                    <div>
-                        <strong style="font-size:14px; color: var(--primary);"><?php echo htmlspecialchars($row['name']); ?></strong>
-                        <small>@<?php echo htmlspecialchars($row['username']); ?></small>
-                    </div>
-                </div>
-                <?php endif; ?>
-                
-                <span style="font-weight: 600; color: #475569; font-size: 13.5px;">
-                    <i class="far fa-calendar-alt"></i> <?php echo $row['date_str']; ?>
-                </span>
-                
-                <span style="font-weight: 800; font-size: 14px; color: <?php echo ($row['att_status'] === 'Late' || $row['att_status'] === 'On Leave') ? '#dc2626' : '#16a34a'; ?>;">
-                    <?php echo $row['time_str']; ?>
-                </span>
-                
-                <span style="font-family:monospace; font-size:12px; color:#64748b; background: #f8fafc; padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block; text-align: center; width: fit-content;">
-                    <?php echo htmlspecialchars($row['ip_address'] ?? '—'); ?>
-                </span>
-                
-                <span>
-                    <span class="loc-badge <?php echo $row['loc_class']; ?>">
-                        <?php echo $row['loc_icon'] . ' ' . $row['loc_text']; ?>
-                    </span>
-                </span>
-                
-                <span>
-                    <span class="status <?php echo $row['att_class']; ?>"><?php echo $row['att_status']; ?></span>
-                    <?php if (!empty($row['reason'])): ?>
-                        <br><small style="color: #64748b; font-size: 11px; display: block; white-space: normal; line-height: 1.2; margin-top: 4px;" title="<?= htmlspecialchars($row['reason']) ?>">
-                            💬 <?= htmlspecialchars($row['reason']) ?>
-                        </small>
-                    <?php endif; ?>
-                </span>
-
-                <?php if ($is_admin): ?>
-                <div>
-                    <?php if ($row['is_override']): ?>
-                    <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this attendance override?');">
-                        <input type="hidden" name="action" value="delete_override">
-                        <input type="hidden" name="override_id" value="<?= $row['override_id'] ?>">
-                        <button type="submit" class="dots" title="Delete Override" style="color:#ef4444;"><i class="fas fa-trash-alt"></i></button>
-                    </form>
+        <div style="overflow-x:auto;">
+            <table class="att-table">
+                <thead>
+                    <tr>
+                        <?php if ($is_admin): ?>
+                        <th>Employee</th>
+                        <?php endif; ?>
+                        <th>Date</th>
+                        <th>Sign In (Time In)</th>
+                        <th>Sign Out (Time Out)</th>
+                        <th>Working Hours</th>
+                        <th>Location Status</th>
+                        <th>Attendance Status</th>
+                        <th>Penalty (PKR)</th>
+                        <?php if ($is_admin): ?>
+                        <th>Actions</th>
+                        <?php endif; ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($attendance_records)): ?>
+                    <tr>
+                        <td colspan="<?= $is_admin ? 9 : 8 ?>" style="text-align:center; padding: 70px 20px; color:#94a3b8;">
+                            <i class="fas fa-user-clock" style="font-size: 2.5rem; margin-bottom: 12px; display:block;"></i>
+                            <strong>No attendance records found for <?= date('F Y', strtotime($filter_month . '-01')) ?>.</strong>
+                        </td>
+                    </tr>
                     <?php else: ?>
-                    <span style="color:#cbd5e1;">—</span>
+                    <?php foreach ($attendance_records as $row): ?>
+                    <tr>
+                        <?php if ($is_admin): ?>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <div style="width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg, var(--accent, #b8f35a), #87bd0a); color:var(--primary, #024442); font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                    <?= strtoupper(substr($row['name'], 0, 1)) ?>
+                                </div>
+                                <div>
+                                    <strong style="color:var(--primary, #024442); font-size:13.5px;"><?= htmlspecialchars($row['name']) ?></strong>
+                                    <span class="gender-tag <?= $row['gender'] ?>"><?= htmlspecialchars($row['gender']) ?></span>
+                                    <small style="display:block; color:#64748b; font-size:11.5px;">@<?= htmlspecialchars($row['username']) ?></small>
+                                </div>
+                            </div>
+                        </td>
+                        <?php endif; ?>
+
+                        <td style="white-space:nowrap; font-weight:600; color:#334155;">
+                            <?= date('d M Y', strtotime($row['attendance_date'])) ?>
+                        </td>
+
+                        <td style="white-space:nowrap; font-weight:800; color:<?= ($row['att_class'] === 'late' || $row['att_class'] === 'late-pattern') ? '#dc2626' : '#16a34a' ?>;">
+                            <?= $row['time_in_str'] ?>
+                        </td>
+
+                        <td style="white-space:nowrap; font-weight:700; color:#475569;">
+                            <?= $row['time_out_str'] ?>
+                        </td>
+
+                        <td style="white-space:nowrap; font-weight:600; color:#0284c7;">
+                            <?= $row['hours_worked'] ?>
+                        </td>
+
+                        <td style="white-space:nowrap;">
+                            <span class="loc-badge <?= $row['loc_class'] ?>">
+                                <?= $row['loc_icon'] ?> <?= htmlspecialchars($row['loc_text']) ?>
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="status <?= $row['att_class'] ?>"><?= $row['att_status'] ?></span>
+                            <?php if (!empty($row['penalty_reason'])): ?>
+                                <small style="display:block; color:#dc2626; font-size:11px; margin-top:2px;" title="<?= htmlspecialchars($row['penalty_reason']) ?>">
+                                    <?= htmlspecialchars($row['penalty_reason']) ?>
+                                </small>
+                            <?php elseif (!empty($row['reason'])): ?>
+                                <small style="display:block; color:#64748b; font-size:11px; margin-top:2px;">
+                                    💬 <?= htmlspecialchars($row['reason']) ?>
+                                </small>
+                            <?php endif; ?>
+                        </td>
+
+                        <td style="white-space:nowrap;">
+                            <?php if (!empty($row['penalty_amount']) && $row['penalty_amount'] > 0): ?>
+                                <span class="penalty-tag" title="<?= htmlspecialchars($row['penalty_reason'] ?? 'Late Penalty') ?>">
+                                    <i class="fas fa-exclamation-circle"></i> -PKR <?= number_format($row['penalty_amount']) ?>
+                                </span>
+                            <?php else: ?>
+                                <span style="color:#cbd5e1;">—</span>
+                            <?php endif; ?>
+                        </td>
+
+                        <?php if ($is_admin): ?>
+                        <td>
+                            <?php if (!empty($row['is_override'])): ?>
+                            <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this attendance override?');">
+                                <input type="hidden" name="action" value="delete_override">
+                                <input type="hidden" name="override_id" value="<?= $row['override_id'] ?>">
+                                <button type="submit" title="Delete Override" style="background:#fee2e2; color:#dc2626; border:1px solid #fecaca; width:30px; height:30px; border-radius:6px; cursor:pointer;">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </form>
+                            <?php else: ?>
+                            <span style="color:#cbd5e1;">—</span>
+                            <?php endif; ?>
+                        </td>
+                        <?php endif; ?>
+                    </tr>
+                    <?php endforeach; ?>
                     <?php endif; ?>
-                </div>
-                <?php endif; ?>
-            </div>
-            <?php endforeach; ?>
-            <?php endif; ?>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -800,36 +720,30 @@ $total_records = count($attendance_records);
 <div id="overrideModal" class="modal-overlay" onclick="if(event.target===this)closeModal('overrideModal')">
     <div class="modal-content">
         <div class="modal-header">
-            <h4>
-                <div class="modal-header-icon"><i class="fas fa-plus-circle"></i></div>
-                <span id="modalTitle">Add Attendance Override</span>
-            </h4>
-            <button class="modal-close" onclick="closeModal('overrideModal')">×</button>
+            <h4><i class="fas fa-plus-circle"></i> Add Attendance / Leave Override</h4>
+            <button type="button" onclick="closeModal('overrideModal')" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">&times;</button>
         </div>
         <form method="POST">
             <input type="hidden" name="action" value="add_override">
             <div class="modal-body">
-                <!-- Employee -->
                 <div class="form-group">
                     <label>Select Employee <span style="color:#ef4444;">*</span></label>
                     <select name="user_id" required>
                         <option value="">— Select Employee —</option>
                         <?php foreach ($users_list as $u): ?>
-                            <option value="<?= $u['user_id'] ?>"><?= htmlspecialchars($u['name']) ?> (@<?= htmlspecialchars($u['username']) ?>)</option>
+                            <option value="<?= $u['user_id'] ?>"><?= htmlspecialchars($u['name']) ?> (@<?= htmlspecialchars($u['username']) ?> · <?= htmlspecialchars($u['gender'] ?? 'Male') ?>)</option>
                         <?php endforeach; ?>
                     </select>
                 </div>
 
-                <!-- Date -->
                 <div class="form-group">
                     <label>Attendance Date <span style="color:#ef4444;">*</span></label>
                     <input type="date" name="attendance_date" value="<?= date('Y-m-d') ?>" required>
                 </div>
 
-                <!-- Type -->
                 <div class="form-group">
                     <label>Attendance Type <span style="color:#ef4444;">*</span></label>
-                    <select name="attendance_type" required>
+                    <select name="attendance_type" id="ov_att_type" onchange="toggleLeaveCategory(this.value)" required>
                         <option value="onsite">On-site (Present)</option>
                         <option value="remote">Remote (Present)</option>
                         <option value="field_work">Field Work</option>
@@ -837,10 +751,19 @@ $total_records = count($attendance_records);
                     </select>
                 </div>
 
-                <!-- Reason -->
+                <div class="form-group" id="leave_category_group" style="display:none;">
+                    <label>Leave Category <span style="color:#ef4444;">*</span></label>
+                    <select name="leave_category">
+                        <option value="casual">Casual Leave</option>
+                        <option value="medical">Medical Leave</option>
+                        <option value="annual">Annual Leave</option>
+                        <option value="unpaid">Unpaid Leave</option>
+                    </select>
+                </div>
+
                 <div class="form-group">
-                    <label>Reason / Notes</label>
-                    <textarea name="reason" placeholder="e.g. Official field visit to client site, Approved casual leave, etc." style="width:100%; min-height:80px; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:8px; font-family:inherit; font-size:14px; outline:none; transition:border-color 0.2s; resize:vertical;"></textarea>
+                    <label>Reason / Official Approval Notes</label>
+                    <textarea name="reason" placeholder="e.g. Doctor recommendation attached, client emergency, official travel, etc." rows="3"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
@@ -856,9 +779,7 @@ $total_records = count($attendance_records);
 <div id="toastContainer" style="position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:8px;"></div>
 
 <script>
-function openOverrideModal() {
-    openModal('overrideModal');
-}
+function openOverrideModal() { openModal('overrideModal'); }
 function openModal(id) {
     const el = document.getElementById(id);
     if (el) el.classList.add('active');
@@ -870,12 +791,19 @@ function closeModal(id) {
     document.body.style.overflow = '';
 }
 
+function toggleLeaveCategory(val) {
+    const group = document.getElementById('leave_category_group');
+    if (group) {
+        group.style.display = (val === 'leave') ? 'block' : 'none';
+    }
+}
+
 function showToast(msg, type = 'success') {
     const t = document.createElement('div');
     t.style.cssText = `background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 12px rgba(0,0,0,.1);font-size:13.5px;min-width:240px;border-left:4px solid ${type==='success'?'#10b981':'#ef4444'};`;
     t.innerHTML = `<span style="font-weight:700;color:${type==='success'?'#10b981':'#ef4444'}">${type==='success'?'<i class="fas fa-check"></i>':'<i class="fas fa-times"></i>'}</span><span>${msg}</span>`;
     document.getElementById('toastContainer').appendChild(t);
-    setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 3000);
+    setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 3500);
 }
 </script>
 
@@ -885,9 +813,4 @@ document.addEventListener('DOMContentLoaded', () => showToast(<?= json_encode($t
 </script>
 <?php endif; ?>
 
-<?php
-if ($stmt) $stmt->close();
-if ($stmt_ov) $stmt_ov->close();
-if ($stmt_log) $stmt_log->close();
-include('dashboard_footer.php');
-?>
+<?php include('dashboard_footer.php'); ?>

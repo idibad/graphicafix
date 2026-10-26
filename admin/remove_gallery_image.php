@@ -2,11 +2,16 @@
 ob_start();
 header('Content-Type: application/json');
 
-
-  require_once '../core/config.php';
+require_once '../core/config.php';
 // ── Auth check ────────────────────────────────────────────────────────────────
 if (empty($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+    exit;
+}
+
+$role = strtolower($_SESSION['role'] ?? '');
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager'])) {
+    echo json_encode(['success' => false, 'message' => 'Forbidden']);
     exit;
 }
 
@@ -51,6 +56,8 @@ $fullPath = $_SERVER['DOCUMENT_ROOT'] . '/' . ltrim($imagePath, '/');
 if (file_exists($fullPath)) {
     unlink($fullPath);
 }
+
+logActivity($conn, 'delete_gallery_image', "Deleted gallery image #$id ($imagePath)", 'project_gallery', $id);
 
 $conn->close();
 echo json_encode(['success' => true]);
