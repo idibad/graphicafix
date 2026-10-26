@@ -65,6 +65,7 @@ $male_count = 0;
 $female_count = 0;
 
 $all_users = [];
+$deactivated_users_list = [];
 $users_grouped = [
     'super_admin' => [],
     'admin'       => [],
@@ -80,13 +81,17 @@ $users_grouped = [
 ];
 
 foreach($result as $row) {
-    $all_users[] = $row;
     $u_stat = strtolower(trim($row['status'] ?? 'active'));
-    if ($u_stat === 'deactivated' || $u_stat === 'deactivate') {
+    $is_deact = ($u_stat === 'deactivated' || $u_stat === 'deactivate');
+
+    if ($is_deact) {
         $deactivated_users++;
-    } else {
-        $active_users++;
+        $deactivated_users_list[] = $row;
+        continue; // Exclude deactivated accounts from main active directory
     }
+
+    $active_users++;
+    $all_users[] = $row; // Only active users in main directory
 
     $g_check = strtolower(trim($row['gender'] ?? 'male'));
     if ($g_check === 'female') {
@@ -599,33 +604,13 @@ $role_titles = [
 
     <!-- Quick Stat Cards (Clickable Filter Controls) -->
     <div class="u-stats-grid">
-        <div class="u-stat-box" id="statCardAll" onclick="setQuickFilter('all')" title="Click to view all users">
-            <div class="u-stat-icon" style="background:#f1f5f9; color:#475569;">
-                <i class="fas fa-users"></i>
-            </div>
-            <div class="u-stat-info">
-                <div class="u-stat-number"><?= $total_users ?></div>
-                <div class="u-stat-label">Total Users</div>
-            </div>
-        </div>
-
-        <div class="u-stat-box" id="statCardActive" onclick="setQuickFilter('active')" title="Click to filter active users">
+        <div class="u-stat-box active-filter" id="statCardActive" onclick="setQuickFilter('active')" title="Click to view active users">
             <div class="u-stat-icon" style="background:#f0fdf4; color:#16a34a;">
                 <i class="fas fa-user-check"></i>
             </div>
             <div class="u-stat-info">
                 <div class="u-stat-number"><?= $active_users ?></div>
                 <div class="u-stat-label">Active Users</div>
-            </div>
-        </div>
-
-        <div class="u-stat-box" id="statCardDeactivated" onclick="setQuickFilter('deactivated')" title="Click to filter deactivated users">
-            <div class="u-stat-icon" style="background:#f8fafc; color:#64748b;">
-                <i class="fas fa-user-slash"></i>
-            </div>
-            <div class="u-stat-info">
-                <div class="u-stat-number"><?= $deactivated_users ?></div>
-                <div class="u-stat-label">Deactivated</div>
             </div>
         </div>
 
@@ -648,6 +633,16 @@ $role_titles = [
                 <div class="u-stat-label">Admin Officers</div>
             </div>
         </div>
+
+        <div class="u-stat-box" id="statCardDeactivated" onclick="setQuickFilter('deactivated')" title="Click to view deactivated accounts archive">
+            <div class="u-stat-icon" style="background:#f8fafc; color:#64748b;">
+                <i class="fas fa-user-slash"></i>
+            </div>
+            <div class="u-stat-info">
+                <div class="u-stat-number"><?= $deactivated_users ?></div>
+                <div class="u-stat-label">Deactivated Archive</div>
+            </div>
+        </div>
     </div>
 
     <!-- Filter & Toolbar Controls -->
@@ -662,9 +657,15 @@ $role_titles = [
 
             <!-- Dropdowns & Tools -->
             <div class="filter-dropdowns">
+                <!-- Status Filter -->
+                <select id="statusFilterSelect" class="filter-select" onchange="applyUserFilters()">
+                    <option value="active" selected>Active Users (<?= $active_users ?>)</option>
+                    <option value="deactivated">Deactivated Archive (<?= $deactivated_users ?>)</option>
+                </select>
+
                 <!-- Role Filter -->
                 <select id="roleFilterSelect" class="filter-select" onchange="applyUserFilters()">
-                    <option value="all">All Roles (<?= $total_users ?>)</option>
+                    <option value="all">All Roles (<?= $active_users ?>)</option>
                     <option value="super_admin">Super Admins (<?= $super_admin_count ?>)</option>
                     <option value="admin">Admin Officers (<?= $admin_count ?>)</option>
                     <option value="manager">Managers (<?= count($users_grouped['manager'] ?? []) ?>)</option>
@@ -678,13 +679,6 @@ $role_titles = [
                     <option value="other">Other Roles (<?= count($users_grouped['other'] ?? []) ?>)</option>
                 </select>
 
-                <!-- Status Filter -->
-                <select id="statusFilterSelect" class="filter-select" onchange="applyUserFilters()">
-                    <option value="all">All Statuses</option>
-                    <option value="active">Active Only</option>
-                    <option value="deactivated">Deactivated Only</option>
-                </select>
-
                 <!-- Gender Filter -->
                 <select id="genderFilterSelect" class="filter-select" onchange="applyUserFilters()">
                     <option value="all">All Genders</option>
@@ -693,7 +687,7 @@ $role_titles = [
                 </select>
 
                 <!-- View Switcher -->
-                <div class="view-switch">
+                <div class="view-switch" id="viewSwitcherBox">
                     <button type="button" id="viewGroupedBtn" class="active" onclick="switchViewMode('grouped')" title="Categorized by Role">
                         <i class="fas fa-layer-group"></i> Grouped
                     </button>
@@ -712,8 +706,8 @@ $role_titles = [
         <!-- Summary & Counter Line -->
         <div class="filter-summary-row">
             <div>
-                Showing <strong id="visibleUsersCount" style="color:var(--primary, #024442);"><?= $total_users ?></strong> of <strong><?= $total_users ?></strong> users
-                <span id="activeFilterNote" style="margin-left: 8px; font-weight: 600; color: #0284c7;"></span>
+                Showing <strong id="visibleUsersCount" style="color:var(--primary, #024442);"><?= $active_users ?></strong> of <strong id="totalUsersCount"><?= $active_users ?></strong> active users
+                <span id="activeFilterNote" style="margin-left: 8px; font-weight: 600; color: #475569;"></span>
             </div>
             <div>
                 <button type="button" onclick="window.print()" style="background:none; border:none; color:#64748b; font-size:12.5px; font-weight:600; cursor:pointer;">
@@ -823,15 +817,9 @@ $role_titles = [
                                             <button type="button" class="u-act-btn btn-edit" onclick="openUserModal('edit', <?= $row['user_id'] ?>)" title="Edit User">
                                                 <i class="fas fa-pen"></i> Edit
                                             </button>
-                                            <?php if ($is_deactivated): ?>
-                                                <button type="button" class="u-act-btn btn-activate" onclick="toggleUserStatus(<?= $row['user_id'] ?>, 'activate')" title="Activate Account">
-                                                    <i class="fas fa-user-check"></i>
-                                                </button>
-                                            <?php else: ?>
-                                                <button type="button" class="u-act-btn btn-deactivate" <?= $is_self ? 'disabled title="You cannot deactivate your own account"' : 'onclick="toggleUserStatus('.$row['user_id'].', \'deactivate\')" title="Deactivate Account"' ?>>
-                                                    <i class="fas fa-user-slash"></i>
-                                                </button>
-                                            <?php endif; ?>
+                                            <button type="button" class="u-act-btn btn-deactivate" <?= $is_self ? 'disabled title="You cannot deactivate your own account"' : 'onclick="toggleUserStatus('.$row['user_id'].', \'deactivate\')" title="Deactivate Account"' ?>>
+                                                <i class="fas fa-user-slash"></i>
+                                            </button>
                                             <button type="button" class="u-act-btn btn-del" <?= $is_self ? 'disabled title="You cannot delete yourself"' : 'onclick="deleteUser('.$row['user_id'].', \''.addslashes($row['name']).'\')" title="Delete User"' ?>>
                                                 <i class="fas fa-trash-alt"></i>
                                             </button>
@@ -930,15 +918,9 @@ $role_titles = [
                                     <button type="button" class="u-act-btn btn-edit" onclick="openUserModal('edit', <?= $row['user_id'] ?>)" title="Edit User">
                                         <i class="fas fa-pen"></i> Edit
                                     </button>
-                                    <?php if ($is_deactivated): ?>
-                                        <button type="button" class="u-act-btn btn-activate" onclick="toggleUserStatus(<?= $row['user_id'] ?>, 'activate')" title="Activate Account">
-                                            <i class="fas fa-user-check"></i>
-                                        </button>
-                                    <?php else: ?>
-                                        <button type="button" class="u-act-btn btn-deactivate" <?= $is_self ? 'disabled title="You cannot deactivate your own account"' : 'onclick="toggleUserStatus('.$row['user_id'].', \'deactivate\')" title="Deactivate Account"' ?>>
-                                            <i class="fas fa-user-slash"></i>
-                                        </button>
-                                    <?php endif; ?>
+                                    <button type="button" class="u-act-btn btn-deactivate" <?= $is_self ? 'disabled title="You cannot deactivate your own account"' : 'onclick="toggleUserStatus('.$row['user_id'].', \'deactivate\')" title="Deactivate Account"' ?>>
+                                        <i class="fas fa-user-slash"></i>
+                                    </button>
                                     <button type="button" class="u-act-btn btn-del" <?= $is_self ? 'disabled title="You cannot delete yourself"' : 'onclick="deleteUser('.$row['user_id'].', \''.addslashes($row['name']).'\')" title="Delete User"' ?>>
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
@@ -946,6 +928,107 @@ $role_titles = [
                             </td>
                         </tr>
                         <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- VIEW 3: DEACTIVATED USERS ARCHIVE (SEPARATE FROM MAIN LIST)            -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <div id="usersDeactivatedContainer" style="display:none;">
+        <div class="u-table-card">
+            <div class="u-table-header-title">
+                <h4>
+                    <i class="fas fa-user-slash" style="color: #64748b;"></i>
+                    <span>Deactivated Accounts Archive</span>
+                    <span id="deactivatedCountBadge" style="font-size:12px; color:#64748b; font-weight:600; margin-left:6px;">(<?= count($deactivated_users_list) ?>)</span>
+                </h4>
+                <div style="font-size: 12.5px; color: #64748b;">
+                    These accounts are blocked from logging in. They are kept here safely away from the active list.
+                </div>
+            </div>
+
+            <div style="overflow-x:auto;">
+                <table class="u-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 28%;">User</th>
+                            <th style="width: 24%;">Email</th>
+                            <th style="width: 15%;">Role</th>
+                            <th style="width: 11%;">Status</th>
+                            <th style="width: 12%;">Last Login</th>
+                            <th style="width: 10%; text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($deactivated_users_list)): ?>
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 42px; color: #94a3b8;">
+                                    <i class="fas fa-check-circle" style="font-size: 26px; color: #10b981; margin-bottom: 8px; display: block;"></i>
+                                    No deactivated users found. All accounts are currently active.
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($deactivated_users_list as $row): 
+                                $roleBadge = getRoleBadge($row['role']);
+                                $is_self = ($row['user_id'] == $_SESSION['user_id']);
+                                $g_val = !empty($row['gender']) ? ucfirst(strtolower(trim($row['gender']))) : 'Male';
+                            ?>
+                            <tr class="deactivated-item-row"
+                                data-user-id="<?= $row['user_id'] ?>"
+                                data-name="<?= htmlspecialchars(strtolower($row['name'])) ?>"
+                                data-username="<?= htmlspecialchars(strtolower($row['username'])) ?>"
+                                data-email="<?= htmlspecialchars(strtolower($row['email'])) ?>"
+                                data-role="<?= htmlspecialchars(strtolower($row['role'])) ?>"
+                                data-gender="<?= strtolower($g_val) ?>">
+                                <td>
+                                    <div class="user-info-box" style="opacity: 0.8;">
+                                        <div class="user-avatar-initial" style="background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0;">
+                                            <?= strtoupper(substr($row['name'], 0, 1)) ?>
+                                        </div>
+                                        <div>
+                                            <div class="user-title-group">
+                                                <span class="user-display-name" style="color: #64748b; text-decoration: line-through;"><?= htmlspecialchars($row['name']) ?></span>
+                                                <span class="user-gender-tag"><?= htmlspecialchars($g_val) ?></span>
+                                            </div>
+                                            <div class="user-username-badge">@<?= htmlspecialchars($row['username']) ?></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span style="color: #64748b; font-size: 13px;"><?= htmlspecialchars($row['email']) ?></span>
+                                </td>
+                                <td>
+                                    <span style="background:<?= $roleBadge['bg'] ?>; color:<?= $roleBadge['text'] ?>; border:1px solid <?= $roleBadge['border'] ?>; padding:3px 9px; border-radius:6px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:5px; opacity:0.8;">
+                                        <i class="fas <?= $roleBadge['icon'] ?>" style="font-size:10px;"></i> <?= htmlspecialchars($roleBadge['label']) ?>
+                                    </span>
+                                    <?php if (!empty($row['job_title'])): ?>
+                                        <div style="font-size:11px; color:#94a3b8; margin-top:3px;"><?= htmlspecialchars($row['job_title']) ?></div>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <span class="status-indicator-badge deactivated">
+                                        <span class="stat-dot"></span> Deactivated
+                                    </span>
+                                </td>
+                                <td style="font-size:12.5px; color:#94a3b8; white-space:nowrap;">
+                                    <?= !empty($row['last_login']) ? date('M d, Y H:i', strtotime($row['last_login'])) : '<span style="color:#cbd5e1;">Never</span>' ?>
+                                </td>
+                                <td style="text-align: right;">
+                                    <div class="u-action-group">
+                                        <button type="button" class="u-act-btn btn-activate" onclick="toggleUserStatus(<?= $row['user_id'] ?>, 'activate')" title="Reactivate Account">
+                                            <i class="fas fa-user-check"></i> Reactivate
+                                        </button>
+                                        <button type="button" class="u-act-btn btn-del" <?= $is_self ? 'disabled title="You cannot delete yourself"' : 'onclick="deleteUser('.$row['user_id'].', \''.addslashes($row['name']).'\')" title="Delete User"' ?>>
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -1096,71 +1179,106 @@ function applyUserFilters() {
     const clearBtn = document.getElementById('clearSearchBtn');
     clearBtn.style.display = searchVal ? 'flex' : 'none';
 
-    const hasActiveFilters = (searchVal !== '' || roleVal !== 'all' || statusVal !== 'all' || genderVal !== 'all');
+    const hasActiveFilters = (searchVal !== '' || roleVal !== 'all' || statusVal !== 'active' || genderVal !== 'all');
     document.getElementById('resetFiltersBtn').style.display = hasActiveFilters ? 'inline-flex' : 'none';
 
     // Update active filter stat card indicators
     updateStatCardHighlights(roleVal, statusVal);
 
+    const isDeactivatedView = (statusVal === 'deactivated');
+    const viewSwitcherBox = document.getElementById('viewSwitcherBox');
+    if (viewSwitcherBox) viewSwitcherBox.style.display = isDeactivatedView ? 'none' : 'inline-flex';
+
+    const deactContainer = document.getElementById('usersDeactivatedContainer');
+    const groupedContainer = document.getElementById('usersGroupedContainer');
+    const flatContainer = document.getElementById('usersFlatContainer');
+
     let totalVisible = 0;
     const activeFilterTags = [];
+    if (statusVal !== 'active') activeFilterTags.push(`View: Deactivated Archive`);
     if (roleVal !== 'all') activeFilterTags.push(`Role: ${roleVal}`);
-    if (statusVal !== 'all') activeFilterTags.push(`Status: ${statusVal}`);
     if (genderVal !== 'all') activeFilterTags.push(`Gender: ${genderVal}`);
     if (searchVal !== '') activeFilterTags.push(`Search: "${searchVal}"`);
     document.getElementById('activeFilterNote').textContent = activeFilterTags.length > 0 ? `(${activeFilterTags.join(' • ')})` : '';
 
-    // Filter rows in both Grouped View and Flat View
-    const targetContainer = (currentViewMode === 'grouped') ? 
-        document.getElementById('usersGroupedContainer') : 
-        document.getElementById('usersFlatContainer');
+    if (isDeactivatedView) {
+        if (groupedContainer) groupedContainer.style.display = 'none';
+        if (flatContainer) flatContainer.style.display = 'none';
+        if (deactContainer) deactContainer.style.display = 'block';
 
-    const allRows = targetContainer.querySelectorAll('.user-item-row');
-    allRows.forEach(row => {
-        const rName     = row.getAttribute('data-name') || '';
-        const rUsername = row.getAttribute('data-username') || '';
-        const rEmail    = row.getAttribute('data-email') || '';
-        const rRole     = row.getAttribute('data-role') || '';
-        const rStatus   = row.getAttribute('data-status') || '';
-        const rGender   = row.getAttribute('data-gender') || '';
+        const deactRows = deactContainer.querySelectorAll('.deactivated-item-row');
+        deactRows.forEach(row => {
+            const rName     = row.getAttribute('data-name') || '';
+            const rUsername = row.getAttribute('data-username') || '';
+            const rEmail    = row.getAttribute('data-email') || '';
+            const rRole     = row.getAttribute('data-role') || '';
+            const rGender   = row.getAttribute('data-gender') || '';
 
-        // Check search match
-        const matchesSearch = (!searchVal || rName.includes(searchVal) || rUsername.includes(searchVal) || rEmail.includes(searchVal));
+            const matchesSearch = (!searchVal || rName.includes(searchVal) || rUsername.includes(searchVal) || rEmail.includes(searchVal));
+            let matchesRole = (roleVal === 'all');
+            if (!matchesRole) {
+                if (roleVal === 'super_admin') matchesRole = (rRole === 'super_admin' || rRole === 'superadmin');
+                else if (roleVal === 'client') matchesRole = (rRole === 'client' || rRole === 'client_sub');
+                else matchesRole = (rRole === roleVal);
+            }
+            const matchesGender = (genderVal === 'all' || rGender === genderVal);
 
-        // Check role match
-        let matchesRole = (roleVal === 'all');
-        if (!matchesRole) {
-            if (roleVal === 'super_admin') matchesRole = (rRole === 'super_admin' || rRole === 'superadmin');
-            else if (roleVal === 'client') matchesRole = (rRole === 'client' || rRole === 'client_sub');
-            else matchesRole = (rRole === roleVal);
-        }
-
-        // Check status match
-        const matchesStatus = (statusVal === 'all' || rStatus === statusVal);
-
-        // Check gender match
-        const matchesGender = (genderVal === 'all' || rGender === genderVal);
-
-        if (matchesSearch && matchesRole && matchesStatus && matchesGender) {
-            row.style.display = '';
-            totalVisible++;
-        } else {
-            row.style.display = 'none';
-        }
-    });
-
-    // In grouped mode, manage role section visibility and count labels
-    if (currentViewMode === 'grouped') {
-        const sections = document.querySelectorAll('.role-table-section');
-        sections.forEach(section => {
-            const visibleInSec = section.querySelectorAll('.user-item-row:not([style*="display: none"])').length;
-            const countLabel = section.querySelector('.role-sec-count');
-            if (countLabel) countLabel.textContent = `(${visibleInSec})`;
-            section.style.display = visibleInSec > 0 ? '' : 'none';
+            if (matchesSearch && matchesRole && matchesGender) {
+                row.style.display = '';
+                totalVisible++;
+            } else {
+                row.style.display = 'none';
+            }
         });
     } else {
-        const flatBadge = document.getElementById('flatTableCountBadge');
-        if (flatBadge) flatBadge.textContent = `(${totalVisible})`;
+        if (deactContainer) deactContainer.style.display = 'none';
+        if (currentViewMode === 'flat') {
+            if (groupedContainer) groupedContainer.style.display = 'none';
+            if (flatContainer) flatContainer.style.display = 'block';
+        } else {
+            if (groupedContainer) groupedContainer.style.display = 'block';
+            if (flatContainer) flatContainer.style.display = 'none';
+        }
+
+        const targetContainer = (currentViewMode === 'grouped') ? groupedContainer : flatContainer;
+        const allRows = targetContainer.querySelectorAll('.user-item-row');
+        allRows.forEach(row => {
+            const rName     = row.getAttribute('data-name') || '';
+            const rUsername = row.getAttribute('data-username') || '';
+            const rEmail    = row.getAttribute('data-email') || '';
+            const rRole     = row.getAttribute('data-role') || '';
+            const rGender   = row.getAttribute('data-gender') || '';
+
+            const matchesSearch = (!searchVal || rName.includes(searchVal) || rUsername.includes(searchVal) || rEmail.includes(searchVal));
+            let matchesRole = (roleVal === 'all');
+            if (!matchesRole) {
+                if (roleVal === 'super_admin') matchesRole = (rRole === 'super_admin' || rRole === 'superadmin');
+                else if (roleVal === 'client') matchesRole = (rRole === 'client' || rRole === 'client_sub');
+                else matchesRole = (rRole === roleVal);
+            }
+            const matchesGender = (genderVal === 'all' || rGender === genderVal);
+
+            if (matchesSearch && matchesRole && matchesGender) {
+                row.style.display = '';
+                totalVisible++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // In grouped mode, manage role section visibility and count labels
+        if (currentViewMode === 'grouped') {
+            const sections = document.querySelectorAll('.role-table-section');
+            sections.forEach(section => {
+                const visibleInSec = section.querySelectorAll('.user-item-row:not([style*="display: none"])').length;
+                const countLabel = section.querySelector('.role-sec-count');
+                if (countLabel) countLabel.textContent = `(${visibleInSec})`;
+                section.style.display = visibleInSec > 0 ? '' : 'none';
+            });
+        } else {
+            const flatBadge = document.getElementById('flatTableCountBadge');
+            if (flatBadge) flatBadge.textContent = `(${totalVisible})`;
+        }
     }
 
     document.getElementById('visibleUsersCount').textContent = totalVisible;
@@ -1175,41 +1293,45 @@ function clearSearchInput() {
 function resetAllFilters() {
     document.getElementById('userSearchInput').value = '';
     document.getElementById('roleFilterSelect').value = 'all';
-    document.getElementById('statusFilterSelect').value = 'all';
+    document.getElementById('statusFilterSelect').value = 'active';
     document.getElementById('genderFilterSelect').value = 'all';
     applyUserFilters();
 }
 
 // Quick filter via top stat cards
 function setQuickFilter(type) {
-    if (type === 'all') {
-        resetAllFilters();
-    } else if (type === 'active' || type === 'deactivated') {
-        document.getElementById('statusFilterSelect').value = type;
+    if (type === 'all' || type === 'active') {
+        document.getElementById('statusFilterSelect').value = 'active';
+        document.getElementById('roleFilterSelect').value = 'all';
+        document.getElementById('genderFilterSelect').value = 'all';
+        applyUserFilters();
+    } else if (type === 'deactivated') {
+        document.getElementById('statusFilterSelect').value = 'deactivated';
+        document.getElementById('roleFilterSelect').value = 'all';
+        document.getElementById('genderFilterSelect').value = 'all';
         applyUserFilters();
     } else if (type === 'super_admin' || type === 'admin') {
+        document.getElementById('statusFilterSelect').value = 'active';
         document.getElementById('roleFilterSelect').value = type;
         applyUserFilters();
     }
 }
 
 function updateStatCardHighlights(roleVal, statusVal) {
-    const cards = ['statCardAll', 'statCardActive', 'statCardDeactivated', 'statCardSuperAdmin', 'statCardAdmin'];
+    const cards = ['statCardActive', 'statCardDeactivated', 'statCardSuperAdmin', 'statCardAdmin'];
     cards.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.remove('active-filter');
     });
 
-    if (roleVal === 'all' && statusVal === 'all') {
-        document.getElementById('statCardAll')?.classList.add('active-filter');
-    } else if (statusVal === 'active') {
-        document.getElementById('statCardActive')?.classList.add('active-filter');
-    } else if (statusVal === 'deactivated') {
+    if (statusVal === 'deactivated') {
         document.getElementById('statCardDeactivated')?.classList.add('active-filter');
     } else if (roleVal === 'super_admin') {
         document.getElementById('statCardSuperAdmin')?.classList.add('active-filter');
     } else if (roleVal === 'admin') {
         document.getElementById('statCardAdmin')?.classList.add('active-filter');
+    } else {
+        document.getElementById('statCardActive')?.classList.add('active-filter');
     }
 }
 
