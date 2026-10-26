@@ -150,7 +150,7 @@ try {
         $stmt_ov = $conn->prepare("
             SELECT o.*, u.name, u.username, u.gender, u.role
             FROM attendance_overrides o
-            LEFT JOIN users u ON o.user_id = u.user_id
+            LEFT JOIN users u ON CAST(o.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
             WHERE DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
         ");
         if ($stmt_ov) $stmt_ov->bind_param("s", $filter_month);
@@ -158,7 +158,7 @@ try {
         $stmt_ov = $conn->prepare("
             SELECT o.*, u.name, u.username, u.gender, u.role
             FROM attendance_overrides o
-            LEFT JOIN users u ON o.user_id = u.user_id
+            LEFT JOIN users u ON CAST(o.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
             WHERE o.user_id = ? AND DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
         ");
         if ($stmt_ov) $stmt_ov->bind_param("is", $user_id, $filter_month);
@@ -179,7 +179,7 @@ try {
             $stmt_ov = $conn->prepare("
                 SELECT o.*, u.name, u.username, u.role
                 FROM attendance_overrides o
-                LEFT JOIN users u ON o.user_id = u.user_id
+                LEFT JOIN users u ON CAST(o.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
                 WHERE DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
             ");
             if ($stmt_ov) $stmt_ov->bind_param("s", $filter_month);
@@ -187,7 +187,7 @@ try {
             $stmt_ov = $conn->prepare("
                 SELECT o.*, u.name, u.username, u.role
                 FROM attendance_overrides o
-                LEFT JOIN users u ON o.user_id = u.user_id
+                LEFT JOIN users u ON CAST(o.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
                 WHERE o.user_id = ? AND DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
             ");
             if ($stmt_ov) $stmt_ov->bind_param("is", $user_id, $filter_month);
@@ -214,7 +214,7 @@ try {
         $stmt_att = $conn->prepare("
             SELECT a.*, u.name, u.username, u.gender, u.role
             FROM attendance_records a
-            LEFT JOIN users u ON a.user_id = u.user_id
+            LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
             WHERE DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
             ORDER BY a.attendance_date DESC, a.check_in_time DESC
         ");
@@ -223,7 +223,7 @@ try {
         $stmt_att = $conn->prepare("
             SELECT a.*, u.name, u.username, u.gender, u.role
             FROM attendance_records a
-            LEFT JOIN users u ON a.user_id = u.user_id
+            LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
             WHERE a.user_id = ? AND DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
             ORDER BY a.attendance_date DESC, a.check_in_time DESC
         ");
@@ -246,7 +246,7 @@ try {
             $stmt_att = $conn->prepare("
                 SELECT a.*, u.name, u.username, u.role
                 FROM attendance_records a
-                LEFT JOIN users u ON a.user_id = u.user_id
+                LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
                 WHERE DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
                 ORDER BY a.attendance_date DESC, a.check_in_time DESC
             ");
@@ -255,7 +255,7 @@ try {
             $stmt_att = $conn->prepare("
                 SELECT a.*, u.name, u.username, u.role
                 FROM attendance_records a
-                LEFT JOIN users u ON a.user_id = u.user_id
+                LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
                 WHERE a.user_id = ? AND DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
                 ORDER BY a.attendance_date DESC, a.check_in_time DESC
             ");
@@ -743,18 +743,21 @@ $total_records = count($attendance_records);
                         </td>
                     </tr>
                     <?php else: ?>
-                    <?php foreach ($attendance_records as $row): ?>
+                    <?php foreach ($attendance_records as $row): 
+                        $emp_name = !empty($row['name']) ? $row['name'] : (!empty($row['username']) ? $row['username'] : 'Staff #' . ($row['user_id'] ?? ''));
+                        $initial = strtoupper(substr($emp_name, 0, 1));
+                    ?>
                     <tr>
                         <?php if ($is_admin): ?>
                         <td>
                             <div style="display:flex; align-items:center; gap:10px;">
                                 <div style="width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg, var(--accent, #b8f35a), #87bd0a); color:var(--primary, #024442); font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                                    <?= strtoupper(substr($row['name'], 0, 1)) ?>
+                                    <?= $initial ?>
                                 </div>
                                 <div>
-                                    <strong style="color:var(--primary, #024442); font-size:13.5px;"><?= htmlspecialchars($row['name']) ?></strong>
-                                    <span class="gender-tag <?= $row['gender'] ?>"><?= htmlspecialchars($row['gender']) ?></span>
-                                    <small style="display:block; color:#64748b; font-size:11.5px;">@<?= htmlspecialchars($row['username']) ?></small>
+                                    <strong style="color:var(--primary, #024442); font-size:13.5px;"><?= htmlspecialchars($emp_name) ?></strong>
+                                    <span class="gender-tag <?= $row['gender'] ?? 'Male' ?>"><?= htmlspecialchars($row['gender'] ?? 'Male') ?></span>
+                                    <small style="display:block; color:#64748b; font-size:11.5px;">@<?= htmlspecialchars($row['username'] ?? 'user') ?></small>
                                 </div>
                             </div>
                         </td>

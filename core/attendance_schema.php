@@ -117,6 +117,37 @@ if (!function_exists('ensure_attendance_schema')) {
             error_log("attendance_records sync: " . $e->getMessage());
         }
 
+        // ── 1b. Seamlessly Backfill Historical Records from `login_logs` ──────
+        try {
+            $chk_logs = $conn->query("SHOW TABLES LIKE 'login_logs'");
+            if ($chk_logs && $chk_logs->num_rows > 0) {
+                $conn->query("INSERT IGNORE INTO `attendance_records` (
+                    `user_id`,
+                    `attendance_date`,
+                    `check_in_time`,
+                    `check_out_time`,
+                    `status`,
+                    `location_type`,
+                    `ip_address`,
+                    `created_at`
+                )
+                SELECT 
+                    CAST(l.user_id AS UNSIGNED) as user_id,
+                    DATE(l.login_time) as att_date,
+                    MIN(TIME(l.login_time)) as in_time,
+                    IF(MAX(TIME(l.login_time)) != MIN(TIME(l.login_time)), MAX(TIME(l.login_time)), NULL) as out_time,
+                    'present' as status,
+                    COALESCE(l.attendance_type, 'remote') as location_type,
+                    l.ip_address,
+                    MIN(l.login_time) as created_at
+                FROM `login_logs` l
+                WHERE l.status = 'success' AND l.user_id IS NOT NULL AND l.user_id > 0
+                GROUP BY l.user_id, DATE(l.login_time)");
+            }
+        } catch (Throwable $e_bfill) {
+            error_log("attendance_records backfill notice: " . $e_bfill->getMessage());
+        }
+
         // ── 2. Create & Sync `attendance_overrides` table ─────────────────────
         try {
             $conn->query("CREATE TABLE IF NOT EXISTS `attendance_overrides` (
