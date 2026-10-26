@@ -12,8 +12,11 @@ ensure_attendance_schema($conn);
 $is_admin = ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $role === 'hrm' || $role === 'manager');
 $user_id  = $_SESSION['user_id'] ?? 0;
 
-// Filter month
+// Filter month (validated YYYY-MM)
 $filter_month = $_GET['month'] ?? date('Y-m');
+if (!preg_match('/^\d{4}-\d{2}$/', $filter_month)) {
+    $filter_month = date('Y-m');
+}
 
 $toast_message = '';
 $toast_type    = '';
@@ -42,31 +45,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $approved_by     = $user_id;
         
         if ($target_user_id > 0 && !empty($attendance_date) && !empty($attendance_type)) {
-            $dup_stmt = $conn->prepare("SELECT id FROM attendance_overrides WHERE user_id = ? AND attendance_date = ?");
-            $dup_stmt->bind_param("is", $target_user_id, $attendance_date);
-            $dup_stmt->execute();
-            $dup_res = $dup_stmt->get_result()->fetch_assoc();
-            
-            if ($dup_res) {
-                $upd_stmt = $conn->prepare("UPDATE attendance_overrides SET attendance_type = ?, leave_category = ?, reason = ?, approved_by = ? WHERE id = ?");
-                $upd_stmt->bind_param("sssii", $attendance_type, $leave_category, $reason, $approved_by, $dup_res['id']);
-                if ($upd_stmt->execute()) {
-                    $_SESSION['toast_msg']  = 'Attendance override updated successfully!';
-                    $_SESSION['toast_type'] = 'success';
-                } else {
-                    $_SESSION['toast_msg']  = 'Failed to update attendance override.';
-                    $_SESSION['toast_type'] = 'error';
+            try {
+                $dup_stmt = $conn->prepare("SELECT id FROM attendance_overrides WHERE user_id = ? AND attendance_date = ?");
+                if ($dup_stmt) {
+                    $dup_stmt->bind_param("is", $target_user_id, $attendance_date);
+                    $dup_stmt->execute();
+                    $dup_res = $dup_stmt->get_result()->fetch_assoc();
+                    $dup_stmt->close();
+                    
+                    if ($dup_res) {
+                        $upd_stmt = $conn->prepare("UPDATE attendance_overrides SET attendance_type = ?, leave_category = ?, reason = ?, approved_by = ? WHERE id = ?");
+                        if ($upd_stmt) {
+                            $upd_stmt->bind_param("sssii", $attendance_type, $leave_category, $reason, $approved_by, $dup_res['id']);
+                            if ($upd_stmt->execute()) {
+                                $_SESSION['toast_msg']  = 'Attendance override updated successfully!';
+                                $_SESSION['toast_type'] = 'success';
+                            } else {
+                                $_SESSION['toast_msg']  = 'Failed to update attendance override.';
+                                $_SESSION['toast_type'] = 'error';
+                            }
+                            $upd_stmt->close();
+                        }
+                    } else {
+                        $ins_stmt = $conn->prepare("INSERT INTO attendance_overrides (user_id, attendance_date, attendance_type, leave_category, reason, approved_by, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+                        if ($ins_stmt) {
+                            $ins_stmt->bind_param("issssi", $target_user_id, $attendance_date, $attendance_type, $leave_category, $reason, $approved_by);
+                            if ($ins_stmt->execute()) {
+                                $_SESSION['toast_msg']  = 'Attendance override added successfully!';
+                                $_SESSION['toast_type'] = 'success';
+                            } else {
+                                $_SESSION['toast_msg']  = 'Failed to add attendance override.';
+                                $_SESSION['toast_type'] = 'error';
+                            }
+                            $ins_stmt->close();
+                        }
+                    }
                 }
-            } else {
-                $ins_stmt = $conn->prepare("INSERT INTO attendance_overrides (user_id, attendance_date, attendance_type, leave_category, reason, approved_by, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-                $ins_stmt->bind_param("issssi", $target_user_id, $attendance_date, $attendance_type, $leave_category, $reason, $approved_by);
-                if ($ins_stmt->execute()) {
-                    $_SESSION['toast_msg']  = 'Attendance override added successfully!';
-                    $_SESSION['toast_type'] = 'success';
-                } else {
-                    $_SESSION['toast_msg']  = 'Failed to add attendance override.';
-                    $_SESSION['toast_type'] = 'error';
-                }
+            } catch (Throwable $e_add_ov) {
+                $_SESSION['toast_msg']  = 'Database error saving override: ' . $e_add_ov->getMessage();
+                $_SESSION['toast_type'] = 'error';
             }
         } else {
             $_SESSION['toast_msg']  = 'All fields are required.';
@@ -79,13 +96,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete_override') {
         $override_id = intval($_POST['override_id'] ?? 0);
         if ($override_id > 0) {
-            $del_stmt = $conn->prepare("DELETE FROM attendance_overrides WHERE id = ?");
-            $del_stmt->bind_param("i", $override_id);
-            if ($del_stmt->execute()) {
-                $_SESSION['toast_msg']  = 'Attendance override removed successfully!';
-                $_SESSION['toast_type'] = 'success';
-            } else {
-                $_SESSION['toast_msg']  = 'Failed to remove override.';
+            try {
+                $del_stmt = $conn->prepare("DELETE FROM attendance_overrides WHERE id = ?");
+                if ($del_stmt) {
+                    $del_stmt->bind_param("i", $override_id);
+                    if ($del_stmt->execute()) {
+                        $_SESSION['toast_msg']  = 'Attendance override removed successfully!';
+                        $_SESSION['toast_type'] = 'success';
+                    } else {
+                        $_SESSION['toast_msg']  = 'Failed to remove override.';
+                        $_SESSION['toast_type'] = 'error';
+                    }
+                    $del_stmt->close();
+                }
+            } catch (Throwable $e_del) {
+                $_SESSION['toast_msg']  = 'Database error deleting override: ' . $e_del->getMessage();
                 $_SESSION['toast_type'] = 'error';
             }
         }
@@ -97,74 +122,159 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ── Query Active Users ─────────────────────────────────────────────────────────
 $users_list = [];
 if ($is_admin) {
-    $u_res = $conn->query("SELECT user_id, name, username, gender, role, department FROM users WHERE status = 'active' AND role NOT IN ('client', 'client_sub', 'student') ORDER BY name ASC");
-    if ($u_res) {
-        while ($u_row = $u_res->fetch_assoc()) {
-            $users_list[] = $u_row;
+    try {
+        $u_res = $conn->query("SELECT user_id, name, username, gender, role, department FROM users WHERE status = 'active' AND role NOT IN ('client', 'client_sub', 'student') ORDER BY name ASC");
+        if ($u_res) {
+            while ($u_row = $u_res->fetch_assoc()) {
+                $users_list[] = $u_row;
+            }
         }
+    } catch (Throwable $e) {
+        try {
+            $u_res = $conn->query("SELECT user_id, name, username, role FROM users WHERE role NOT IN ('client', 'client_sub', 'student') ORDER BY name ASC");
+            if ($u_res) {
+                while ($u_row = $u_res->fetch_assoc()) {
+                    $u_row['gender'] = 'Male';
+                    $u_row['department'] = 'General';
+                    $users_list[] = $u_row;
+                }
+            }
+        } catch (Throwable $e2) {}
     }
 }
 
 // ── Fetch Overrides for Month ─────────────────────────────────────────────────
 $overrides = [];
-if ($is_admin) {
-    $stmt_ov = $conn->prepare("
-        SELECT o.*, u.name, u.username, u.gender, u.role
-        FROM attendance_overrides o
-        LEFT JOIN users u ON o.user_id = u.user_id
-        WHERE DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
-    ");
-    if ($stmt_ov) $stmt_ov->bind_param("s", $filter_month);
-} else {
-    $stmt_ov = $conn->prepare("
-        SELECT o.*, u.name, u.username, u.gender, u.role
-        FROM attendance_overrides o
-        LEFT JOIN users u ON o.user_id = u.user_id
-        WHERE o.user_id = ? AND DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
-    ");
-    if ($stmt_ov) $stmt_ov->bind_param("is", $user_id, $filter_month);
-}
-
-if ($stmt_ov && $stmt_ov->execute()) {
-    $res_ov = $stmt_ov->get_result();
-    while ($row = $res_ov->fetch_assoc()) {
-        $key = $row['user_id'] . '_' . $row['attendance_date'];
-        $overrides[$key] = $row;
+try {
+    if ($is_admin) {
+        $stmt_ov = $conn->prepare("
+            SELECT o.*, u.name, u.username, u.gender, u.role
+            FROM attendance_overrides o
+            LEFT JOIN users u ON o.user_id = u.user_id
+            WHERE DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
+        ");
+        if ($stmt_ov) $stmt_ov->bind_param("s", $filter_month);
+    } else {
+        $stmt_ov = $conn->prepare("
+            SELECT o.*, u.name, u.username, u.gender, u.role
+            FROM attendance_overrides o
+            LEFT JOIN users u ON o.user_id = u.user_id
+            WHERE o.user_id = ? AND DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
+        ");
+        if ($stmt_ov) $stmt_ov->bind_param("is", $user_id, $filter_month);
     }
-    $stmt_ov->close();
+
+    if ($stmt_ov && $stmt_ov->execute()) {
+        $res_ov = $stmt_ov->get_result();
+        while ($row = $res_ov->fetch_assoc()) {
+            $key = $row['user_id'] . '_' . $row['attendance_date'];
+            $overrides[$key] = $row;
+        }
+        $stmt_ov->close();
+    }
+} catch (Throwable $e) {
+    // Fallback if users table does not have gender column
+    try {
+        if ($is_admin) {
+            $stmt_ov = $conn->prepare("
+                SELECT o.*, u.name, u.username, u.role
+                FROM attendance_overrides o
+                LEFT JOIN users u ON o.user_id = u.user_id
+                WHERE DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
+            ");
+            if ($stmt_ov) $stmt_ov->bind_param("s", $filter_month);
+        } else {
+            $stmt_ov = $conn->prepare("
+                SELECT o.*, u.name, u.username, u.role
+                FROM attendance_overrides o
+                LEFT JOIN users u ON o.user_id = u.user_id
+                WHERE o.user_id = ? AND DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
+            ");
+            if ($stmt_ov) $stmt_ov->bind_param("is", $user_id, $filter_month);
+        }
+
+        if ($stmt_ov && $stmt_ov->execute()) {
+            $res_ov = $stmt_ov->get_result();
+            while ($row = $res_ov->fetch_assoc()) {
+                $row['gender'] = 'Male';
+                $key = $row['user_id'] . '_' . $row['attendance_date'];
+                $overrides[$key] = $row;
+            }
+            $stmt_ov->close();
+        }
+    } catch (Throwable $e2) {
+        error_log("Overrides fallback notice: " . $e2->getMessage());
+    }
 }
 
 // ── Fetch Enhanced Attendance Records (`attendance_records`) ─────────────────
 $final_records = [];
-
-if ($is_admin) {
-    $stmt_att = $conn->prepare("
-        SELECT a.*, u.name, u.username, u.gender, u.role
-        FROM attendance_records a
-        LEFT JOIN users u ON a.user_id = u.user_id
-        WHERE DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
-        ORDER BY a.attendance_date DESC, a.check_in_time DESC
-    ");
-    if ($stmt_att) $stmt_att->bind_param("s", $filter_month);
-} else {
-    $stmt_att = $conn->prepare("
-        SELECT a.*, u.name, u.username, u.gender, u.role
-        FROM attendance_records a
-        LEFT JOIN users u ON a.user_id = u.user_id
-        WHERE a.user_id = ? AND DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
-        ORDER BY a.attendance_date DESC, a.check_in_time DESC
-    ");
-    if ($stmt_att) $stmt_att->bind_param("is", $user_id, $filter_month);
-}
-
-if ($stmt_att && $stmt_att->execute()) {
-    $res_att = $stmt_att->get_result();
-    while ($row = $res_att->fetch_assoc()) {
-        $key = $row['user_id'] . '_' . $row['attendance_date'];
-        $row['is_override'] = false;
-        $final_records[$key] = $row;
+try {
+    if ($is_admin) {
+        $stmt_att = $conn->prepare("
+            SELECT a.*, u.name, u.username, u.gender, u.role
+            FROM attendance_records a
+            LEFT JOIN users u ON a.user_id = u.user_id
+            WHERE DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
+            ORDER BY a.attendance_date DESC, a.check_in_time DESC
+        ");
+        if ($stmt_att) $stmt_att->bind_param("s", $filter_month);
+    } else {
+        $stmt_att = $conn->prepare("
+            SELECT a.*, u.name, u.username, u.gender, u.role
+            FROM attendance_records a
+            LEFT JOIN users u ON a.user_id = u.user_id
+            WHERE a.user_id = ? AND DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
+            ORDER BY a.attendance_date DESC, a.check_in_time DESC
+        ");
+        if ($stmt_att) $stmt_att->bind_param("is", $user_id, $filter_month);
     }
-    $stmt_att->close();
+
+    if ($stmt_att && $stmt_att->execute()) {
+        $res_att = $stmt_att->get_result();
+        while ($row = $res_att->fetch_assoc()) {
+            $key = $row['user_id'] . '_' . $row['attendance_date'];
+            $row['is_override'] = false;
+            $final_records[$key] = $row;
+        }
+        $stmt_att->close();
+    }
+} catch (Throwable $e) {
+    // Fallback if users table does not have gender column
+    try {
+        if ($is_admin) {
+            $stmt_att = $conn->prepare("
+                SELECT a.*, u.name, u.username, u.role
+                FROM attendance_records a
+                LEFT JOIN users u ON a.user_id = u.user_id
+                WHERE DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
+                ORDER BY a.attendance_date DESC, a.check_in_time DESC
+            ");
+            if ($stmt_att) $stmt_att->bind_param("s", $filter_month);
+        } else {
+            $stmt_att = $conn->prepare("
+                SELECT a.*, u.name, u.username, u.role
+                FROM attendance_records a
+                LEFT JOIN users u ON a.user_id = u.user_id
+                WHERE a.user_id = ? AND DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
+                ORDER BY a.attendance_date DESC, a.check_in_time DESC
+            ");
+            if ($stmt_att) $stmt_att->bind_param("is", $user_id, $filter_month);
+        }
+
+        if ($stmt_att && $stmt_att->execute()) {
+            $res_att = $stmt_att->get_result();
+            while ($row = $res_att->fetch_assoc()) {
+                $row['gender'] = 'Male';
+                $key = $row['user_id'] . '_' . $row['attendance_date'];
+                $row['is_override'] = false;
+                $final_records[$key] = $row;
+            }
+            $stmt_att->close();
+        }
+    } catch (Throwable $e2) {
+        error_log("Attendance fallback notice: " . $e2->getMessage());
+    }
 }
 
 // ── Merge Overrides ───────────────────────────────────────────────────────────
@@ -285,7 +395,7 @@ foreach ($final_records as $row) {
                 $stat_present++;
                 break;
             case 'leave':
-                $is_med = ($row['leave_category'] === 'medical' || stripos($row['reason'] ?? '', 'medical') !== false);
+                $is_med = (($row['leave_category'] ?? '') === 'medical' || stripos($row['reason'] ?? '', 'medical') !== false);
                 $row['att_status'] = $is_med ? 'Medical Leave' : 'On Leave';
                 $row['att_class']  = $is_med ? 'medical-leave' : 'leave';
                 $row['loc_text']   = '—';
@@ -297,14 +407,16 @@ foreach ($final_records as $row) {
         }
     } else {
         // Based on attendance record
-        if ($row['status'] === 'on_leave') {
-            $row['att_status'] = ($row['leave_type'] === 'medical') ? 'Medical Leave' : 'On Leave';
-            $row['att_class']  = ($row['leave_type'] === 'medical') ? 'medical-leave' : 'leave';
+        if (($row['status'] ?? '') === 'on_leave') {
+            $is_med = (($row['leave_type'] ?? '') === 'medical');
+            $row['att_status'] = $is_med ? 'Medical Leave' : 'On Leave';
+            $row['att_class']  = $is_med ? 'medical-leave' : 'leave';
             $row['loc_text']   = '—';
             $row['loc_class']  = 'loc-leave';
-            $row['loc_icon']   = '🌴';
+            $row['loc_icon']   = $is_med ? '🏥' : '🌴';
             $stat_leave++;
-        } elseif ($row['is_late']) {
+            if ($is_med) $stat_medical++;
+        } elseif (!empty($row['is_late'])) {
             $row['att_status'] = 'Late';
             $row['att_class']  = 'late';
             $stat_late++;
@@ -321,12 +433,12 @@ foreach ($final_records as $row) {
         }
 
         // Location determination
-        if (!empty($row['location_denied']) || $row['location_type'] === 'denied') {
+        if (!empty($row['location_denied']) || ($row['location_type'] ?? '') === 'denied') {
             $row['loc_text']  = 'Denied Location';
             $row['loc_class'] = 'loc-denied';
             $row['loc_icon']  = '⚠️';
             $stat_denied_loc++;
-        } elseif ($row['location_type'] === 'onsite') {
+        } elseif (($row['location_type'] ?? '') === 'onsite') {
             $dist_text = !empty($row['distance_meters']) ? " (" . round($row['distance_meters']) . "m)" : "";
             $row['loc_text']  = 'On-site' . $dist_text;
             $row['loc_class'] = 'loc-onsite';
