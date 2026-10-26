@@ -292,7 +292,7 @@ $stmt_ded->close();
                             <?php if ($d['status'] === 'applied'): ?>
                                 <span style="background:#fee2e2; color:#dc2626; border:1px solid #fecaca; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:800; text-transform:uppercase;">Applied</span>
                             <?php elseif ($d['status'] === 'disputed'): ?>
-                                <span style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:800; text-transform:uppercase;">Dispute Open</span>
+                                <span style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:800; text-transform:uppercase;">Dispute Pending (Deducted)</span>
                             <?php elseif ($d['status'] === 'waived'): ?>
                                 <span style="background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:800; text-transform:uppercase;">Waived / Refunded</span>
                             <?php endif; ?>
@@ -301,7 +301,7 @@ $stmt_ded->close();
                         <td style="text-align:center;">
                             <?php if (!empty($d['ticket_number'])): ?>
                                 <a href="deduction_tickets.php" style="display:inline-flex; align-items:center; gap:5px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; padding:5px 12px; border-radius:6px; font-size:11.5px; font-weight:700; text-decoration:none;">
-                                    <i class="fas fa-ticket-alt"></i> <?= htmlspecialchars($d['ticket_number']) ?>
+                                    <i class="fas fa-ticket-alt"></i> <?= htmlspecialchars($d['ticket_number']) ?> (Pending)
                                 </a>
                             <?php elseif ($d['status'] === 'waived'): ?>
                                 <span style="color:#16a34a; font-size:12px; font-weight:700;"><i class="fas fa-check"></i> Resolved</span>

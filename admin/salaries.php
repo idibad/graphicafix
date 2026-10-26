@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $gross_pay = $base_salary + $allowances;
-            $stmt_ded = $conn->prepare("SELECT IFNULL(SUM(amount), 0) as total_ded FROM salary_deductions WHERE user_id = ? AND salary_month = ? AND status = 'applied'");
+            $stmt_ded = $conn->prepare("SELECT IFNULL(SUM(amount), 0) as total_ded FROM salary_deductions WHERE user_id = ? AND salary_month = ? AND status IN ('applied', 'disputed')");
             $total_deductions = 0.00;
             if ($stmt_ded) {
                 $stmt_ded->bind_param("is", $user_id, $filter_month);
@@ -1417,11 +1417,11 @@ function viewDeductions(salary, deductions) {
         deductions.forEach(d => {
             let statusBadge = '';
             if (d.status === 'applied') {
-                statusBadge = `<span style="font-size:10px; color:#64748b;">Applied</span>`;
+                statusBadge = `<span style="font-size:10px; color:#64748b; font-weight:600;">Applied</span>`;
             } else if (d.status === 'disputed') {
-                statusBadge = `<a href="deduction_tickets.php" style="color:#024442; text-decoration:underline; font-size:10px;"><i class="fas fa-ticket-alt"></i> Disputed</a>`;
+                statusBadge = `<a href="deduction_tickets.php" style="color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:2px 7px; border-radius:4px; text-decoration:none; font-size:10px; font-weight:700;"><i class="fas fa-ticket-alt"></i> Disputed (Pending)</a>`;
             } else if (d.status === 'waived') {
-                statusBadge = `<span style="font-size:10px; color:#15803d;"><i class="fas fa-check"></i> Waived</span>`;
+                statusBadge = `<span style="font-size:10px; color:#15803d; background:#dcfce7; border:1px solid #bbf7d0; padding:2px 7px; border-radius:4px; font-weight:700;"><i class="fas fa-check"></i> Waived</span>`;
             }
             html += `
                 <tr style="border-bottom:1px solid #f1f5f9;">

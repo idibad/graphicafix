@@ -532,8 +532,8 @@ function syncUserMonthlySalary($conn, $user_id, $salary_month) {
         $allowances  = $user_meta['allowances'];
         $gross_pay   = $base_salary + $allowances;
 
-        // Sum applied deductions for this month
-        $stmt_ded = $conn->prepare("SELECT IFNULL(SUM(amount), 0) as total_ded FROM salary_deductions WHERE user_id = ? AND salary_month = ? AND status = 'applied'");
+        // Sum deductions for this month (both applied and pending dispute remain deducted until waived)
+        $stmt_ded = $conn->prepare("SELECT IFNULL(SUM(amount), 0) as total_ded FROM salary_deductions WHERE user_id = ? AND salary_month = ? AND status IN ('applied', 'disputed')");
         $total_deductions = 0.00;
         if ($stmt_ded) {
             $stmt_ded->bind_param("is", $user_id, $salary_month);

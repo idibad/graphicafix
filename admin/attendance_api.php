@@ -74,7 +74,7 @@ try {
             }
 
             // Verify deduction belongs to user
-            $stmt = $conn->prepare("SELECT id, user_id, amount, deduction_type, date_incurred FROM salary_deductions WHERE id = ? AND user_id = ? LIMIT 1");
+            $stmt = $conn->prepare("SELECT id, user_id, amount, deduction_type, salary_month, date_incurred FROM salary_deductions WHERE id = ? AND user_id = ? LIMIT 1");
             if (!$stmt) {
                 echo json_encode(['success' => false, 'message' => 'Database error loading deduction details.']);
                 exit;
@@ -137,6 +137,11 @@ try {
 
                 // Mark deduction status as 'disputed'
                 $conn->query("UPDATE salary_deductions SET status = 'disputed' WHERE id = " . intval($deduction_id));
+
+                // Resync monthly salary so the deduction remains held/counted until the dispute is resolved
+                if (!empty($ded['salary_month'])) {
+                    syncUserMonthlySalary($conn, $user_id, $ded['salary_month']);
+                }
 
                 echo json_encode([
                     'success'       => true,
