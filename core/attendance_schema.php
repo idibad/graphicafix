@@ -69,7 +69,7 @@ if (!function_exists('ensure_attendance_schema')) {
                 UNIQUE KEY `idx_user_date` (`user_id`, `attendance_date`),
                 KEY `idx_att_date` (`attendance_date`),
                 KEY `idx_att_user` (`user_id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
             // Check existing columns in attendance_records
             $att_cols = [];
@@ -121,6 +121,14 @@ if (!function_exists('ensure_attendance_schema')) {
         try {
             $chk_logs = $conn->query("SHOW TABLES LIKE 'login_logs'");
             if ($chk_logs && $chk_logs->num_rows > 0) {
+                $has_att_type = false;
+                try {
+                    $chk_att_type = $conn->query("SHOW COLUMNS FROM `login_logs` LIKE 'attendance_type'");
+                    $has_att_type = ($chk_att_type && $chk_att_type->num_rows > 0);
+                } catch (Throwable $e_col) {}
+                
+                $loc_expr = $has_att_type ? "COALESCE(MAX(l.attendance_type), 'remote')" : "'remote'";
+
                 $conn->query("INSERT IGNORE INTO `attendance_records` (
                     `user_id`,
                     `attendance_date`,
@@ -137,21 +145,15 @@ if (!function_exists('ensure_attendance_schema')) {
                     MIN(TIME(l.login_time)) as in_time,
                     IF(MAX(TIME(l.login_time)) != MIN(TIME(l.login_time)), MAX(TIME(l.login_time)), NULL) as out_time,
                     'present' as status,
-                    COALESCE(l.attendance_type, 'remote') as location_type,
-                    l.ip_address,
+                    {$loc_expr} as location_type,
+                    MAX(l.ip_address) as ip_address,
                     MIN(l.login_time) as created_at
                 FROM `login_logs` l
-                WHERE l.status = 'success' AND l.user_id IS NOT NULL AND l.user_id > 0 AND DATE(l.login_time) < CURDATE()
+                WHERE l.status = 'success' AND l.user_id IS NOT NULL AND l.user_id > 0
                 GROUP BY l.user_id, DATE(l.login_time)");
             }
         } catch (Throwable $e_bfill) {
             error_log("attendance_records backfill notice: " . $e_bfill->getMessage());
-        }
-
-        // Clean up unverified placeholder records for today so location verification prompt always displays
-        try {
-            $conn->query("DELETE FROM `attendance_records` WHERE `attendance_date` = CURDATE() AND `latitude` IS NULL AND `location_denied` = 0 AND `check_out_time` IS NULL AND (`notes` IS NULL OR `notes` = '' OR `notes` = 'auto')");
-        } catch (Throwable $e_clean) {
         }
 
         // ── 2. Create & Sync `attendance_overrides` table ─────────────────────
@@ -168,7 +170,7 @@ if (!function_exists('ensure_attendance_schema')) {
                 UNIQUE KEY `idx_user_date_override` (`user_id`, `attendance_date`),
                 KEY `idx_ov_date` (`attendance_date`),
                 KEY `idx_ov_user` (`user_id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
             $res_ov = $conn->query("SHOW COLUMNS FROM `attendance_overrides`");
             $override_cols = [];
@@ -218,7 +220,7 @@ if (!function_exists('ensure_attendance_schema')) {
                 UNIQUE KEY `idx_user_month` (`user_id`, `salary_month`),
                 KEY `idx_salary_month` (`salary_month`),
                 KEY `idx_salary_user` (`user_id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
             $res_sal = $conn->query("SHOW COLUMNS FROM `salaries`");
             $sal_cols = [];
@@ -259,7 +261,7 @@ if (!function_exists('ensure_attendance_schema')) {
                 `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 KEY `idx_ded_user_month` (`user_id`, `salary_month`),
                 KEY `idx_ded_date` (`date_incurred`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
         } catch (Throwable $e) {
             error_log("salary_deductions sync: " . $e->getMessage());
         }
@@ -283,7 +285,7 @@ if (!function_exists('ensure_attendance_schema')) {
                 KEY `idx_tkt_user` (`user_id`),
                 KEY `idx_tkt_deduction` (`deduction_id`),
                 KEY `idx_tkt_status` (`status`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
         } catch (Throwable $e) {
             error_log("deduction_tickets sync: " . $e->getMessage());
         }

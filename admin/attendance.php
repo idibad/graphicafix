@@ -13,9 +13,35 @@ $is_admin = ($role === 'super_admin' || $role === 'superadmin' || $role === 'adm
 $user_id  = $_SESSION['user_id'] ?? 0;
 
 // Filter month (validated YYYY-MM)
-$filter_month = $_GET['month'] ?? date('Y-m');
+$current_month = date('Y-m');
+$filter_month = $_GET['month'] ?? '';
 if (!preg_match('/^\d{4}-\d{2}$/', $filter_month)) {
-    $filter_month = date('Y-m');
+    $filter_month = $current_month;
+}
+
+// Find available months with attendance or override records
+$available_months = [];
+try {
+    $res_m = $conn->query("
+        SELECT DISTINCT DATE_FORMAT(attendance_date, '%Y-%m') as m 
+        FROM attendance_records 
+        WHERE attendance_date IS NOT NULL
+        UNION 
+        SELECT DISTINCT DATE_FORMAT(attendance_date, '%Y-%m') as m 
+        FROM attendance_overrides 
+        WHERE attendance_date IS NOT NULL
+        ORDER BY m DESC
+    ");
+    if ($res_m) {
+        while ($mr = $res_m->fetch_assoc()) {
+            if (!empty($mr['m'])) $available_months[] = $mr['m'];
+        }
+    }
+} catch (Throwable $e_m) {}
+
+// If user opened page without ?month= and current calendar month has no data, default to most recent month with data
+if (!isset($_GET['month']) && !empty($available_months) && !in_array($filter_month, $available_months)) {
+    $filter_month = $available_months[0];
 }
 
 $toast_message = '';
@@ -213,7 +239,7 @@ try {
     $stmt_att = false;
     if ($is_admin) {
         $stmt_att = $conn->prepare("
-            SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username
+            SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, COALESCE(u.gender, 'Male') as gender, COALESCE(u.role, 'user') as role
             FROM attendance_records a
             LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
             WHERE DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
@@ -222,7 +248,7 @@ try {
         if ($stmt_att) $stmt_att->bind_param("s", $filter_month);
     } else {
         $stmt_att = $conn->prepare("
-            SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username
+            SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, COALESCE(u.gender, 'Male') as gender, COALESCE(u.role, 'user') as role
             FROM attendance_records a
             LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
             WHERE a.user_id = ? AND DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
@@ -245,7 +271,7 @@ try {
     if ($stmt_att && $stmt_att->execute()) {
         $res_att = $stmt_att->get_result();
         while ($row = $res_att->fetch_assoc()) {
-            $row['gender'] = 'Male';
+            $row['gender'] = !empty($row['gender']) ? ucfirst(strtolower(trim($row['gender']))) : 'Male';
             $key = $row['user_id'] . '_' . $row['attendance_date'];
             $row['is_override'] = false;
             $final_records[$key] = $row;
@@ -719,6 +745,19 @@ $total_records = count($attendance_records);
                         <td colspan="<?= $is_admin ? 9 : 8 ?>" style="text-align:center; padding: 70px 20px; color:#94a3b8;">
                             <i class="fas fa-user-clock" style="font-size: 2.5rem; margin-bottom: 12px; display:block;"></i>
                             <strong>No attendance records found for <?= date('F Y', strtotime($filter_month . '-01')) ?>.</strong>
+                            <?php if (!empty($available_months)): ?>
+                                <div style="margin-top: 14px; font-size: 13px; color: #64748b;">
+                                    <span>Records exist for other months:</span>
+                                    <div style="display: flex; gap: 8px; justify-content: center; margin-top: 8px; flex-wrap: wrap;">
+                                        <?php foreach (array_slice($available_months, 0, 6) as $am): ?>
+                                            <a href="attendance.php?month=<?= htmlspecialchars($am) ?>" 
+                                               style="background: <?= ($am === $filter_month) ? '#024442' : '#e0f2fe' ?>; color: <?= ($am === $filter_month) ? '#fff' : '#0284c7' ?>; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;">
+                                                <i class="fas fa-calendar-alt"></i> <?= date('F Y', strtotime($am . '-01')) ?>
+                                            </a>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php else: ?>
