@@ -34,35 +34,25 @@ function getStatus($last_login, $user_status = 'active') {
     return ['class' => 'inactive', 'text' => 'Inactive', 'style' => ''];
 }
 
-// Role Badge Color & Icon Helper
+// Role Badge Color & Icon Helper (Clean & Subtle Palette)
 function getRoleBadge($role) {
     $r = strtolower($role);
-    if ($r === 'super_admin' || $r === 'superadmin') return ['bg' => '#fef3c7', 'text' => '#b45309', 'icon' => 'fa-crown', 'label' => 'Super Admin'];
-    if ($r === 'admin')   return ['bg' => '#fff4e5', 'text' => '#e17055', 'icon' => 'fa-user-shield', 'label' => 'Admin Officer'];
-    if ($r === 'pm')      return ['bg' => '#fce7f3', 'text' => '#db2777', 'icon' => 'fa-project-diagram', 'label' => 'Project Manager'];
-    if ($r === 'manager') return ['bg' => '#e0f7fa', 'text' => '#00838f', 'icon' => 'fa-user-tie', 'label' => 'Manager'];
-    if ($r === 'sales')   return ['bg' => '#d1fae5', 'text' => '#065f46', 'icon' => 'fa-handshake', 'label' => 'Sales'];
-    if ($r === 'hrm')     return ['bg' => '#e0e7ff', 'text' => '#4338ca', 'icon' => 'fa-briefcase', 'label' => 'HR Management'];
-    if ($r === 'teacher') return ['bg' => '#e0f2fe', 'text' => '#0284c7', 'icon' => 'fa-chalkboard-teacher', 'label' => 'Teacher'];
-    if ($r === 'student') return ['bg' => '#d7f8b8', 'text' => '#2b7a2b', 'icon' => 'fa-user-graduate', 'label' => 'Student'];
-    if ($r === 'client' || $r === 'client_sub') return ['bg' => '#fef9c3', 'text' => '#854d0e', 'icon' => 'fa-building', 'label' => ($r === 'client' ? 'Client' : 'Client Sub-user')];
-    if ($r === 'user')    return ['bg' => '#f3e8ff', 'text' => '#7c3aed', 'icon' => 'fa-users', 'label' => 'Staff / User'];
-    return ['bg' => '#f0f0f0', 'text' => '#555', 'icon' => 'fa-user-tag', 'label' => ucfirst($role)];
+    if ($r === 'super_admin' || $r === 'superadmin') return ['bg' => '#fefce8', 'text' => '#854d0e', 'border' => '#fef08a', 'icon' => 'fa-crown', 'label' => 'Super Admin'];
+    if ($r === 'admin')   return ['bg' => '#f0fdf4', 'text' => '#166534', 'border' => '#bbf7d0', 'icon' => 'fa-user-shield', 'label' => 'Admin Officer'];
+    if ($r === 'pm')      return ['bg' => '#f8fafc', 'text' => '#334155', 'border' => '#e2e8f0', 'icon' => 'fa-project-diagram', 'label' => 'Project Manager'];
+    if ($r === 'manager') return ['bg' => '#f8fafc', 'text' => '#334155', 'border' => '#e2e8f0', 'icon' => 'fa-user-tie', 'label' => 'Manager'];
+    if ($r === 'sales')   return ['bg' => '#f8fafc', 'text' => '#334155', 'border' => '#e2e8f0', 'icon' => 'fa-handshake', 'label' => 'Sales'];
+    if ($r === 'hrm')     return ['bg' => '#f8fafc', 'text' => '#334155', 'border' => '#e2e8f0', 'icon' => 'fa-briefcase', 'label' => 'HR Management'];
+    if ($r === 'teacher') return ['bg' => '#f8fafc', 'text' => '#334155', 'border' => '#e2e8f0', 'icon' => 'fa-chalkboard-teacher', 'label' => 'Teacher'];
+    if ($r === 'student') return ['bg' => '#f8fafc', 'text' => '#334155', 'border' => '#e2e8f0', 'icon' => 'fa-user-graduate', 'label' => 'Student'];
+    if ($r === 'client' || $r === 'client_sub') return ['bg' => '#f8fafc', 'text' => '#334155', 'border' => '#e2e8f0', 'icon' => 'fa-building', 'label' => ($r === 'client' ? 'Client' : 'Client Sub-user')];
+    if ($r === 'user')    return ['bg' => '#f8fafc', 'text' => '#334155', 'border' => '#e2e8f0', 'icon' => 'fa-users', 'label' => 'Staff / User'];
+    return ['bg' => '#f8fafc', 'text' => '#475569', 'border' => '#e2e8f0', 'icon' => 'fa-user-tag', 'label' => ucfirst($role)];
 }
 
-// Consistent Avatar Gradient Generator
+// Consistent Avatar Style (Clean Minimalist Monogram)
 function getUserAvatarGradient($str) {
-    $gradients = [
-        ['#4f46e5', '#7c3aed'],
-        ['#0284c7', '#0369a1'],
-        ['#059669', '#10b981'],
-        ['#d97706', '#f59e0b'],
-        ['#dc2626', '#e11d48'],
-        ['#00838f', '#00acc1'],
-        ['#db2777', '#f43f5e']
-    ];
-    $idx = abs(crc32($str)) % count($gradients);
-    return "linear-gradient(135deg, {$gradients[$idx][0]}, {$gradients[$idx][1]})";
+    return '#f1f5f9';
 }
 
 // ── Group Users by Role & Count Stats ──
@@ -122,19 +112,19 @@ foreach($result as $row) {
 }
 $result->data_seek(0);
 
-// FontAwesome integrated Role Titles
+// FontAwesome integrated Role Titles (Unified Professional Slate)
 $role_titles = [
-    'super_admin' => ['title' => 'Super Administrators (All Rights)', 'icon' => 'fa-crown', 'color' => '#f59e0b'],
-    'admin'       => ['title' => 'Admin Officers / Operations', 'icon' => 'fa-user-shield', 'color' => '#e17055'],
-    'manager'     => ['title' => 'Managers', 'icon' => 'fa-user-tie', 'color' => '#00838f'],
-    'pm'          => ['title' => 'Project Managers', 'icon' => 'fa-project-diagram', 'color' => '#db2777'],
-    'sales'       => ['title' => 'Sales & Business Development', 'icon' => 'fa-handshake', 'color' => '#059669'],
-    'hrm'         => ['title' => 'HR Management', 'icon' => 'fa-briefcase', 'color' => '#4338ca'],
-    'teacher'     => ['title' => 'Teachers / Instructors', 'icon' => 'fa-chalkboard-teacher', 'color' => '#0284c7'],
-    'student'     => ['title' => 'Enrolled Students', 'icon' => 'fa-user-graduate', 'color' => '#2b7a2b'],
-    'client'      => ['title' => 'Clients & Client Users', 'icon' => 'fa-building', 'color' => '#854d0e'],
-    'user'        => ['title' => 'General Staff / Users', 'icon' => 'fa-users', 'color' => '#7c3aed'],
-    'other'       => ['title' => 'Other Custom Roles', 'icon' => 'fa-user-tag', 'color' => '#555555']
+    'super_admin' => ['title' => 'Super Administrators (All Rights)', 'icon' => 'fa-crown', 'color' => '#334155'],
+    'admin'       => ['title' => 'Admin Officers / Operations', 'icon' => 'fa-user-shield', 'color' => '#334155'],
+    'manager'     => ['title' => 'Managers', 'icon' => 'fa-user-tie', 'color' => '#334155'],
+    'pm'          => ['title' => 'Project Managers', 'icon' => 'fa-project-diagram', 'color' => '#334155'],
+    'sales'       => ['title' => 'Sales & Business Development', 'icon' => 'fa-handshake', 'color' => '#334155'],
+    'hrm'         => ['title' => 'HR Management', 'icon' => 'fa-briefcase', 'color' => '#334155'],
+    'teacher'     => ['title' => 'Teachers / Instructors', 'icon' => 'fa-chalkboard-teacher', 'color' => '#334155'],
+    'student'     => ['title' => 'Enrolled Students', 'icon' => 'fa-user-graduate', 'color' => '#334155'],
+    'client'      => ['title' => 'Clients & Client Users', 'icon' => 'fa-building', 'color' => '#334155'],
+    'user'        => ['title' => 'General Staff / Users', 'icon' => 'fa-users', 'color' => '#334155'],
+    'other'       => ['title' => 'Other Custom Roles', 'icon' => 'fa-user-tag', 'color' => '#334155']
 ];
 ?>
 
@@ -350,9 +340,9 @@ $role_titles = [
     box-shadow: 0 2px 5px rgba(0,0,0,0.06);
 }
 .reset-filters-btn {
-    background: #fee2e2;
-    color: #dc2626;
-    border: 1px solid #fca5a5;
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #cbd5e1;
     padding: 7px 12px;
     border-radius: 9px;
     font-size: 12px;
@@ -364,7 +354,8 @@ $role_titles = [
     transition: all 0.15s ease;
 }
 .reset-filters-btn:hover {
-    background: #fecaca;
+    background: #e2e8f0;
+    color: #1e293b;
 }
 
 /* Counter & Summary Bar */
@@ -442,17 +433,18 @@ $role_titles = [
     gap: 12px;
 }
 .user-avatar-initial {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #ffffff;
+    background: #f1f5f9;
+    color: #334155;
     font-size: 13px;
-    font-weight: 800;
+    font-weight: 700;
     flex-shrink: 0;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border: 1px solid #cbd5e1;
 }
 .user-title-group {
     display: flex;
@@ -467,14 +459,17 @@ $role_titles = [
 }
 .user-gender-tag {
     padding: 2px 7px;
-    border-radius: 10px;
-    font-size: 10.5px;
-    font-weight: 700;
-    letter-spacing: 0.2px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1px;
     display: inline-block;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
 }
-.user-gender-tag.Male { background: #e0f2fe; color: #0284c7; }
-.user-gender-tag.Female { background: #fce7f3; color: #db2777; }
+.user-gender-tag.Male { background: #f1f5f9; color: #475569; }
+.user-gender-tag.Female { background: #f1f5f9; color: #475569; }
 .user-username-badge {
     font-size: 12px;
     color: #64748b;
@@ -489,37 +484,36 @@ $role_titles = [
     padding: 3px 10px;
     border-radius: 20px;
     font-size: 11.5px;
-    font-weight: 700;
+    font-weight: 600;
 }
 .status-indicator-badge.active {
-    background: #ecfdf5;
-    color: #10b981;
-    border: 1px solid #a7f3d0;
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
 }
 .status-indicator-badge.active .stat-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #10b981;
-    box-shadow: 0 0 0 2px rgba(16,185,129,0.25);
+    background: #16a34a;
 }
 .status-indicator-badge.deactivated {
-    background: #fef2f2;
-    color: #dc2626;
-    border: 1px solid #fecaca;
+    background: #f8fafc;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
 }
 .status-indicator-badge.deactivated .stat-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #dc2626;
+    background: #94a3b8;
 }
 
-/* Action Buttons Group */
+/* Action Buttons Group (Clean Minimalist Outlines) */
 .u-action-group {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     justify-content: flex-end;
 }
 .u-act-btn {
@@ -527,64 +521,46 @@ $role_titles = [
     align-items: center;
     justify-content: center;
     gap: 5px;
-    padding: 5px 10px;
-    border-radius: 7px;
+    padding: 5px 9px;
+    border-radius: 6px;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.15s ease;
-    border: 1px solid transparent;
+    background: #ffffff;
+    color: #475569;
+    border: 1px solid #e2e8f0;
     text-decoration: none;
     line-height: 1.2;
 }
-.u-act-btn.btn-edit {
-    background: #f0f9ff;
-    color: #0284c7;
-    border-color: #bae6fd;
+.u-act-btn:hover {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #cbd5e1;
 }
 .u-act-btn.btn-edit:hover {
-    background: #0284c7;
-    color: #ffffff;
-    border-color: #0284c7;
-    transform: translateY(-1px);
-    box-shadow: 0 3px 6px rgba(2,132,199,0.2);
-}
-.u-act-btn.btn-activate {
+    color: var(--primary, #024442);
+    border-color: var(--primary, #024442);
     background: #f0fdf4;
-    color: #16a34a;
-    border-color: #bbf7d0;
 }
 .u-act-btn.btn-activate:hover {
-    background: #16a34a;
-    color: #ffffff;
-    border-color: #16a34a;
-    transform: translateY(-1px);
-    box-shadow: 0 3px 6px rgba(22,163,74,0.2);
-}
-.u-act-btn.btn-deactivate {
-    background: #fff7ed;
-    color: #ea580c;
-    border-color: #fed7aa;
+    color: #16a34a;
+    border-color: #86efac;
+    background: #f0fdf4;
 }
 .u-act-btn.btn-deactivate:hover {
-    background: #ea580c;
-    color: #ffffff;
-    border-color: #ea580c;
-    transform: translateY(-1px);
-    box-shadow: 0 3px 6px rgba(234,88,12,0.2);
+    color: #d97706;
+    border-color: #fcd34d;
+    background: #fffbeb;
 }
 .u-act-btn.btn-del {
-    background: #fef2f2;
-    color: #dc2626;
-    border-color: #fecaca;
+    color: #94a3b8;
     padding: 5px 8px;
 }
 .u-act-btn.btn-del:hover {
-    background: #dc2626;
-    color: #ffffff;
-    border-color: #dc2626;
-    transform: translateY(-1px);
-    box-shadow: 0 3px 6px rgba(220,38,38,0.2);
+    color: #dc2626;
+    border-color: #fca5a5;
+    background: #fef2f2;
 }
 .u-act-btn:disabled {
     opacity: 0.35 !important;
@@ -624,7 +600,7 @@ $role_titles = [
     <!-- Quick Stat Cards (Clickable Filter Controls) -->
     <div class="u-stats-grid">
         <div class="u-stat-box" id="statCardAll" onclick="setQuickFilter('all')" title="Click to view all users">
-            <div class="u-stat-icon" style="background:#e0f2fe; color:#0284c7;">
+            <div class="u-stat-icon" style="background:#f1f5f9; color:#475569;">
                 <i class="fas fa-users"></i>
             </div>
             <div class="u-stat-info">
@@ -634,7 +610,7 @@ $role_titles = [
         </div>
 
         <div class="u-stat-box" id="statCardActive" onclick="setQuickFilter('active')" title="Click to filter active users">
-            <div class="u-stat-icon" style="background:#ecfdf5; color:#10b981;">
+            <div class="u-stat-icon" style="background:#f0fdf4; color:#16a34a;">
                 <i class="fas fa-user-check"></i>
             </div>
             <div class="u-stat-info">
@@ -644,7 +620,7 @@ $role_titles = [
         </div>
 
         <div class="u-stat-box" id="statCardDeactivated" onclick="setQuickFilter('deactivated')" title="Click to filter deactivated users">
-            <div class="u-stat-icon" style="background:#fef2f2; color:#ef4444;">
+            <div class="u-stat-icon" style="background:#f8fafc; color:#64748b;">
                 <i class="fas fa-user-slash"></i>
             </div>
             <div class="u-stat-info">
@@ -654,7 +630,7 @@ $role_titles = [
         </div>
 
         <div class="u-stat-box" id="statCardSuperAdmin" onclick="setQuickFilter('super_admin')" title="Click to filter super admins">
-            <div class="u-stat-icon" style="background:#fef3c7; color:#f59e0b;">
+            <div class="u-stat-icon" style="background:#fefce8; color:#ca8a04;">
                 <i class="fas fa-crown"></i>
             </div>
             <div class="u-stat-info">
@@ -664,7 +640,7 @@ $role_titles = [
         </div>
 
         <div class="u-stat-box" id="statCardAdmin" onclick="setQuickFilter('admin')" title="Click to filter admin officers">
-            <div class="u-stat-icon" style="background:#fff4e5; color:#e17055;">
+            <div class="u-stat-icon" style="background:#f1f5f9; color:#475569;">
                 <i class="fas fa-user-shield"></i>
             </div>
             <div class="u-stat-info">
@@ -808,25 +784,25 @@ $role_titles = [
                                     data-gender="<?= strtolower($g_val) ?>">
                                     <td>
                                         <div class="user-info-box">
-                                            <div class="user-avatar-initial" style="background: <?= $avatar_gradient ?>;">
+                                            <div class="user-avatar-initial">
                                                 <?= strtoupper(substr($row['name'], 0, 1)) ?>
                                             </div>
                                             <div>
                                                 <div class="user-title-group">
                                                     <span class="user-display-name"><?= htmlspecialchars($row['name']) ?></span>
-                                                    <span class="user-gender-tag <?= $g_val ?>"><?= htmlspecialchars($g_val) ?></span>
+                                                    <span class="user-gender-tag"><?= htmlspecialchars($g_val) ?></span>
                                                 </div>
                                                 <div class="user-username-badge">@<?= htmlspecialchars($row['username']) ?></div>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
-                                        <a href="mailto:<?= htmlspecialchars($row['email']) ?>" style="color:#0284c7; text-decoration:none; font-weight:500;">
+                                        <a href="mailto:<?= htmlspecialchars($row['email']) ?>" style="color:#334155; text-decoration:none; font-weight:500;">
                                             <?= htmlspecialchars($row['email']) ?>
                                         </a>
                                     </td>
                                     <td>
-                                        <span style="background:<?= $roleBadge['bg'] ?>; color:<?= $roleBadge['text'] ?>; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; display:inline-flex; align-items:center; gap:5px;">
+                                        <span style="background:<?= $roleBadge['bg'] ?>; color:<?= $roleBadge['text'] ?>; border:1px solid <?= $roleBadge['border'] ?>; padding:3px 9px; border-radius:6px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:5px;">
                                             <i class="fas <?= $roleBadge['icon'] ?>" style="font-size:10px;"></i> <?= htmlspecialchars($roleBadge['label']) ?>
                                         </span>
                                         <?php if (!empty($row['job_title'])): ?>
@@ -915,25 +891,25 @@ $role_titles = [
                             data-gender="<?= strtolower($g_val) ?>">
                             <td>
                                 <div class="user-info-box">
-                                    <div class="user-avatar-initial" style="background: <?= $avatar_gradient ?>;">
+                                    <div class="user-avatar-initial">
                                         <?= strtoupper(substr($row['name'], 0, 1)) ?>
                                     </div>
                                     <div>
                                         <div class="user-title-group">
                                             <span class="user-display-name"><?= htmlspecialchars($row['name']) ?></span>
-                                            <span class="user-gender-tag <?= $g_val ?>"><?= htmlspecialchars($g_val) ?></span>
+                                            <span class="user-gender-tag"><?= htmlspecialchars($g_val) ?></span>
                                         </div>
                                         <div class="user-username-badge">@<?= htmlspecialchars($row['username']) ?></div>
                                     </div>
                                 </div>
                             </td>
                             <td>
-                                <a href="mailto:<?= htmlspecialchars($row['email']) ?>" style="color:#0284c7; text-decoration:none; font-weight:500;">
+                                <a href="mailto:<?= htmlspecialchars($row['email']) ?>" style="color:#334155; text-decoration:none; font-weight:500;">
                                     <?= htmlspecialchars($row['email']) ?>
                                 </a>
                             </td>
                             <td>
-                                <span style="background:<?= $roleBadge['bg'] ?>; color:<?= $roleBadge['text'] ?>; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; display:inline-flex; align-items:center; gap:5px;">
+                                <span style="background:<?= $roleBadge['bg'] ?>; color:<?= $roleBadge['text'] ?>; border:1px solid <?= $roleBadge['border'] ?>; padding:3px 9px; border-radius:6px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.3px; display:inline-flex; align-items:center; gap:5px;">
                                     <i class="fas <?= $roleBadge['icon'] ?>" style="font-size:10px;"></i> <?= htmlspecialchars($roleBadge['label']) ?>
                                 </span>
                                 <?php if (!empty($row['job_title'])): ?>
