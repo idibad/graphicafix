@@ -735,7 +735,8 @@ $notifications_html = ob_get_clean();
     <div class="header-right">
 
         <?php if ($role !== 'client' && $role !== 'student'): 
-            $att_is_checked_in = (!empty($today_attendance) && !empty($today_attendance['check_in_time']));
+            $att_has_verified_loc = (!empty($today_attendance['latitude']) || !empty($today_attendance['location_denied']));
+            $att_is_checked_in = (!empty($today_attendance) && !empty($today_attendance['check_in_time']) && $att_has_verified_loc);
             $att_is_checked_out = (!empty($today_attendance) && !empty($today_attendance['check_out_time']));
             $att_loc_display = !empty($today_attendance['location_denied']) ? 'Denied Loc' : ucfirst($today_attendance['location_type'] ?? 'Onsite');
         ?>
@@ -1157,7 +1158,8 @@ $global_sales_init_id = intval(($global_last_id_q && $r = $global_last_id_q->fet
 
 <!-- Daily Attendance Geolocation Modal & Engine -->
 <?php if ($role !== 'client' && $role !== 'student'): 
-    $att_needs_checkin = (empty($today_attendance) || empty($today_attendance['check_in_time']));
+    $att_has_verified_loc = (!empty($today_attendance['latitude']) || !empty($today_attendance['location_denied']));
+    $att_needs_checkin = (empty($today_attendance) || empty($today_attendance['check_in_time']) || !$att_has_verified_loc);
     $user_gender = $user_meta['gender'] ?? 'Male';
 ?>
 <div id="dailyCheckInModal" class="att-modal-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:99999; display:none; align-items:center; justify-content:center; padding:20px; overflow-y:auto;">

@@ -277,7 +277,7 @@ function recordDailyCheckIn($conn, $user_id, $lat = null, $lng = null, $accuracy
 
         // Check if already checked in today
         $existing = getTodayAttendanceRecord($conn, $user_id, $date_today);
-        if ($existing && !empty($existing['check_in_time'])) {
+        if ($existing && !empty($existing['check_in_time']) && (!empty($existing['latitude']) || !empty($existing['location_denied']))) {
             return [
                 'success' => true,
                 'message' => 'Already checked in today',

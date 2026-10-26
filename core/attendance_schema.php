@@ -141,11 +141,17 @@ if (!function_exists('ensure_attendance_schema')) {
                     l.ip_address,
                     MIN(l.login_time) as created_at
                 FROM `login_logs` l
-                WHERE l.status = 'success' AND l.user_id IS NOT NULL AND l.user_id > 0
+                WHERE l.status = 'success' AND l.user_id IS NOT NULL AND l.user_id > 0 AND DATE(l.login_time) < CURDATE()
                 GROUP BY l.user_id, DATE(l.login_time)");
             }
         } catch (Throwable $e_bfill) {
             error_log("attendance_records backfill notice: " . $e_bfill->getMessage());
+        }
+
+        // Clean up unverified placeholder records for today so location verification prompt always displays
+        try {
+            $conn->query("DELETE FROM `attendance_records` WHERE `attendance_date` = CURDATE() AND `latitude` IS NULL AND `location_denied` = 0 AND `check_out_time` IS NULL AND (`notes` IS NULL OR `notes` = '' OR `notes` = 'auto')");
+        } catch (Throwable $e_clean) {
         }
 
         // ── 2. Create & Sync `attendance_overrides` table ─────────────────────

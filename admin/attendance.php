@@ -148,7 +148,7 @@ $overrides = [];
 try {
     if ($is_admin) {
         $stmt_ov = $conn->prepare("
-            SELECT o.*, u.name, u.username, u.gender, u.role
+            SELECT o.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, 'Male' as gender, 'user' as role
             FROM attendance_overrides o
             LEFT JOIN users u ON CAST(o.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
             WHERE DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
@@ -156,7 +156,7 @@ try {
         if ($stmt_ov) $stmt_ov->bind_param("s", $filter_month);
     } else {
         $stmt_ov = $conn->prepare("
-            SELECT o.*, u.name, u.username, u.gender, u.role
+            SELECT o.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, 'Male' as gender, 'user' as role
             FROM attendance_overrides o
             LEFT JOIN users u ON CAST(o.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
             WHERE o.user_id = ? AND DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
@@ -210,9 +210,10 @@ try {
 // ── Fetch Enhanced Attendance Records (`attendance_records`) ─────────────────
 $final_records = [];
 try {
+    $stmt_att = false;
     if ($is_admin) {
         $stmt_att = $conn->prepare("
-            SELECT a.*, u.name, u.username, u.gender, u.role
+            SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username
             FROM attendance_records a
             LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
             WHERE DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
@@ -221,7 +222,7 @@ try {
         if ($stmt_att) $stmt_att->bind_param("s", $filter_month);
     } else {
         $stmt_att = $conn->prepare("
-            SELECT a.*, u.name, u.username, u.gender, u.role
+            SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username
             FROM attendance_records a
             LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
             WHERE a.user_id = ? AND DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
@@ -230,9 +231,21 @@ try {
         if ($stmt_att) $stmt_att->bind_param("is", $user_id, $filter_month);
     }
 
+    // Resilient fallback if join or prepare fails
+    if (!$stmt_att) {
+        if ($is_admin) {
+            $stmt_att = $conn->prepare("SELECT a.*, '' as name, '' as username FROM attendance_records a WHERE DATE_FORMAT(a.attendance_date, '%Y-%m') = ? ORDER BY a.attendance_date DESC, a.check_in_time DESC");
+            if ($stmt_att) $stmt_att->bind_param("s", $filter_month);
+        } else {
+            $stmt_att = $conn->prepare("SELECT a.*, '' as name, '' as username FROM attendance_records a WHERE a.user_id = ? AND DATE_FORMAT(a.attendance_date, '%Y-%m') = ? ORDER BY a.attendance_date DESC, a.check_in_time DESC");
+            if ($stmt_att) $stmt_att->bind_param("is", $user_id, $filter_month);
+        }
+    }
+
     if ($stmt_att && $stmt_att->execute()) {
         $res_att = $stmt_att->get_result();
         while ($row = $res_att->fetch_assoc()) {
+            $row['gender'] = 'Male';
             $key = $row['user_id'] . '_' . $row['attendance_date'];
             $row['is_override'] = false;
             $final_records[$key] = $row;
@@ -240,41 +253,7 @@ try {
         $stmt_att->close();
     }
 } catch (Throwable $e) {
-    // Fallback if users table does not have gender column
-    try {
-        if ($is_admin) {
-            $stmt_att = $conn->prepare("
-                SELECT a.*, u.name, u.username, u.role
-                FROM attendance_records a
-                LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
-                WHERE DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
-                ORDER BY a.attendance_date DESC, a.check_in_time DESC
-            ");
-            if ($stmt_att) $stmt_att->bind_param("s", $filter_month);
-        } else {
-            $stmt_att = $conn->prepare("
-                SELECT a.*, u.name, u.username, u.role
-                FROM attendance_records a
-                LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
-                WHERE a.user_id = ? AND DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
-                ORDER BY a.attendance_date DESC, a.check_in_time DESC
-            ");
-            if ($stmt_att) $stmt_att->bind_param("is", $user_id, $filter_month);
-        }
-
-        if ($stmt_att && $stmt_att->execute()) {
-            $res_att = $stmt_att->get_result();
-            while ($row = $res_att->fetch_assoc()) {
-                $row['gender'] = 'Male';
-                $key = $row['user_id'] . '_' . $row['attendance_date'];
-                $row['is_override'] = false;
-                $final_records[$key] = $row;
-            }
-            $stmt_att->close();
-        }
-    } catch (Throwable $e2) {
-        error_log("Attendance fallback notice: " . $e2->getMessage());
-    }
+    error_log("Attendance query notice: " . $e->getMessage());
 }
 
 // ── Merge Overrides ───────────────────────────────────────────────────────────
