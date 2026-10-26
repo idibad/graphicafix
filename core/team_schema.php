@@ -129,16 +129,4 @@ function ensureTeamSchema($conn) {
             }
         } catch (Throwable $e) {}
     }
-
-    // Seed Arslan Ahmed (EMP0033 from uploaded card) if not existing
-    try {
-        $chk_arslan = $conn->query("SELECT id FROM `team` WHERE `employee_id` = 'EMP0033' OR `member_name` = 'Arslan Ahmed'");
-        if (!$chk_arslan || $chk_arslan->num_rows === 0) {
-            $vcode_arslan = hash('sha256', 'GF_EMP0033_arslan_salt');
-            $conn->query("INSERT INTO `team` 
-                (`member_name`, `employee_id`, `photo`, `role`, `department`, `bio`, `gender`, `status`, `show_on_about`, `display_order`, `verification_code`, `email`, `phone`, `joined_at`, `blood_group`)
-            VALUES 
-                ('Arslan Ahmed', 'EMP0033', 'uploads/team/arslan_ahmed.png', 'Admin', 'Executive Leadership & Operations', 'Executive administrator leading operations, IT infrastructure, and digital creative systems across Graphica Fix.', 'Male', 'active', 1, 2, '{$vcode_arslan}', 'contact@graphicafix.com', '0345 4568986', '2023-01-10', 'O+')");
-        }
-    } catch (Throwable $e) {}
 }

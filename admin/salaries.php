@@ -67,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $department       = trim($_POST['department'] ?? 'General');
         $job_title        = trim($_POST['job_title'] ?? 'Staff');
         $employee_id      = trim($_POST['employee_id'] ?? '');
+        $amount_paid      = floatval($_POST['amount_paid'] ?? 0);
 
         if ($user_id > 0) {
             $stmt_u = $conn->prepare("UPDATE users SET base_salary = ?, allowances = ?, department = ?, job_title = ?, employee_id = ? WHERE user_id = ?");
@@ -88,9 +89,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $net_salary = max(0, $gross_pay - $tax - $advance - $total_deductions + $previous_pending);
 
+            if ($payment_status === 'Paid') {
+                $amount_paid = $net_salary;
+            } elseif ($payment_status === 'Pending') {
+                $amount_paid = 0.00;
+            } elseif ($payment_status === 'Partially Paid') {
+                $amount_paid = max(0.00, min($net_salary, $amount_paid));
+            } else {
+                $amount_paid = max(0.00, min($net_salary, $amount_paid));
+            }
+
             $stmt_sal = $conn->prepare("INSERT INTO salaries 
-                (user_id, salary_month, employee_id, department, job_title, base_salary, allowances, gross_pay, tax, advance, deductions, previous_pending, net_salary, payment_status, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                (user_id, salary_month, employee_id, department, job_title, base_salary, allowances, gross_pay, tax, advance, deductions, previous_pending, net_salary, payment_status, amount_paid, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE
                     employee_id = VALUES(employee_id),
                     department = VALUES(department),
@@ -103,11 +114,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     deductions = VALUES(deductions),
                     previous_pending = VALUES(previous_pending),
                     net_salary = VALUES(net_salary),
-                    payment_status = VALUES(payment_status)");
+                    payment_status = VALUES(payment_status),
+                    amount_paid = VALUES(amount_paid)");
 
             if ($stmt_sal) {
                 $stmt_sal->bind_param(
-                    "issssdddddddds",
+                    "issssddddddddsd",
                     $user_id,
                     $filter_month,
                     $employee_id,
@@ -121,7 +133,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $total_deductions,
                     $previous_pending,
                     $net_salary,
-                    $payment_status
+                    $payment_status,
+                    $amount_paid
                 );
                 $stmt_sal->execute();
                 $stmt_sal->close();
@@ -195,13 +208,14 @@ $stmt_list->execute();
 $salaries_res = $stmt_list->get_result();
 
 $salaries = [];
-$total_payroll    = 0.00;
-$total_gross      = 0.00;
-$total_deductions = 0.00;
-$total_paid       = 0.00;
-$total_pending    = 0.00;
-$count_paid       = 0;
-$count_pending    = 0;
+$total_payroll        = 0.00;
+$total_gross          = 0.00;
+$total_deductions     = 0.00;
+$total_paid           = 0.00;
+$total_pending        = 0.00;
+$count_paid           = 0;
+$count_partially_paid = 0;
+$count_pending        = 0;
 
 if ($salaries_res) {
     while ($row = $salaries_res->fetch_assoc()) {
@@ -209,11 +223,19 @@ if ($salaries_res) {
         $total_gross      += floatval($row['gross_pay']);
         $total_payroll    += floatval($row['net_salary']);
         $total_deductions += floatval($row['deductions']);
+        $net_sal           = floatval($row['net_salary']);
+        $amt_paid          = floatval($row['amount_paid'] ?? 0);
+
         if ($row['payment_status'] === 'Paid') {
-            $total_paid += floatval($row['net_salary']);
+            $paid = ($amt_paid > 0) ? $amt_paid : $net_sal;
+            $total_paid += $paid;
             $count_paid++;
+        } elseif ($row['payment_status'] === 'Partially Paid') {
+            $total_paid += $amt_paid;
+            $total_pending += max(0, $net_sal - $amt_paid);
+            $count_partially_paid++;
         } else {
-            $total_pending += floatval($row['net_salary']);
+            $total_pending += $net_sal;
             $count_pending++;
         }
     }
@@ -645,19 +667,19 @@ html, body {
     letter-spacing: 0.3px;
 }
 .status-clean.Paid {
-    background: #f1f5f9;
-    color: #0f172a;
-    border: 1px solid #cbd5e1;
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
 }
 .status-clean.Pending {
     background: #f8fafc;
     color: #64748b;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
 }
 .status-clean.Partially_Paid {
-    background: #f8fafc;
-    color: #475569;
-    border: 1px solid #cbd5e1;
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
 }
 .status-clean.On_Hold {
     background: #fef2f2;
@@ -734,13 +756,13 @@ html, body {
         <div class="payroll-stat-card">
             <div class="payroll-stat-lbl">Paid Amount</div>
             <div class="payroll-stat-num">PKR <?= number_format($total_paid) ?></div>
-            <div class="payroll-stat-sub"><?= $count_paid ?> Employees Paid</div>
+            <div class="payroll-stat-sub"><?= $count_paid ?> Paid<?= $count_partially_paid > 0 ? " · {$count_partially_paid} Partial" : '' ?></div>
         </div>
 
         <div class="payroll-stat-card">
             <div class="payroll-stat-lbl">Pending Amount</div>
             <div class="payroll-stat-num">PKR <?= number_format($total_pending) ?></div>
-            <div class="payroll-stat-sub"><?= $count_pending ?> Awaiting Payment</div>
+            <div class="payroll-stat-sub"><?= $count_pending ?> Awaiting<?= $count_partially_paid > 0 ? " · {$count_partially_paid} Balance" : '' ?></div>
         </div>
 
         <div class="payroll-stat-card">
@@ -817,11 +839,11 @@ html, body {
             <table class="fit-table">
                 <thead>
                     <tr>
-                        <th style="text-align: left; width: 30%;">Employee & Position</th>
-                        <th style="text-align: right; width: 20%;">Earnings (Gross)</th>
-                        <th style="text-align: right; width: 22%;">Deductions & Arrears</th>
-                        <th style="text-align: right; width: 14%;">Net Salary</th>
-                        <th style="text-align: center; width: 6%;">Status</th>
+                        <th style="text-align: left; width: 28%;">Employee & Position</th>
+                        <th style="text-align: right; width: 18%;">Earnings (Gross)</th>
+                        <th style="text-align: right; width: 20%;">Deductions & Arrears</th>
+                        <th style="text-align: right; width: 18%;">Net & Paid</th>
+                        <th style="text-align: center; width: 8%;">Status</th>
                         <th style="text-align: center; width: 8%;">Actions</th>
                     </tr>
                 </thead>
@@ -882,16 +904,32 @@ html, body {
                             </div>
                         </td>
 
-                        <!-- 4. Net Salary -->
+                        <!-- 4. Net Salary & Paid/Remaining -->
                         <td style="text-align: right;">
-                            <div style="font-weight: 800; color: #0f172a; font-size: 14px; font-variant-numeric: tabular-nums;">
+                            <div style="font-weight: 800; color: #0f172a; font-size: 13.5px; font-variant-numeric: tabular-nums;">
                                 PKR <?= number_format($sal['net_salary']) ?>
                             </div>
+                            <?php if ($sal['payment_status'] === 'Partially Paid'): ?>
+                                <div style="font-size: 10.5px; color: #c2410c; margin-top: 2px; font-weight: 700; font-variant-numeric: tabular-nums;">
+                                    Paid: <?= number_format($sal['amount_paid']) ?> · Due: <?= number_format(max(0, $sal['net_salary'] - $sal['amount_paid'])) ?>
+                                </div>
+                            <?php elseif ($sal['payment_status'] === 'Paid'): ?>
+                                <div style="font-size: 10px; color: #15803d; margin-top: 2px; font-weight: 600;">
+                                    <i class="fas fa-check-circle"></i> Settled (<?= number_format($sal['amount_paid'] > 0 ? $sal['amount_paid'] : $sal['net_salary']) ?>)
+                                </div>
+                            <?php endif; ?>
                         </td>
 
                         <!-- 5. Payment Status -->
                         <td style="text-align: center;">
                             <span class="status-clean <?= $clean_status ?>"><?= htmlspecialchars($sal['payment_status']) ?></span>
+                            <?php if ($sal['payment_status'] === 'Partially Paid'): 
+                                $pct = ($sal['net_salary'] > 0) ? round(($sal['amount_paid'] / $sal['net_salary']) * 100) : 0;
+                            ?>
+                                <div style="font-size: 9.5px; color: #c2410c; font-weight: 700; margin-top: 2px;">
+                                    <?= $pct ?>% Paid
+                                </div>
+                            <?php endif; ?>
                         </td>
 
                         <!-- 6. Actions (Edit & RED Penalty Button) -->
@@ -930,6 +968,8 @@ html, body {
                         <th style="text-align: right;">Deductions</th>
                         <th style="text-align: right;">Pending</th>
                         <th style="text-align: right;">Net Salary</th>
+                        <th style="text-align: right;">Paid (PKR)</th>
+                        <th style="text-align: right;">Balance Due</th>
                         <th style="text-align: center;">Status</th>
                         <th style="text-align: center;">Actions</th>
                     </tr>
@@ -937,7 +977,7 @@ html, body {
                 <tbody id="allColsTableBody">
                     <?php if (empty($salaries)): ?>
                     <tr>
-                        <td colspan="13" style="text-align:center; padding: 40px 20px; color:#94a3b8;">
+                        <td colspan="15" style="text-align:center; padding: 40px 20px; color:#94a3b8;">
                             <strong>No payroll records found for <?= date('F Y', strtotime($filter_month . '-01')) ?>.</strong>
                         </td>
                     </tr>
@@ -1014,12 +1054,22 @@ html, body {
                             PKR <?= number_format($sal['net_salary']) ?>
                         </td>
 
-                        <!-- 12. Payment Status -->
+                        <!-- 12. Paid Amount -->
+                        <td style="text-align: right; font-weight: 700; color: <?= ($sal['amount_paid'] > 0) ? '#166534' : '#94a3b8' ?>; font-variant-numeric: tabular-nums;">
+                            <?= number_format($sal['amount_paid']) ?>
+                        </td>
+
+                        <!-- 13. Balance Due -->
+                        <td style="text-align: right; font-weight: 700; color: <?= (($sal['net_salary'] - $sal['amount_paid']) > 0) ? '#c2410c' : '#94a3b8' ?>; font-variant-numeric: tabular-nums;">
+                            <?= number_format(max(0, $sal['net_salary'] - $sal['amount_paid'])) ?>
+                        </td>
+
+                        <!-- 14. Payment Status -->
                         <td style="text-align: center;">
                             <span class="status-clean <?= $clean_status ?>"><?= htmlspecialchars($sal['payment_status']) ?></span>
                         </td>
 
-                        <!-- 13. Actions (Edit & RED Penalty Button) -->
+                        <!-- 15. Actions (Edit & RED Penalty Button) -->
                         <td style="text-align: center;">
                             <div style="display: inline-flex; gap: 4px; align-items: center;">
                                 <button type="button" class="btn-table-edit" onclick="openEditSalaryModal(<?= htmlspecialchars(json_encode($sal)) ?>)" title="Edit Salary">
@@ -1069,7 +1119,17 @@ html, body {
                     <div class="card-data-item">
                         <div class="card-lbl">Net Salary</div>
                         <div class="card-val" style="color: #024442;">PKR <?= number_format($sal['net_salary']) ?></div>
-                        <div style="font-size: 10px; color: #64748b;">Tax: <?= number_format($sal['tax']) ?> · Adv: <?= number_format($sal['advance']) ?></div>
+                        <?php if ($sal['payment_status'] === 'Partially Paid'): ?>
+                            <div style="font-size: 10px; color: #c2410c; font-weight: 700; margin-top: 1px;">
+                                Paid: <?= number_format($sal['amount_paid']) ?> · Due: <?= number_format(max(0, $sal['net_salary'] - $sal['amount_paid'])) ?>
+                            </div>
+                        <?php elseif ($sal['payment_status'] === 'Paid'): ?>
+                            <div style="font-size: 10px; color: #15803d; font-weight: 600; margin-top: 1px;">
+                                <i class="fas fa-check-circle"></i> Paid in Full
+                            </div>
+                        <?php else: ?>
+                            <div style="font-size: 10px; color: #64748b;">Tax: <?= number_format($sal['tax']) ?> · Adv: <?= number_format($sal['advance']) ?></div>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -1178,12 +1238,25 @@ html, body {
                     </div>
                     <div class="form-group">
                         <label>Payment Status</label>
-                        <select name="payment_status" id="edit_payment_status">
+                        <select name="payment_status" id="edit_payment_status" onchange="handlePaymentStatusChange()">
                             <option value="Pending">Pending</option>
                             <option value="Paid">Paid</option>
                             <option value="Partially Paid">Partially Paid</option>
                             <option value="On Hold">On Hold</option>
                         </select>
+                    </div>
+                </div>
+
+                <div class="form-group" id="group_amount_paid" style="display: none; background: #fff7ed; padding: 12px; border-radius: 6px; border: 1px solid #fed7aa; margin-top: 4px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-weight: 700; color: #9a3412; font-size: 11.5px; margin: 0;">
+                            <i class="fas fa-coins"></i> Amount Paid so far (PKR) <span style="color:#ef4444;">*</span>
+                        </label>
+                        <span id="partial_balance_hint" style="font-size: 11px; font-weight: 700; color: #c2410c;"></span>
+                    </div>
+                    <input type="number" step="0.01" name="amount_paid" id="edit_amount_paid" placeholder="Enter partial payment amount" oninput="calculateBalanceHint()" style="background:#fff; border-color:#fdba74;">
+                    <div style="font-size: 10.5px; color: #9a3412; margin-top: 4px;">
+                        Specify the exact partial amount paid. The remainder will be recorded as pending balance.
                     </div>
                 </div>
             </div>
@@ -1381,8 +1454,43 @@ function openEditSalaryModal(s) {
     document.getElementById('edit_advance').value = s.advance;
     document.getElementById('edit_previous_pending').value = s.previous_pending;
     document.getElementById('edit_payment_status').value = s.payment_status;
+    document.getElementById('edit_amount_paid').value = s.amount_paid || 0;
 
+    window.currentEditingNetSalary = Number(s.net_salary || 0);
+
+    handlePaymentStatusChange();
     openModal('editSalaryModal');
+}
+
+function handlePaymentStatusChange() {
+    const status = document.getElementById('edit_payment_status').value;
+    const groupPaid = document.getElementById('group_amount_paid');
+    const inputPaid = document.getElementById('edit_amount_paid');
+    const net = window.currentEditingNetSalary || 0;
+
+    if (status === 'Partially Paid') {
+        groupPaid.style.display = 'block';
+        if (Number(inputPaid.value) <= 0 || Number(inputPaid.value) >= net) {
+            // Keep current value if valid, or focus
+        }
+        calculateBalanceHint();
+    } else if (status === 'Paid') {
+        groupPaid.style.display = 'none';
+        inputPaid.value = net;
+    } else {
+        groupPaid.style.display = 'none';
+        inputPaid.value = 0;
+    }
+}
+
+function calculateBalanceHint() {
+    const net = window.currentEditingNetSalary || 0;
+    const paid = Number(document.getElementById('edit_amount_paid').value) || 0;
+    const balance = Math.max(0, net - paid);
+    const hint = document.getElementById('partial_balance_hint');
+    if (hint) {
+        hint.textContent = 'Remaining: PKR ' + balance.toLocaleString();
+    }
 }
 
 function openAddDeductionModal(userId, userName) {

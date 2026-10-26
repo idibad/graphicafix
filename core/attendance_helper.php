@@ -489,13 +489,14 @@ function syncUserMonthlySalary($conn, $user_id, $salary_month) {
         $stmt_ded->close();
     }
 
-    // Fetch existing salary row to preserve previous_pending, advance, tax, payment_status
+    // Fetch existing salary row to preserve previous_pending, advance, tax, payment_status, amount_paid
     $tax = 0.00;
     $advance = 0.00;
     $previous_pending = 0.00;
     $payment_status = 'Pending';
+    $amount_paid = 0.00;
 
-    $stmt_cur = $conn->prepare("SELECT tax, advance, previous_pending, payment_status FROM salaries WHERE user_id = ? AND salary_month = ? LIMIT 1");
+    $stmt_cur = $conn->prepare("SELECT tax, advance, previous_pending, payment_status, amount_paid FROM salaries WHERE user_id = ? AND salary_month = ? LIMIT 1");
     if ($stmt_cur) {
         $stmt_cur->bind_param("is", $user_id, $salary_month);
         $stmt_cur->execute();
@@ -505,15 +506,19 @@ function syncUserMonthlySalary($conn, $user_id, $salary_month) {
             $advance          = floatval($cur['advance'] ?? 0);
             $previous_pending = floatval($cur['previous_pending'] ?? 0);
             $payment_status   = $cur['payment_status'] ?? 'Pending';
+            $amount_paid      = floatval($cur['amount_paid'] ?? 0);
         }
         $stmt_cur->close();
     }
 
     $net_salary = max(0, $gross_pay - $tax - $advance - $total_deductions + $previous_pending);
+    if ($payment_status === 'Paid' && $amount_paid <= 0) {
+        $amount_paid = $net_salary;
+    }
 
     $stmt_ins = $conn->prepare("INSERT INTO salaries 
-        (user_id, salary_month, employee_id, name, department, job_title, base_salary, allowances, gross_pay, tax, advance, deductions, previous_pending, net_salary, payment_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (user_id, salary_month, employee_id, name, department, job_title, base_salary, allowances, gross_pay, tax, advance, deductions, previous_pending, net_salary, payment_status, amount_paid)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             employee_id = VALUES(employee_id),
             name = VALUES(name),
@@ -523,11 +528,12 @@ function syncUserMonthlySalary($conn, $user_id, $salary_month) {
             allowances = VALUES(allowances),
             gross_pay = VALUES(gross_pay),
             deductions = VALUES(deductions),
-            net_salary = VALUES(net_salary)");
+            net_salary = VALUES(net_salary),
+            amount_paid = VALUES(amount_paid)");
 
     if ($stmt_ins) {
         $stmt_ins->bind_param(
-            "isssssdddddddds",
+            "isssssddddddddsd",
             $user_id,
             $salary_month,
             $employee_id,
@@ -542,7 +548,8 @@ function syncUserMonthlySalary($conn, $user_id, $salary_month) {
             $total_deductions,
             $previous_pending,
             $net_salary,
-            $payment_status
+            $payment_status,
+            $amount_paid
         );
         $stmt_ins->execute();
         $stmt_ins->close();

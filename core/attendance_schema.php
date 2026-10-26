@@ -111,6 +111,7 @@ if (!function_exists('ensure_attendance_schema')) {
                 `deductions` DECIMAL(12,2) DEFAULT 0.00,
                 `previous_pending` DECIMAL(12,2) DEFAULT 0.00,
                 `net_salary` DECIMAL(12,2) DEFAULT 0.00,
+                `amount_paid` DECIMAL(12,2) DEFAULT 0.00,
                 `payment_status` ENUM('Pending', 'Paid', 'Partially Paid', 'On Hold') DEFAULT 'Pending',
                 `payment_date` DATE NULL,
                 `payment_method` VARCHAR(50) NULL,
@@ -121,6 +122,18 @@ if (!function_exists('ensure_attendance_schema')) {
                 KEY `idx_salary_month` (`salary_month`),
                 KEY `idx_salary_user` (`user_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+            // Check existing columns in salaries
+            $sal_cols = [];
+            $res_sal = $conn->query("SHOW COLUMNS FROM `salaries`");
+            if ($res_sal) {
+                while ($c = $res_sal->fetch_assoc()) {
+                    $sal_cols[] = strtolower($c['Field']);
+                }
+            }
+            if (!in_array('amount_paid', $sal_cols)) {
+                @$conn->query("ALTER TABLE `salaries` ADD COLUMN `amount_paid` DECIMAL(12,2) DEFAULT 0.00 AFTER `net_salary`");
+            }
 
             // ── 3. Create `salary_deductions` table ────────────────────────────────
             $conn->query("CREATE TABLE IF NOT EXISTS `salary_deductions` (

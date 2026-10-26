@@ -42,10 +42,6 @@ function init_print_database(mysqli $conn) {
         @$conn->query("ALTER TABLE print_vendors ADD COLUMN `password_hash` VARCHAR(255) DEFAULT NULL AFTER `access_token`");
     }
 
-    // Ensure default passwords for demo vendors (default: vendor123)
-    $def_hash = password_hash('vendor123', PASSWORD_DEFAULT);
-    $conn->query("UPDATE print_vendors SET password_hash = '{$def_hash}' WHERE password_hash IS NULL OR password_hash = ''");
-
     // 2. print_products table
     $conn->query("CREATE TABLE IF NOT EXISTS `print_products` (
         `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -189,94 +185,6 @@ function init_print_database(mysqli $conn) {
         foreach ($initial_products as $prod) {
             $ins_p->bind_param("ssssss", $prod['name'], $prod['category'], $prod['allowed_stocks'], $prod['allowed_finishes'], $prod['standard_sizes'], $prod['unit_label']);
             $ins_p->execute();
-        }
-    }
-
-    // 7. Seed initial sample vendors if empty
-    $vendor_check = $conn->query("SELECT COUNT(*) AS total FROM print_vendors")->fetch_assoc();
-    if (intval($vendor_check['total'] ?? 0) === 0) {
-        $sample_vendors = [
-            [
-                'company_name' => 'Al-Madina Print Solutions',
-                'contact_person' => 'Tariq Mehmood',
-                'phone' => '03001234567',
-                'whatsapp' => '923001234567',
-                'email' => 'almadina.print@example.com',
-                'city' => 'Karachi',
-                'address' => 'Shop #14, Urdu Bazar Commercial Center, Karachi',
-                'specialties' => 'offset, digital, stationery, marketing',
-                'frequency' => 1, // Daily refresh
-                'rating' => 4.90,
-                'hours_offset' => 4 // Freshly refreshed 4 hours ago
-            ],
-            [
-                'company_name' => 'Royal Offset & Digital Hub',
-                'contact_person' => 'Kamran Sheikh',
-                'phone' => '03219876543',
-                'whatsapp' => '923219876543',
-                'email' => 'royal.offset@example.com',
-                'city' => 'Karachi',
-                'address' => 'Plaza 3, Nazimabad No. 2, Industrial Area, Karachi',
-                'specialties' => 'offset, brochures, packaging',
-                'frequency' => 3, // 3-day refresh
-                'rating' => 4.80,
-                'hours_offset' => 10 // Freshly refreshed 10 hours ago
-            ],
-            [
-                'company_name' => 'FastTrack Express Digital',
-                'contact_person' => 'Shahid Raza',
-                'phone' => '03335557799',
-                'whatsapp' => '923335557799',
-                'email' => 'fasttrack.print@example.com',
-                'city' => 'Karachi',
-                'address' => 'Sector 15, Korangi Industrial Zone, Karachi',
-                'specialties' => 'digital, outdoor, flex, standees',
-                'frequency' => 7, // Weekly
-                'rating' => 4.65,
-                'hours_offset' => 24 // Refreshed 1 day ago
-            ],
-            [
-                'company_name' => 'Apex Packaging & Carton Works',
-                'contact_person' => 'Muhammad Bilal',
-                'phone' => '03452223344',
-                'whatsapp' => '923452223344',
-                'email' => 'apex.packaging@example.com',
-                'city' => 'Lahore',
-                'address' => 'Chamberlain Road, Printing Market, Lahore',
-                'specialties' => 'packaging, cartons, die-cutting',
-                'frequency' => 1, // Daily refresh
-                'rating' => 4.75,
-                'hours_offset' => -48 // EXPIRED 48 hours ago (to demonstrate expired status badge!)
-            ]
-        ];
-
-        $ins_v = $conn->prepare("INSERT INTO print_vendors 
-            (company_name, contact_person, phone, whatsapp, email, city, address, specialties, price_refresh_frequency_days, last_price_refresh_at, rating, access_token) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
-        foreach ($sample_vendors as $v) {
-            $refresh_time = date('Y-m-d H:i:s', strtotime(($v['hours_offset'] >= 0 ? "-{$v['hours_offset']} hours" : "-2 days")));
-            $token = bin2hex(random_bytes(16));
-            $ins_v->bind_param(
-                "ssssssssisds",
-                $v['company_name'],
-                $v['contact_person'],
-                $v['phone'],
-                $v['whatsapp'],
-                $v['email'],
-                $v['city'],
-                $v['address'],
-                $v['specialties'],
-                $v['frequency'],
-                $refresh_time,
-                $v['rating'],
-                $token
-            );
-            $ins_v->execute();
-            $vendor_id = $conn->insert_id;
-
-            // Seed rates for this vendor
-            seed_vendor_sample_rates($conn, $vendor_id, $v['frequency'], $v['hours_offset']);
         }
     }
 }

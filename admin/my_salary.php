@@ -214,9 +214,22 @@ $stmt_ded->close();
             <div class="slip-box">
                 <div class="slip-lbl">Payment Status</div>
                 <div style="margin-top:4px;">
-                    <span style="display:inline-block; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:800; text-transform:uppercase; background:<?= $my_salary['payment_status'] === 'Paid' ? '#dcfce7; color:#15803d;' : '#fef3c7; color:#b45309;' ?>">
-                        <?= htmlspecialchars($my_salary['payment_status'] ?? 'Pending') ?>
-                    </span>
+                    <?php if (($my_salary['payment_status'] ?? '') === 'Paid'): ?>
+                        <span style="display:inline-block; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:800; text-transform:uppercase; background:#dcfce7; color:#15803d;">
+                            Paid
+                        </span>
+                    <?php elseif (($my_salary['payment_status'] ?? '') === 'Partially Paid'): ?>
+                        <span style="display:inline-block; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:800; text-transform:uppercase; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa;">
+                            Partially Paid
+                        </span>
+                        <div style="font-size:11px; font-weight:700; color:#c2410c; margin-top:3px;">
+                            Paid: PKR <?= number_format($my_salary['amount_paid'] ?? 0) ?> · Due: PKR <?= number_format(max(0, ($my_salary['net_salary'] ?? 0) - ($my_salary['amount_paid'] ?? 0))) ?>
+                        </div>
+                    <?php else: ?>
+                        <span style="display:inline-block; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:800; text-transform:uppercase; background:#fef3c7; color:#b45309;">
+                            <?= htmlspecialchars($my_salary['payment_status'] ?? 'Pending') ?>
+                        </span>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
