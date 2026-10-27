@@ -19,12 +19,12 @@ if (empty($_SESSION['_csrf_token'])) {
 }
 .modal.show .modal-dialog { transform: translateX(0) !important; }
 .modal-content {
-    border-radius: 20px 0 0 20px !important; background: white !important; border: none !important;
+    border-radius: 0 !important; background: white !important; border: none !important;
     height: 100vh !important; max-height: 100vh !important; min-height: 100vh !important;
     overflow: hidden !important; box-shadow: -12px 0 45px rgba(2,68,66,.3) !important;
     display: flex !important; flex-direction: column !important;
 }
-.modal-header { border-top-left-radius:20px !important; border-top-right-radius:0 !important; flex-shrink:0 !important;
+.modal-header { border-radius:0 !important; border-top-right-radius:0 !important; flex-shrink:0 !important;
     background: linear-gradient(135deg,#024442 0%,#035b58 100%);
     color:white; border-bottom:none; padding:2rem; position:relative; overflow:hidden;
 }
@@ -93,7 +93,7 @@ textarea.pop-up-form-control { resize:vertical; min-height:120px; }
 
 @media (max-width:768px) {
     .modal-dialog { margin:.5rem; }
-    .modal-header { border-top-left-radius:20px !important; border-top-right-radius:0 !important; flex-shrink:0 !important; padding:1.5rem; }
+    .modal-header { border-radius:0 !important; border-top-right-radius:0 !important; flex-shrink:0 !important; padding:1.5rem; }
     .modal-body   { padding:1.5rem; max-height:65vh; }
     .modal-title  { font-size:1.4rem; }
     .form-actions { flex-direction:column-reverse; }

@@ -168,7 +168,7 @@ $total_open = $total_open_query ? ($total_open_query->fetch_assoc()['c'] ?? 0) :
         overflow: hidden !important;
     }
     .job-modal-content {
-        background: #fff !important; border-radius: 20px 0 0 20px !important; width: 100% !important; max-width: 650px !important;
+        background: #fff !important; border-radius: 0 !important; width: 100% !important; max-width: 650px !important;
         height: 100vh !important; min-height: 100vh !important; max-height: 100vh !important; margin: 0 0 0 auto !important;
         overflow: hidden !important; display: flex !important; flex-direction: column !important;
         box-shadow: -12px 0 45px rgba(0,0,0,0.25) !important; animation: slideInRightJob 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
@@ -178,7 +178,7 @@ $total_open = $total_open_query ? ($total_open_query->fetch_assoc()['c'] ?? 0) :
     .job-modal-header {
         background: linear-gradient(135deg, var(--primary), var(--primary-dark));
         padding: 24px 28px !important; position: relative; color: #fff; flex-shrink: 0 !important;
-        border-top-left-radius: 20px !important; border-top-right-radius: 0 !important;
+        border-radius: 0 !important; border-top-right-radius: 0 !important;
     }
     .job-modal-close {
         position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.1);
@@ -190,7 +190,7 @@ $total_open = $total_open_query ? ($total_open_query->fetch_assoc()['c'] ?? 0) :
     .job-modal-footer {
         padding: 18px 28px !important; border-top: 1px solid #f0f0f0; background: #f9fafb;
         display: flex; gap: 12px; justify-content: flex-end; flex-shrink: 0 !important;
-        border-bottom-left-radius: 20px !important; border-bottom-right-radius: 0 !important;
+        border-radius: 0 !important; border-bottom-right-radius: 0 !important;
     }
 
     /* Responsive */

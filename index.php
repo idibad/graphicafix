@@ -1088,7 +1088,7 @@ endwhile;
         min-height: 100vh !important;
         max-height: 100vh !important;
         margin: 0 0 0 auto !important;
-        border-radius: 20px 0 0 20px !important;
+        border-radius: 0 !important;
         box-shadow: -12px 0 45px rgba(0, 0, 0, 0.25);
         display: flex !important;
         flex-direction: column !important;
@@ -1122,7 +1122,7 @@ endwhile;
     .gfx-popup-close:hover { background: #fee2e2; color: #ef4444; }
 
     /* Left Visual Pane */
-    .gfx-popup-visual { flex: 0 0 160px !important; padding: 25px 20px !important; border-top-left-radius: 20px; flex-shrink: 0;
+    .gfx-popup-visual { flex: 0 0 160px !important; padding: 25px 20px !important; border-radius: 0 !important; flex-shrink: 0;
         flex: 0 0 40%;
         background: linear-gradient(135deg, var(--primary), #026652);
         display: flex;
@@ -1204,7 +1204,7 @@ endwhile;
     /* Mobile Responsiveness */
     @media (max-width: 768px) {
         .gfx-popup-modal { flex-direction: column; }
-        .gfx-popup-visual { flex: 0 0 160px !important; padding: 25px 20px !important; border-top-left-radius: 20px; flex-shrink: 0; display: none; /* Hide visual pane on mobile for better usability */ }
+        .gfx-popup-visual { flex: 0 0 160px !important; padding: 25px 20px !important; border-radius: 0 !important; flex-shrink: 0; display: none; /* Hide visual pane on mobile for better usability */ }
         .gfx-popup-content { padding: 32px 24px; }
         .gfx-popup-content h2 { font-size: 1.5rem; }
     }
