@@ -1271,12 +1271,21 @@ $global_sales_init_id = intval(($global_last_id_q && $r = $global_last_id_q->fet
                     });
                 },
                 function(err) {
-                    sendCheckInPayload({ denied: 1, lat: null, lng: null });
+                    // Check actual error code:
+                    // err.code === 1: PERMISSION_DENIED (User clicked Block in browser prompt)
+                    // err.code === 2: POSITION_UNAVAILABLE (Desktop PC without GPS hardware)
+                    // err.code === 3: TIMEOUT (Timed out querying network geolocation)
+                    if (err.code === 1) {
+                        sendCheckInPayload({ denied: 1, lat: null, lng: null });
+                    } else {
+                        // User allowed, but device/network lacked GPS chip: verify via office network IP!
+                        sendCheckInPayload({ denied: 0, lat: null, lng: null, hardware_unsupported: 1 });
+                    }
                 },
-                { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
             );
         } else {
-            sendCheckInPayload({ denied: 1, lat: null, lng: null });
+            sendCheckInPayload({ denied: requestLocation ? 0 : 1, lat: null, lng: null });
         }
     };
 
@@ -1287,6 +1296,7 @@ $global_sales_init_id = intval(($global_last_id_q && $r = $global_last_id_q->fet
         if (payload.lng) fd.append('lng', payload.lng);
         if (payload.accuracy) fd.append('accuracy', payload.accuracy);
         if (payload.denied) fd.append('denied', '1');
+        if (payload.hardware_unsupported) fd.append('hardware_unsupported', '1');
 
         fetch('attendance_api.php', {
             method: 'POST',

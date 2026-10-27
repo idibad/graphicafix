@@ -44,7 +44,10 @@ function calculateHaversineDistance($lat1, $lon1, $lat2, $lon2) {
  */
 function isOfficeIp($user_ip) {
     $office_ips = [
-        '2402:e000:6ad:80d8:c46f:951c:5385:fcd9',
+        '154.91.*',           // Office Fiber / Wi-Fi subnet (e.g. 154.91.165.75)
+        '149.40.*',           // Office Broadband subnet (e.g. 149.40.212.65)
+        '154.192.*',          // Office DSL / secondary line (e.g. 154.192.223.181)
+        '2402:e000:*',        // Office IPv6
         '127.0.0.1',
         '::1'
     ];
@@ -58,6 +61,29 @@ function isOfficeIp($user_ip) {
             if (strpos($user_ip, $prefix) === 0) return true;
         }
     }
+
+    // Dynamic office check: did another employee verify office presence with GPS from this exact IP today?
+    global $conn;
+    if (!empty($conn) && $conn instanceof mysqli) {
+        try {
+            $chk = $conn->prepare("SELECT id FROM attendance_records 
+                WHERE attendance_date = CURDATE() 
+                  AND ip_address = ? 
+                  AND location_type = 'onsite' 
+                  AND latitude IS NOT NULL 
+                  AND (distance_meters IS NULL OR distance_meters <= 350) 
+                LIMIT 1");
+            if ($chk) {
+                $chk->bind_param("s", $user_ip);
+                $chk->execute();
+                $res = $chk->get_result();
+                $is_office = ($res && $res->num_rows > 0);
+                $chk->close();
+                if ($is_office) return true;
+            }
+        } catch (Throwable $e) {}
+    }
+
     return false;
 }
 
@@ -314,29 +340,36 @@ function recordDailyCheckIn($conn, $user_id, $lat = null, $lng = null, $accuracy
             // Remote employees never receive location penalties
             $loc_penalty = 0.00;
         } else {
-            // On-site employee: office presence is required
-            if ($location_denied) {
-                $location_type = 'denied';
-                $loc_penalty = 100.00;
-                $loc_penalty_reason = 'Location access denied (On-site employee)';
+            // On-site employee: office presence verification
+            if (isOfficeIp($ip_address)) {
+                // Connected to physical office Wi-Fi / broadband gateway!
+                $location_type = 'onsite';
+                $loc_denied_flag = 0; // Overridden: verified via verified office network
+                $loc_penalty = 0.00;
+                if (!empty($lat) && !empty($lng)) {
+                    $distance_meters = calculateHaversineDistance($lat, $lng, OFFICE_LATITUDE, OFFICE_LONGITUDE);
+                }
             } elseif (!empty($lat) && !empty($lng)) {
                 $distance_meters = calculateHaversineDistance($lat, $lng, OFFICE_LATITUDE, OFFICE_LONGITUDE);
                 if ($distance_meters !== null && $distance_meters <= OFFICE_RADIUS_METERS) {
                     $location_type = 'onsite';
-                } elseif (isOfficeIp($ip_address)) {
-                    $location_type = 'onsite';
+                    $loc_penalty = 0.00;
                 } else {
                     $location_type = 'remote'; // Checked in offsite
                     $loc_penalty = 100.00;
                     $loc_penalty_reason = 'Off-site check-in (' . round($distance_meters) . 'm from office)';
                 }
-            } elseif (isOfficeIp($ip_address)) {
-                $location_type = 'onsite';
+            } elseif ($location_denied) {
+                // Denied location access AND not connected to office network
+                $location_type = 'denied';
+                $loc_penalty = 100.00;
+                $loc_penalty_reason = 'Location access denied (On-site employee)';
             } else {
+                // Hardware without GPS and not on office network
                 $location_type = 'denied';
                 $loc_denied_flag = 1;
                 $loc_penalty = 100.00;
-                $loc_penalty_reason = 'Unverified location (On-site employee)';
+                $loc_penalty_reason = 'Location unverified outside office network';
             }
         }
 
@@ -678,4 +711,127 @@ function syncUserMonthlySalary($conn, $user_id, $salary_month) {
         error_log("syncUserMonthlySalary error: " . $e->getMessage());
     }
     return false;
+}
+
+/**
+ * Grants or updates an attendance override / leave (supports single day or date range)
+ * Synchronizes with attendance_records, manages paid vs unpaid status and salary deductions
+ */
+function grantLeaveOrOverride($conn, $target_user_id, $start_date, $end_date, $attendance_type, $leave_category = 'casual', $reason = '', $is_paid = 1, $leave_duration = 'full_day', $approved_by = null) {
+    if (!$conn || empty($target_user_id) || empty($start_date)) {
+        return ['success' => false, 'message' => 'Missing required leave parameters'];
+    }
+
+    ensure_attendance_schema($conn);
+    $end_date = !empty($end_date) ? $end_date : $start_date;
+    if (strtotime($end_date) < strtotime($start_date)) {
+        $temp = $start_date;
+        $start_date = $end_date;
+        $end_date = $temp;
+    }
+
+    $approved_by = $approved_by ?: ($_SESSION['user_id'] ?? 1);
+    $user_meta = getUserAttendanceMeta($conn, $target_user_id);
+    $base_salary = floatval($user_meta['base_salary'] ?? 50000);
+    $daily_wage = round($base_salary / 30, 2);
+
+    $current_ts = strtotime($start_date);
+    $end_ts = strtotime($end_date);
+    $applied_count = 0;
+
+    while ($current_ts <= $end_ts) {
+        $cur_date = date('Y-m-d', $current_ts);
+        $month_cur = date('Y-m', $current_ts);
+        $current_ts = strtotime('+1 day', $current_ts);
+
+        // 1. Upsert attendance_overrides
+        $ov_stmt = $conn->prepare("INSERT INTO attendance_overrides 
+            (user_id, attendance_date, attendance_type, leave_category, is_paid, leave_duration, reason, approved_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE 
+                attendance_type = VALUES(attendance_type),
+                leave_category = VALUES(leave_category),
+                is_paid = VALUES(is_paid),
+                leave_duration = VALUES(leave_duration),
+                reason = VALUES(reason),
+                approved_by = VALUES(approved_by)");
+        if ($ov_stmt) {
+            $ov_stmt->bind_param("isssissi", $target_user_id, $cur_date, $attendance_type, $leave_category, $is_paid, $leave_duration, $reason, $approved_by);
+            $ov_stmt->execute();
+            $ov_stmt->close();
+        }
+
+        // 2. Synchronize with attendance_records
+        if ($attendance_type === 'leave') {
+            $status_code = ($leave_duration === 'full_day') ? 'on_leave' : 'half_day';
+            $med_count = ($leave_category === 'medical') ? (countMedicalLeavesInMonth($conn, $target_user_id, $month_cur, $cur_date) + 1) : 0;
+
+            $att_stmt = $conn->prepare("INSERT INTO attendance_records 
+                (user_id, attendance_date, status, leave_type, medical_leave_month_count, is_late, penalty_amount, penalty_reason, notes, updated_at)
+                VALUES (?, ?, ?, ?, ?, 0, 0.00, NULL, ?, NOW())
+                ON DUPLICATE KEY UPDATE 
+                    status = VALUES(status),
+                    leave_type = VALUES(leave_type),
+                    medical_leave_month_count = VALUES(medical_leave_month_count),
+                    is_late = 0,
+                    penalty_amount = 0.00,
+                    penalty_reason = NULL,
+                    notes = VALUES(notes)");
+            if ($att_stmt) {
+                $notes = "Approved {$leave_category} leave" . (!empty($reason) ? ": {$reason}" : "");
+                $att_stmt->bind_param("isssis", $target_user_id, $cur_date, $status_code, $leave_category, $med_count, $notes);
+                $att_stmt->execute();
+                $att_stmt->close();
+            }
+
+            // Remove any existing late penalty deduction on that day
+            $del_ded = $conn->prepare("DELETE FROM salary_deductions WHERE user_id = ? AND date_incurred = ? AND deduction_type LIKE '%Penalty%'");
+            if ($del_ded) {
+                $del_ded->bind_param("is", $target_user_id, $cur_date);
+                $del_ded->execute();
+                $del_ded->close();
+            }
+
+            // Handle Unpaid Leave Deduction
+            if (empty($is_paid)) {
+                $ded_amount = ($leave_duration === 'full_day') ? $daily_wage : round($daily_wage / 2, 2);
+                $ded_type = 'Unpaid Leave';
+                $ded_desc = "Unpaid {$leave_category} leave on {$cur_date}" . (!empty($reason) ? " ({$reason})" : "");
+                
+                $chk_ded = $conn->prepare("SELECT id FROM salary_deductions WHERE user_id = ? AND date_incurred = ? AND deduction_type = 'Unpaid Leave' LIMIT 1");
+                if ($chk_ded) {
+                    $chk_ded->bind_param("is", $target_user_id, $cur_date);
+                    $chk_ded->execute();
+                    if ($chk_ded->get_result()->num_rows === 0) {
+                        $ins_ded = $conn->prepare("INSERT INTO salary_deductions (user_id, salary_month, deduction_type, amount, description, date_incurred, status) VALUES (?, ?, ?, ?, ?, ?, 'applied')");
+                        if ($ins_ded) {
+                            $ins_ded->bind_param("issdss", $target_user_id, $month_cur, $ded_type, $ded_amount, $ded_desc, $cur_date);
+                            $ins_ded->execute();
+                            $ins_ded->close();
+                        }
+                    }
+                    $chk_ded->close();
+                }
+            } else {
+                // If paid, remove any unpaid deduction if it was previously logged
+                $del_unpaid = $conn->prepare("DELETE FROM salary_deductions WHERE user_id = ? AND date_incurred = ? AND deduction_type = 'Unpaid Leave'");
+                if ($del_unpaid) {
+                    $del_unpaid->bind_param("is", $target_user_id, $cur_date);
+                    $del_unpaid->execute();
+                    $del_unpaid->close();
+                }
+            }
+        }
+
+        $applied_count++;
+    }
+
+    // Sync salary
+    syncUserMonthlySalary($conn, $target_user_id, date('Y-m', strtotime($start_date)));
+
+    return [
+        'success' => true,
+        'message' => "Successfully applied {$applied_count} day(s) of " . ucfirst($attendance_type) . ($attendance_type === 'leave' ? " ({$leave_category})" : "") . "!",
+        'count'   => $applied_count
+    ];
 }

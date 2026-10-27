@@ -188,6 +188,16 @@ if (!function_exists('ensure_attendance_schema')) {
                     } catch (Throwable $e_ov2) {}
                 }
             }
+            if (!in_array('is_paid', $override_cols)) {
+                try {
+                    $conn->query("ALTER TABLE `attendance_overrides` ADD COLUMN `is_paid` TINYINT(1) DEFAULT 1 AFTER `leave_category`");
+                } catch (Throwable $e_ip) {}
+            }
+            if (!in_array('leave_duration', $override_cols)) {
+                try {
+                    $conn->query("ALTER TABLE `attendance_overrides` ADD COLUMN `leave_duration` VARCHAR(20) DEFAULT 'full_day' AFTER `is_paid`");
+                } catch (Throwable $e_ld) {}
+            }
         } catch (Throwable $e) {
             error_log("attendance_overrides sync: " . $e->getMessage());
         }

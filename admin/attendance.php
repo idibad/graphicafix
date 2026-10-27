@@ -68,55 +68,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if ($action === 'add_override') {
         $target_user_id  = intval($_POST['user_id'] ?? 0);
-        $attendance_date = $_POST['attendance_date'] ?? '';
-        $attendance_type = $_POST['attendance_type'] ?? '';
+        $start_date      = trim($_POST['attendance_date'] ?? '');
+        $end_date        = trim($_POST['end_date'] ?? $start_date);
+        $attendance_type = $_POST['attendance_type'] ?? 'leave';
         $leave_category  = $_POST['leave_category'] ?? 'casual';
+        $is_paid         = isset($_POST['is_paid']) ? intval($_POST['is_paid']) : 1;
+        $leave_duration  = $_POST['leave_duration'] ?? 'full_day';
         $reason          = trim($_POST['reason'] ?? '');
         $approved_by     = $user_id;
-        
-        if ($target_user_id > 0 && !empty($attendance_date) && !empty($attendance_type)) {
-            try {
-                $dup_stmt = $conn->prepare("SELECT id FROM attendance_overrides WHERE user_id = ? AND attendance_date = ?");
-                if ($dup_stmt) {
-                    $dup_stmt->bind_param("is", $target_user_id, $attendance_date);
-                    $dup_stmt->execute();
-                    $dup_res = $dup_stmt->get_result()->fetch_assoc();
-                    $dup_stmt->close();
-                    
-                    if ($dup_res) {
-                        $upd_stmt = $conn->prepare("UPDATE attendance_overrides SET attendance_type = ?, leave_category = ?, reason = ?, approved_by = ? WHERE id = ?");
-                        if ($upd_stmt) {
-                            $upd_stmt->bind_param("sssii", $attendance_type, $leave_category, $reason, $approved_by, $dup_res['id']);
-                            if ($upd_stmt->execute()) {
-                                $_SESSION['toast_msg']  = 'Attendance override updated successfully!';
-                                $_SESSION['toast_type'] = 'success';
-                            } else {
-                                $_SESSION['toast_msg']  = 'Failed to update attendance override.';
-                                $_SESSION['toast_type'] = 'error';
-                            }
-                            $upd_stmt->close();
-                        }
-                    } else {
-                        $ins_stmt = $conn->prepare("INSERT INTO attendance_overrides (user_id, attendance_date, attendance_type, leave_category, reason, approved_by, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-                        if ($ins_stmt) {
-                            $ins_stmt->bind_param("issssi", $target_user_id, $attendance_date, $attendance_type, $leave_category, $reason, $approved_by);
-                            if ($ins_stmt->execute()) {
-                                $_SESSION['toast_msg']  = 'Attendance override added successfully!';
-                                $_SESSION['toast_type'] = 'success';
-                            } else {
-                                $_SESSION['toast_msg']  = 'Failed to add attendance override.';
-                                $_SESSION['toast_type'] = 'error';
-                            }
-                            $ins_stmt->close();
-                        }
-                    }
-                }
-            } catch (Throwable $e_add_ov) {
-                $_SESSION['toast_msg']  = 'Database error saving override: ' . $e_add_ov->getMessage();
+
+        if ($target_user_id > 0 && !empty($start_date)) {
+            $res_leave = grantLeaveOrOverride($conn, $target_user_id, $start_date, $end_date, $attendance_type, $leave_category, $reason, $is_paid, $leave_duration, $approved_by);
+            if ($res_leave['success']) {
+                $_SESSION['toast_msg']  = $res_leave['message'];
+                $_SESSION['toast_type'] = 'success';
+            } else {
+                $_SESSION['toast_msg']  = $res_leave['message'];
                 $_SESSION['toast_type'] = 'error';
             }
         } else {
-            $_SESSION['toast_msg']  = 'All fields are required.';
+            $_SESSION['toast_msg']  = 'Please select an employee and date.';
             $_SESSION['toast_type'] = 'error';
         }
         header("Location: attendance.php" . (isset($_GET['month']) ? "?month={$_GET['month']}" : ""));
@@ -338,6 +309,10 @@ $stat_remote     = 0;
 $stat_denied_loc = 0;
 $stat_leave      = 0;
 $stat_medical    = 0;
+$stat_special    = 0;
+$stat_casual     = 0;
+$stat_half_day   = 0;
+$stat_unpaid     = 0;
 
 $attendance_records = [];
 
@@ -416,40 +391,130 @@ foreach ($final_records as $row) {
                 $stat_present++;
                 break;
             case 'leave':
-                $is_med = (($row['leave_category'] ?? '') === 'medical' || stripos($row['reason'] ?? '', 'medical') !== false);
-                $row['att_status'] = $is_med ? 'Medical Leave' : 'On Leave';
-                $row['att_class']  = $is_med ? 'medical-leave' : 'leave';
-                $row['loc_text']   = '—';
-                $row['loc_class']  = 'loc-leave';
-                $row['loc_icon']   = $is_med ? '🏥' : '🌴';
+                $cat = strtolower($row['leave_category'] ?? 'casual');
                 $stat_leave++;
-                if ($is_med) $stat_medical++;
+                if ($cat === 'medical' || stripos($row['reason'] ?? '', 'medical') !== false) {
+                    $row['att_status'] = 'Medical Leave';
+                    $row['att_class']  = 'medical-leave';
+                    $row['loc_text']   = '🏥 Medical';
+                    $row['loc_class']  = 'loc-leave';
+                    $row['loc_icon']   = '🏥';
+                    $row['filter_cat'] = 'medical';
+                    $stat_medical++;
+                } elseif ($cat === 'special' || stripos($row['reason'] ?? '', 'special') !== false || stripos($row['reason'] ?? '', 'emergency') !== false) {
+                    $row['att_status'] = 'Special Leave';
+                    $row['att_class']  = 'special-leave';
+                    $row['loc_text']   = '⭐ Special';
+                    $row['loc_class']  = 'loc-leave';
+                    $row['loc_icon']   = '⭐';
+                    $row['filter_cat'] = 'special';
+                    $stat_special++;
+                } elseif ($cat === 'half_day') {
+                    $row['att_status'] = 'Half-Day Leave';
+                    $row['att_class']  = 'half-day-leave';
+                    $row['loc_text']   = '⏱️ Half Day';
+                    $row['loc_class']  = 'loc-leave';
+                    $row['loc_icon']   = '⏱️';
+                    $row['filter_cat'] = 'leave';
+                    $stat_half_day++;
+                } elseif ($cat === 'unpaid' || (!empty($row['is_paid']) && $row['is_paid'] == 0)) {
+                    $row['att_status'] = 'Unpaid Leave';
+                    $row['att_class']  = 'unpaid-leave';
+                    $row['loc_text']   = '⛔ Unpaid';
+                    $row['loc_class']  = 'loc-leave';
+                    $row['loc_icon']   = '⛔';
+                    $row['filter_cat'] = 'leave';
+                    $stat_unpaid++;
+                } elseif ($cat === 'annual') {
+                    $row['att_status'] = 'Annual Leave';
+                    $row['att_class']  = 'annual-leave';
+                    $row['loc_text']   = '📅 Annual';
+                    $row['loc_class']  = 'loc-leave';
+                    $row['loc_icon']   = '📅';
+                    $row['filter_cat'] = 'leave';
+                    $stat_casual++;
+                } else {
+                    $row['att_status'] = 'Casual Leave';
+                    $row['att_class']  = 'casual-leave';
+                    $row['loc_text']   = '🏖️ Casual';
+                    $row['loc_class']  = 'loc-leave';
+                    $row['loc_icon']   = '🏖️';
+                    $row['filter_cat'] = 'leave';
+                    $stat_casual++;
+                }
                 break;
         }
     } else {
         // Based on attendance record
         if (($row['status'] ?? '') === 'on_leave') {
-            $is_med = (($row['leave_type'] ?? '') === 'medical');
-            $row['att_status'] = $is_med ? 'Medical Leave' : 'On Leave';
-            $row['att_class']  = $is_med ? 'medical-leave' : 'leave';
-            $row['loc_text']   = '—';
-            $row['loc_class']  = 'loc-leave';
-            $row['loc_icon']   = $is_med ? '🏥' : '🌴';
+            $l_type = strtolower($row['leave_type'] ?? 'casual');
             $stat_leave++;
-            if ($is_med) $stat_medical++;
+            if ($l_type === 'medical' || stripos($row['notes'] ?? '', 'medical') !== false) {
+                $row['att_status'] = 'Medical Leave';
+                $row['att_class']  = 'medical-leave';
+                $row['loc_text']   = '🏥 Medical';
+                $row['loc_class']  = 'loc-leave';
+                $row['loc_icon']   = '🏥';
+                $row['filter_cat'] = 'medical';
+                $stat_medical++;
+            } elseif ($l_type === 'special' || stripos($row['notes'] ?? '', 'special') !== false || stripos($row['notes'] ?? '', 'emergency') !== false) {
+                $row['att_status'] = 'Special Leave';
+                $row['att_class']  = 'special-leave';
+                $row['loc_text']   = '⭐ Special';
+                $row['loc_class']  = 'loc-leave';
+                $row['loc_icon']   = '⭐';
+                $row['filter_cat'] = 'special';
+                $stat_special++;
+            } elseif ($l_type === 'half_day') {
+                $row['att_status'] = 'Half-Day Leave';
+                $row['att_class']  = 'half-day-leave';
+                $row['loc_text']   = '⏱️ Half Day';
+                $row['loc_class']  = 'loc-leave';
+                $row['loc_icon']   = '⏱️';
+                $row['filter_cat'] = 'leave';
+                $stat_half_day++;
+            } elseif ($l_type === 'unpaid') {
+                $row['att_status'] = 'Unpaid Leave';
+                $row['att_class']  = 'unpaid-leave';
+                $row['loc_text']   = '⛔ Unpaid';
+                $row['loc_class']  = 'loc-leave';
+                $row['loc_icon']   = '⛔';
+                $row['filter_cat'] = 'leave';
+                $stat_unpaid++;
+            } else {
+                $row['att_status'] = 'Casual Leave';
+                $row['att_class']  = 'casual-leave';
+                $row['loc_text']   = '🏖️ Casual';
+                $row['loc_class']  = 'loc-leave';
+                $row['loc_icon']   = '🏖️';
+                $row['filter_cat'] = 'leave';
+                $stat_casual++;
+            }
+        } elseif (($row['status'] ?? '') === 'half_day') {
+            $row['att_status'] = 'Half-Day Leave';
+            $row['att_class']  = 'half-day-leave';
+            $row['loc_text']   = '⏱️ Half Day';
+            $row['loc_class']  = 'loc-leave';
+            $row['loc_icon']   = '⏱️';
+            $row['filter_cat'] = 'leave';
+            $stat_leave++;
+            $stat_half_day++;
         } elseif (!empty($row['is_late'])) {
             $row['att_status'] = 'Late';
             $row['att_class']  = 'late';
+            $row['filter_cat'] = 'late';
             $stat_late++;
             $stat_penalties += floatval($row['penalty_amount'] ?? 100);
         } else {
             if (!empty($row['penalty_amount']) && floatval($row['penalty_amount']) > 0) {
                 $row['att_status'] = 'Present (Penalized)';
                 $row['att_class']  = 'present';
+                $row['filter_cat'] = 'penalized';
                 $stat_penalties += floatval($row['penalty_amount']);
             } else {
                 $row['att_status'] = 'On Time';
                 $row['att_class']  = 'present';
+                $row['filter_cat'] = 'present';
             }
             if (!empty($row['is_grace_period'])) {
                 $stat_grace++;
@@ -710,10 +775,18 @@ $total_records = count($attendance_records);
         <?php endif; ?>
 
         <div class="stat-card">
-            <div class="stat-icon" style="background:#f3e8ff; color:#7e22ce;"><i class="fas fa-clinic-medical"></i></div>
+            <div class="stat-icon" style="background:#fdf4ff; color:#9333ea;"><i class="fas fa-heartbeat"></i></div>
             <div>
-                <div class="stat-number" style="color:#7e22ce;"><?= $stat_medical ?> <small style="font-size:12px; font-weight:600; color:#94a3b8;">/ 1 mo</small></div>
+                <div class="stat-number" style="color:#9333ea;"><?= $stat_medical ?> <small style="font-size:11px; font-weight:600; color:#94a3b8;">(1/mo allowance)</small></div>
                 <div class="stat-label">Medical Leaves</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#fefce8; color:#854d0e;"><i class="fas fa-star"></i></div>
+            <div>
+                <div class="stat-number" style="color:#854d0e;"><?= $stat_special ?> <small style="font-size:11px; font-weight:600; color:#94a3b8;">· <?= $stat_casual ?> Casual</small></div>
+                <div class="stat-label">Special & Other Leaves</div>
             </div>
         </div>
     </div>
@@ -732,6 +805,18 @@ $total_records = count($attendance_records);
                 <form method="GET" style="display: flex; gap: 8px; align-items: center; margin: 0;">
                     <input type="month" name="month" value="<?= htmlspecialchars($filter_month) ?>" onchange="this.form.submit()">
                 </form>
+
+                <select id="recordTypeFilter" onchange="filterAttendanceTable(this.value)" style="padding:8px 12px; border-radius:8px; border:1.5px solid #e2e8f0; font-size:13px; font-weight:600; background:#f8fafc; color:#334155; outline:none; cursor:pointer;">
+                    <option value="all">All Records (<?= $total_records ?>)</option>
+                    <option value="present">Present Only (<?= $stat_present ?>)</option>
+                    <option value="medical">🏥 Medical Leaves (<?= $stat_medical ?>)</option>
+                    <option value="special">⭐ Special Leaves (<?= $stat_special ?>)</option>
+                    <option value="all_leaves">🌴 All Leaves (<?= $stat_leave ?>)</option>
+                    <option value="late">⏰ Late Arrivals (<?= $stat_late ?>)</option>
+                    <?php if ($stat_penalties > 0): ?>
+                    <option value="penalized">⚠️ Penalties (PKR <?= number_format($stat_penalties) ?>)</option>
+                    <?php endif; ?>
+                </select>
 
                 <?php if ($is_admin): ?>
                     <button class="btn btn-primary-custom" onclick="openOverrideModal()" style="padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
@@ -754,7 +839,7 @@ $total_records = count($attendance_records);
         <div style="overflow-x:auto;">
             <table class="att-table">
                 <thead>
-                    <tr>
+                    <tr class="att-data-row" data-att-filter="<?= $row['filter_cat'] ?? 'present' ?>" data-is-late="<?= !empty($row['is_late']) ? 1 : 0 ?>" data-penalty="<?= floatval($row['penalty_amount'] ?? 0) ?>">
                         <?php if ($is_admin): ?>
                         <th>Employee</th>
                         <?php endif; ?>
@@ -772,7 +857,7 @@ $total_records = count($attendance_records);
                 </thead>
                 <tbody>
                     <?php if (empty($attendance_records)): ?>
-                    <tr>
+                    <tr class="att-data-row" data-att-filter="<?= $row['filter_cat'] ?? 'present' ?>" data-is-late="<?= !empty($row['is_late']) ? 1 : 0 ?>" data-penalty="<?= floatval($row['penalty_amount'] ?? 0) ?>">
                         <td colspan="<?= $is_admin ? 9 : 8 ?>" style="text-align:center; padding: 70px 20px; color:#94a3b8;">
                             <i class="fas fa-user-clock" style="font-size: 2.5rem; margin-bottom: 12px; display:block;"></i>
                             <strong>No attendance records found for <?= date('F Y', strtotime($filter_month . '-01')) ?>.</strong>
@@ -796,7 +881,7 @@ $total_records = count($attendance_records);
                         $emp_name = !empty($row['name']) ? $row['name'] : (!empty($row['username']) ? $row['username'] : 'Staff #' . ($row['user_id'] ?? ''));
                         $initial = strtoupper(substr($emp_name, 0, 1));
                     ?>
-                    <tr>
+                    <tr class="att-data-row" data-att-filter="<?= $row['filter_cat'] ?? 'present' ?>" data-is-late="<?= !empty($row['is_late']) ? 1 : 0 ?>" data-penalty="<?= floatval($row['penalty_amount'] ?? 0) ?>">
                         <?php if ($is_admin): ?>
                         <td>
                             <div style="display:flex; align-items:center; gap:10px;">
@@ -907,33 +992,57 @@ $total_records = count($attendance_records);
                 </div>
 
                 <div class="form-group">
-                    <label>Attendance Date <span style="color:#ef4444;">*</span></label>
-                    <input type="date" name="attendance_date" value="<?= date('Y-m-d') ?>" required>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <label style="margin:0;">Leave / Override Date <span style="color:#ef4444;">*</span></label>
+                        <label style="font-weight:600; font-size:12px; color:var(--primary, #024442); cursor:pointer; margin:0; display:inline-flex; align-items:center; gap:5px;">
+                            <input type="checkbox" id="multiDateToggle" onchange="toggleDateRange(this.checked)"> Multi-Day Date Range
+                        </label>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <div>
+                            <small style="color:#64748b; font-size:11.5px; display:block; margin-bottom:2px;">Start Date</small>
+                            <input type="date" name="attendance_date" id="ov_start_date" value="<?= date('Y-m-d') ?>" required>
+                        </div>
+                        <div id="endDateBox" style="display:none;">
+                            <small style="color:#64748b; font-size:11.5px; display:block; margin-bottom:2px;">End Date</small>
+                            <input type="date" name="end_date" id="ov_end_date" value="<?= date('Y-m-d') ?>">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label>Attendance Type <span style="color:#ef4444;">*</span></label>
                     <select name="attendance_type" id="ov_att_type" onchange="toggleLeaveCategory(this.value)" required>
-                        <option value="onsite">On-site (Present)</option>
-                        <option value="remote">Remote (Present)</option>
-                        <option value="field_work">Field Work</option>
-                        <option value="leave">On Leave</option>
+                        <option value="leave" selected>On Leave (Medical, Special, Casual, etc.)</option>
+                        <option value="onsite">On-site Presence (Manual Override)</option>
+                        <option value="remote">Remote Presence (Manual Override)</option>
+                        <option value="field_work">Field Work / Client Visit</option>
                     </select>
                 </div>
 
-                <div class="form-group" id="leave_category_group" style="display:none;">
+                <div class="form-group" id="leave_category_group">
                     <label>Leave Category <span style="color:#ef4444;">*</span></label>
-                    <select name="leave_category">
-                        <option value="casual">Casual Leave</option>
-                        <option value="medical">Medical Leave</option>
-                        <option value="annual">Annual Leave</option>
-                        <option value="unpaid">Unpaid Leave</option>
+                    <select name="leave_category" id="ov_leave_category" onchange="handleLeaveCategoryChange(this.value)">
+                        <option value="medical">🏥 Medical Leave (1/mo Paid Allowance)</option>
+                        <option value="special">⭐ Special Approved Leave (Emergency, Bereavement, Official Duty)</option>
+                        <option value="casual">🏖️ Casual Leave</option>
+                        <option value="annual">📅 Annual Leave</option>
+                        <option value="half_day">⏱️ Half-Day Leave</option>
+                        <option value="unpaid">⛔ Unpaid Leave (Deduct 1 Day Wage)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="leave_payment_group">
+                    <label>Leave Pay Status</label>
+                    <select name="is_paid" id="ov_is_paid">
+                        <option value="1">Paid Leave (Approved without salary deduction)</option>
+                        <option value="0">Unpaid Leave (Deduct daily wage: Base / 30)</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label>Reason / Official Approval Notes</label>
-                    <textarea name="reason" placeholder="e.g. Doctor recommendation attached, client emergency, official travel, etc." rows="3"></textarea>
+                    <label>Official Approval / Document Notes</label>
+                    <textarea name="reason" placeholder="e.g. Doctor recommendation submitted, family emergency, official event..." rows="2"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
@@ -961,11 +1070,50 @@ function closeModal(id) {
     document.body.style.overflow = '';
 }
 
-function toggleLeaveCategory(val) {
-    const group = document.getElementById('leave_category_group');
-    if (group) {
-        group.style.display = (val === 'leave') ? 'block' : 'none';
+function toggleDateRange(isRange) {
+    const b = document.getElementById('endDateBox');
+    if (b) {
+        b.style.display = isRange ? 'block' : 'none';
+        const ed = document.getElementById('ov_end_date');
+        if (ed && isRange) ed.value = document.getElementById('ov_start_date').value;
     }
+}
+
+function toggleLeaveCategory(val) {
+    const catGroup = document.getElementById('leave_category_group');
+    const payGroup = document.getElementById('leave_payment_group');
+    if (catGroup) catGroup.style.display = (val === 'leave') ? 'block' : 'none';
+    if (payGroup) payGroup.style.display = (val === 'leave') ? 'block' : 'none';
+}
+
+function handleLeaveCategoryChange(cat) {
+    const paySelect = document.getElementById('ov_is_paid');
+    if (!paySelect) return;
+    if (cat === 'unpaid') {
+        paySelect.value = '0';
+    } else {
+        paySelect.value = '1';
+    }
+}
+
+function filterAttendanceTable(cat) {
+    const rows = document.querySelectorAll('.att-data-row');
+    rows.forEach(r => {
+        const rowFilter = r.getAttribute('data-att-filter') || 'present';
+        const isLate = r.getAttribute('data-is-late') === '1';
+        const penalty = parseFloat(r.getAttribute('data-penalty') || 0);
+
+        let show = false;
+        if (cat === 'all') show = true;
+        else if (cat === 'present') show = (rowFilter === 'present');
+        else if (cat === 'medical') show = (rowFilter === 'medical');
+        else if (cat === 'special') show = (rowFilter === 'special');
+        else if (cat === 'all_leaves') show = (rowFilter === 'medical' || rowFilter === 'special' || rowFilter === 'leave');
+        else if (cat === 'late') show = isLate;
+        else if (cat === 'penalized') show = (penalty > 0);
+
+        r.style.display = show ? '' : 'none';
+    });
 }
 
 function showToast(msg, type = 'success') {
