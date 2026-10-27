@@ -18,6 +18,8 @@ $filter_month = $_GET['month'] ?? '';
 if (!preg_match('/^\d{4}-\d{2}$/', $filter_month)) {
     $filter_month = $current_month;
 }
+$month_start = $filter_month . '-01';
+$month_end   = date('Y-m-t', strtotime($month_start));
 
 // Find available months with attendance or override records
 $available_months = [];
@@ -42,6 +44,8 @@ try {
 // If user opened page without ?month= and current calendar month has no data, default to most recent month with data
 if (!isset($_GET['month']) && !empty($available_months) && !in_array($filter_month, $available_months)) {
     $filter_month = $available_months[0];
+    $month_start = $filter_month . '-01';
+    $month_end   = date('Y-m-t', strtotime($month_start));
 }
 
 $toast_message = '';
@@ -177,17 +181,17 @@ try {
             SELECT o.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, 'Male' as gender, 'user' as role
             FROM attendance_overrides o
             LEFT JOIN users u ON CAST(o.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
-            WHERE DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
+            WHERE o.attendance_date BETWEEN ? AND ?
         ");
-        if ($stmt_ov) $stmt_ov->bind_param("s", $filter_month);
+        if ($stmt_ov) $stmt_ov->bind_param("ss", $month_start, $month_end);
     } else {
         $stmt_ov = $conn->prepare("
             SELECT o.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, 'Male' as gender, 'user' as role
             FROM attendance_overrides o
             LEFT JOIN users u ON CAST(o.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
-            WHERE o.user_id = ? AND DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
+            WHERE o.user_id = ? AND o.attendance_date BETWEEN ? AND ?
         ");
-        if ($stmt_ov) $stmt_ov->bind_param("is", $user_id, $filter_month);
+        if ($stmt_ov) $stmt_ov->bind_param("iss", $user_id, $month_start, $month_end);
     }
 
     if ($stmt_ov && $stmt_ov->execute()) {
@@ -206,17 +210,17 @@ try {
                 SELECT o.*, u.name, u.username, u.role
                 FROM attendance_overrides o
                 LEFT JOIN users u ON CAST(o.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
-                WHERE DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
+                WHERE o.attendance_date BETWEEN ? AND ?
             ");
-            if ($stmt_ov) $stmt_ov->bind_param("s", $filter_month);
+            if ($stmt_ov) $stmt_ov->bind_param("ss", $month_start, $month_end);
         } else {
             $stmt_ov = $conn->prepare("
                 SELECT o.*, u.name, u.username, u.role
                 FROM attendance_overrides o
                 LEFT JOIN users u ON CAST(o.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
-                WHERE o.user_id = ? AND DATE_FORMAT(o.attendance_date, '%Y-%m') = ?
+                WHERE o.user_id = ? AND o.attendance_date BETWEEN ? AND ?
             ");
-            if ($stmt_ov) $stmt_ov->bind_param("is", $user_id, $filter_month);
+            if ($stmt_ov) $stmt_ov->bind_param("iss", $user_id, $month_start, $month_end);
         }
 
         if ($stmt_ov && $stmt_ov->execute()) {
@@ -242,29 +246,29 @@ try {
             SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, COALESCE(u.gender, 'Male') as gender, COALESCE(u.role, 'user') as role
             FROM attendance_records a
             LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
-            WHERE DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
+            WHERE a.attendance_date BETWEEN ? AND ?
             ORDER BY a.attendance_date DESC, a.check_in_time DESC
         ");
-        if ($stmt_att) $stmt_att->bind_param("s", $filter_month);
+        if ($stmt_att) $stmt_att->bind_param("ss", $month_start, $month_end);
     } else {
         $stmt_att = $conn->prepare("
             SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, COALESCE(u.gender, 'Male') as gender, COALESCE(u.role, 'user') as role
             FROM attendance_records a
             LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
-            WHERE a.user_id = ? AND DATE_FORMAT(a.attendance_date, '%Y-%m') = ?
+            WHERE a.user_id = ? AND a.attendance_date BETWEEN ? AND ?
             ORDER BY a.attendance_date DESC, a.check_in_time DESC
         ");
-        if ($stmt_att) $stmt_att->bind_param("is", $user_id, $filter_month);
+        if ($stmt_att) $stmt_att->bind_param("iss", $user_id, $month_start, $month_end);
     }
 
     // Resilient fallback if join or prepare fails
     if (!$stmt_att) {
         if ($is_admin) {
-            $stmt_att = $conn->prepare("SELECT a.*, '' as name, '' as username FROM attendance_records a WHERE DATE_FORMAT(a.attendance_date, '%Y-%m') = ? ORDER BY a.attendance_date DESC, a.check_in_time DESC");
-            if ($stmt_att) $stmt_att->bind_param("s", $filter_month);
+            $stmt_att = $conn->prepare("SELECT a.*, '' as name, '' as username FROM attendance_records a WHERE a.attendance_date BETWEEN ? AND ? ORDER BY a.attendance_date DESC, a.check_in_time DESC");
+            if ($stmt_att) $stmt_att->bind_param("ss", $month_start, $month_end);
         } else {
-            $stmt_att = $conn->prepare("SELECT a.*, '' as name, '' as username FROM attendance_records a WHERE a.user_id = ? AND DATE_FORMAT(a.attendance_date, '%Y-%m') = ? ORDER BY a.attendance_date DESC, a.check_in_time DESC");
-            if ($stmt_att) $stmt_att->bind_param("is", $user_id, $filter_month);
+            $stmt_att = $conn->prepare("SELECT a.*, '' as name, '' as username FROM attendance_records a WHERE a.user_id = ? AND a.attendance_date BETWEEN ? AND ? ORDER BY a.attendance_date DESC, a.check_in_time DESC");
+            if ($stmt_att) $stmt_att->bind_param("iss", $user_id, $month_start, $month_end);
         }
     }
 

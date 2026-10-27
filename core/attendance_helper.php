@@ -168,19 +168,21 @@ function getTodayAttendanceRecord($conn, $user_id, $date = null) {
 function countGracePeriodArrivalsInMonth($conn, $user_id, $month, $exclude_date = null) {
     if (!$conn || empty($user_id)) return 0;
     $month = $month ?: date('Y-m');
+    $m_start = $month . '-01';
+    $m_end   = date('Y-m-t', strtotime($m_start));
 
     try {
         $sql = "SELECT COUNT(*) as cnt FROM attendance_records 
                 WHERE user_id = ? 
-                  AND DATE_FORMAT(attendance_date, '%Y-%m') = ? 
+                  AND attendance_date BETWEEN ? AND ? 
                   AND is_grace_period = 1";
         if ($exclude_date) {
             $sql .= " AND attendance_date != ?";
             $stmt = $conn->prepare($sql);
-            if ($stmt) $stmt->bind_param("iss", $user_id, $month, $exclude_date);
+            if ($stmt) $stmt->bind_param("isss", $user_id, $m_start, $m_end, $exclude_date);
         } else {
             $stmt = $conn->prepare($sql);
-            if ($stmt) $stmt->bind_param("is", $user_id, $month);
+            if ($stmt) $stmt->bind_param("iss", $user_id, $m_start, $m_end);
         }
 
         $count = 0;
@@ -202,20 +204,22 @@ function countGracePeriodArrivalsInMonth($conn, $user_id, $month, $exclude_date 
 function countMedicalLeavesInMonth($conn, $user_id, $month, $exclude_date = null) {
     if (!$conn || empty($user_id)) return 0;
     $month = $month ?: date('Y-m');
+    $m_start = $month . '-01';
+    $m_end   = date('Y-m-t', strtotime($m_start));
 
     $count = 0;
     try {
         // Count from attendance_records
         $stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM attendance_records 
             WHERE user_id = ? 
-              AND DATE_FORMAT(attendance_date, '%Y-%m') = ? 
+              AND attendance_date BETWEEN ? AND ? 
               AND (leave_type = 'medical' OR status = 'on_leave')
               " . ($exclude_date ? "AND attendance_date != ?" : ""));
         if ($stmt) {
             if ($exclude_date) {
-                $stmt->bind_param("iss", $user_id, $month, $exclude_date);
+                $stmt->bind_param("isss", $user_id, $m_start, $m_end, $exclude_date);
             } else {
-                $stmt->bind_param("is", $user_id, $month);
+                $stmt->bind_param("iss", $user_id, $m_start, $m_end);
             }
             $stmt->execute();
             $res = $stmt->get_result()->fetch_assoc();
@@ -230,15 +234,15 @@ function countMedicalLeavesInMonth($conn, $user_id, $month, $exclude_date = null
         // Count from attendance_overrides
         $stmt2 = $conn->prepare("SELECT COUNT(*) as cnt FROM attendance_overrides 
             WHERE user_id = ? 
-              AND DATE_FORMAT(attendance_date, '%Y-%m') = ? 
+              AND attendance_date BETWEEN ? AND ? 
               AND attendance_type = 'leave' 
               AND (leave_category = 'medical' OR LOWER(reason) LIKE '%medical%' OR LOWER(reason) LIKE '%sick%')
               " . ($exclude_date ? "AND attendance_date != ?" : ""));
         if ($stmt2) {
             if ($exclude_date) {
-                $stmt2->bind_param("iss", $user_id, $month, $exclude_date);
+                $stmt2->bind_param("isss", $user_id, $m_start, $m_end, $exclude_date);
             } else {
-                $stmt2->bind_param("is", $user_id, $month);
+                $stmt2->bind_param("iss", $user_id, $m_start, $m_end);
             }
             $stmt2->execute();
             $res2 = $stmt2->get_result()->fetch_assoc();
