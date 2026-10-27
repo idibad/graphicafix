@@ -81,7 +81,7 @@ function getUserAttendanceMeta($conn, $user_id) {
     if (!$conn || empty($user_id)) return $meta;
 
     try {
-        $stmt = $conn->prepare("SELECT user_id, name, username, role, gender, employee_id, department, job_title, base_salary, allowances FROM users WHERE user_id = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT user_id, name, username, role, gender, work_mode, employee_id, department, job_title, base_salary, allowances FROM users WHERE user_id = ? LIMIT 1");
         if ($stmt) {
             $stmt->bind_param("i", $user_id);
             $stmt->execute();
@@ -91,6 +91,7 @@ function getUserAttendanceMeta($conn, $user_id) {
                 $meta['username']    = $row['username'] ?? '';
                 $meta['role']        = $row['role'] ?? 'user';
                 $meta['gender']      = !empty($row['gender']) ? ucfirst(strtolower(trim($row['gender']))) : 'Male';
+                $meta['work_mode']   = (!empty($row['work_mode']) && strtolower(trim($row['work_mode'])) === 'onsite') ? 'onsite' : 'remote';
                 $meta['employee_id'] = !empty($row['employee_id']) ? $row['employee_id'] : $meta['employee_id'];
                 $meta['department']  = !empty($row['department']) ? $row['department'] : 'General';
                 $meta['job_title']   = !empty($row['job_title']) ? $row['job_title'] : 'Staff';
@@ -292,26 +293,51 @@ function recordDailyCheckIn($conn, $user_id, $lat = null, $lng = null, $accuracy
         $user_meta = getUserAttendanceMeta($conn, $user_id);
         $gender    = $user_meta['gender']; // 'Male' or 'Female'
 
-        // ── Location Resolution ───────────────────────────────────────────────────
+        // ── Location Resolution & Policy Check ────────────────────────────────────
+        $work_mode = strtolower(trim($work_mode ?? 'remote'));
+        if ($work_mode !== 'onsite') {
+            $work_mode = 'remote';
+        }
+
         $location_type   = 'unknown';
         $distance_meters = null;
         $loc_denied_flag = $location_denied ? 1 : 0;
+        $loc_penalty     = 0.00;
+        $loc_penalty_reason = null;
 
-        if ($location_denied) {
-            $location_type = 'denied';
-        } elseif (!empty($lat) && !empty($lng)) {
-            $distance_meters = calculateHaversineDistance($lat, $lng, OFFICE_LATITUDE, OFFICE_LONGITUDE);
-            if ($distance_meters !== null && $distance_meters <= OFFICE_RADIUS_METERS) {
-                $location_type = 'onsite';
+        if ($work_mode === 'remote') {
+            // Remote employee: exempt from office radius / location verification
+            $location_type = 'remote';
+            if (!empty($lat) && !empty($lng)) {
+                $distance_meters = calculateHaversineDistance($lat, $lng, OFFICE_LATITUDE, OFFICE_LONGITUDE);
+            }
+            // Remote employees never receive location penalties
+            $loc_penalty = 0.00;
+        } else {
+            // On-site employee: office presence is required
+            if ($location_denied) {
+                $location_type = 'denied';
+                $loc_penalty = 100.00;
+                $loc_penalty_reason = 'Location access denied (On-site employee)';
+            } elseif (!empty($lat) && !empty($lng)) {
+                $distance_meters = calculateHaversineDistance($lat, $lng, OFFICE_LATITUDE, OFFICE_LONGITUDE);
+                if ($distance_meters !== null && $distance_meters <= OFFICE_RADIUS_METERS) {
+                    $location_type = 'onsite';
+                } elseif (isOfficeIp($ip_address)) {
+                    $location_type = 'onsite';
+                } else {
+                    $location_type = 'remote'; // Checked in offsite
+                    $loc_penalty = 100.00;
+                    $loc_penalty_reason = 'Off-site check-in (' . round($distance_meters) . 'm from office)';
+                }
             } elseif (isOfficeIp($ip_address)) {
                 $location_type = 'onsite';
             } else {
-                $location_type = 'remote';
+                $location_type = 'denied';
+                $loc_denied_flag = 1;
+                $loc_penalty = 100.00;
+                $loc_penalty_reason = 'Unverified location (On-site employee)';
             }
-        } elseif (isOfficeIp($ip_address)) {
-            $location_type = 'onsite';
-        } else {
-            $location_type = 'remote';
         }
 
         // ── Grace Period & Late Logic ─────────────────────────────────────────────
@@ -321,13 +347,13 @@ function recordDailyCheckIn($conn, $user_id, $lat = null, $lng = null, $accuracy
         $base_time = '09:00:00';
         $grace_cutoff = ($gender === 'Female') ? '09:30:00' : '09:10:00';
 
-        $is_late           = 0;
-        $is_grace_period   = 0;
-        $grace_count_month = 0;
-        $penalty_amount    = 0.00;
-        $penalty_reason    = null;
-        $status            = 'present';
-        $late_minutes      = 0;
+        $is_late             = 0;
+        $is_grace_period     = 0;
+        $grace_count_month   = 0;
+        $late_penalty        = 0.00;
+        $late_penalty_reason = null;
+        $status              = 'present';
+        $late_minutes        = 0;
 
         $seconds_now = strtotime($time_now);
         $seconds_base = strtotime($base_time);
@@ -346,26 +372,41 @@ function recordDailyCheckIn($conn, $user_id, $lat = null, $lng = null, $accuracy
 
             if ($grace_count_month <= 3) {
                 // Within allowed grace arrivals this month
-                $status         = 'present';
-                $is_late        = 0;
-                $penalty_amount = 0.00;
-                $penalty_reason = null;
+                $status              = 'present';
+                $is_late             = 0;
+                $late_penalty        = 0.00;
+                $late_penalty_reason = null;
             } else {
                 // Pattern detected!
-                $status         = 'late';
-                $is_late        = 1;
-                $penalty_amount = 100.00;
-                $penalty_reason = "Late arrival penalty";
-                $late_minutes   = max(0, round(($seconds_now - $seconds_base) / 60));
+                $status              = 'late';
+                $is_late             = 1;
+                $late_penalty        = 100.00;
+                $late_penalty_reason = "Excess grace arrival (Arrival #{$grace_count_month} this month)";
+                $late_minutes        = max(0, round(($seconds_now - $seconds_base) / 60));
             }
         } else {
             // Arrived past cutoff
-            $status         = 'late';
-            $is_late        = 1;
-            $penalty_amount = 100.00;
-            $penalty_reason = "Late arrival: Signed in at " . date('h:i A', $seconds_now);
-            $late_minutes   = max(0, round(($seconds_now - $seconds_base) / 60));
+            $status              = 'late';
+            $is_late             = 1;
+            $late_penalty        = 100.00;
+            $late_penalty_reason = "Late arrival: Signed in at " . date('h:i A', $seconds_now);
+            $late_minutes        = max(0, round(($seconds_now - $seconds_base) / 60));
         }
+
+        // ── Consolidate Penalties ─────────────────────────────────────────────────
+        $penalty_amount = 0.00;
+        $penalty_reasons = [];
+
+        if ($is_late && $late_penalty > 0) {
+            $penalty_amount += $late_penalty;
+            $penalty_reasons[] = $late_penalty_reason;
+        }
+        if ($loc_penalty > 0) {
+            $penalty_amount += $loc_penalty;
+            $penalty_reasons[] = $loc_penalty_reason;
+        }
+
+        $penalty_reason = !empty($penalty_reasons) ? implode('; ', $penalty_reasons) : null;
 
         // ── Save or Update `attendance_records` ────────────────────────────────────
         $stmt = $conn->prepare("INSERT INTO attendance_records 
@@ -419,20 +460,39 @@ function recordDailyCheckIn($conn, $user_id, $lat = null, $lng = null, $accuracy
 
             // ── Apply Penalty Deduction to Salary Deductions if penalized ─────────
             if ($penalty_amount > 0) {
-                $ded_type = ($is_grace_period && $grace_count_month > 3) ? 'Excess Grace Penalty' : 'Late Arrival Penalty';
-                $ded_desc = "Late penalty on {$date_today}: " . ($penalty_reason ?: 'Late arrival penalty (PKR 100)');
+                if ($is_late && $loc_penalty > 0) {
+                    $ded_type = 'Late Arrival & Location Penalty';
+                } elseif ($loc_penalty > 0) {
+                    $ded_type = 'Location Verification Penalty';
+                } elseif ($is_grace_period && $grace_count_month > 3) {
+                    $ded_type = 'Excess Grace Penalty';
+                } else {
+                    $ded_type = 'Late Arrival Penalty';
+                }
+                $ded_desc = "Penalty on {$date_today}: " . ($penalty_reason ?: 'Attendance infraction penalty');
                 
                 // Check if deduction already logged today for this user
                 $check_ded = $conn->prepare("SELECT id FROM salary_deductions WHERE user_id = ? AND date_incurred = ? AND deduction_type LIKE '%Penalty%' LIMIT 1");
                 if ($check_ded) {
                     $check_ded->bind_param("is", $user_id, $date_today);
                     $check_ded->execute();
-                    if ($check_ded->get_result()->num_rows === 0) {
+                    $ded_res = $check_ded->get_result();
+                    if ($ded_res->num_rows === 0) {
                         $ins_ded = $conn->prepare("INSERT INTO salary_deductions (user_id, salary_month, attendance_id, deduction_type, amount, description, date_incurred, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'applied')");
                         if ($ins_ded) {
                             $ins_ded->bind_param("isisdss", $user_id, $month_now, $att_id, $ded_type, $penalty_amount, $ded_desc, $date_today);
                             $ins_ded->execute();
                             $ins_ded->close();
+                        }
+                    } else {
+                        // Update existing deduction amount if changed
+                        $existing_ded = $ded_res->fetch_assoc();
+                        $ded_id = $existing_ded['id'];
+                        $upd_ded = $conn->prepare("UPDATE salary_deductions SET amount = ?, deduction_type = ?, description = ? WHERE id = ?");
+                        if ($upd_ded) {
+                            $upd_ded->bind_param("dssi", $penalty_amount, $ded_type, $ded_desc, $ded_id);
+                            $upd_ded->execute();
+                            $upd_ded->close();
                         }
                     }
                     $check_ded->close();
@@ -454,6 +514,7 @@ function recordDailyCheckIn($conn, $user_id, $lat = null, $lng = null, $accuracy
                 'distance_meters'   => $distance_meters,
                 'grace_count_month' => $grace_count_month,
                 'gender'            => $gender,
+                'work_mode'         => $work_mode,
                 'check_in_time'     => date('h:i A', strtotime($time_now))
             ];
         }

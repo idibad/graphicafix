@@ -735,10 +735,11 @@ $notifications_html = ob_get_clean();
     <div class="header-right">
 
         <?php if ($role !== 'client' && $role !== 'student'): 
-            $att_has_verified_loc = (!empty($today_attendance['latitude']) || !empty($today_attendance['location_denied']));
+            $user_work_mode = strtolower($user_meta['work_mode'] ?? 'remote');
+            $att_has_verified_loc = (!empty($today_attendance['latitude']) || !empty($today_attendance['location_denied']) || ($today_attendance['location_type'] ?? '') === 'remote');
             $att_is_checked_in = (!empty($today_attendance) && !empty($today_attendance['check_in_time']) && $att_has_verified_loc);
             $att_is_checked_out = (!empty($today_attendance) && !empty($today_attendance['check_out_time']));
-            $att_loc_display = !empty($today_attendance['location_denied']) ? 'Denied Loc' : ucfirst($today_attendance['location_type'] ?? 'Onsite');
+            $att_loc_display = (!empty($today_attendance['location_denied']) && $user_work_mode === 'onsite') ? 'Denied Loc' : ucfirst($today_attendance['location_type'] ?? ($user_work_mode === 'onsite' ? 'Onsite' : 'Remote'));
         ?>
         <div class="header-attendance-widget" id="headerAttWidget" style="display:flex; align-items:center; gap:8px;">
             <?php if (!$att_is_checked_in): ?>
@@ -1158,7 +1159,8 @@ $global_sales_init_id = intval(($global_last_id_q && $r = $global_last_id_q->fet
 
 <!-- Daily Attendance Geolocation Modal & Engine -->
 <?php if ($role !== 'client' && $role !== 'student'): 
-    $att_has_verified_loc = (!empty($today_attendance['latitude']) || !empty($today_attendance['location_denied']));
+    $user_work_mode = strtolower($user_meta['work_mode'] ?? 'remote');
+    $att_has_verified_loc = (!empty($today_attendance['latitude']) || !empty($today_attendance['location_denied']) || ($today_attendance['location_type'] ?? '') === 'remote');
     $att_needs_checkin = (empty($today_attendance) || empty($today_attendance['check_in_time']) || !$att_has_verified_loc);
     $user_gender = $user_meta['gender'] ?? 'Male';
 ?>
@@ -1166,7 +1168,7 @@ $global_sales_init_id = intval(($global_last_id_q && $r = $global_last_id_q->fet
     <div style="background:#fff; border-radius:18px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); border:1px solid #f1f5f9; text-align:center;">
         <div style="background:linear-gradient(135deg, var(--primary, #024442) 0%, #035e5b 100%); color:#fff; padding:24px 20px;">
             <div style="width:54px; height:54px; border-radius:50%; background:rgba(255,255,255,0.15); display:inline-flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:10px;">
-                📍
+                <?= ($user_work_mode === 'onsite') ? '🏢' : '🏠' ?>
             </div>
             <h3 style="margin:0; font-size:1.3rem; font-weight:800; color:#fff;">Daily Attendance Check-In</h3>
             <div style="font-size:13px; opacity:0.85; margin-top:4px;"><?= date('l, d F Y') ?></div>
@@ -1178,28 +1180,53 @@ $global_sales_init_id = intval(($global_last_id_q && $r = $global_last_id_q->fet
                     <span style="color:#64748b;">Employee:</span>
                     <strong style="color:#0f172a;"><?= htmlspecialchars($name) ?></strong>
                 </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                    <span style="color:#64748b;">Work Mode:</span>
+                    <strong style="color:<?= $user_work_mode === 'onsite' ? '#166534' : '#0369a1' ?>;">
+                        <?= $user_work_mode === 'onsite' ? '🏢 On-site (Office Presence Required)' : '🏠 Remote Employee' ?>
+                    </strong>
+                </div>
                 <div style="display:flex; justify-content:space-between;">
                     <span style="color:#64748b;">Office Start Time:</span>
                     <strong style="color:#0f172a;">09:00 AM</strong>
                 </div>
             </div>
 
-            <p style="font-size:13.5px; color:#475569; margin:0 0 16px; line-height:1.45;">
-                Graphicafix requires your location to verify whether you are working <strong>On-site</strong> or <strong>Remote</strong>. If you decline location access, your attendance will be recorded as <strong>"Denied Location"</strong>.
-            </p>
+            <?php if ($user_work_mode === 'onsite'): ?>
+                <p style="font-size:13.5px; color:#475569; margin:0 0 16px; line-height:1.45;">
+                    You are registered as an <strong>On-site Employee</strong>. Location access is required to verify your office presence. If location is denied or off-site, attendance is recorded with a <strong>PKR 100 penalty</strong>.
+                </p>
 
-            <div id="checkInLoadingStatus" style="display:none; font-size:13px; color:#0284c7; font-weight:700; margin-bottom:14px;">
-                <i class="fas fa-spinner fa-spin"></i> Detecting your coordinates...
-            </div>
+                <div id="checkInLoadingStatus" style="display:none; font-size:13px; color:#0284c7; font-weight:700; margin-bottom:14px;">
+                    <i class="fas fa-spinner fa-spin"></i> Verifying office coordinates...
+                </div>
 
-            <div style="display:flex; flex-direction:column; gap:10px;">
-                <button type="button" id="allowLocCheckInBtn" onclick="executeDailyCheckIn(true)" style="background:linear-gradient(135deg, var(--accent, #b8f35a), #87bd0a); color:var(--primary, #024442); font-weight:800; font-size:14px; padding:12px 20px; border-radius:10px; border:none; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 12px rgba(184,243,90,0.35);">
-                    <i class="fas fa-location-arrow"></i> Allow Location & Check In
-                </button>
-                <button type="button" id="denyLocCheckInBtn" onclick="executeDailyCheckIn(false)" style="background:#f8fafc; color:#64748b; font-weight:600; font-size:13px; padding:9px 16px; border-radius:10px; border:1px solid #e2e8f0; cursor:pointer;">
-                    Deny Location Access & Check In
-                </button>
-            </div>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <button type="button" id="allowLocCheckInBtn" onclick="executeDailyCheckIn(true)" style="background:linear-gradient(135deg, var(--accent, #b8f35a), #87bd0a); color:var(--primary, #024442); font-weight:800; font-size:14px; padding:12px 20px; border-radius:10px; border:none; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 12px rgba(184,243,90,0.35);">
+                        <i class="fas fa-location-arrow"></i> Allow Location & Check In
+                    </button>
+                    <button type="button" id="denyLocCheckInBtn" onclick="executeDailyCheckIn(false)" style="background:#fef2f2; color:#dc2626; font-weight:600; font-size:13px; padding:9px 16px; border-radius:10px; border:1px solid #fca5a5; cursor:pointer;">
+                        Deny Location Access (Incur PKR 100 Penalty)
+                    </button>
+                </div>
+            <?php else: ?>
+                <p style="font-size:13.5px; color:#475569; margin:0 0 16px; line-height:1.45;">
+                    You are registered as a <strong>Remote Employee</strong>. Location verification is not required and remote employees do not receive location penalties.
+                </p>
+
+                <div id="checkInLoadingStatus" style="display:none; font-size:13px; color:#0284c7; font-weight:700; margin-bottom:14px;">
+                    <i class="fas fa-spinner fa-spin"></i> Checking you in...
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <button type="button" id="allowLocCheckInBtn" onclick="executeDailyCheckIn(false)" style="background:linear-gradient(135deg, var(--accent, #b8f35a), #87bd0a); color:var(--primary, #024442); font-weight:800; font-size:14px; padding:12px 20px; border-radius:10px; border:none; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 12px rgba(184,243,90,0.35);">
+                        <i class="fas fa-check-circle"></i> Check In as Remote Employee
+                    </button>
+                    <button type="button" id="denyLocCheckInBtn" onclick="executeDailyCheckIn(true)" style="background:#f8fafc; color:#64748b; font-weight:600; font-size:13px; padding:9px 16px; border-radius:10px; border:1px solid #e2e8f0; cursor:pointer;">
+                        Share Location (Optional) & Check In
+                    </button>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>

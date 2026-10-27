@@ -157,6 +157,7 @@ CALL AddColumnUnlessExists('users', 'status', 'VARCHAR(20) DEFAULT "active" AFTE
 CALL AddColumnUnlessExists('users', 'employee_id', 'VARCHAR(50) NULL AFTER `user_id`');
 CALL AddColumnUnlessExists('users', 'department', 'VARCHAR(100) DEFAULT "General" AFTER `role`');
 CALL AddColumnUnlessExists('users', 'job_title', 'VARCHAR(100) NULL AFTER `department`');
+CALL AddColumnUnlessExists('users', 'work_mode', 'VARCHAR(20) NOT NULL DEFAULT "remote" AFTER `job_title`');
 CALL AddColumnUnlessExists('users', 'base_salary', 'DECIMAL(12,2) DEFAULT 50000.00 AFTER `job_title`');
 CALL AddColumnUnlessExists('users', 'allowances', 'DECIMAL(12,2) DEFAULT 0.00 AFTER `base_salary`');
 

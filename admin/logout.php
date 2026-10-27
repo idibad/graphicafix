@@ -7,10 +7,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Automatically record daily checkout signout time before ending session
+// Log activity upon session logout (Note: Daily checkout is explicit via header button or auto end-of-day)
 $logout_user_id = $_SESSION['user_id'] ?? 0;
 if ($logout_user_id && isset($conn)) {
-    recordDailyCheckOut($conn, $logout_user_id);
     logActivity($conn, 'logout', "User logged out of session", 'user', $logout_user_id);
 }
 

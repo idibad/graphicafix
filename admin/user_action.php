@@ -54,6 +54,9 @@ function toggleUserStatus($conn) {
     if (!in_array('gender', $cols)) {
         $conn->query("ALTER TABLE users ADD COLUMN gender VARCHAR(10) NOT NULL DEFAULT 'Male' AFTER name");
     }
+    if (!in_array('work_mode', $cols)) {
+        $conn->query("ALTER TABLE users ADD COLUMN work_mode VARCHAR(20) NOT NULL DEFAULT 'remote' AFTER job_title");
+    }
 
     $user_id = intval($_GET['id'] ?? ($_POST['user_id'] ?? 0));
     
@@ -123,13 +126,16 @@ function fetchUser($conn) {
     if (!in_array('gender', $cols)) {
         $conn->query("ALTER TABLE users ADD COLUMN gender VARCHAR(10) NOT NULL DEFAULT 'Male' AFTER name");
     }
+    if (!in_array('work_mode', $cols)) {
+        $conn->query("ALTER TABLE users ADD COLUMN work_mode VARCHAR(20) NOT NULL DEFAULT 'remote' AFTER job_title");
+    }
 
 
     $has_status = in_array('status', $cols);
     
     $query = $has_status ? 
-        "SELECT user_id, name, gender, email, username, role, status, client_id FROM users WHERE user_id = ?" : 
-        "SELECT user_id, name, gender, email, username, role, client_id FROM users WHERE user_id = ?";
+        "SELECT user_id, name, gender, work_mode, email, username, role, status, client_id FROM users WHERE user_id = ?" : 
+        "SELECT user_id, name, gender, work_mode, email, username, role, client_id FROM users WHERE user_id = ?";
         
     $stmt = $conn->prepare($query);
     if (!$stmt) {
@@ -147,6 +153,7 @@ function fetchUser($conn) {
             $user['status'] = 'active';
         }
         $user['gender'] = !empty($user['gender']) ? ucfirst(strtolower(trim($user['gender']))) : 'Male';
+        $user['work_mode'] = (!empty($user['work_mode']) && strtolower(trim($user['work_mode'])) === 'onsite') ? 'onsite' : 'remote';
         // Add success flag to the response
         $user['success'] = true;
         echo json_encode($user);
@@ -161,6 +168,7 @@ function saveUser($conn) {
     $user_id = intval($_POST['user_id'] ?? 0);
     $name = trim($_POST['name'] ?? '');
     $gender = (strcasecmp(trim($_POST['gender'] ?? ''), 'Female') === 0) ? 'Female' : 'Male';
+    $work_mode = (isset($_POST['work_mode']) && strtolower(trim($_POST['work_mode'])) === 'onsite') ? 'onsite' : 'remote';
     $email = trim($_POST['email'] ?? '');
     $username = trim($_POST['username'] ?? '');
     $role = trim($_POST['role'] ?? 'User');
@@ -187,6 +195,9 @@ function saveUser($conn) {
     }
     if (!in_array('gender', $cols)) {
         $conn->query("ALTER TABLE users ADD COLUMN gender VARCHAR(10) NOT NULL DEFAULT 'Male' AFTER name");
+    }
+    if (!in_array('work_mode', $cols)) {
+        $conn->query("ALTER TABLE users ADD COLUMN work_mode VARCHAR(20) NOT NULL DEFAULT 'remote' AFTER job_title");
     }
     
     if ($user_id > 0) {
@@ -220,11 +231,11 @@ function saveUser($conn) {
             }
             
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("UPDATE users SET name = ?, gender = ?, email = ?, role = ?, status = ?, password = ?, client_id = ? WHERE user_id = ?");
-            $stmt->bind_param("ssssssii", $name, $gender, $email, $role, $status, $hashed_password, $client_id, $user_id);
+            $stmt = $conn->prepare("UPDATE users SET name = ?, gender = ?, work_mode = ?, email = ?, role = ?, status = ?, password = ?, client_id = ? WHERE user_id = ?");
+            $stmt->bind_param("sssssssii", $name, $gender, $work_mode, $email, $role, $status, $hashed_password, $client_id, $user_id);
         } else {
-            $stmt = $conn->prepare("UPDATE users SET name = ?, gender = ?, email = ?, role = ?, status = ?, client_id = ? WHERE user_id = ?");
-            $stmt->bind_param("sssssii", $name, $gender, $email, $role, $status, $client_id, $user_id);
+            $stmt = $conn->prepare("UPDATE users SET name = ?, gender = ?, work_mode = ?, email = ?, role = ?, status = ?, client_id = ? WHERE user_id = ?");
+            $stmt->bind_param("ssssssii", $name, $gender, $work_mode, $email, $role, $status, $client_id, $user_id);
         }
         
         if ($stmt->execute()) {
@@ -283,8 +294,8 @@ function saveUser($conn) {
         
         // Hash password and insert
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $conn->prepare("INSERT INTO users (name, gender, email, username, role, status, password, client_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-        $stmt->bind_param("sssssssi", $name, $gender, $email, $username, $role, $status, $hashed_password, $client_id);
+        $stmt = $conn->prepare("INSERT INTO users (name, gender, work_mode, email, username, role, status, password, client_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->bind_param("ssssssssi", $name, $gender, $work_mode, $email, $username, $role, $status, $hashed_password, $client_id);
         
         if ($stmt->execute()) {
             // Send welcome email

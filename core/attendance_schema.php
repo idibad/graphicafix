@@ -305,6 +305,7 @@ if (!function_exists('ensure_attendance_schema')) {
                 'employee_id'  => "VARCHAR(50) NULL AFTER `user_id`",
                 'department'   => "VARCHAR(100) DEFAULT 'General' AFTER `role`",
                 'job_title'    => "VARCHAR(100) NULL AFTER `department`",
+                'work_mode'    => "VARCHAR(20) NOT NULL DEFAULT 'remote' AFTER `job_title`",
                 'base_salary'  => "DECIMAL(12,2) DEFAULT 50000.00 AFTER `job_title`",
                 'allowances'   => "DECIMAL(12,2) DEFAULT 0.00 AFTER `base_salary`"
             ];

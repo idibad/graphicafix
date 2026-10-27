@@ -18,9 +18,12 @@ if (!in_array('status', $cols)) {
 if (!in_array('gender', $cols)) {
     $conn->query("ALTER TABLE users ADD COLUMN gender VARCHAR(10) NOT NULL DEFAULT 'Male' AFTER name");
 }
+if (!in_array('work_mode', $cols)) {
+    $conn->query("ALTER TABLE users ADD COLUMN work_mode VARCHAR(20) NOT NULL DEFAULT 'remote' AFTER job_title");
+}
 
 // Fetch all users
-$sql = "SELECT user_id, name, gender, email, username, role, status, department, job_title, last_login, created_at FROM users ORDER BY created_at DESC";
+$sql = "SELECT user_id, name, gender, work_mode, email, username, role, status, department, job_title, last_login, created_at FROM users ORDER BY created_at DESC";
 $result = $conn->query($sql);
 
 function getStatus($last_login, $user_status = 'active') {
@@ -98,6 +101,13 @@ foreach($result as $row) {
         $female_count++;
     } else {
         $male_count++;
+    }
+    
+    $wm_check = strtolower(trim($row['work_mode'] ?? 'remote'));
+    if ($wm_check === 'onsite') {
+        $onsite_count++;
+    } else {
+        $remote_count++;
     }
     
     $r = strtolower($row['role']);
@@ -475,6 +485,25 @@ $role_titles = [
 }
 .user-gender-tag.Male { background: #f1f5f9; color: #475569; }
 .user-gender-tag.Female { background: #f1f5f9; color: #475569; }
+.user-work-mode-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.user-work-mode-tag.onsite {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+.user-work-mode-tag.remote {
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
 .user-username-badge {
     font-size: 12px;
     color: #64748b;
@@ -686,6 +715,13 @@ $role_titles = [
                     <option value="female">Female (<?= $female_count ?>)</option>
                 </select>
 
+                <!-- Work Mode Filter -->
+                <select id="workModeFilterSelect" class="filter-select" onchange="applyUserFilters()">
+                    <option value="all">All Work Modes</option>
+                    <option value="onsite">On-site (<?= $onsite_count ?>)</option>
+                    <option value="remote">Remote (<?= $remote_count ?>)</option>
+                </select>
+
                 <!-- View Switcher -->
                 <div class="view-switch" id="viewSwitcherBox">
                     <button type="button" id="viewGroupedBtn" class="active" onclick="switchViewMode('grouped')" title="Categorized by Role">
@@ -775,7 +811,8 @@ $role_titles = [
                                     data-email="<?= htmlspecialchars(strtolower($row['email'])) ?>"
                                     data-role="<?= htmlspecialchars(strtolower($row['role'])) ?>"
                                     data-status="<?= $is_deactivated ? 'deactivated' : 'active' ?>"
-                                    data-gender="<?= strtolower($g_val) ?>">
+                                    data-gender="<?= strtolower($g_val) ?>"
+                                    data-work-mode="<?= strtolower($row['work_mode'] ?? 'remote') ?>">
                                     <td>
                                         <div class="user-info-box">
                                             <div class="user-avatar-initial">
@@ -785,6 +822,10 @@ $role_titles = [
                                                 <div class="user-title-group">
                                                     <span class="user-display-name"><?= htmlspecialchars($row['name']) ?></span>
                                                     <span class="user-gender-tag"><?= htmlspecialchars($g_val) ?></span>
+                                                    <?php $row_wm = strtolower($row['work_mode'] ?? 'remote'); ?>
+                                                    <span class="user-work-mode-tag <?= $row_wm ?>">
+                                                        <?= ($row_wm === 'onsite') ? '<i class="fas fa-building"></i> On-site' : '<i class="fas fa-house-user"></i> Remote' ?>
+                                                    </span>
                                                 </div>
                                                 <div class="user-username-badge">@<?= htmlspecialchars($row['username']) ?></div>
                                             </div>
@@ -876,7 +917,8 @@ $role_titles = [
                             data-email="<?= htmlspecialchars(strtolower($row['email'])) ?>"
                             data-role="<?= htmlspecialchars(strtolower($row['role'])) ?>"
                             data-status="<?= $is_deactivated ? 'deactivated' : 'active' ?>"
-                            data-gender="<?= strtolower($g_val) ?>">
+                            data-gender="<?= strtolower($g_val) ?>"
+                            data-work-mode="<?= strtolower($row['work_mode'] ?? 'remote') ?>">
                             <td>
                                 <div class="user-info-box">
                                     <div class="user-avatar-initial">
@@ -886,6 +928,10 @@ $role_titles = [
                                         <div class="user-title-group">
                                             <span class="user-display-name"><?= htmlspecialchars($row['name']) ?></span>
                                             <span class="user-gender-tag"><?= htmlspecialchars($g_val) ?></span>
+                                            <?php $row_wm = strtolower($row['work_mode'] ?? 'remote'); ?>
+                                            <span class="user-work-mode-tag <?= $row_wm ?>">
+                                                <?= ($row_wm === 'onsite') ? '<i class="fas fa-building"></i> On-site' : '<i class="fas fa-house-user"></i> Remote' ?>
+                                            </span>
                                         </div>
                                         <div class="user-username-badge">@<?= htmlspecialchars($row['username']) ?></div>
                                     </div>
@@ -982,7 +1028,8 @@ $role_titles = [
                                 data-username="<?= htmlspecialchars(strtolower($row['username'])) ?>"
                                 data-email="<?= htmlspecialchars(strtolower($row['email'])) ?>"
                                 data-role="<?= htmlspecialchars(strtolower($row['role'])) ?>"
-                                data-gender="<?= strtolower($g_val) ?>">
+                                data-gender="<?= strtolower($g_val) ?>"
+                                data-work-mode="<?= strtolower($row['work_mode'] ?? 'remote') ?>">
                                 <td>
                                     <div class="user-info-box" style="opacity: 0.8;">
                                         <div class="user-avatar-initial" style="background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0;">
@@ -992,6 +1039,10 @@ $role_titles = [
                                             <div class="user-title-group">
                                                 <span class="user-display-name" style="color: #64748b; text-decoration: line-through;"><?= htmlspecialchars($row['name']) ?></span>
                                                 <span class="user-gender-tag"><?= htmlspecialchars($g_val) ?></span>
+                                                <?php $row_wm = strtolower($row['work_mode'] ?? 'remote'); ?>
+                                                <span class="user-work-mode-tag <?= $row_wm ?>">
+                                                    <?= ($row_wm === 'onsite') ? '<i class="fas fa-building"></i> On-site' : '<i class="fas fa-house-user"></i> Remote' ?>
+                                                </span>
                                             </div>
                                             <div class="user-username-badge">@<?= htmlspecialchars($row['username']) ?></div>
                                         </div>
@@ -1119,6 +1170,16 @@ $role_titles = [
                         </select>
                     </div>
 
+                    <!-- Work Mode -->
+                    <div class="form-group" style="margin: 0;">
+                        <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Work Mode <span style="color:#ef4444;">*</span></label>
+                        <select name="work_mode" id="f_work_mode" required
+                            style="width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px; font-size:14px; background:#f8fafc; outline:none; box-sizing:border-box; font-family:inherit;">
+                            <option value="remote">Remote (Work From Home)</option>
+                            <option value="onsite">On-site (Office Attendance Required)</option>
+                        </select>
+                    </div>
+
                     <!-- Link to Client Company -->
                     <div class="form-group" id="clientFormGroup" style="display:none; grid-column: span 2; margin: 0;">
                         <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Link to Client Company <span style="color:#ef4444;">*</span></label>
@@ -1175,11 +1236,12 @@ function applyUserFilters() {
     const roleVal = document.getElementById('roleFilterSelect').value.toLowerCase();
     const statusVal = document.getElementById('statusFilterSelect').value.toLowerCase();
     const genderVal = document.getElementById('genderFilterSelect').value.toLowerCase();
+    const workModeVal = document.getElementById('workModeFilterSelect').value.toLowerCase();
 
     const clearBtn = document.getElementById('clearSearchBtn');
     clearBtn.style.display = searchVal ? 'flex' : 'none';
 
-    const hasActiveFilters = (searchVal !== '' || roleVal !== 'all' || statusVal !== 'active' || genderVal !== 'all');
+    const hasActiveFilters = (searchVal !== '' || roleVal !== 'all' || statusVal !== 'active' || genderVal !== 'all' || workModeVal !== 'all');
     document.getElementById('resetFiltersBtn').style.display = hasActiveFilters ? 'inline-flex' : 'none';
 
     // Update active filter stat card indicators
@@ -1198,6 +1260,7 @@ function applyUserFilters() {
     if (statusVal !== 'active') activeFilterTags.push(`View: Deactivated Archive`);
     if (roleVal !== 'all') activeFilterTags.push(`Role: ${roleVal}`);
     if (genderVal !== 'all') activeFilterTags.push(`Gender: ${genderVal}`);
+    if (workModeVal !== 'all') activeFilterTags.push(`Work Mode: ${workModeVal}`);
     if (searchVal !== '') activeFilterTags.push(`Search: "${searchVal}"`);
     document.getElementById('activeFilterNote').textContent = activeFilterTags.length > 0 ? `(${activeFilterTags.join(' • ')})` : '';
 
@@ -1213,6 +1276,7 @@ function applyUserFilters() {
             const rEmail    = row.getAttribute('data-email') || '';
             const rRole     = row.getAttribute('data-role') || '';
             const rGender   = row.getAttribute('data-gender') || '';
+            const rWorkMode = row.getAttribute('data-work-mode') || 'remote';
 
             const matchesSearch = (!searchVal || rName.includes(searchVal) || rUsername.includes(searchVal) || rEmail.includes(searchVal));
             let matchesRole = (roleVal === 'all');
@@ -1222,8 +1286,9 @@ function applyUserFilters() {
                 else matchesRole = (rRole === roleVal);
             }
             const matchesGender = (genderVal === 'all' || rGender === genderVal);
+            const matchesWorkMode = (workModeVal === 'all' || rWorkMode === workModeVal);
 
-            if (matchesSearch && matchesRole && matchesGender) {
+            if (matchesSearch && matchesRole && matchesGender && matchesWorkMode) {
                 row.style.display = '';
                 totalVisible++;
             } else {
@@ -1248,6 +1313,7 @@ function applyUserFilters() {
             const rEmail    = row.getAttribute('data-email') || '';
             const rRole     = row.getAttribute('data-role') || '';
             const rGender   = row.getAttribute('data-gender') || '';
+            const rWorkMode = row.getAttribute('data-work-mode') || 'remote';
 
             const matchesSearch = (!searchVal || rName.includes(searchVal) || rUsername.includes(searchVal) || rEmail.includes(searchVal));
             let matchesRole = (roleVal === 'all');
@@ -1257,8 +1323,9 @@ function applyUserFilters() {
                 else matchesRole = (rRole === roleVal);
             }
             const matchesGender = (genderVal === 'all' || rGender === genderVal);
+            const matchesWorkMode = (workModeVal === 'all' || rWorkMode === workModeVal);
 
-            if (matchesSearch && matchesRole && matchesGender) {
+            if (matchesSearch && matchesRole && matchesGender && matchesWorkMode) {
                 row.style.display = '';
                 totalVisible++;
             } else {
@@ -1395,6 +1462,7 @@ function openUserModal(type, id = null) {
         document.getElementById('f_role').value                 = 'user'; // Default to staff user
         document.getElementById('f_status').value               = 'active';
         document.getElementById('f_gender').value               = 'Male';
+        document.getElementById('f_work_mode').value            = 'remote';
         document.getElementById('passwordRequired').style.display = 'inline';
         document.getElementById('passwordHint').innerHTML       = '<i class="fas fa-lock" style="color: var(--primary);"></i> Minimum 8 characters required';
     } else {
@@ -1419,6 +1487,7 @@ function openUserModal(type, id = null) {
                         document.getElementById('user_id').value    = data.user_id;
                         document.getElementById('f_name').value     = data.name      || '';
                         document.getElementById('f_gender').value   = data.gender    || 'Male';
+                        document.getElementById('f_work_mode').value= (data.work_mode && data.work_mode.toLowerCase() === 'onsite') ? 'onsite' : 'remote';
                         document.getElementById('f_email').value    = data.email     || '';
                         document.getElementById('f_username').value = data.username  || '';
                         document.getElementById('f_role').value     = data.role      || 'user';

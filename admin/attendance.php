@@ -243,7 +243,7 @@ try {
     $stmt_att = false;
     if ($is_admin) {
         $stmt_att = $conn->prepare("
-            SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, COALESCE(u.gender, 'Male') as gender, COALESCE(u.role, 'user') as role
+            SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, COALESCE(u.gender, 'Male') as gender, COALESCE(u.role, 'user') as role, COALESCE(u.work_mode, 'remote') as work_mode
             FROM attendance_records a
             LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
             WHERE a.attendance_date BETWEEN ? AND ?
@@ -252,7 +252,7 @@ try {
         if ($stmt_att) $stmt_att->bind_param("ss", $month_start, $month_end);
     } else {
         $stmt_att = $conn->prepare("
-            SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, COALESCE(u.gender, 'Male') as gender, COALESCE(u.role, 'user') as role
+            SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, COALESCE(u.gender, 'Male') as gender, COALESCE(u.role, 'user') as role, COALESCE(u.work_mode, 'remote') as work_mode
             FROM attendance_records a
             LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
             WHERE a.user_id = ? AND a.attendance_date BETWEEN ? AND ?
@@ -312,6 +312,7 @@ foreach ($overrides as $key => $ov) {
             'username'          => $ov['username'],
             'gender'            => $ov['gender'] ?? 'Male',
             'role'              => $ov['role'] ?? 'user',
+            'work_mode'         => $ov['work_mode'] ?? 'remote',
             'is_override'       => true,
             'override_id'       => $ov['id'],
             'attendance_type'   => $ov['attendance_type'],
@@ -357,16 +358,27 @@ foreach ($final_records as $row) {
             $time_out_str = date('h:i A', $out_ts);
             $diff_hours = max(0, round(($out_ts - $in_ts) / 3600, 1));
             $hours_worked = $diff_hours . ' hrs';
-        } elseif (!empty($row['last_heartbeat']) && date('Y-m-d', strtotime($row['last_heartbeat'])) === $row['attendance_date']) {
-            $hb_ts = strtotime($row['last_heartbeat']);
-            $diff_hb = time() - $hb_ts;
+        } elseif ($row['attendance_date'] === date('Y-m-d')) {
+            // CURRENT ACTIVE WORKDAY: Employee shift is underway!
+            $now_ts = time();
+            $hb_ts = !empty($row['last_heartbeat']) ? strtotime($row['last_heartbeat']) : $in_ts;
+            $diff_hb = $now_ts - $hb_ts;
             if ($diff_hb < 900) { // Active in last 15 mins
                 $time_out_str = '<span style="color:#16a34a; font-weight:700;"><i class="fas fa-dot-circle fa-fade"></i> Active</span>';
             } else {
-                $time_out_str = date('h:i A', $hb_ts) . ' <small style="color:#94a3b8;">(auto)</small>';
-                $diff_hours = max(0, round(($hb_ts - $in_ts) / 3600, 1));
-                $hours_worked = $diff_hours . ' hrs';
+                $time_out_str = '<span style="color:#64748b; font-weight:600;"><i class="fas fa-clock"></i> In Progress</span>';
             }
+            $diff_hours = max(0, round(($now_ts - $in_ts) / 3600, 1));
+            $hours_worked = $diff_hours . ' hrs <small style="color:#94a3b8;">(ongoing)</small>';
+        } elseif (!empty($row['last_heartbeat']) && date('Y-m-d', strtotime($row['last_heartbeat'])) === $row['attendance_date']) {
+            // PAST WORKDAY: Employee left without manual checkout, closed by last heartbeat
+            $hb_ts = strtotime($row['last_heartbeat']);
+            $time_out_str = date('h:i A', $hb_ts) . ' <small style="color:#94a3b8;">(auto)</small>';
+            $diff_hours = max(0, round(($hb_ts - $in_ts) / 3600, 1));
+            $hours_worked = $diff_hours . ' hrs';
+        } else {
+            $time_out_str = '— <small style="color:#94a3b8;">(no checkout)</small>';
+            $hours_worked = '—';
         }
     } else {
         $row['time_in_str'] = '—';
@@ -431,8 +443,14 @@ foreach ($final_records as $row) {
             $stat_late++;
             $stat_penalties += floatval($row['penalty_amount'] ?? 100);
         } else {
-            $row['att_status'] = 'On Time';
-            $row['att_class']  = 'present';
+            if (!empty($row['penalty_amount']) && floatval($row['penalty_amount']) > 0) {
+                $row['att_status'] = 'Present (Penalized)';
+                $row['att_class']  = 'present';
+                $stat_penalties += floatval($row['penalty_amount']);
+            } else {
+                $row['att_status'] = 'On Time';
+                $row['att_class']  = 'present';
+            }
             if (!empty($row['is_grace_period'])) {
                 $stat_grace++;
             } else {
@@ -442,11 +460,20 @@ foreach ($final_records as $row) {
         }
 
         // Location determination
+        $row_wm = strtolower($row['work_mode'] ?? 'remote');
         if (!empty($row['location_denied']) || ($row['location_type'] ?? '') === 'denied') {
-            $row['loc_text']  = 'Denied Location';
-            $row['loc_class'] = 'loc-denied';
-            $row['loc_icon']  = '⚠️';
-            $stat_denied_loc++;
+            if ($row_wm === 'remote') {
+                // Remote employees are not penalized for office location
+                $row['loc_text']  = 'Remote';
+                $row['loc_class'] = 'loc-remote';
+                $row['loc_icon']  = '🏠';
+                $stat_remote++;
+            } else {
+                $row['loc_text']  = 'Denied Location';
+                $row['loc_class'] = 'loc-denied';
+                $row['loc_icon']  = '⚠️';
+                $stat_denied_loc++;
+            }
         } elseif (($row['location_type'] ?? '') === 'onsite') {
             $dist_text = !empty($row['distance_meters']) ? " (" . round($row['distance_meters']) . "m)" : "";
             $row['loc_text']  = 'On-site' . $dist_text;
@@ -779,6 +806,10 @@ $total_records = count($attendance_records);
                                 <div>
                                     <strong style="color:var(--primary, #024442); font-size:13.5px;"><?= htmlspecialchars($emp_name) ?></strong>
                                     <span class="gender-tag <?= $row['gender'] ?? 'Male' ?>"><?= htmlspecialchars($row['gender'] ?? 'Male') ?></span>
+                                    <?php $wm = strtolower($row['work_mode'] ?? 'remote'); ?>
+                                    <span class="work-mode-badge <?= $wm ?>">
+                                        <?= ($wm === 'onsite') ? '<i class="fas fa-building"></i> On-site' : '<i class="fas fa-house-user"></i> Remote' ?>
+                                    </span>
                                     <small style="display:block; color:#64748b; font-size:11.5px;">@<?= htmlspecialchars($row['username'] ?? 'user') ?></small>
                                 </div>
                             </div>
