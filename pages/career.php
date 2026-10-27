@@ -161,21 +161,24 @@ $total_open = $total_open_query ? ($total_open_query->fetch_assoc()['c'] ?? 0) :
         border-color: var(--primary); box-shadow: 0 0 0 4px rgba(2,68,66,0.1); background: #fff;
     }
 
-    /* ── Modal Styling ── */
+    /* ── Modal Styling (Right-Side Full-Height Slide-In) ── */
     .job-modal-overlay {
-        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-        backdrop-filter: blur(5px); z-index: 1050; align-items: center; justify-content: center; padding: 20px;
+        display: none; position: fixed !important; inset: 0 !important; background: rgba(0,0,0,0.6) !important;
+        backdrop-filter: blur(5px); z-index: 10500 !important; align-items: stretch !important; justify-content: flex-end !important; padding: 0 !important;
+        overflow: hidden !important;
     }
     .job-modal-content {
-        background: #fff; border-radius: 24px; width: 100%; max-width: 650px;
-        max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;
-        box-shadow: 0 24px 64px rgba(0,0,0,0.2); animation: slideUp 0.3s ease;
+        background: #fff !important; border-radius: 20px 0 0 20px !important; width: 100% !important; max-width: 650px !important;
+        height: 100vh !important; min-height: 100vh !important; max-height: 100vh !important; margin: 0 0 0 auto !important;
+        overflow: hidden !important; display: flex !important; flex-direction: column !important;
+        box-shadow: -12px 0 45px rgba(0,0,0,0.25) !important; animation: slideInRightJob 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
     }
-    @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes slideInRightJob { from { transform: translateX(100%); } to { transform: translateX(0); } }
     
     .job-modal-header {
         background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-        padding: 30px; position: relative; color: #fff; flex-shrink: 0;
+        padding: 24px 28px !important; position: relative; color: #fff; flex-shrink: 0 !important;
+        border-top-left-radius: 20px !important; border-top-right-radius: 0 !important;
     }
     .job-modal-close {
         position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.1);
@@ -183,14 +186,17 @@ $total_open = $total_open_query ? ($total_open_query->fetch_assoc()['c'] ?? 0) :
         font-size: 1.2rem; cursor: pointer; transition: background 0.2s;
     }
     .job-modal-close:hover { background: rgba(255,255,255,0.2); }
-    .job-modal-body { padding: 30px; overflow-y: auto; flex: 1; font-size: 0.95rem; color: var(--text-gray); line-height: 1.7; }
+    .job-modal-body { padding: 28px !important; overflow-y: auto !important; flex: 1 1 auto !important; min-height: 0 !important; font-size: 0.95rem; color: var(--text-gray); line-height: 1.7; -webkit-overflow-scrolling: touch; }
     .job-modal-footer {
-        padding: 20px 30px; border-top: 1px solid #f0f0f0; background: #f9fafb;
-        display: flex; gap: 12px; justify-content: flex-end; flex-shrink: 0;
+        padding: 18px 28px !important; border-top: 1px solid #f0f0f0; background: #f9fafb;
+        display: flex; gap: 12px; justify-content: flex-end; flex-shrink: 0 !important;
+        border-bottom-left-radius: 20px !important; border-bottom-right-radius: 0 !important;
     }
 
     /* Responsive */
     @media (max-width: 768px) {
+        .job-modal-content { width: 100vw !important; max-width: 100vw !important; border-radius: 0 !important; }
+        .job-modal-header, .job-modal-footer { border-radius: 0 !important; }
         .job-card { flex-direction: column; align-items: flex-start; gap: 20px; padding: 20px; }
         .job-actions { width: 100%; justify-content: stretch; }
         .job-actions button, .job-actions a { flex: 1; text-align: center; justify-content: center; }

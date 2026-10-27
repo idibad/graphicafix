@@ -100,7 +100,7 @@ $sub_users = $stmt_users->get_result();
                 <h1>Manage Client Users</h1>
                 <p>Add and manage team members from your company who will participate in these projects</p>
             </div>
-            <button class="btn btn-primary" onclick="document.getElementById('userFormModal').style.display='block'" style="background:#024442; border:none; padding:8px 20px; font-weight:700;">+ Add User</button>
+            <button class="btn btn-primary" onclick="document.getElementById('userFormModal').style.display='flex'" style="background:#024442; border:none; padding:8px 20px; font-weight:700;">+ Add User</button>
         </div>
 
         <?php if ($error): ?>
@@ -164,8 +164,8 @@ $sub_users = $stmt_users->get_result();
 </div>
 
 <!-- Add User Modal -->
-<div id="userFormModal" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); padding-top: 60px;">
-    <div class="modal-content" style="background-color: #fefefe; margin: 5% auto; padding: 24px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+<div id="userFormModal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 20px;">
             <h3 style="margin: 0; color: #1e293b;"><i class="fas fa-user-plus"></i> Add Sub-User</h3>
             <span style="font-size: 24px; font-weight: bold; cursor: pointer;" onclick="document.getElementById('userFormModal').style.display='none'">&times;</span>

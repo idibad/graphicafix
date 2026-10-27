@@ -1282,8 +1282,8 @@ document.addEventListener('keydown', e => {
 </script>
 
 <!-- Direct Course Assignment Modal -->
-<div id="directAssignModalWrap" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;align-items:center;justify-content:center;padding:20px;">
-    <div style="background:#fff;border-radius:16px;width:100%;max-width:500px;box-shadow:0 20px 40px rgba(0,0,0,0.2);overflow:hidden;animation:modalSlideIn .25s ease;">
+<div id="directAssignModalWrap" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
         <div style="background:#024442;padding:20px 24px;color:white;display:flex;justify-content:space-between;align-items:center;">
             <h4 style="margin:0;font-size:16px;font-weight:800;"><i class="fas fa-user-plus me-2"></i> Directly Assign Course to Student</h4>
             <button type="button" onclick="closeDirectAssignModal()" style="background:none;border:none;color:white;font-size:18px;cursor:pointer;"><i class="fas fa-times"></i></button>

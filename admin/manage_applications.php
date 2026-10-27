@@ -535,7 +535,7 @@ function appStatusBadge($s) {
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary-custom" onclick="closePosViewModal()">Close</button>
-            <button class="btn btn-primary-custom" id="pvEditBtn" onclick=""><i class="fas fa-pencil-alt"></i>️ Edit Position</button>
+            <button class="btn btn-primary-custom" id="pvEditBtn"><i class="fas fa-pencil-alt"></i>️ Edit Position</button>
         </div>
     </div>
 </div>

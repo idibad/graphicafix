@@ -1019,7 +1019,7 @@ endwhile;
         </div>
     </section>
 <!-- ════ HIGH-CONVERSION NEWSLETTER MODAL ════ -->
-<div id="gfxNewsletterOverlay" class="gfx-popup-overlay">
+<div id="gfxNewsletterOverlay" class="gfx-popup-overlay" onclick="if(event.target===this)closeGfxPopup()">
     <div class="gfx-popup-modal">
         <button class="gfx-popup-close" onclick="closeGfxPopup()" aria-label="Close">&times;</button>
         
@@ -1052,45 +1052,56 @@ endwhile;
 </div>
 <!-- ════ NEWSLETTER MODAL CSS ════ -->
 <style>
-    /* Overlay Background */
+    /* Overlay Background (Right-Side Full-Height Slide-In) */
     .gfx-popup-overlay {
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(15, 23, 42, 0.6);
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        background: rgba(15, 23, 42, 0.6) !important;
         backdrop-filter: blur(5px);
         -webkit-backdrop-filter: blur(5px);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        z-index: 10500 !important;
+        display: flex !important;
+        align-items: stretch !important;
+        justify-content: flex-end !important;
         opacity: 0;
         pointer-events: none;
-        transition: opacity 0.4s ease;
-        padding: 20px;
+        transition: opacity 0.3s ease;
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: hidden !important;
     }
 
     /* Active State */
     .gfx-popup-overlay.show {
-        opacity: 1;
-        pointer-events: auto;
+        opacity: 1 !important;
+        pointer-events: auto !important;
     }
 
-    /* Modal Container */
+    /* Modal Container (Full-Height Right Drawer) */
     .gfx-popup-modal {
         background: #fff;
-        width: 100%;
-        max-width: 800px;
-        border-radius: 24px;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        display: flex;
-        overflow: hidden;
+        width: 100% !important;
+        max-width: 540px !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        max-height: 100vh !important;
+        margin: 0 0 0 auto !important;
+        border-radius: 20px 0 0 20px !important;
+        box-shadow: -12px 0 45px rgba(0, 0, 0, 0.25);
+        display: flex !important;
+        flex-direction: column !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch;
         position: relative;
-        transform: scale(0.95) translateY(20px);
-        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transform: translateX(100%);
+        transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .gfx-popup-overlay.show .gfx-popup-modal {
-        transform: scale(1) translateY(0);
+        transform: translateX(0);
     }
 
     /* Close Button */
@@ -1111,7 +1122,7 @@ endwhile;
     .gfx-popup-close:hover { background: #fee2e2; color: #ef4444; }
 
     /* Left Visual Pane */
-    .gfx-popup-visual {
+    .gfx-popup-visual { flex: 0 0 160px !important; padding: 25px 20px !important; border-top-left-radius: 20px; flex-shrink: 0;
         flex: 0 0 40%;
         background: linear-gradient(135deg, var(--primary), #026652);
         display: flex;
@@ -1193,7 +1204,7 @@ endwhile;
     /* Mobile Responsiveness */
     @media (max-width: 768px) {
         .gfx-popup-modal { flex-direction: column; }
-        .gfx-popup-visual { display: none; /* Hide visual pane on mobile for better usability */ }
+        .gfx-popup-visual { flex: 0 0 160px !important; padding: 25px 20px !important; border-top-left-radius: 20px; flex-shrink: 0; display: none; /* Hide visual pane on mobile for better usability */ }
         .gfx-popup-content { padding: 32px 24px; }
         .gfx-popup-content h2 { font-size: 1.5rem; }
     }

@@ -9,10 +9,22 @@ if (empty($_SESSION['_csrf_token'])) {
 .modal { background: rgba(2,68,66,.5); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 .modal.show { animation: fadeIn .3s ease; }
 @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-.modal-dialog { animation: slideUp .4s cubic-bezier(.4,0,.2,1); }
-@keyframes slideUp { from { transform:translateY(50px); opacity:0; } to { transform:translateY(0); opacity:1; } }
-.modal-content { border-radius:24px; background:white; border:none; overflow:hidden; box-shadow:0 20px 60px rgba(2,68,66,.2); }
-.modal-header {
+.modal-dialog {
+    position: fixed !important; top: 0 !important; right: 0 !important; bottom: 0 !important;
+    margin: 0 0 0 auto !important; width: 100% !important; max-width: 680px !important;
+    height: 100vh !important; max-height: 100vh !important; min-height: 100vh !important;
+    display: flex !important; flex-direction: column !important;
+    transform: translateX(100%) !important;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.modal.show .modal-dialog { transform: translateX(0) !important; }
+.modal-content {
+    border-radius: 20px 0 0 20px !important; background: white !important; border: none !important;
+    height: 100vh !important; max-height: 100vh !important; min-height: 100vh !important;
+    overflow: hidden !important; box-shadow: -12px 0 45px rgba(2,68,66,.3) !important;
+    display: flex !important; flex-direction: column !important;
+}
+.modal-header { border-top-left-radius:20px !important; border-top-right-radius:0 !important; flex-shrink:0 !important;
     background: linear-gradient(135deg,#024442 0%,#035b58 100%);
     color:white; border-bottom:none; padding:2rem; position:relative; overflow:hidden;
 }
@@ -24,7 +36,7 @@ if (empty($_SESSION['_csrf_token'])) {
 .modal-close { background:rgba(255,255,255,.1); backdrop-filter:blur(10px); border:none; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-size:1.25rem; cursor:pointer; transition:all .3s; position:relative; z-index:1; }
 .modal-close:hover { background:rgba(255,255,255,.2); transform:rotate(90deg); }
 
-.modal-body { padding:2rem; max-height:70vh; overflow-y:auto; }
+.modal-body { padding:2rem; overflow-y:auto !important; flex:1 1 auto !important; min-height:0 !important; max-height:none !important; -webkit-overflow-scrolling:touch; }
 .modal-body::-webkit-scrollbar { width:8px; }
 .modal-body::-webkit-scrollbar-track { background:#f1f5f9; border-radius:10px; }
 .modal-body::-webkit-scrollbar-thumb { background:#024442; border-radius:10px; }
@@ -81,7 +93,7 @@ textarea.pop-up-form-control { resize:vertical; min-height:120px; }
 
 @media (max-width:768px) {
     .modal-dialog { margin:.5rem; }
-    .modal-header { padding:1.5rem; }
+    .modal-header { border-top-left-radius:20px !important; border-top-right-radius:0 !important; flex-shrink:0 !important; padding:1.5rem; }
     .modal-body   { padding:1.5rem; max-height:65vh; }
     .modal-title  { font-size:1.4rem; }
     .form-actions { flex-direction:column-reverse; }
@@ -93,7 +105,7 @@ textarea.pop-up-form-control { resize:vertical; min-height:120px; }
 
 <!-- Project Request Modal -->
 <div class="modal fade" id="projectRequestModal" tabindex="-1" aria-labelledby="projectRequestModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <div class="modal-header-content">
@@ -108,7 +120,7 @@ textarea.pop-up-form-control { resize:vertical; min-height:120px; }
                 </button>
             </div>
             <div class="modal-body">
-                <form id="projectRequestForm" action="/project_request_submission" method="POST" enctype="multipart/form-data" onsubmit="return validateForm(this)">
+                <form id="projectRequestForm" action="<?= BASE_URL ?>project_request_submission" method="POST" enctype="multipart/form-data" onsubmit="return validateForm(this)">
 
                     <!-- ── Spam protection fields ── -->
 

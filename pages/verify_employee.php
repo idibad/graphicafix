@@ -635,7 +635,7 @@ if ($employee) {
 
             <!-- Search Form -->
             <div class="verify-search-wrap">
-                <form action="verify-employee.php" method="GET" class="verify-search-form">
+                <form action="<?= BASE_URL ?>verify-employee.php" method="GET" class="verify-search-form">
                     <i class="fas fa-search text-muted me-2" style="font-size: 1.1rem; color: #8ba19b;"></i>
                     <input type="text" name="id" class="verify-search-input" 
                            placeholder="Enter Employee ID (e.g. EMP0033 or EMP0001)..." 

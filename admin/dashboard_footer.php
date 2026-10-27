@@ -1,7 +1,4 @@
         <script type='text/javascript' src='https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js'></script>
-                                        <script type='text/javascript' src='#'></script>
-                                        <script type='text/javascript' src='#'></script>
-                                        <script type='text/javascript' src='#'></script>
                                         <script type='text/javascript'>document.addEventListener("DOMContentLoaded", function(event) {
           
         const showNavbar = (toggleId, navId, bodyId, headerId) =>{
@@ -41,9 +38,7 @@
         // Your code to run since DOM is loaded and ready
         });</script>
         <script type='text/javascript'>var myLink = document.querySelector('a[href="#"]');
-        myLink.addEventListener('click', function(e) {
-          e.preventDefault();
-        });</script>
+        if (myLink) { myLink.addEventListener('click', function(e) { e.preventDefault(); }); }</script>
     
         </body>
     </html>

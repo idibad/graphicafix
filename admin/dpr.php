@@ -1894,7 +1894,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary-custom" onclick="closeExportModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary-custom" onclick="setTimeout(closeExportModal, 500)">
+                <button type="submit" class="btn btn-primary-custom" onclick="window.setTimeout(closeExportModal, 500)">
                     <i class="fas fa-download"></i> Download Export
                 </button>
             </div>

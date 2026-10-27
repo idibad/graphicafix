@@ -3391,3 +3391,228 @@ footer::before {
 
     }
 }
+
+/* ============================================================
+   GLOBAL RIGHT-SIDE SLIDE-IN FULL-HEIGHT MODALS & DRAWERS
+============================================================ */
+.modal {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(2, 68, 66, 0.45) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    z-index: 10500 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.modal-dialog,
+.modal-dialog-centered,
+.modal-dialog-scrollable {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    margin: 0 0 0 auto !important;
+    width: 100% !important;
+    max-width: 650px !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    transform: translateX(100%) !important;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    z-index: 10501 !important;
+}
+
+.modal-dialog.modal-lg,
+.modal-dialog.modal-xl {
+    max-width: 780px !important;
+}
+
+.modal-dialog.modal-sm {
+    max-width: 480px !important;
+}
+
+.modal.show .modal-dialog {
+    transform: translateX(0) !important;
+}
+
+.modal-dialog .modal-content {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    min-height: 100vh !important;
+    border-radius: 20px 0 0 20px !important;
+    border: none !important;
+    box-shadow: -12px 0 45px rgba(2, 68, 66, 0.25) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+}
+
+.modal-dialog .modal-header {
+    border-top-left-radius: 20px !important;
+    border-top-right-radius: 0 !important;
+    flex-shrink: 0 !important;
+    padding: 24px 28px !important;
+    background: linear-gradient(135deg, #024442 0%, #035b58 100%) !important;
+    color: #ffffff !important;
+    border-bottom: none !important;
+}
+
+.modal-dialog .modal-body {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 28px !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+.modal-dialog .modal-footer {
+    border-bottom-left-radius: 20px !important;
+    border-bottom-right-radius: 0 !important;
+    flex-shrink: 0 !important;
+    padding: 18px 28px !important;
+    margin-top: auto !important;
+    background: #f8fafc !important;
+    border-top: 1px solid #e2e8f0 !important;
+}
+
+/* Custom overlay modals on public pages (e.g. career, newsletter, etc.) */
+.job-modal-overlay,
+.gfx-popup-overlay {
+    display: none;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    z-index: 10500 !important;
+    align-items: stretch !important;
+    justify-content: flex-end !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    animation: fadeInModal 0.25s ease-out;
+}
+
+.job-modal-overlay.active,
+.gfx-popup-overlay.show {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+.job-modal-content,
+.gfx-popup-modal {
+    background: #ffffff !important;
+    width: 100% !important;
+    max-width: 620px !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
+    max-height: 100vh !important;
+    margin: 0 0 0 auto !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 20px 0 0 20px !important;
+    box-shadow: -12px 0 40px rgba(0, 0, 0, 0.25) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    transform: translateX(100%);
+    animation: slideInFromRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.job-modal-header {
+    border-top-left-radius: 20px !important;
+    border-top-right-radius: 0 !important;
+    flex-shrink: 0 !important;
+    padding: 24px 28px !important;
+}
+
+.job-modal-body,
+.gfx-popup-content {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    padding: 28px !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+.job-modal-footer {
+    border-bottom-left-radius: 20px !important;
+    border-bottom-right-radius: 0 !important;
+    flex-shrink: 0 !important;
+    padding: 18px 28px !important;
+    background: #f8fafc !important;
+    border-top: 1px solid #e2e8f0 !important;
+}
+
+/* Subtle clean scrollbars across modals */
+.modal-body::-webkit-scrollbar,
+.job-modal-body::-webkit-scrollbar,
+.gfx-popup-content::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.modal-body::-webkit-scrollbar-thumb,
+.job-modal-body::-webkit-scrollbar-thumb,
+.gfx-popup-content::-webkit-scrollbar-thumb {
+    background: rgba(2, 68, 66, 0.3);
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover,
+.job-modal-body::-webkit-scrollbar-thumb:hover,
+.gfx-popup-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(2, 68, 66, 0.5);
+}
+
+@media (max-width: 768px) {
+    .modal-dialog,
+    .modal-dialog.modal-lg,
+    .modal-dialog.modal-xl,
+    .modal-dialog.modal-sm,
+    .modal-dialog .modal-content,
+    .job-modal-content,
+    .gfx-popup-modal {
+        max-width: 100vw !important;
+        width: 100vw !important;
+        border-radius: 0 !important;
+    }
+    .modal-dialog .modal-header,
+    .job-modal-header {
+        border-radius: 0 !important;
+        padding: 20px !important;
+    }
+    .modal-dialog .modal-body,
+    .job-modal-body,
+    .gfx-popup-content {
+        padding: 20px !important;
+    }
+    .modal-dialog .modal-footer,
+    .job-modal-footer {
+        border-radius: 0 !important;
+        padding: 16px 20px !important;
+        flex-direction: column !important;
+    }
+    .modal-dialog .modal-footer .btn,
+    .job-modal-footer .btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+}

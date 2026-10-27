@@ -812,15 +812,7 @@ include __DIR__ . '/../templates/header.php'; ?>
                 </div>
 
                 <!-- Pagination -->
-                <div class="blog-pagination">
-                    <a href="#" class="page-btn disabled">←</a>
-                    <a href="#" class="page-btn active">1</a>
-                    <a href="#" class="page-btn">2</a>
-                    <a href="#" class="page-btn">3</a>
-                    <span style="color:#ccc;font-size:18px;">···</span>
-                    <a href="#" class="page-btn">8</a>
-                    <a href="#" class="page-btn">→</a>
-                </div>
+                <div class="blog-pagination" id="blogPagination"></div>
 
             </div>
 
@@ -918,9 +910,12 @@ include __DIR__ . '/../templates/header.php'; ?>
 
 <script>
 let activeCategory = 'all';
+let currentPage = 1;
+const perPage = 6;
 
 function filterCategory(btn, category) {
     activeCategory = category;
+    currentPage = 1;
 
     // Update active button state in toolbar
     document.querySelectorAll('.blog-filter-btn').forEach(b => b.classList.remove('active'));
@@ -932,33 +927,72 @@ function filterCategory(btn, category) {
         });
     }
 
-    filterPosts();
+    filterPosts(true);
     // Smooth scroll to grid
     document.getElementById('blogGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function filterPosts() {
-    const search  = document.getElementById('blogSearch').value.toLowerCase().trim();
-    const cards   = document.querySelectorAll('#blogGrid .blog-card');
-    let visible   = 0;
+function renderPagination(totalItems) {
+    const container = document.getElementById('blogPagination');
+    if (!container) return;
+    const totalPages = Math.ceil(totalItems / perPage);
+    if (totalPages <= 1) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+        return;
+    }
+    container.style.display = 'flex';
+    let html = '';
+    html += `<a href="javascript:void(0)" class="page-btn ${currentPage <= 1 ? 'disabled' : ''}" onclick="changePage(${currentPage - 1})">←</a>`;
+    for (let p = 1; p <= totalPages; p++) {
+        html += `<a href="javascript:void(0)" class="page-btn ${p === currentPage ? 'active' : ''}" onclick="changePage(${p})">${p}</a>`;
+    }
+    html += `<a href="javascript:void(0)" class="page-btn ${currentPage >= totalPages ? 'disabled' : ''}" onclick="changePage(${currentPage + 1})">→</a>`;
+    container.innerHTML = html;
+}
 
-    cards.forEach(card => {
+function changePage(page) {
+    currentPage = page;
+    filterPosts(false);
+    document.getElementById('blogGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function filterPosts(resetPage = true) {
+    if (resetPage) currentPage = 1;
+    const search  = document.getElementById('blogSearch').value.toLowerCase().trim();
+    const cards   = Array.from(document.querySelectorAll('#blogGrid .blog-card'));
+    
+    const matching = cards.filter(card => {
         const cat   = card.dataset.category || '';
         const title = card.dataset.title    || '';
-
         const catMatch   = activeCategory === 'all' || cat === activeCategory;
         const searchMatch = search === '' || title.includes(search);
+        return catMatch && searchMatch;
+    });
 
-        if (catMatch && searchMatch) {
+    const totalPages = Math.ceil(matching.length / perPage);
+    if (currentPage > totalPages) currentPage = Math.max(1, totalPages);
+
+    const startIndex = (currentPage - 1) * perPage;
+    const endIndex = startIndex + perPage;
+
+    cards.forEach(card => {
+        const isMatch = matching.includes(card);
+        const matchIndex = matching.indexOf(card);
+        if (isMatch && matchIndex >= startIndex && matchIndex < endIndex) {
             card.style.display = '';
-            visible++;
         } else {
             card.style.display = 'none';
         }
     });
 
-    document.getElementById('blogNoResults').style.display = visible === 0 ? 'block' : 'none';
+    document.getElementById('blogNoResults').style.display = matching.length === 0 ? 'block' : 'none';
+    renderPagination(matching.length);
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    filterPosts(true);
+});
 </script>
 
 <?php include __DIR__ . '/../templates/footer.php'; ?>

@@ -169,8 +169,8 @@ function closeScreenshotModal() {
 </script>
 
 <!-- Screenshot Preview Modal -->
-<div id="screenshotModal" class="modal-overlay" onclick="if(event.target===this)closeScreenshotModal()" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
-    <div style="background:#fff; border-radius:12px; padding:16px; max-width:600px; width:90%; position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.2);">
+<div id="screenshotModal" class="modal-overlay" onclick="if(event.target===this)closeScreenshotModal()" style="display:none;">
+    <div class="modal-content" style="padding:20px;">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-bottom:12px;">
             <h4 style="margin:0; color:#1e293b;"><i class="fas fa-image"></i> Payment Proof Screenshot</h4>
             <span style="font-size:24px; font-weight:bold; cursor:pointer;" onclick="closeScreenshotModal()">&times;</span>
