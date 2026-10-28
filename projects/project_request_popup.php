@@ -265,49 +265,48 @@ function initFormProtection() {
 }
 
 function validateForm(form) {
-    var prev = document.getElementById('formErrorMsg');
-    if (prev) { prev.remove(); }
-
-    var name  = (form.querySelector('[name="name"]')        || {}).value || '';
-    var email = (form.querySelector('[name="email"]')       || {}).value || '';
-    var phone = (form.querySelector('[name="phone"]')       || {}).value || '';
-    var desc  = (form.querySelector('[name="description"]') || {}).value || '';
-    var csrf  = (form.querySelector('[name="_csrf_token"]') || {}).value || '';
-
-    name = name.trim(); email = email.trim(); phone = phone.trim(); desc = desc.trim();
-
-    if (!name || !email || !phone || !desc) {
-        showFormError('Please fill in all required fields.'); return false;
+    if (window.GfxValidator) {
+        var isValid = window.GfxValidator.validateForm(form);
+        if (!isValid) return false;
     }
-    var emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRe.test(email)) {
-        showFormError('Please enter a valid email address.'); return false;
-    }
-    if (desc.length < 20) {
-        showFormError('Please describe your project in at least 20 characters.'); return false;
-    }
+
+    var csrf = (form.querySelector('[name="_csrf_token"]') || {}).value || '';
     if (!csrf) {
-        fetchCsrfToken(1);
-        showFormError('Security check still loading — please try submitting again in a moment.'); return false;
+        if (typeof fetchCsrfToken === 'function') { fetchCsrfToken(1); }
+        if (window.GfxValidator) {
+            var submitBtn = form.querySelector('button[type="submit"]');
+            window.GfxValidator.showError(submitBtn, 'Security check refreshing — please click Submit again.');
+        }
+        return false;
     }
     return true;
 }
 
 function showFormError(msg) {
+    if (window.GfxValidator) {
+        var form = document.getElementById('projectRequestForm');
+        var submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+        if (submitBtn) { window.GfxValidator.showError(submitBtn, msg); return; }
+    }
     var err = document.createElement('div');
-    err.id = 'formErrorMsg';
-    err.style.cssText = 'background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:10px;padding:10px 14px;font-size:.82rem;font-weight:500;margin-bottom:14px;display:flex;align-items:center;gap:8px;';
-    err.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + msg;
-    var form    = document.getElementById('projectRequestForm');
+    err.className = 'gfx-field-error show';
+    err.innerHTML = '<i class="fas fa-exclamation-circle"></i> <span>' + msg + '</span>';
+    var form = document.getElementById('projectRequestForm');
     var actions = form && form.querySelector('.form-actions');
     if (actions) { form.insertBefore(err, actions); }
-    setTimeout(function(){ if(err.parentNode){ err.remove(); } }, 6000);
+    setTimeout(function(){ if(err.parentNode){ err.remove(); } }, 5000);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
     var prModal = document.getElementById('projectRequestModal');
     if (prModal) {
-        prModal.addEventListener('show.bs.modal', initFormProtection);
+        prModal.addEventListener('show.bs.modal', function() {
+            initFormProtection();
+            if (window.GfxValidator) {
+                var form = document.getElementById('projectRequestForm');
+                if (form) window.GfxValidator.clearErrors(form);
+            }
+        });
     }
     var _orig = window.setModalService;
     window.setModalService = function() {

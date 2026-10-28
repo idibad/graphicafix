@@ -3616,3 +3616,59 @@ footer::before {
         justify-content: center !important;
     }
 }
+
+/* =========================================================
+   Real-Time Form Validation (Minimal Red Light Font Errors)
+   ========================================================= */
+.gfx-field-error {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #ef4444;
+    font-size: 0.75rem;
+    font-weight: 300;
+    font-family: inherit;
+    line-height: 1.25;
+    margin-top: 4px;
+    margin-bottom: 2px;
+    opacity: 0;
+    transform: translateY(-2px);
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    letter-spacing: 0.01em;
+}
+.gfx-field-error.show {
+    opacity: 0.95;
+    transform: translateY(0);
+}
+.gfx-field-error svg {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    opacity: 0.85;
+    stroke: #ef4444;
+}
+.gfx-input-invalid,
+input.gfx-input-invalid,
+textarea.gfx-input-invalid,
+select.gfx-input-invalid {
+    border-color: #f87171 !important;
+    background-color: #fffbfa !important;
+    box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.12) !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+.input-wrapper.gfx-wrapper-invalid,
+.password-wrapper.gfx-wrapper-invalid,
+.gfx-input-group.gfx-wrapper-invalid,
+.input-group.gfx-wrapper-invalid,
+.discount-input-wrap.gfx-wrapper-invalid,
+.file-upload-wrapper.gfx-wrapper-invalid {
+    border-color: #f87171 !important;
+    box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.12) !important;
+}
+.form-check .gfx-field-error,
+.choice-label .gfx-field-error {
+    margin-top: 2px;
+    margin-left: 2px;
+}
+

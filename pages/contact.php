@@ -270,20 +270,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_contact'])) {
     </div>
 </section>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-// Lightweight Client-side validation to ensure required fields
-document.getElementById("contactForm").addEventListener("submit", function(e) {
-    const name = this.name.value.trim();
-    const email = this.email.value.trim();
-    const message = this.message.value.trim();
-
-    if (!name || !email || !message) {
-        e.preventDefault();
-        alert("Please fill in your Name, Email, and Message before submitting.");
-    }
-});
-</script>
-
 <?php include __DIR__ . '/../templates/footer.php'; ?>

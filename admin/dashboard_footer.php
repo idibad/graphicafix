@@ -39,17 +39,6 @@
         });</script>
         <script type='text/javascript'>var myLink = document.querySelector('a[href="#"]');
         if (myLink) { myLink.addEventListener('click', function(e) { e.preventDefault(); }); }</script>
-    
-        </body>
-    </html>
-
-                            <!-- jQuery, Popper.js, and Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.slim.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="../js/scripts.js"><script>
-    
-
-    
+        <script src="../assets/js/form-validator.js"></script>
 </body>
 </html>

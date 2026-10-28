@@ -1,0 +1,65 @@
+/* =========================================================
+   Graphicafix Real-Time Form Validation
+   Minimal Red Light Font Styling
+   ========================================================= */
+
+/* The minimal red light error label */
+.gfx-field-error {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #ef4444; /* Clean soft light red */
+    font-size: 0.75rem; /* Minimal compact size (12px) */
+    font-weight: 300; /* Light font weight */
+    font-family: inherit;
+    line-height: 1.25;
+    margin-top: 4px;
+    margin-bottom: 2px;
+    opacity: 0;
+    transform: translateY(-2px);
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    letter-spacing: 0.01em;
+}
+
+.gfx-field-error.show {
+    opacity: 0.95;
+    transform: translateY(0);
+}
+
+.gfx-field-error svg {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    opacity: 0.85;
+    stroke: #ef4444;
+}
+
+/* Subtle, light invalid border styling */
+.gfx-input-invalid,
+input.gfx-input-invalid,
+textarea.gfx-input-invalid,
+select.gfx-input-invalid {
+    border-color: #f87171 !important; /* Soft light red border */
+    background-color: #fffbfa !important;
+    box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.12) !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+
+/* When the input is wrapped inside a special wrapper */
+.input-wrapper.gfx-wrapper-invalid,
+.password-wrapper.gfx-wrapper-invalid,
+.gfx-input-group.gfx-wrapper-invalid,
+.input-group.gfx-wrapper-invalid,
+.discount-input-wrap.gfx-wrapper-invalid,
+.file-upload-wrapper.gfx-wrapper-invalid {
+    border-color: #f87171 !important;
+    box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.12) !important;
+}
+
+/* Spacing adjustments for form checks & choices */
+.form-check .gfx-field-error,
+.choice-label .gfx-field-error {
+    margin-top: 2px;
+    margin-left: 2px;
+}

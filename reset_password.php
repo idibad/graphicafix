@@ -249,5 +249,6 @@ function togglePass(inputId, btn) {
 }
 </script>
 
+<script src="assets/js/form-validator.js"></script>
 </body>
 </html>

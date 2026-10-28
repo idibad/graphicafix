@@ -130,5 +130,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
     </div>
+<script src="assets/js/form-validator.js"></script>
 </body>
 </html>

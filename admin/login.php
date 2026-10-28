@@ -401,5 +401,6 @@ if(isset($conn)) {
     $conn->close();
 }
 ?>
+<script src="../assets/js/form-validator.js"></script>
 </body>
 </html>

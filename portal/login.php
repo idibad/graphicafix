@@ -346,5 +346,6 @@ if (isset($conn) && $conn instanceof mysqli) {
     @$conn->close();
 }
 ?>
+<script src="../assets/js/form-validator.js"></script>
 </body>
 </html>
