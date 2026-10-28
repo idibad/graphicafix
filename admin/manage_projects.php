@@ -13,6 +13,7 @@ if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'sa
 }
 
 $is_admin = ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $role === 'pm');
+$is_super_admin = in_array($role, ['super_admin', 'superadmin']);
 
 // ── Projects query with task aggregation ─────────────────────────────────────────
 $task_agg_sql = "
@@ -321,9 +322,11 @@ $due_week  = $stats['due_week']  ?? 0;
                    
                     <span class="project-status-badge"><?= htmlspecialchars($project['status']) ?></span>
                     <div class="project-name"><?= htmlspecialchars($project['project_name']) ?></div>
+                    <?php if ($is_super_admin): ?>
                     <div class="project-client">
                         Client: <?= htmlspecialchars($project['client_name'] ?? 'Unknown') ?>
                     </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="project-body">

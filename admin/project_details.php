@@ -41,6 +41,7 @@ $user_stmt->close();
 $user_id = $current_user_data['user_id'];
 $role = strtolower($current_user_data['role']);
 $name = $current_user_data['name'];
+$is_super_admin = in_array($role, ['super_admin', 'superadmin']);
 $can_edit = (in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager']));
 
 // Active staff for task assignments
@@ -158,7 +159,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete_deliverable' && $can_e
 }
 
 // 4. Create / Verify Client Asset & Information Requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_client_request']) && $can_edit) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_client_request']) && $can_edit && $is_super_admin) {
     $req_title = trim($_POST['request_title'] ?? '');
     $req_type = $_POST['request_type'] ?? 'file';
     $req_priority = $_POST['request_priority'] ?? 'normal';
@@ -187,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_client_request
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_client_request']) && $can_edit) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_client_request']) && $can_edit && $is_super_admin) {
     $req_id = intval($_POST['request_id']);
     $decision = $_POST['decision'] ?? '';
     $rej_reason = trim($_POST['rejection_reason'] ?? '');
@@ -214,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_client_request
     }
 }
 
-if (isset($_GET['action']) && $_GET['action'] === 'delete_client_request' && $can_edit && isset($_GET['req_id'])) {
+if (isset($_GET['action']) && $_GET['action'] === 'delete_client_request' && $can_edit && $is_super_admin && isset($_GET['req_id'])) {
     $req_id = intval($_GET['req_id']);
     $conn->query("DELETE FROM project_client_requests WHERE id = {$req_id} AND project_id = {$project_id}");
     echo "<script>alert('Request removed.'); window.location='project_details.php?id={$project_id}&tab=client-requests';</script>";
@@ -222,7 +223,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete_client_request' && $ca
 }
 
 // 5. Reply to Client Query & Status Updates
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_client_query'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_client_query']) && $is_super_admin) {
     $query_id = intval($_POST['query_id'] ?? 0);
     $q_message = trim($_POST['reply_message'] ?? '');
     $is_internal = isset($_POST['is_internal']) ? 1 : 0;
@@ -348,7 +349,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_project_comment']
 
 // ── Read Data for Views ──────────────────────────────────────────────────────
 $active_tab = $_GET['tab'] ?? 'overview';
-$allowed_tabs = ['overview', 'deliverables', 'tasks', 'client-requests', 'client-queries', 'updates', 'invoices'];
+$allowed_tabs = ['overview', 'deliverables', 'tasks', 'updates', 'invoices'];
+if ($is_super_admin) {
+    $allowed_tabs[] = 'client-requests';
+    $allowed_tabs[] = 'client-queries';
+}
 if (!in_array($active_tab, $allowed_tabs)) $active_tab = 'overview';
 
 $kpis = getProjectKPIs($conn, $project_id);
@@ -442,9 +447,11 @@ foreach ($all_project_tasks as $tk) {
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
             <div>
                 <h1 style="margin: 0; font-size: 26px; font-weight: 800; color: #024442;"><?= htmlspecialchars($project['project_name']) ?></h1>
+                <?php if ($is_super_admin): ?>
                 <div style="margin-top: 6px; color: #64748b; font-size: 14.5px;">
                     <i class="fas fa-building text-muted"></i> <?= htmlspecialchars($project['client_name']) ?>
                 </div>
+                <?php endif; ?>
             </div>
             <div style="display:flex; gap:10px; align-items:center;">
                 <a href="manage_projects.php" class="btn btn-secondary btn-sm" style="background:#f1f5f9; border:1px solid #cbd5e1; color:#334155; font-weight:600; padding:8px 16px; border-radius:8px; text-decoration:none;">
@@ -595,6 +602,7 @@ foreach ($all_project_tasks as $tk) {
                     <i class="fas fa-tasks"></i> Tasks (<?= count($all_project_tasks) ?>)
                 </a>
             </li>
+            <?php if ($is_super_admin): ?>
             <li class="nav-item">
                 <a class="nav-link <?= $active_tab === 'client-requests' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=client-requests">
                     <i class="fas fa-clipboard-list"></i> Pending from Client
@@ -611,6 +619,7 @@ foreach ($all_project_tasks as $tk) {
                     <?php endif; ?>
                 </a>
             </li>
+            <?php endif; ?>
             <li class="nav-item">
                 <a class="nav-link <?= $active_tab === 'updates' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=updates">
                     <i class="fas fa-bullhorn"></i> Updates & Discussion
@@ -618,7 +627,7 @@ foreach ($all_project_tasks as $tk) {
             </li>
             <li class="nav-item">
                 <a class="nav-link <?= $active_tab === 'invoices' ? 'active' : '' ?>" href="project_details.php?id=<?= $project_id ?>&tab=invoices">
-                    <i class="fas fa-file-invoice-dollar"></i> Invoices & Files
+                    <i class="fas <?= $is_super_admin ? 'fa-file-invoice-dollar' : 'fa-folder-open' ?>"></i> <?= $is_super_admin ? 'Invoices & Files' : 'Project Files' ?>
                 </a>
             </li>
         </ul>
@@ -654,6 +663,7 @@ foreach ($all_project_tasks as $tk) {
                 </div>
             </div>
 
+            <?php if ($is_super_admin): ?>
             <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px;">
                 <div style="font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase;">Pending from Client</div>
                 <div style="font-size: 26px; font-weight: 800; color: <?= $kpis['blocker_client_requests'] > 0 ? '#ef4444' : ($kpis['pending_client_requests'] > 0 ? '#f59e0b' : '#10b981') ?>; margin-top: 6px;">
@@ -670,6 +680,7 @@ foreach ($all_project_tasks as $tk) {
                     <?= $kpis['open_client_queries'] ?>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
 
         <!-- 2-Column Content Layout -->
@@ -1056,7 +1067,7 @@ foreach ($all_project_tasks as $tk) {
     <!-- ======================================================================= -->
     <!-- TAB 4: PENDING FROM CLIENT (ASSET & INFORMATION REQUESTS)              -->
     <!-- ======================================================================= -->
-    <?php if ($active_tab === 'client-requests'): ?>
+    <?php if ($active_tab === 'client-requests' && $is_super_admin): ?>
     <div style="display:flex; flex-direction:column; gap:24px;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
             <div>
@@ -1156,7 +1167,7 @@ foreach ($all_project_tasks as $tk) {
     <!-- ======================================================================= -->
     <!-- TAB 5: CLIENT QUERIES (HELPDESK TICKETS)                                -->
     <!-- ======================================================================= -->
-    <?php if ($active_tab === 'client-queries'): ?>
+    <?php if ($active_tab === 'client-queries' && $is_super_admin): ?>
     <div style="display:flex; flex-direction:column; gap:20px;">
         <div>
             <h3 style="margin:0; font-size:18px; font-weight:700; color:#0f172a;">Client Inquiries & Clarifications</h3>
@@ -1354,6 +1365,7 @@ foreach ($all_project_tasks as $tk) {
     <!-- ======================================================================= -->
     <?php if ($active_tab === 'invoices'): ?>
     <div style="display:flex; flex-direction:column; gap:24px;">
+        <?php if ($is_super_admin): ?>
         <!-- Invoices Card -->
         <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff; padding:20px;">
             <h3 style="margin:0 0 16px; font-size:17px; font-weight:700; color:#0f172a;"><i class="fas fa-file-invoice-dollar text-muted"></i> Project Invoices</h3>
@@ -1394,6 +1406,7 @@ foreach ($all_project_tasks as $tk) {
                 </table>
             </div>
         </div>
+        <?php endif; ?>
 
         <!-- Files Card -->
         <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff; padding:20px;">
@@ -1507,6 +1520,7 @@ foreach ($all_project_tasks as $tk) {
     </div>
 </div>
 
+<?php if ($is_super_admin): ?>
 <!-- Modal: Add Client Request (Missing Asset / Info) -->
 <div id="modalAddClientRequest" class="modal-overlay" style="display:none;">
     <div class="modal-content">
@@ -1578,6 +1592,7 @@ foreach ($all_project_tasks as $tk) {
         </form>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- Modal: Add Task -->
 <div id="taskFormModal" class="modal-overlay" style="display:none;">

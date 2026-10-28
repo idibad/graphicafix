@@ -1,7 +1,7 @@
 <?php
 include 'dashboard_header.php';
 
-if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'sales', 'manager'])) {
+if (!in_array($role, ['super_admin', 'superadmin'])) {
     header("Location: index.php?error=unauthorized");
     exit;
 }
@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_contact'])) {
         $stmt->bind_param("i", $del_id);
         $stmt->execute();
     }
-    header('Location: contacts.php?deleted=1'); exit;
+    header('Location: messages.php?deleted=1'); exit;
 }
 
 $contacts = $conn->query("SELECT * FROM contacts ORDER BY created_at DESC");

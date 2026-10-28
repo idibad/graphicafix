@@ -2,7 +2,7 @@
 include 'dashboard_header.php';
 
 // Check permissions
-if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user']) || $role === 'sales') {
+if (!in_array($role, ['super_admin', 'superadmin'])) {
     header('location:index.php?error=unauthorized'); exit;
 }
 

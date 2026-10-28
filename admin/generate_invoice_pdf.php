@@ -38,7 +38,7 @@ $inv = $stmt->get_result()->fetch_assoc();
 if (!$inv) die('Invoice not found.');
 
 // Authorize access
-if (in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user'])) {
+if (in_array($role, ['super_admin', 'superadmin'])) {
     // Allowed
 } elseif ($role === 'client' || $role === 'client_sub') {
     if (intval($inv['client_id']) !== $client_id || $client_id <= 0) {

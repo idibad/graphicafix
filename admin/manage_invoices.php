@@ -3,14 +3,14 @@ ob_start();
 
 include 'dashboard_header.php';
 
-if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'manager'])) {
+if (!in_array($role, ['super_admin', 'superadmin'])) {
     header("Location: index.php?error=unauthorized");
     exit;
 }
 
 // ── Quick actions ─────────────────────────────────────────────────────────────
 if (isset($_GET['action'], $_GET['id'])) {
-    if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm'])) {
+    if (!in_array($role, ['super_admin', 'superadmin'])) {
         header("Location: manage_invoices.php?error=unauthorized");
         exit;
     }

@@ -184,7 +184,7 @@ $menus = [
                 ['title' => 'Add Client',             'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-plus-square'],
                 ['title' => 'Pipeline & Leads (CRM)', 'link' => 'manage_leads.php',      'icon' => 'fas fa-filter'],
                 ['title' => 'Add Lead',               'link' => 'manage_leads.php?action=add', 'icon' => 'fas fa-user-tag'],
-                ['title' => 'Client Inquiries',       'link' => 'contacts.php',          'icon' => 'fas fa-address-book'],
+                ['title' => 'Client Inquiries',       'link' => 'messages.php',          'icon' => 'fas fa-address-book'],
                 ['title' => 'Client Reviews',         'link' => 'reviews.php',           'icon' => 'fas fa-star'],
                 ['title' => 'Client Questionnaires',  'link' => 'client_questionnaires.php','icon' => 'fas fa-clipboard-check'],
             ]
@@ -268,7 +268,6 @@ $menus = [
             'icon'  => 'fas fa-tasks',
             'submenus' => [
                 ['title' => 'Manage Projects',      'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
-                ['title' => 'Project Requests',     'link' => 'project_requests.php',    'icon' => 'fas fa-paper-plane'],
                 ['title' => 'Task Board',           'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
                 ['title' => 'Create Task',          'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
                 ['title' => 'Task Reports',         'link' => 'task_reports.php',        'icon' => 'fas fa-chart-bar'],
@@ -283,13 +282,9 @@ $menus = [
             'submenus' => [
                 ['title' => 'Sales Response Unit',  'link' => 'sales_response_unit.php', 'icon' => 'fas fa-satellite-dish'],
                 ['title' => 'Client Field Visits',  'link' => 'sales_visits.php',        'icon' => 'fas fa-street-view'],
-                ['title' => 'Clients Database',     'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
-                ['title' => 'Add Client',           'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-user-plus'],
                 ['title' => 'CRM & Leads',          'link' => 'manage_leads.php',        'icon' => 'fas fa-filter'],
                 ['title' => 'Add Lead',             'link' => 'manage_leads.php?action=add', 'icon' => 'fas fa-user-tag'],
-                ['title' => 'Customer Inquiries',   'link' => 'contacts.php',          'icon' => 'fas fa-phone-alt'],
                 ['title' => 'Customer Reviews',     'link' => 'reviews.php',             'icon' => 'fas fa-star'],
-                ['title' => 'Questionnaires',       'link' => 'client_questionnaires.php', 'icon' => 'fas fa-clipboard-check'],
             ]
         ],
         [
@@ -297,8 +292,6 @@ $menus = [
             'link'  => '#',
             'icon'  => 'fas fa-file-invoice-dollar',
             'submenus' => [
-                ['title' => 'Manage Invoices',      'link' => 'manage_invoices.php',     'icon' => 'fas fa-file-invoice'],
-                ['title' => 'Create Invoice',       'link' => 'create_invoice.php',      'icon' => 'fas fa-plus-circle'],
                 ['title' => 'Create Quotation',     'link' => 'create_quotation.php',    'icon' => 'fas fa-file-signature'],
                 ['title' => 'Price Calculator',     'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
                 ['title' => 'Print Procurement',    'link' => 'print_procurement.php',   'icon' => 'fas fa-print'],
@@ -313,7 +306,6 @@ $menus = [
             'icon'  => 'fas fa-bullhorn',
             'submenus' => [
                 ['title' => 'Official Correspondence', 'link' => 'correspondence.php',   'icon' => 'fas fa-envelope-open-text'],
-                ['title' => 'Internal Messages',    'link' => 'messages.php',           'icon' => 'fas fa-envelope'],
                 ['title' => 'Newsletter & Announcements', 'link' => 'newsletter.php',    'icon' => 'fas fa-bullhorn'],
             ]
         ],
@@ -489,17 +481,15 @@ $menus = [
             'icon'  => 'fas fa-tasks',
             'submenus' => [
                 ['title' => 'Manage Projects',      'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
-                ['title' => 'Project Requests',     'link' => 'project_requests.php',    'icon' => 'fas fa-paper-plane'],
                 ['title' => 'Task Board',           'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
                 ['title' => 'Create New Task',      'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
             ]
         ],
         [
-            'title' => 'Clients & Procurement',
+            'title' => 'Procurement & Vendors',
             'link'  => '#',
-            'icon'  => 'fas fa-user-tie',
+            'icon'  => 'fas fa-boxes',
             'submenus' => [
-                ['title' => 'Clients List',         'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
                 ['title' => 'Price Calculator',     'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
                 ['title' => 'Print Procurement',    'link' => 'print_procurement.php',   'icon' => 'fas fa-print'],
                 ['title' => 'Print Vendors',        'link' => 'print_vendors.php',       'icon' => 'fas fa-warehouse'],
@@ -536,7 +526,6 @@ $menus = [
             'icon'  => 'fas fa-tasks',
             'submenus' => [
                 ['title' => 'Manage Projects',      'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
-                ['title' => 'Project Requests',     'link' => 'project_requests.php',    'icon' => 'fas fa-paper-plane'],
                 ['title' => 'Task Board',           'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
                 ['title' => 'Create New Task',      'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
             ]
@@ -554,7 +543,6 @@ $menus = [
             'link'  => '#',
             'icon'  => 'fas fa-file-invoice-dollar',
             'submenus' => [
-                ['title' => 'Manage Invoices',      'link' => 'manage_invoices.php',     'icon' => 'fas fa-file-invoice'],
                 ['title' => 'Price Calculator',     'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
                 ['title' => 'Print Procurement',    'link' => 'print_procurement.php',   'icon' => 'fas fa-print'],
                 ['title' => 'Print Vendors',        'link' => 'print_vendors.php',       'icon' => 'fas fa-warehouse'],
@@ -603,11 +591,7 @@ $menus = [
                 ['title' => 'Add Lead',             'link' => 'manage_leads.php?action=add', 'icon' => 'fas fa-user-tag'],
                 ['title' => 'Log Client Visit',     'link' => 'sales_visits.php?log=1',  'icon' => 'fas fa-plus-circle'],
                 ['title' => 'My Field Visits',      'link' => 'sales_visits.php',        'icon' => 'fas fa-list-alt'],
-                ['title' => 'Clients Database',     'link' => 'manage_clients.php',      'icon' => 'fas fa-building'],
-                ['title' => 'Add Client',           'link' => 'manage_clients.php?action=add', 'icon' => 'fas fa-user-plus'],
-                ['title' => 'Customer Inquiries',   'link' => 'contacts.php',          'icon' => 'fas fa-phone-alt'],
                 ['title' => 'Client Reviews',       'link' => 'reviews.php',             'icon' => 'fas fa-star'],
-                ['title' => 'Questionnaires',       'link' => 'client_questionnaires.php', 'icon' => 'fas fa-clipboard-check'],
             ]
         ],
         [
@@ -615,7 +599,6 @@ $menus = [
             'link'  => '#',
             'icon'  => 'fas fa-file-invoice-dollar',
             'submenus' => [
-                ['title' => 'Manage Quotations',    'link' => 'manage_invoices.php?tab=quotations', 'icon' => 'fas fa-file-alt'],
                 ['title' => 'Create Quotation',     'link' => 'create_quotation.php',    'icon' => 'fas fa-plus-circle'],
                 ['title' => 'Price Calculator',     'link' => 'price_calculator.php',    'icon' => 'fas fa-calculator'],
                 ['title' => 'Print Procurement',    'link' => 'print_procurement.php',   'icon' => 'fas fa-print'],
@@ -632,7 +615,6 @@ $menus = [
                 ['title' => 'My Tasks',             'link' => 'tasks.php',               'icon' => 'fas fa-clipboard-list'],
                 ['title' => 'Create Task',          'link' => 'create_task.php',         'icon' => 'fas fa-plus-circle'],
                 ['title' => 'Projects List',        'link' => 'manage_projects.php',     'icon' => 'fas fa-folder-open'],
-                ['title' => 'Internal Messages',    'link' => 'messages.php',           'icon' => 'fas fa-envelope'],
             ]
         ],
         [
