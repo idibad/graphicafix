@@ -48,7 +48,7 @@
          */
         getErrorMountTarget: function (input) {
             // Check for wrappers (to preserve internal flexbox/icon layout)
-            var wrapper = input.closest('.input-wrapper, .password-wrapper, .gfx-input-group, .input-group, .file-upload-wrapper, .discount-input-wrap');
+            var wrapper = input.closest('.input-wrapper, .password-wrapper, .gfx-input-group, .input-group, .file-upload-wrapper, .discount-input-wrap, .footer-newsletter-input-group');
             if (wrapper && wrapper.parentNode) {
                 return wrapper;
             }
@@ -67,7 +67,7 @@
 
             // Highlight input
             input.classList.add('gfx-input-invalid');
-            var wrapper = input.closest('.input-wrapper, .password-wrapper, .gfx-input-group, .input-group, .file-upload-wrapper, .discount-input-wrap');
+            var wrapper = input.closest('.input-wrapper, .password-wrapper, .gfx-input-group, .input-group, .file-upload-wrapper, .discount-input-wrap, .footer-newsletter-input-group');
             if (wrapper) {
                 wrapper.classList.add('gfx-wrapper-invalid');
             }
@@ -100,7 +100,7 @@
             if (!input) return;
 
             input.classList.remove('gfx-input-invalid');
-            var wrapper = input.closest('.input-wrapper, .password-wrapper, .gfx-input-group, .input-group, .file-upload-wrapper, .discount-input-wrap');
+            var wrapper = input.closest('.input-wrapper, .password-wrapper, .gfx-input-group, .input-group, .file-upload-wrapper, .discount-input-wrap, .footer-newsletter-input-group');
             if (wrapper) {
                 wrapper.classList.remove('gfx-wrapper-invalid');
             }

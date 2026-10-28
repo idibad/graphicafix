@@ -52,7 +52,8 @@ select.gfx-input-invalid {
 .gfx-input-group.gfx-wrapper-invalid,
 .input-group.gfx-wrapper-invalid,
 .discount-input-wrap.gfx-wrapper-invalid,
-.file-upload-wrapper.gfx-wrapper-invalid {
+.file-upload-wrapper.gfx-wrapper-invalid,
+.footer-newsletter-input-group.gfx-wrapper-invalid {
     border-color: #f87171 !important;
     box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.12) !important;
 }

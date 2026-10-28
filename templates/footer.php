@@ -3,6 +3,32 @@
     <!-- Footer -->
     <footer>
         <div class="footer-container">
+            <!-- Newsletter Subscription Section -->
+            <div class="footer-newsletter-wrap">
+                <div class="footer-newsletter-row">
+                    <div class="footer-newsletter-info">
+                        <span class="footer-newsletter-badge"><i class="fas fa-paper-plane"></i> Newsletter</span>
+                        <h4 class="footer-newsletter-title">Subscribe to Graphicafix</h4>
+                        <p class="footer-newsletter-desc">Get insider branding tips, latest project releases, and exclusive design insights straight to your inbox.</p>
+                    </div>
+                    <div class="footer-newsletter-action">
+                        <form id="footerSubscribeForm" class="footer-newsletter-form" onsubmit="handleFooterSubscribe(event)">
+                            <div class="footer-newsletter-input-group">
+                                <i class="fas fa-envelope footer-input-icon"></i>
+                                <input type="email" name="email" id="footerSubEmail" placeholder="Enter your email address..." required autocomplete="email">
+                                <button type="submit" id="footerSubBtn" class="footer-newsletter-btn">
+                                    <span>Subscribe</span> <i class="fas fa-arrow-right"></i>
+                                </button>
+                            </div>
+                            <div id="footerSubMsg" class="footer-newsletter-msg"></div>
+                        </form>
+                        <div class="footer-newsletter-privacy">
+                            <i class="fas fa-shield-alt"></i> 100% Secure. We respect your privacy.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="footer-grid">
                 <!-- Brand Section -->
                 <div class="footer-brand">
@@ -211,6 +237,64 @@ function animateCounters() {
         });
         
         observer.observe(counter);
+    });
+}
+
+// Footer Newsletter AJAX Subscription
+function handleFooterSubscribe(e) {
+    e.preventDefault();
+    const form = document.getElementById('footerSubscribeForm');
+    if (!form) return;
+
+    if (window.GfxValidator && !window.GfxValidator.validateForm(form)) {
+        return;
+    }
+
+    const emailInput = document.getElementById('footerSubEmail');
+    const btn = document.getElementById('footerSubBtn');
+    const msg = document.getElementById('footerSubMsg');
+    const email = emailInput ? emailInput.value.trim() : '';
+
+    if (!email) return;
+
+    const originalBtnHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subscribing...';
+    btn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('email', email);
+
+    fetch('<?= BASE_URL ?>api/subscribe_handler.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        msg.style.display = 'block';
+        if (data.success) {
+            msg.className = 'footer-newsletter-msg success';
+            msg.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message;
+            emailInput.value = '';
+            if (window.GfxValidator) { window.GfxValidator.clearErrors(form); }
+            localStorage.setItem('gfx_newsletter_handled', 'true');
+        } else {
+            msg.className = 'footer-newsletter-msg error';
+            msg.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + data.message;
+        }
+    })
+    .catch(() => {
+        msg.style.display = 'block';
+        msg.className = 'footer-newsletter-msg error';
+        msg.innerHTML = '<i class="fas fa-exclamation-circle"></i> Connection error. Please try again.';
+    })
+    .finally(() => {
+        btn.innerHTML = originalBtnHtml;
+        btn.disabled = false;
+        setTimeout(() => {
+            if (msg && msg.classList.contains('success')) {
+                msg.style.display = 'none';
+            }
+        }, 6000);
     });
 }
 </script>
