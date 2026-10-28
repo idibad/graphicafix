@@ -2,7 +2,7 @@
 include 'dashboard_header.php';
 
 // Check permissions
-if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user'])) {
+if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user', 'sales'])) {
     header('location:index.php'); exit;
 }
 

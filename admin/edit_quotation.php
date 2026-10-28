@@ -34,7 +34,23 @@ if (!$id) {
 // ── Handle POST ───────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $client_id       = intval($_POST['client_id']      ?? 0) ?: null;
-    $client_name     = trim($_POST['client_name']);
+    $client_name     = trim($_POST['client_name'] ?? '');
+
+    if (empty($client_name)) {
+        if ($client_id) {
+            $c_res = $conn->query("SELECT client_name, company, email, phone, address FROM clients WHERE id = " . intval($client_id));
+            if ($c_res && $c_row = $c_res->fetch_assoc()) {
+                $client_name = $c_row['client_name'] ?? '';
+                if (empty($client_company)) $client_company = $c_row['company'] ?? '';
+                if (empty($client_email)) $client_email = $c_row['email'] ?? '';
+                if (empty($client_phone)) $client_phone = $c_row['phone'] ?? '';
+                if (empty($client_address)) $client_address = $c_row['address'] ?? '';
+            }
+        }
+        if (empty($client_name)) {
+            $client_name = 'Prospective Client';
+        }
+    }
     $client_email    = trim($_POST['client_email']    ?? '');
     $client_phone    = trim($_POST['client_phone']    ?? '');
     $client_company  = trim($_POST['client_company']  ?? '');
@@ -43,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $issue_date      = $_POST['issue_date'];
     $valid_until     = $_POST['valid_until'];
     $status          = $_POST['status'] ?? 'draft';
-    $currency        = $_POST['currency'] ?? 'PKR';
+    $currency        = $_POST['currency'] ?? 'USD';
     $tax_percent     = floatval($_POST['tax_percent']    ?? 0);
     $discount_amount = floatval($_POST['discount_amount'] ?? 0);
     $notes           = trim($_POST['notes']   ?? ''); // Project Overview
@@ -216,9 +232,9 @@ include 'dashboard_header.php';
     <!-- ==================== TAB 1: CLIENT & META ==================== -->
     <div id="cli" class="tab active">
             <div class="form-group">
-                <label>Select Client <span class="required">*</span></label>
-                <select name="client_id" onchange="autofill(this.value)" required style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
-                    <option value="">— Select client —</option>
+                <label>Select Existing Client <span style="font-weight: normal; color: #64748b; font-size: 13px;">(Optional — leave blank for new/fresh clients)</span></label>
+                <select name="client_id" id="fClientId" onchange="autofill(this.value)" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 14px;">
+                    <option value="">— New / Fresh Client (Or enter details below) —</option>
                     <?php foreach ($cData as $cid => $c): ?>
                         <option value="<?php echo $cid; ?>" <?php echo $cid == $q['client_id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($c['client_name']); ?> <?php echo !empty($c['company']) ? '('.htmlspecialchars($c['company']).')' : ''; ?></option>
                     <?php endforeach; ?>
@@ -228,7 +244,7 @@ include 'dashboard_header.php';
             <!-- Auto-populated Client details -->
             <div class="form-grid" style="margin-top: 15px;">
                 <div class="form-group">
-                    <label>Client Name / Contact Person</label>
+                    <label>Client Name / Contact Person <span class="required">*</span></label>
                     <input type="text" name="client_name" id="fName" value="<?php echo htmlspecialchars($q['client_name'] ?? ''); ?>" required placeholder="Full Name">
                 </div>
                 <div class="form-group">
@@ -524,6 +540,7 @@ function prevTab() {
 }
 
 const cData = <?php echo json_encode($cData); ?>;
+let prevSelectedClientId = <?php echo json_encode($q['client_id'] ?? ''); ?>;
 function autofill(val) {
     if (!val) {
         document.getElementById('fName').value = '';
