@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $issue_date      = $_POST['issue_date'];
     $valid_until     = $_POST['valid_until'];
     $status          = $_POST['status'] ?? 'draft';
-    $currency        = $_POST['currency'] ?? 'PKR';
+    $currency        = $_POST['currency'] ?? 'USD';
     $tax_percent     = floatval($_POST['tax_percent']    ?? 0);
     $discount_amount = floatval($_POST['discount_amount'] ?? 0);
     $notes           = trim($_POST['notes']   ?? ''); // Project Overview
@@ -241,8 +241,8 @@ include 'dashboard_header.php';
                 <div class="form-group">
                     <label>Currency</label>
                     <select name="currency" id="fCurrency">
-                        <option value="PKR" selected>PKR — Rs (Pakistani Rupee)</option>
-                        <option value="USD">USD — $ (US Dollar)</option>
+                        <option value="USD" selected>USD — $ (US Dollar)</option>
+                        <option value="PKR">PKR — Rs (Pakistani Rupee)</option>
                         <option value="EUR">EUR — € (Euro)</option>
                         <option value="GBP">GBP — £ (British Pound)</option>
                         <option value="AED">AED — AED (UAE Dirham)</option>
@@ -510,7 +510,7 @@ function toggleTaxColumn() {
 
 // Currency translation logic
 function getSelectedCurrency() {
-    return document.getElementById('fCurrency')?.value || 'PKR';
+    return document.getElementById('fCurrency')?.value || 'USD';
 }
 
 function jsNumberToWords(number) {

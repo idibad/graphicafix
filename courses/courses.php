@@ -220,7 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
             "pp_ProductID"         => "RETL",
             "pp_TxnRefNo"          => $TxnRefNo,
             "pp_Amount"            => $pp_Amount,
-            "pp_TxnCurrency"       => "PKR",
+            "pp_TxnCurrency"       => "USD",
             "pp_TxnDateTime"       => $DateTime,
             "pp_BillReference"     => "billRef",
             "pp_Description"       => "Course Enrollment",
@@ -331,7 +331,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
     }
 
     $siteUrl = defined('SITE_URL') ? SITE_URL : 'https://graphicafix.com';
-    $priceHtml = !empty($course['is_free']) ? "<span style='color:#10b981;font-weight:700;'>Free</span>" : "Rs. " . number_format($amount_paid);
+    $priceHtml = !empty($course['is_free']) ? "<span style='color:#10b981;font-weight:700;'>Free</span>" : "$" . number_format($amount_paid);
     $discHtml = $valid_code ? "<tr><td style='padding:7px 0;color:#777;font-size:13px;'>Discount Status</td><td style='padding:7px 0;font-weight:700;color:#10b981;'>Applied ✓</td></tr>" : '';
     $category = isset($course['category']) ? $course['category'] : '';
     $title    = isset($course['title']) ? $course['title'] : '';
@@ -344,7 +344,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
 
     $payRow  = $payment_path ? "<tr><td style='font-weight:700;padding:8px 12px;'>Payment Proof</td><td style='padding:8px 12px;'><a href='$siteUrl/$payment_path' style='color:#024442;'>View Receipt</a></td></tr>" : '';
     $cardRow = $student_card_path ? "<tr style='background:#f7f9f5;'><td style='font-weight:700;padding:8px 12px;'>Student Card</td><td style='padding:8px 12px;'><a href='$siteUrl/$student_card_path' style='color:#024442;'>View ID Card</a></td></tr>" : '';
-    $admBody = "<p style='font-size:14px;color:#555;margin:0 0 16px;'>A new course registration has been submitted.</p><table width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin-bottom:20px;'><tr><td style='font-weight:700;padding:8px 12px;background:#f7f9f5;width:120px;'>Student</td><td style='padding:8px 12px;'>$student_name</td></tr><tr><td style='font-weight:700;padding:8px 12px;'>Email</td><td style='padding:8px 12px;'>$student_email</td></tr><tr style='background:#f7f9f5;'><td style='font-weight:700;padding:8px 12px;'>Phone</td><td style='padding:8px 12px;'>$student_phone</td></tr><tr><td style='font-weight:700;padding:8px 12px;'>Course</td><td style='padding:8px 12px;'>$title</td></tr><tr style='background:#f7f9f5;'><td style='font-weight:700;padding:8px 12px;'>Amount</td><td style='padding:8px 12px;font-weight:700;color:#024442;'>Rs. " . number_format($amount_paid) . "</td></tr>$payRow$cardRow</table>";
+    $admBody = "<p style='font-size:14px;color:#555;margin:0 0 16px;'>A new course registration has been submitted.</p><table width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;margin-bottom:20px;'><tr><td style='font-weight:700;padding:8px 12px;background:#f7f9f5;width:120px;'>Student</td><td style='padding:8px 12px;'>$student_name</td></tr><tr><td style='font-weight:700;padding:8px 12px;'>Email</td><td style='padding:8px 12px;'>$student_email</td></tr><tr style='background:#f7f9f5;'><td style='font-weight:700;padding:8px 12px;'>Phone</td><td style='padding:8px 12px;'>$student_phone</td></tr><tr><td style='font-weight:700;padding:8px 12px;'>Course</td><td style='padding:8px 12px;'>$title</td></tr><tr style='background:#f7f9f5;'><td style='font-weight:700;padding:8px 12px;'>Amount</td><td style='padding:8px 12px;font-weight:700;color:#024442;'>$" . number_format($amount_paid) . "</td></tr>$payRow$cardRow</table>";
     $admHtml = buildEmailWrapperReg('📋', 'New Enrollment #' . $formatted_eid, $admBody, 'Manage in Admin', "$siteUrl/admin/manage_courses.php");
     @mail('info@graphicafix.com', "📋 New Course Registration — " . $title, $admHtml, $headers);
 
@@ -593,7 +593,7 @@ foreach ($courses as $c) {
             <div class="creg-selected-banner" id="selectedBanner">
                 <div class="creg-sb-info">
                     <h3 id="bannerTitle">Course Title</h3>
-                    <p id="bannerPrice">Rs. 0</p>
+                    <p id="bannerPrice">$0</p>
                 </div>
                 <button class="creg-change-btn" onclick="goToStep(1)">Change Course</button>
             </div>
@@ -701,11 +701,11 @@ foreach ($courses as $c) {
             <?php else: ?>
                 <?php if ($dp > 0): ?>
                     <div style="display:flex; align-items:baseline; gap:6px;">
-                        <span class="crs-price">Rs. <?= number_format($basePrice - ($basePrice * $dp / 100)) ?></span>
-                        <span style="text-decoration:line-through; color:#aaa; font-size:.8rem;">Rs. <?= number_format($basePrice) ?></span>
+                        <span class="crs-price">$<?= number_format($basePrice - ($basePrice * $dp / 100)) ?></span>
+                        <span style="text-decoration:line-through; color:#aaa; font-size:.8rem;">$<?= number_format($basePrice) ?></span>
                     </div>
                 <?php else: ?>
-                    <div class="crs-price">Rs. <?= number_format($basePrice) ?></div>
+                    <div class="crs-price">$<?= number_format($basePrice) ?></div>
                 <?php endif; ?>
             <?php endif; ?>
         </div>
@@ -815,12 +815,12 @@ foreach ($courses as $c) {
                                 <label class="plan-option active" id="planFullLabel">
                                     <input type="radio" name="payment_type" value="full" checked onchange="updateCheckoutUI()" style="display:none;">
                                     <div class="plan-title">Pay in Full</div>
-                                    <div class="plan-price" id="planFullPrice">Rs. 0</div>
+                                    <div class="plan-price" id="planFullPrice">$0</div>
                                 </label>
                                 <label class="plan-option" id="planInstLabel">
                                     <input type="radio" name="payment_type" value="installment" onchange="updateCheckoutUI()" style="display:none;">
                                     <div class="plan-title">Installments (<span id="instCountText"></span>)</div>
-                                    <div class="plan-price" id="planInstPrice">Rs. 0 <small style="font-size:12px;color:#888;">/mo</small></div>
+                                    <div class="plan-price" id="planInstPrice">$0 <small style="font-size:12px;color:#888;">/mo</small></div>
                                 </label>
                             </div>
                         </div>
@@ -828,8 +828,8 @@ foreach ($courses as $c) {
                         <div class="creg-form-section"><i class="fas fa-file-invoice-dollar"></i> Order Summary</div>
                         
                         <div class="creg-summary">
-                            <div class="creg-sum-row"><span>Course Base Fee</span><span id="sumFee">Rs. 0</span></div>
-                            <div class="creg-sum-row" id="sumDiscRow" style="display:none; color:#10b981; font-weight:600;"><span>Discount Applied</span><span id="sumDisc">- Rs. 0</span></div>
+                            <div class="creg-sum-row"><span>Course Base Fee</span><span id="sumFee">$0</span></div>
+                            <div class="creg-sum-row" id="sumDiscRow" style="display:none; color:#10b981; font-weight:600;"><span>Discount Applied</span><span id="sumDisc">-$0</span></div>
                             
                             <div style="margin-top:15px; padding-top:15px; border-top:1px solid #e5e5e5;" id="referralContainer">
                                 <label style="display:block; font-size:12px; font-weight:700; color:#555; margin-bottom:6px;">Have a Referral Code?</label>
@@ -840,11 +840,11 @@ foreach ($courses as $c) {
                                 <div id="refMessage" style="font-size:12px; margin-top:6px; font-weight:600;"></div>
                             </div>
                             
-                            <div class="creg-sum-row total"><span>Grand Total</span><span id="sumTotal">Rs. 0</span></div>
+                            <div class="creg-sum-row total"><span>Grand Total</span><span id="sumTotal">$0</span></div>
                             
                             <div class="creg-sum-row" id="sumDueRow" style="display:none; font-weight:800; color:#ef4444; border-top:1px dashed #ddd; padding-top:12px; margin-top:12px;">
                                 <span>Amount to Pay Now (1st Installment)</span>
-                                <span id="sumDueAmt">Rs. 0</span>
+                                <span id="sumDueAmt">$0</span>
                             </div>
                         </div>
 
@@ -964,8 +964,8 @@ function selectCourse(id, name, price, isFree, defaultDisc, instEn, instC, stude
     if (_isFree) { document.getElementById('bannerPrice').textContent = 'Free Course'; } 
     else if (_baseDiscPct > 0) {
         const discounted = _price - (_price * _baseDiscPct / 100);
-        document.getElementById('bannerPrice').innerHTML = `Rs. ${discounted.toLocaleString()} <small style="text-decoration:line-through;color:#aaa;">Rs. ${_price.toLocaleString()}</small>`;
-    } else { document.getElementById('bannerPrice').textContent = 'Rs. ' + _price.toLocaleString(); }
+        document.getElementById('bannerPrice').innerHTML = `$${discounted.toLocaleString()} <small style="text-decoration:line-through;color:#aaa;">$${_price.toLocaleString()}</small>`;
+    } else { document.getElementById('bannerPrice').textContent = '$' + _price.toLocaleString(); }
     
     document.querySelectorAll('.detail-block').forEach(b => b.style.display = 'none');
     document.getElementById('detail-box-' + id).style.display = 'block';
@@ -1055,22 +1055,22 @@ function updateCheckout() {
     // Referral Override
     if (_isReferralFree) { total = 0; }
     
-    document.getElementById('sumFee').textContent = _isFree ? 'Free' : 'Rs. ' + _price.toLocaleString();
-    document.getElementById('sumTotal').textContent = _isFree ? 'Rs. 0' : 'Rs. ' + total.toLocaleString();
+    document.getElementById('sumFee').textContent = _isFree ? 'Free' : '$' + _price.toLocaleString();
+    document.getElementById('sumTotal').textContent = _isFree ? '$0' : '$' + total.toLocaleString();
     
     const discRow = document.getElementById('sumDiscRow');
     if (_finalDiscPct > 0 && !_isFree && !_isReferralFree) {
         discRow.style.display = 'flex';
-        document.getElementById('sumDisc').textContent = '- Rs. ' + discAmount.toLocaleString() + ' (' + _finalDiscPct + '%)';
+        document.getElementById('sumDisc').textContent = '- $' + discAmount.toLocaleString() + ' (' + _finalDiscPct + '%)';
     } else { discRow.style.display = 'none'; }
 
     const planBlock = document.getElementById('paymentPlanBlock');
     if (_instEnabled && total > 0 && !_isFree && !_isReferralFree && _instCount > 1) {
         planBlock.style.display = 'block';
-        document.getElementById('planFullPrice').textContent = 'Rs. ' + total.toLocaleString();
+        document.getElementById('planFullPrice').textContent = '$' + total.toLocaleString();
         document.getElementById('instCountText').textContent = _instCount + ' Months';
         let instAmount = Math.ceil(total / _instCount);
-        document.getElementById('planInstPrice').innerHTML = 'Rs. ' + instAmount.toLocaleString() + ' <small style="font-size:12px;color:#888;">/mo</small>';
+        document.getElementById('planInstPrice').innerHTML = '$' + instAmount.toLocaleString() + ' <small style="font-size:12px;color:#888;">/mo</small>';
     } else {
         planBlock.style.display = 'none';
         document.querySelector('input[name="payment_type"][value="full"]').checked = true;
@@ -1111,10 +1111,10 @@ function updateCheckoutUI() {
         let amountToPay = total;
         if (selectedPlan === 'installment') {
             amountToPay = Math.ceil(total / _instCount);
-            if (payDueRow) { payDueRow.style.display = 'flex'; document.getElementById('sumDueAmt').textContent = 'Rs. ' + amountToPay.toLocaleString(); }
+            if (payDueRow) { payDueRow.style.display = 'flex'; document.getElementById('sumDueAmt').textContent = '$' + amountToPay.toLocaleString(); }
         } else { if (payDueRow) payDueRow.style.display = 'none'; }
         
-        instructText.innerHTML = `Please transfer <strong>Rs. ${amountToPay.toLocaleString()}</strong> to the account below, then upload the receipt.`;
+        instructText.innerHTML = `Please transfer <strong>$${amountToPay.toLocaleString()}</strong> to the account below, then upload the receipt.`;
         if (typeof togglePaymentMethod === 'function') { togglePaymentMethod(); }
     }
 }

@@ -515,7 +515,7 @@ function starRating($r) {
             <div class="cdp-enroll-cta-price">Free</div>
             <div class="cdp-enroll-cta-sub">Start learning immediately at no cost</div>
             <?php else: ?>
-            <div class="cdp-enroll-cta-price">Rs. <?= number_format($course['price']) ?></div>
+            <div class="cdp-enroll-cta-price">$<?= number_format($course['price']) ?></div>
             <div class="cdp-enroll-cta-sub">Full lifetime access · Certificate included</div>
             <?php endif; ?>
             <button class="cdp-enroll-cta-btn"

@@ -1862,8 +1862,8 @@ html, body {
                 <div style="padding:12px 18px; border-bottom:1px solid #f1f5f9;">
                     <!-- Currency Toggle (Existing universal button group) -->
                     <div class="btn-group w-100" style="margin-bottom:10px;">
-                        <button type="button" class="btn btn-sm btn-primary currency-segment-btn active" id="btnCurPKR" onclick="changeCurrency('PKR')" style="font-size:12px; font-weight:700;">PKR (Rs)</button>
-                        <button type="button" class="btn btn-sm btn-secondary currency-segment-btn" id="btnCurUSD" onclick="changeCurrency('USD')" style="font-size:12px; font-weight:700;">USD ($)</button>
+                        <button type="button" class="btn btn-sm btn-secondary currency-segment-btn" id="btnCurPKR" onclick="changeCurrency('PKR')" style="font-size:12px; font-weight:700;">PKR (Rs)</button>
+                        <button type="button" class="btn btn-sm btn-primary currency-segment-btn active" id="btnCurUSD" onclick="changeCurrency('USD')" style="font-size:12px; font-weight:700;">USD ($)</button>
                     </div>
 
                     <!-- Discount Slider & Input -->
@@ -2174,7 +2174,7 @@ const PRICING_CATALOG = {
 // State Management
 let selectedBaseId = null;
 let selectedModules = {};
-let currentCurrency = 'PKR';
+let currentCurrency = 'USD';
 const USD_RATE = 280;
 let isAllCollapsed = false;
 

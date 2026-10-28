@@ -160,7 +160,7 @@ function aColor($n){$c=['pink','blue','green','orange','purple'];return $c[ord(s
     <div class="stat-card"><div class="stat-icon" style="color:#2b7a2b;">🌐</div><div class="stat-number" style="color:#2b7a2b;"><?= $published_courses ?></div><div class="stat-label">Published</div></div>
     <div class="stat-card"><div class="stat-icon">🎓</div><div class="stat-number"><?= $ecnt['all'] ?></div><div class="stat-label">Registrations</div></div>
     <div class="stat-card"><div class="stat-icon" style="color:#0284c7;">⏳</div><div class="stat-number" style="color:#0284c7;"><?= $ecnt['pending'] ?></div><div class="stat-label">Pending</div></div>
-    <div class="stat-card"><div class="stat-icon" style="color:#7c3aed;">💰</div><div class="stat-number" style="color:#7c3aed;font-size:1.1rem;">Rs.<?= number_format($total_revenue) ?></div><div class="stat-label">Revenue</div></div>
+    <div class="stat-card"><div class="stat-icon" style="color:#7c3aed;">💰</div><div class="stat-number" style="color:#7c3aed;font-size:1.1rem;">$<?= number_format($total_revenue) ?></div><div class="stat-label">Revenue</div></div>
 </div>
 
 <div class="main-card">
@@ -222,7 +222,7 @@ function aColor($n){$c=['pink','blue','green','orange','purple'];return $c[ord(s
             </div>
             <span data-label="Course" style="font-size:13px;color:#555;font-weight:500;"><?= htmlspecialchars($e['course_title']) ?></span>
             <span data-label="Paid" style="font-weight:700;font-size:13.5px;color:<?= $e['amount_paid']>0?'var(--primary)':'#10b981' ?>;">
-                <?= $e['amount_paid']>0 ? 'Rs.'.number_format($e['amount_paid']) : 'Free' ?>
+                <?= $e['amount_paid']>0 ? '$'.number_format($e['amount_paid']) : 'Free' ?>
             </span>
             <span data-label="Payment">
                 <?php if ($has_payment): ?>
@@ -309,7 +309,7 @@ function aColor($n){$c=['pink','blue','green','orange','purple'];return $c[ord(s
                 <div><strong style="font-size:13.5px;"><?= htmlspecialchars($c['title']) ?></strong><small><?= htmlspecialchars($c['instructor_name']??'Graphicafix') ?></small></div>
             </div>
             <span data-label="Category" style="font-size:13px;color:#666;"><?= htmlspecialchars($c['category']??'—') ?></span>
-            <span style="font-size:13.5px;font-weight:700;color:<?= $c['is_free']?'#10b981':'var(--primary)' ?>;"><?= $c['is_free']?'Free':'Rs.'.number_format($c['price']) ?></span>
+            <span style="font-size:13.5px;font-weight:700;color:<?= $c['is_free']?'#10b981':'var(--primary)' ?>;"><?= $c['is_free']?'Free':'$'.number_format($c['price']) ?></span>
             <span style="font-size:12.5px;color:#888;"><?= $c['level'] ?></span>
             <span style="font-size:13.5px;font-weight:600;"><?= number_format($c['enroll_count']) ?></span>
             <span><span class="status <?= $c['is_published']?'active':'inactive' ?>"><?= $c['is_published']?'Published':'Draft' ?></span></span>
@@ -422,7 +422,7 @@ function aColor($n){$c=['pink','blue','green','orange','purple'];return $c[ord(s
                         </select></div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                        <div><label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:6px;">Price (Rs.)</label>
+                        <div><label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:6px;">Price (USD)</label>
                         <input type="number" name="c_price" id="cFPrice" placeholder="0" min="0"
                                style="width:100%;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;background:#f9fbfc;outline:none;box-sizing:border-box;font-family:inherit;"></div>
                         <div><label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:6px;">Duration (mins)</label>
@@ -508,7 +508,7 @@ document.querySelectorAll('.view-enrollment').forEach(btn => {
         } else { picWrap.style.display = 'none'; }
 
         document.getElementById('emPaid').innerHTML      = paid>0
-            ? `<strong>Rs. ${paid.toLocaleString()}</strong>`
+            ? `<strong>$${paid.toLocaleString()}</strong>`
             : `<span style="color:#10b981;font-weight:700;">Free</span>`;
 
         // Status badge

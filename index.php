@@ -268,10 +268,10 @@ if ($promo_query && $promo_query->num_rows > 0):
                         <?php if ($promoCourse['is_free']): ?>
                             <strong style="color:#10b981;">100% Free Course</strong>
                         <?php elseif ($p_disc > 0): ?>
-                            <strong>Rs. <?= number_format($p_price - ($p_price * $p_disc / 100)) ?></strong> 
-                            <small style="text-decoration:line-through; color:#aaa;">Rs. <?= number_format($p_price) ?></small>
+                            <strong>$<?= number_format($p_price - ($p_price * $p_disc / 100)) ?></strong> 
+                            <small style="text-decoration:line-through; color:#aaa;">$<?= number_format($p_price) ?></small>
                         <?php else: ?>
-                            <strong>PKR: <?= number_format($p_price) ?> /-</strong>
+                            <strong>$<?= number_format($p_price) ?> USD</strong>
                         <?php endif; ?>
                     </span>-->
                 </div>

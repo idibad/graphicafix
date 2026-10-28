@@ -569,7 +569,7 @@ $fallback_descs = [
                     <div class="pkg-price">
                         
                         <?php if ($pkg['price'] > 0): ?>
-                        Rs. <?= number_format($pkg['price']) ?>
+                        $<?= number_format($pkg['price']) ?>
                             <span> / project</span>
                         <?php endif; ?>
                     </div>                    <?php endif; ?>
@@ -583,7 +583,7 @@ $fallback_descs = [
                         <a href="#projectRequestModal"
                            data-bs-toggle="modal" data-bs-target="#projectRequestModal"
                            class="pkg-btn"
-                           onclick="setModalService('<?= addslashes($service['title']) ?>', '<?= addslashes($pkg['name']) ?>', '<?= !empty($pkg['price']) ? 'Rs. '.number_format($pkg['price']) : '' ?>')">
+                           onclick="setModalService('<?= addslashes($service['title']) ?>', '<?= addslashes($pkg['name']) ?>', '<?= !empty($pkg['price']) ? '$'.number_format($pkg['price']) : '' ?>')">
                             Get Started →
                         </a>
                     </div>
@@ -610,7 +610,7 @@ $fallback_descs = [
                 <div class="pkg-card <?= $is_feat ? 'featured' : '' ?>">
                     <div class="pkg-name"><?= htmlspecialchars($pkg['name']) ?></div>
                     <?php if (!empty($pkg['price'])): ?>
-                    <div class="pkg-price">Rs. <?= number_format($pkg['price']) ?><span> / project</span></div>
+                    <div class="pkg-price">$<?= number_format($pkg['price']) ?><span> / project</span></div>
                     <?php endif; ?>
                     <div class="pkg-divider"></div>
                     <ul class="pkg-features">
@@ -622,7 +622,7 @@ $fallback_descs = [
                         <a href="#projectRequestModal"
                            data-bs-toggle="modal" data-bs-target="#projectRequestModal"
                            class="pkg-btn"
-                           onclick="setModalService('<?= addslashes($service['title']) ?>', '<?= addslashes($pkg['name']) ?>', '<?= !empty($pkg['price']) ? 'Rs. '.number_format($pkg['price']) : '' ?>')">
+                           onclick="setModalService('<?= addslashes($service['title']) ?>', '<?= addslashes($pkg['name']) ?>', '<?= !empty($pkg['price']) ? '$'.number_format($pkg['price']) : '' ?>')">
                             Get Started →
                         </a>
                     </div>
@@ -657,7 +657,7 @@ $fallback_descs = [
                     <div class="col-lg-4">
                         <div class="price-section">
                             <div class="price-label">Starting From</div>
-                            <div class="price-amount">Rs. 25,000</div>
+                            <div class="price-amount">$250</div>
                             <a href="#projectRequestModal"
                                data-bs-toggle="modal"
                                data-bs-target="#projectRequestModal"

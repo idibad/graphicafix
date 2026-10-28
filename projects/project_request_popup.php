@@ -197,10 +197,10 @@ textarea.pop-up-form-control { resize:vertical; min-height:120px; }
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Estimated Budget (PKR)</label>
+                                <label class="form-label">Estimated Budget (USD)</label>
                                 <div class="input-wrapper">
-                                    <i class="input-icon fa fa-money-bill"></i>
-                                    <input type="number" class="pop-up-form-control" name="budget" placeholder="e.g., 50000">
+                                    <i class="input-icon fa fa-dollar-sign"></i>
+                                    <input type="number" class="pop-up-form-control" name="budget" placeholder="e.g., 500">
                                 </div>
                             </div>
                             <div class="col-md-6">
