@@ -14,7 +14,7 @@ $user_display_name = htmlspecialchars($_SESSION['name'] ?? ($_SESSION['username'
 
 <div class="height-100">
 
-    <!-- ── Universal Universal Stats Row ── -->
+    <!-- ── Universal Stats Row ── -->
     <div class="stats-row" style="margin-bottom:20px;">
         <div class="stat-card">
             <div class="stat-header">
@@ -368,130 +368,132 @@ $user_display_name = htmlspecialchars($_SESSION['name'] ?? ($_SESSION['username'
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════════
-     MODAL 1: LOG STRUCTURED FOLLOW-UP TRACK RECORD
+     MODAL 1: LOG STRUCTURED FOLLOW-UP TRACK RECORD (Universal Modal)
      ══════════════════════════════════════════════════════════════════════════════ -->
 <div id="followupModal" class="modal-overlay" onclick="if(event.target===this)closeFollowupModal()">
-    <div class="modal-content" style="max-width:640px; padding:0; overflow:hidden;">
-        <div class="modal-header" style="padding:16px 20px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
-            <div style="display:flex; align-items:center; gap:8px;">
-                <div class="modal-header-icon" style="background:#e0f2fe; color:#0284c7; width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+    <div class="modal-content" style="max-width:640px;">
+        <div class="modal-header">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div class="modal-header-icon">
                     <i class="fas fa-phone-volume"></i>
                 </div>
                 <div>
-                    <h4 id="fModalCompanyTitle" style="margin:0; font-size:15px; font-weight:700; color:#0f172a;">Log Follow-Up Track Record</h4>
-                    <span id="fModalClientSub" style="font-size:12px; color:#64748b;">Record interaction details and schedule next touchpoint</span>
+                    <h4 id="fModalCompanyTitle" style="color:#fff;">Log Follow-Up Track Record</h4>
+                    <span id="fModalClientSub" style="font-size:12px; color:rgba(255,255,255,0.85); display:block; margin-top:2px;">Record interaction details and schedule next touchpoint</span>
                 </div>
             </div>
-            <button class="modal-close" onclick="closeFollowupModal()" style="font-size:20px; color:#94a3b8; background:none; border:none; cursor:pointer;">×</button>
+            <button class="modal-close" onclick="closeFollowupModal()">&times;</button>
         </div>
 
-        <form id="followupForm" onsubmit="submitFollowupRecord(event)" style="padding:20px; max-height:80vh; overflow-y:auto;">
+        <form id="followupForm" onsubmit="submitFollowupRecord(event)">
             <input type="hidden" name="visit_id" id="fModalVisitId" value="">
 
-            <!-- Contact Channels Selector -->
-            <div class="form-group" style="margin-bottom:14px;">
-                <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:6px; display:block;">
-                    Contact Channel Used <span style="color:#ef4444;">*</span>
-                </label>
-                <div class="channel-chip-group">
-                    <label class="channel-chip active">
-                        <input type="radio" name="contact_channel" value="call" checked onchange="updateChannelChipUI(this)">
-                        <i class="fas fa-phone-alt"></i> Phone Call
+            <div class="modal-body">
+                <!-- Contact Channels Selector -->
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:6px; display:block;">
+                        Contact Channel Used <span style="color:#ef4444;">*</span>
                     </label>
-                    <label class="channel-chip">
-                        <input type="radio" name="contact_channel" value="whatsapp" onchange="updateChannelChipUI(this)">
-                        <i class="fab fa-whatsapp"></i> WhatsApp
-                    </label>
-                    <label class="channel-chip">
-                        <input type="radio" name="contact_channel" value="meeting" onchange="updateChannelChipUI(this)">
-                        <i class="fas fa-handshake"></i> In-Person Meeting
-                    </label>
-                    <label class="channel-chip">
-                        <input type="radio" name="contact_channel" value="email" onchange="updateChannelChipUI(this)">
-                        <i class="fas fa-envelope"></i> Email
-                    </label>
-                    <label class="channel-chip">
-                        <input type="radio" name="contact_channel" value="office_visit" onchange="updateChannelChipUI(this)">
-                        <i class="fas fa-building"></i> Office Visit
-                    </label>
+                    <div class="channel-chip-group">
+                        <label class="channel-chip active">
+                            <input type="radio" name="contact_channel" value="call" checked onchange="updateChannelChipUI(this)">
+                            <i class="fas fa-phone-alt"></i> Phone Call
+                        </label>
+                        <label class="channel-chip">
+                            <input type="radio" name="contact_channel" value="whatsapp" onchange="updateChannelChipUI(this)">
+                            <i class="fab fa-whatsapp"></i> WhatsApp
+                        </label>
+                        <label class="channel-chip">
+                            <input type="radio" name="contact_channel" value="meeting" onchange="updateChannelChipUI(this)">
+                            <i class="fas fa-handshake"></i> In-Person Meeting
+                        </label>
+                        <label class="channel-chip">
+                            <input type="radio" name="contact_channel" value="email" onchange="updateChannelChipUI(this)">
+                            <i class="fas fa-envelope"></i> Email
+                        </label>
+                        <label class="channel-chip">
+                            <input type="radio" name="contact_channel" value="office_visit" onchange="updateChannelChipUI(this)">
+                            <i class="fas fa-building"></i> Office Visit
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Outcome & Pipeline Stage -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                    <div class="form-group">
+                        <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">
+                            Interaction Outcome <span style="color:#ef4444;">*</span>
+                        </label>
+                        <select name="outcome" id="fModalOutcome" class="form-select" required style="font-size:13px; padding:7px 10px;" onchange="handleOutcomeChange(this.value)">
+                            <option value="followup_needed" selected>⏳ Follow-up Needed</option>
+                            <option value="interested">🔥 Highly Interested / Ready</option>
+                            <option value="meeting_scheduled">📅 Meeting Scheduled</option>
+                            <option value="proposal_sent">📄 Proposal / Quote Sent</option>
+                            <option value="callback_requested">🔄 Client Requested Callback</option>
+                            <option value="no_answer">📵 No Answer / Busy</option>
+                            <option value="converted">🎉 Deal Converted (Won)</option>
+                            <option value="not_interested">❌ Not Interested / Lost</option>
+                            <option value="closed">📁 Closed / Resolved</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">
+                            Update Pipeline Stage
+                        </label>
+                        <select name="status" id="fModalStatus" class="form-select" style="font-size:13px; padding:7px 10px;">
+                            <option value="in_discussion" selected>In Discussion</option>
+                            <option value="contacted">Contacted</option>
+                            <option value="converted">Converted to CRM Lead</option>
+                            <option value="closed">Closed / Archived</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Discussion Notes with Quick Tags -->
+                <div class="form-group" style="margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <label style="font-size:12.5px; font-weight:700; color:#334155; margin:0;">
+                            Follow-up Discussion Notes <span style="color:#ef4444;">*</span>
+                        </label>
+                        <span style="font-size:11px; color:#64748b;">Be concise & specific</span>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:6px;">
+                        <button type="button" class="preset-tag" onclick="appendFollowupNote('Called client. Discussed scope of work.')">+ Discussed scope</button>
+                        <button type="button" class="preset-tag" onclick="appendFollowupNote('Shared catalog and price quotation via WhatsApp.')">+ Sent Quotation</button>
+                        <button type="button" class="preset-tag" onclick="appendFollowupNote('Client needs 2 days to consult with partner.')">+ Partner decision</button>
+                        <button type="button" class="preset-tag" onclick="appendFollowupNote('Client agreed to meeting at their office.')">+ Office meeting</button>
+                        <button type="button" class="preset-tag" onclick="appendFollowupNote('No answer, sent follow-up text.')">+ No response</button>
+                    </div>
+                    <textarea name="notes" id="fModalNotes" rows="3" required placeholder="What was discussed? Client feedback? Any pricing or timeline agreements made?" class="form-control" style="font-size:12.5px; resize:vertical;"></textarea>
+                </div>
+
+                <!-- Schedule Next Follow-up -->
+                <div class="form-group" style="margin-bottom:6px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <label style="font-size:12.5px; font-weight:700; color:#0f172a; margin:0;">
+                            <i class="far fa-calendar-alt" style="color:var(--primary); margin-right:4px;"></i> Schedule Next Follow-Up Date & Time
+                        </label>
+                        <button type="button" onclick="clearNextFollowupDate()" style="background:none; border:none; color:#ef4444; font-size:11px; cursor:pointer; font-weight:600;">
+                            Clear Schedule
+                        </button>
+                    </div>
+
+                    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+                        <button type="button" class="preset-tag" onclick="setNextDatePreset('tomorrow_am')">Tomorrow Morning (11:00 AM)</button>
+                        <button type="button" class="preset-tag" onclick="setNextDatePreset('tomorrow_pm')">Tomorrow Afternoon (4:00 PM)</button>
+                        <button type="button" class="preset-tag" onclick="setNextDatePreset('in_2_days')">In 2 Days</button>
+                        <button type="button" class="preset-tag" onclick="setNextDatePreset('next_week')">Next Week Monday</button>
+                    </div>
+
+                    <input type="datetime-local" name="next_followup_date" id="fModalNextDate" class="form-control" style="font-size:12.5px; max-width:280px; padding:6px 10px;">
+                    <small style="font-size:11px; color:#64748b; margin-top:4px; display:block;">
+                        Setting a date will automatically appear on the Due Today and Overdue alerts when the time comes.
+                    </small>
                 </div>
             </div>
 
-            <!-- Outcome & Pipeline Stage -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
-                <div class="form-group">
-                    <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">
-                        Interaction Outcome <span style="color:#ef4444;">*</span>
-                    </label>
-                    <select name="outcome" id="fModalOutcome" class="form-select" required style="font-size:13px; padding:7px 10px;" onchange="handleOutcomeChange(this.value)">
-                        <option value="followup_needed" selected>⏳ Follow-up Needed</option>
-                        <option value="interested">🔥 Highly Interested / Ready</option>
-                        <option value="meeting_scheduled">📅 Meeting Scheduled</option>
-                        <option value="proposal_sent">📄 Proposal / Quote Sent</option>
-                        <option value="callback_requested">🔄 Client Requested Callback</option>
-                        <option value="no_answer">📵 No Answer / Busy</option>
-                        <option value="converted">🎉 Deal Converted (Won)</option>
-                        <option value="not_interested">❌ Not Interested / Lost</option>
-                        <option value="closed">📁 Closed / Resolved</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">
-                        Update Pipeline Stage
-                    </label>
-                    <select name="status" id="fModalStatus" class="form-select" style="font-size:13px; padding:7px 10px;">
-                        <option value="in_discussion" selected>In Discussion</option>
-                        <option value="contacted">Contacted</option>
-                        <option value="converted">Converted to CRM Lead</option>
-                        <option value="closed">Closed / Archived</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Discussion Notes with Quick Tags -->
-            <div class="form-group" style="margin-bottom:14px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <label style="font-size:12.5px; font-weight:700; color:#334155; margin:0;">
-                        Follow-up Discussion Notes <span style="color:#ef4444;">*</span>
-                    </label>
-                    <span style="font-size:11px; color:#64748b;">Be concise & specific</span>
-                </div>
-                <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:6px;">
-                    <button type="button" class="preset-tag" onclick="appendFollowupNote('Called client. Discussed scope of work.')">+ Discussed scope</button>
-                    <button type="button" class="preset-tag" onclick="appendFollowupNote('Shared catalog and price quotation via WhatsApp.')">+ Sent Quotation</button>
-                    <button type="button" class="preset-tag" onclick="appendFollowupNote('Client needs 2 days to consult with partner.')">+ Partner decision</button>
-                    <button type="button" class="preset-tag" onclick="appendFollowupNote('Client agreed to meeting at their office.')">+ Office meeting</button>
-                    <button type="button" class="preset-tag" onclick="appendFollowupNote('No answer, sent follow-up text.')">+ No response</button>
-                </div>
-                <textarea name="notes" id="fModalNotes" rows="3" required placeholder="What was discussed? Client feedback? Any pricing or timeline agreements made?" class="form-control" style="font-size:12.5px; resize:vertical;"></textarea>
-            </div>
-
-            <!-- Schedule Next Follow-up -->
-            <div class="form-group" style="margin-bottom:18px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                    <label style="font-size:12.5px; font-weight:700; color:#0f172a; margin:0;">
-                        <i class="far fa-calendar-alt" style="color:var(--primary); margin-right:4px;"></i> Schedule Next Follow-Up Date & Time
-                    </label>
-                    <button type="button" onclick="clearNextFollowupDate()" style="background:none; border:none; color:#ef4444; font-size:11px; cursor:pointer; font-weight:600;">
-                        Clear Schedule
-                    </button>
-                </div>
-
-                <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
-                    <button type="button" class="preset-tag" onclick="setNextDatePreset('tomorrow_am')">Tomorrow Morning (11:00 AM)</button>
-                    <button type="button" class="preset-tag" onclick="setNextDatePreset('tomorrow_pm')">Tomorrow Afternoon (4:00 PM)</button>
-                    <button type="button" class="preset-tag" onclick="setNextDatePreset('in_2_days')">In 2 Days</button>
-                    <button type="button" class="preset-tag" onclick="setNextDatePreset('next_week')">Next Week Monday</button>
-                </div>
-
-                <input type="datetime-local" name="next_followup_date" id="fModalNextDate" class="form-control" style="font-size:12.5px; max-width:280px; padding:6px 10px;">
-                <small style="font-size:11px; color:#64748b; margin-top:4px; display:block;">
-                    Setting a date will automatically appear on the Due Today and Overdue alerts when the time comes.
-                </small>
-            </div>
-
-            <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #f1f5f9; padding-top:14px;">
+            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary-custom" onclick="closeFollowupModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary-custom" id="fModalSubmitBtn" style="display:inline-flex; align-items:center; gap:6px;">
                     <i class="fas fa-check"></i> Save Follow-Up Record
@@ -502,35 +504,35 @@ $user_display_name = htmlspecialchars($_SESSION['name'] ?? ($_SESSION['username'
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════════
-     MODAL 2: COMPLETE FOLLOW-UP TIMELINE & HISTORY
+     MODAL 2: COMPLETE FOLLOW-UP TIMELINE & HISTORY (Universal Modal)
      ══════════════════════════════════════════════════════════════════════════════ -->
 <div id="timelineModal" class="modal-overlay" onclick="if(event.target===this)closeTimelineModal()">
-    <div class="modal-content" style="max-width:700px; padding:0; overflow:hidden;">
-        <div class="modal-header" style="padding:16px 20px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
-            <div style="display:flex; align-items:center; gap:8px;">
-                <div class="modal-header-icon" style="background:#ede9fe; color:#6d28d9; width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+    <div class="modal-content" style="max-width:700px;">
+        <div class="modal-header">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div class="modal-header-icon">
                     <i class="fas fa-history"></i>
                 </div>
                 <div>
-                    <h4 id="tModalCompany" style="margin:0; font-size:15px; font-weight:700; color:#0f172a;">Follow-Up Track Record Timeline</h4>
-                    <span id="tModalSub" style="font-size:12px; color:#64748b;">Chronological interaction history</span>
+                    <h4 id="tModalCompany" style="color:#fff;">Follow-Up Track Record Timeline</h4>
+                    <span id="tModalSub" style="font-size:12px; color:rgba(255,255,255,0.85); display:block; margin-top:2px;">Chronological interaction history</span>
                 </div>
             </div>
-            <button class="modal-close" onclick="closeTimelineModal()" style="font-size:20px; color:#94a3b8; background:none; border:none; cursor:pointer;">×</button>
+            <button class="modal-close" onclick="closeTimelineModal()">&times;</button>
         </div>
 
-        <div style="padding:12px 20px; background:#fff; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="padding:12px 22px; background:#fff; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; flex-shrink:0;">
             <div id="tModalQuickBadges" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;"></div>
             <button type="button" id="tModalAddBtn" class="btn btn-primary-custom" style="padding:5px 12px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:5px;">
                 <i class="fas fa-plus"></i> Log New Follow-Up
             </button>
         </div>
 
-        <div class="modal-body" id="tModalTimelineBody" style="padding:20px; max-height:65vh; overflow-y:auto; background:#fafbfc;">
+        <div class="modal-body" id="tModalTimelineBody" style="background:#fafbfc;">
             <!-- Rendered dynamically -->
         </div>
 
-        <div class="modal-footer" style="padding:12px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+        <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
             <div id="tModalDirectWa"></div>
             <button type="button" class="btn btn-secondary-custom" onclick="closeTimelineModal()">Close Timeline</button>
         </div>
@@ -538,28 +540,28 @@ $user_display_name = htmlspecialchars($_SESSION['name'] ?? ($_SESSION['username'
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════════
-     MODAL 3: RESPONSE WORKSPACE & CANNED WHATSAPP TEMPLATES
+     MODAL 3: RESPONSE WORKSPACE & CANNED WHATSAPP TEMPLATES (Universal Modal)
      ══════════════════════════════════════════════════════════════════════════════ -->
 <div id="detailModal" class="modal-overlay" onclick="if(event.target===this)closeDetailModal()">
-    <div class="modal-content" style="max-width:720px; padding:0; overflow:hidden;">
-        <div class="modal-header" style="padding:16px 20px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
-            <div style="display:flex; align-items:center; gap:8px;">
-                <div class="modal-header-icon" style="background:var(--light); color:var(--primary); width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+    <div class="modal-content" style="max-width:720px;">
+        <div class="modal-header">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div class="modal-header-icon">
                     <i class="fas fa-headset"></i>
                 </div>
                 <div>
-                    <h4 id="detailModalTitle" style="margin:0; font-size:15px; font-weight:700; color:#0f172a;">Response Workspace</h4>
-                    <span id="detailModalSub" style="font-size:12px; color:#64748b;">Client Follow-up & Rapid Response</span>
+                    <h4 id="detailModalTitle" style="color:#fff;">Response Workspace</h4>
+                    <span id="detailModalSub" style="font-size:12px; color:rgba(255,255,255,0.85); display:block; margin-top:2px;">Client Follow-up & Rapid Response</span>
                 </div>
             </div>
-            <button class="modal-close" onclick="closeDetailModal()" style="font-size:20px; color:#94a3b8; background:none; border:none; cursor:pointer;">×</button>
+            <button class="modal-close" onclick="closeDetailModal()">&times;</button>
         </div>
 
-        <div class="modal-body" id="detailModalBody" style="padding:20px; max-height:75vh; overflow-y:auto;">
+        <div class="modal-body" id="detailModalBody">
             <!-- Populated dynamically -->
         </div>
 
-        <div class="modal-footer" style="padding:12px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+        <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
             <div id="detailWaWrap"></div>
             <button type="button" class="btn btn-secondary-custom" onclick="closeDetailModal()">Close Workspace</button>
         </div>
@@ -567,78 +569,80 @@ $user_display_name = htmlspecialchars($_SESSION['name'] ?? ($_SESSION['username'
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════════
-     MODAL 4: EXPORT SHEETS MODAL (Visits / Follow-up Logs)
+     MODAL 4: EXPORT SHEETS MODAL (Universal Modal)
      ══════════════════════════════════════════════════════════════════════════════ -->
 <div id="exportModal" class="modal-overlay" onclick="if(event.target===this)closeExportModal()">
-    <div class="modal-content" style="max-width:540px; padding:0; overflow:hidden;">
-        <div class="modal-header" style="padding:16px 20px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
-            <div style="display:flex; align-items:center; gap:8px;">
-                <div class="modal-header-icon" style="background:#dcfce7; color:#16a34a; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+    <div class="modal-content" style="max-width:540px;">
+        <div class="modal-header">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div class="modal-header-icon">
                     <i class="fas fa-file-excel"></i>
                 </div>
                 <div>
-                    <h4 style="margin:0; font-size:15px; font-weight:700; color:#0f172a;">Export Field Visits & Follow-up Sheets</h4>
-                    <span style="font-size:12px; color:#64748b;">Download formatted spreadsheet (Excel & CSV compatible)</span>
+                    <h4 style="color:#fff;">Export Field Visits & Follow-up Sheets</h4>
+                    <span style="font-size:12px; color:rgba(255,255,255,0.85); display:block; margin-top:2px;">Download formatted spreadsheet (Excel & CSV compatible)</span>
                 </div>
             </div>
-            <button class="modal-close" onclick="closeExportModal()" style="font-size:20px; color:#94a3b8; background:none; border:none; cursor:pointer;">×</button>
+            <button class="modal-close" onclick="closeExportModal()">&times;</button>
         </div>
 
-        <form id="exportForm" onsubmit="executeExport(event)" style="padding:20px;">
-            <!-- Export Type -->
-            <div class="form-group" style="margin-bottom:14px;">
-                <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">
-                    Select Report Type
-                </label>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                    <label class="channel-chip active" style="justify-content:center;">
-                        <input type="radio" name="export_type" value="visits" checked onchange="updateChannelChipUI(this)">
-                        <i class="fas fa-table"></i> Master Visits & Status
+        <form id="exportForm" onsubmit="executeExport(event)">
+            <div class="modal-body">
+                <!-- Export Type -->
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">
+                        Select Report Type
                     </label>
-                    <label class="channel-chip" style="justify-content:center;">
-                        <input type="radio" name="export_type" value="followup_history" onchange="updateChannelChipUI(this)">
-                        <i class="fas fa-history"></i> Detailed Follow-ups Trail
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <label class="channel-chip active" style="justify-content:center;">
+                            <input type="radio" name="export_type" value="visits" checked onchange="updateChannelChipUI(this)">
+                            <i class="fas fa-table"></i> Master Visits & Status
+                        </label>
+                        <label class="channel-chip" style="justify-content:center;">
+                            <input type="radio" name="export_type" value="followup_history" onchange="updateChannelChipUI(this)">
+                            <i class="fas fa-history"></i> Detailed Follow-ups Trail
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Filter by Sales Rep -->
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">
+                        Sales Representative
                     </label>
+                    <select id="exportRepSelect" class="form-select" style="width:100%; font-size:13px; padding:7px 12px;">
+                        <option value="0">All Representatives (Company-wide)</option>
+                    </select>
+                </div>
+
+                <!-- Date Presets -->
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:6px; display:block;">
+                        Date Range Preset
+                    </label>
+                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                        <button type="button" class="preset-pill active" onclick="setExportDatePreset('all', this)">All Time</button>
+                        <button type="button" class="preset-pill" onclick="setExportDatePreset('today', this)">Today</button>
+                        <button type="button" class="preset-pill" onclick="setExportDatePreset('yesterday', this)">Yesterday</button>
+                        <button type="button" class="preset-pill" onclick="setExportDatePreset('week', this)">Last 7 Days</button>
+                        <button type="button" class="preset-pill" onclick="setExportDatePreset('month', this)">This Month</button>
+                    </div>
+                </div>
+
+                <!-- Custom Date Range -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div class="form-group">
+                        <label style="font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; display:block;">From Date</label>
+                        <input type="date" id="exportStartDate" class="form-control" style="font-size:12.5px; padding:6px 10px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; display:block;">To Date</label>
+                        <input type="date" id="exportEndDate" class="form-control" style="font-size:12.5px; padding:6px 10px;">
+                    </div>
                 </div>
             </div>
 
-            <!-- Filter by Sales Rep -->
-            <div class="form-group" style="margin-bottom:14px;">
-                <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">
-                    Sales Representative
-                </label>
-                <select id="exportRepSelect" class="form-select" style="width:100%; font-size:13px; padding:7px 12px;">
-                    <option value="0">All Representatives (Company-wide)</option>
-                </select>
-            </div>
-
-            <!-- Date Presets -->
-            <div style="margin-bottom:14px;">
-                <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:6px; display:block;">
-                    Date Range Preset
-                </label>
-                <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                    <button type="button" class="preset-pill active" onclick="setExportDatePreset('all', this)">All Time</button>
-                    <button type="button" class="preset-pill" onclick="setExportDatePreset('today', this)">Today</button>
-                    <button type="button" class="preset-pill" onclick="setExportDatePreset('yesterday', this)">Yesterday</button>
-                    <button type="button" class="preset-pill" onclick="setExportDatePreset('week', this)">Last 7 Days</button>
-                    <button type="button" class="preset-pill" onclick="setExportDatePreset('month', this)">This Month</button>
-                </div>
-            </div>
-
-            <!-- Custom Date Range -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
-                <div class="form-group">
-                    <label style="font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; display:block;">From Date</label>
-                    <input type="date" id="exportStartDate" class="form-control" style="font-size:12.5px; padding:6px 10px;">
-                </div>
-                <div class="form-group">
-                    <label style="font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; display:block;">To Date</label>
-                    <input type="date" id="exportEndDate" class="form-control" style="font-size:12.5px; padding:6px 10px;">
-                </div>
-            </div>
-
-            <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #f1f5f9; padding-top:16px;">
+            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary-custom" onclick="closeExportModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary-custom" style="display:inline-flex; align-items:center; gap:6px;">
                     <i class="fas fa-download"></i> Download Spreadsheet
@@ -649,6 +653,116 @@ $user_display_name = htmlspecialchars($_SESSION['name'] ?? ($_SESSION['username'
 </div>
 
 <style>
+/* ── Universal Modal Framework (Scroll enabled with overflow-y: auto) ── */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+}
+.modal-overlay.active {
+    display: flex;
+}
+.modal-content {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 680px;
+    max-height: 90vh !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    overflow-y: auto !important;
+    animation: modalSlideUp 0.25s ease-out;
+    border: none;
+    margin: auto;
+}
+@keyframes modalSlideUp {
+    from { transform: translateY(15px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+.modal-header {
+    background: var(--primary, #024442);
+    color: #fff;
+    padding: 16px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    border-radius: 16px 16px 0 0;
+}
+.modal-header h4 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+}
+.modal-header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+}
+.modal-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    transition: color 0.15s ease;
+}
+.modal-close:hover {
+    color: #fff;
+}
+.modal-content form {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex: 1 1 auto;
+    margin: 0;
+    min-height: 0;
+}
+.modal-body {
+    padding: 22px 24px;
+    overflow-y: auto !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+}
+.modal-footer {
+    padding: 14px 22px;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    background: #fbfcfc;
+    flex-shrink: 0;
+    border-radius: 0 0 16px 16px;
+}
+
 /* ── Clean Universal Navigation Tabs ── */
 .unit-tab-btn {
     background: transparent;
@@ -1089,17 +1203,17 @@ $user_display_name = htmlspecialchars($_SESSION['name'] ?? ($_SESSION['username'
 </style>
 
 <script>
-let lastKnownId       = 0;
-let pollingTimer      = null;
-let syncTimer         = null;
-let radarItems        = [];
-let scheduledItems    = [];
-let currentTab        = 'radar';
-let currentFilter     = 'pending';
+let lastKnownId        = 0;
+let pollingTimer       = null;
+let syncTimer          = null;
+let radarItems         = [];
+let scheduledItems     = [];
+let currentTab         = 'radar';
+let currentFilter      = 'pending';
 let currentSchedFilter = 'all';
-let currentSort       = 'urgency';
-let searchQuery       = '';
-let audioCtx          = null;
+let currentSort        = 'urgency';
+let searchQuery        = '';
+let audioCtx           = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     checkNotificationPermission();
@@ -1107,7 +1221,6 @@ document.addEventListener('DOMContentLoaded', () => {
     startPolling();
     loadSalesReps();
 
-    // Check URL params for highlight or tab
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('tab') === 'scheduled') {
         switchUnitTab('scheduled');
@@ -1122,7 +1235,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 800);
     }
 
-    // Listen to global sales visit events dispatched from dashboard_header.php
     window.addEventListener('globalSalesVisitArrived', () => {
         fetchFullRadar(false);
     });
@@ -1236,7 +1348,6 @@ function renderStats(stats) {
     document.getElementById('statDueToday').textContent  = stats.due_today || 0;
     document.getElementById('statConverted').textContent = stats.converted || 0;
 
-    // Badges on tabs
     const radarBadge = document.getElementById('radarCountBadge');
     if (radarBadge) radarBadge.textContent = stats.pending || 0;
 
@@ -1279,7 +1390,6 @@ function renderRadarTable() {
         );
     }
 
-    // Sort items
     if (currentSort === 'urgency') {
         items.sort((a, b) => {
             if (b.is_urgent !== a.is_urgent) return b.is_urgent - a.is_urgent;
@@ -1326,7 +1436,6 @@ function renderRadarTable() {
         const cleanWa    = formatWhatsAppNumber(rawWa);
         const waMsg      = encodeURIComponent(`Hello ${v.client_name}, this is Graphicafix management following up regarding your discussion for ${v.company_name}. Are you available for a quick 5-minute call?`);
 
-        // Priority badge
         let priorityBadge = '';
         if (v.interest_level === 'hot') {
             priorityBadge = '<span class="badge-priority badge-hot"><span class="badge-dot badge-dot-hot"></span>High</span>';
@@ -1336,7 +1445,6 @@ function renderRadarTable() {
             priorityBadge = '<span class="badge-priority badge-cold"><span class="badge-dot badge-dot-cold"></span>Standard</span>';
         }
 
-        // Pipeline stage pill
         let stageBadge = '';
         if (v.status === 'converted') {
             stageBadge = '<span class="badge-stage badge-stage-converted">Converted to Lead</span>';
@@ -1350,7 +1458,6 @@ function renderRadarTable() {
             stageBadge = '<span class="badge-stage badge-stage-pending">Pending Contact</span>';
         }
 
-        // Follow-up Track Record summary
         const fCount = parseInt(v.followup_count || 0);
         let scheduleBadge = '';
         if (v.followup_status === 'overdue') {
@@ -1372,7 +1479,6 @@ function renderRadarTable() {
             outcomeHtml = `<span class="outcome-pill outcome-pill-${outClean}" style="text-transform:capitalize;">${outLabel}</span>`;
         }
 
-        // Reach out buttons
         let reachOutHtml = '';
         if (cleanWa) {
             reachOutHtml = `
@@ -1394,7 +1500,6 @@ function renderRadarTable() {
             `;
         }
 
-        // Requirements badges
         let catBadges = '';
         if (v.categories_arr && v.categories_arr.length > 0) {
             catBadges = v.categories_arr.slice(0, 2).map(c => `<span style="background:#e0f2fe; color:#0284c7; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:600;">${escapeHtml(c)}</span>`).join(' ');
@@ -1621,7 +1726,6 @@ function renderReportingDashboard(data) {
     document.getElementById('repKpiWinRate').textContent    = (k.conversion_rate || 0) + '%';
     document.getElementById('repKpiOverdue').textContent    = k.overdue_count || 0;
 
-    // Leaderboard table
     const lbBody = document.getElementById('leaderboardTableBody');
     const reps = data.leaderboard || [];
     if (reps.length === 0) {
@@ -1650,7 +1754,6 @@ function renderReportingDashboard(data) {
         lbBody.innerHTML = lbHtml;
     }
 
-    // Outcome Distribution
     const outWrap = document.getElementById('outcomeDistributionWrap');
     const outcomes = data.outcomes || [];
     if (outcomes.length === 0) {
@@ -1673,7 +1776,6 @@ function renderReportingDashboard(data) {
         outWrap.innerHTML = outHtml;
     }
 
-    // Channels Distribution
     const chWrap = document.getElementById('channelDistributionWrap');
     const channels = data.channels || [];
     if (channels.length === 0) {
@@ -1733,7 +1835,6 @@ function openFollowupModal(visitId) {
     document.getElementById('fModalNextDate').value = '';
     document.getElementById('fModalOutcome').value = 'followup_needed';
 
-    // Reset channel chips to call
     document.querySelectorAll('#followupModal .channel-chip').forEach(c => c.classList.remove('active'));
     const callChip = document.querySelector('#followupModal input[value="call"]');
     if (callChip) {
@@ -1793,7 +1894,6 @@ function setNextDatePreset(preset) {
         now.setHours(11, 0, 0, 0);
     }
 
-    // Format YYYY-MM-DDTHH:MM
     const yr = now.getFullYear();
     const mo = String(now.getMonth() + 1).padStart(2, '0');
     const da = String(now.getDate()).padStart(2, '0');
@@ -1863,13 +1963,11 @@ function renderTimelineModalContent(visit, followups) {
     document.getElementById('tModalCompany').textContent = visit.company_name;
     document.getElementById('tModalSub').textContent = `Client: ${visit.client_name} · Logged by ${visit.sales_rep_name}`;
     
-    // Quick add button in timeline
     document.getElementById('tModalAddBtn').onclick = () => {
         closeTimelineModal();
         openFollowupModal(visit.id);
     };
 
-    // WhatsApp Direct
     const rawWa = (visit.whatsapp || visit.phone || '').trim();
     const cleanWa = formatWhatsAppNumber(rawWa);
     document.getElementById('tModalDirectWa').innerHTML = cleanWa ? `
@@ -1878,7 +1976,6 @@ function renderTimelineModalContent(visit, followups) {
         </a>
     ` : '';
 
-    // Badges
     const badgeWrap = document.getElementById('tModalQuickBadges');
     badgeWrap.innerHTML = `
         <span class="badge-stage badge-stage-${visit.status}">${visit.status.replace(/_/g, ' ').toUpperCase()}</span>
@@ -1890,7 +1987,6 @@ function renderTimelineModalContent(visit, followups) {
 
     let html = '<div class="v-timeline">';
 
-    // Render followups
     if (followups.length === 0) {
         html += `
             <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:16px; margin-bottom:16px; text-align:center;">
@@ -1934,7 +2030,6 @@ function renderTimelineModalContent(visit, followups) {
         });
     }
 
-    // Original Field Visit Entry
     html += `
         <div class="v-timeline-item">
             <div class="v-timeline-dot" style="border-color:#16a34a; color:#16a34a;"><i class="fas fa-flag"></i></div>
@@ -1996,7 +2091,6 @@ function openDetailModal(id) {
 
     const rawWa   = (v.whatsapp || v.phone || '').trim();
     const cleanWa = formatWhatsAppNumber(rawWa);
-    const isUrgent = (v.is_urgent == 1);
 
     document.getElementById('detailModalTitle').textContent = v.company_name;
     document.getElementById('detailModalSub').textContent = `Client: ${v.client_name} · Logged by ${v.sales_rep_name}`;
@@ -2005,11 +2099,9 @@ function openDetailModal(id) {
 
     const tpl1 = `Hello ${v.client_name}, this is Graphicafix management following up on your discussion with our team member (${v.sales_rep_name}) regarding ${v.company_name}. We would like to connect and assist you. When is a convenient time for a quick 5-minute call?`;
     const tpl2 = `Hello ${v.client_name}, regarding your interest in ${cats !== 'None' ? cats : 'our creative services'} for ${v.company_name}, our team at Graphicafix has prepared initial details for you. Would you like us to share our portfolio and package options here?`;
-    const tpl3 = `Hello ${v.client_name}, following up on your meeting regarding ${v.company_name}, are you available for a brief discovery call today around ${v.contact_availability || 'your preferred time'} to finalize the scope?`;
 
     const encTpl1 = encodeURIComponent(tpl1);
     const encTpl2 = encodeURIComponent(tpl2);
-    const encTpl3 = encodeURIComponent(tpl3);
 
     document.getElementById('detailModalBody').innerHTML = `
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; margin-bottom:16px;">
@@ -2196,6 +2288,17 @@ function playNotificationChime() {
         gain1.connect(audioCtx.destination);
         osc1.start(now);
         osc1.stop(now + 0.45);
+
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(1318.5, now + 0.12);
+        gain2.gain.setValueAtTime(0.25, now + 0.12);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.start(now + 0.12);
+        osc2.stop(now + 0.55);
     } catch(e) {}
 }
 
