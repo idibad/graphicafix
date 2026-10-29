@@ -15,48 +15,58 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
 <div class="height-100">
 
     <!-- ── Universal Stats Row ── -->
-    <div class="stats-row" style="margin-bottom:24px;">
+    <div class="stats-row" style="margin-bottom:20px;">
         <div class="stat-card">
             <div class="stat-header">
                 <span class="stat-label">Total Field Visits</span>
                 <div class="stat-icon" style="background:var(--light);color:var(--primary);"><i class="fas fa-street-view"></i></div>
             </div>
             <div class="stat-number" id="statTotal">--</div>
+            <div style="font-size:11.5px; color:#64748b; margin-top:4px;">Total client visits logged</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" style="border-left: 3.5px solid #ef4444;">
             <div class="stat-header">
-                <span class="stat-label">Urgent Follow-ups</span>
+                <span class="stat-label">Overdue Follow-ups</span>
                 <div class="stat-icon" style="background:#fee2e2;color:#ef4444;"><i class="fas fa-exclamation-triangle"></i></div>
             </div>
-            <div class="stat-number" id="statUrgent" style="color:#ef4444;">--</div>
+            <div class="stat-number" id="statOverdue" style="color:#ef4444;">--</div>
+            <div style="font-size:11.5px; color:#ef4444; margin-top:4px; font-weight:600;">Missed follow-up schedule</div>
         </div>
         <div class="stat-card" style="border-left: 3.5px solid #d97706;">
             <div class="stat-header">
-                <span class="stat-label">High Priority Leads</span>
-                <div class="stat-icon" style="background:#fef3c7;color:#d97706;"><i class="fas fa-layer-group"></i></div>
+                <span class="stat-label">Due Today</span>
+                <div class="stat-icon" style="background:#fef3c7;color:#d97706;"><i class="fas fa-clock"></i></div>
             </div>
-            <div class="stat-number" id="statHot" style="color:#d97706;">--</div>
+            <div class="stat-number" id="statDueToday" style="color:#d97706;">--</div>
+            <div style="font-size:11.5px; color:#b45309; margin-top:4px;">Scheduled for today</div>
         </div>
         <div class="stat-card" style="border-left: 3.5px solid #16a34a;">
             <div class="stat-header">
-                <span class="stat-label">Contacted / Closed</span>
+                <span class="stat-label">Converted / Won</span>
                 <div class="stat-icon" style="background:#dcfce7;color:#16a34a;"><i class="fas fa-check-circle"></i></div>
             </div>
-            <div class="stat-number" id="statContacted" style="color:#16a34a;">--</div>
+            <div class="stat-number" id="statConverted" style="color:#16a34a;">--</div>
+            <div style="font-size:11.5px; color:#16a34a; margin-top:4px;">Converted to CRM leads</div>
         </div>
     </div>
 
     <!-- ── Universal Main Card & Table ── -->
     <div class="main-card">
         <div class="main-header" style="flex-wrap:wrap; gap:12px;">
-            <h3><i class="fas fa-street-view" style="color:var(--primary);"></i> Client Field Visits Log</h3>
-            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <button type="button" onclick="openExportModal()" class="btn btn-secondary-custom" style="padding:8px 14px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+            <div>
+                <h3 style="margin:0; font-size:17px; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-street-view" style="color:var(--primary);"></i> Client Field Visits Log & Follow-Up Tracker
+                </h3>
+                <span style="font-size:12px; color:#64748b;">Manage field visits, log multi-stage follow-ups, and convert prospects.</span>
+            </div>
+
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <button type="button" onclick="openExportModal()" class="btn btn-secondary-custom" style="padding:7px 14px; font-size:12.5px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
                     <i class="fas fa-file-excel" style="color:#16a34a;"></i> Export Sheets
                 </button>
                 <?php if ($is_admin_user): ?>
-                <a href="sales_response_unit.php" class="btn btn-secondary-custom" style="padding:8px 14px; font-size:13px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-                    <i class="fas fa-satellite-dish"></i> Response Unit
+                <a href="sales_response_unit.php" class="btn btn-secondary-custom" style="padding:7px 14px; font-size:12.5px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fas fa-satellite-dish" style="color:var(--primary);"></i> Response Unit
                 </a>
                 <?php endif; ?>
                 <button class="add-client" onclick="openVisitModal('add')">
@@ -66,39 +76,58 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
         </div>
 
         <!-- Filter & Search Toolbar -->
-        <div style="padding:14px 24px; border-bottom:1px solid #f1f5f9; background:#fafafa; display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
-            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                <span style="font-size:13px; font-weight:600; color:#64748b;">Filter:</span>
-                <select id="filterSelect" onchange="setFilter(this.value)" class="form-select" style="width:auto; padding:6px 12px; font-size:13px;">
-                    <option value="all">All Visits</option>
-                    <option value="urgent">Urgent Follow-ups</option>
-                    <option value="hot">High Priority (Hot)</option>
-                    <option value="warm">Medium Priority (Warm)</option>
-                    <option value="cold">Standard Priority (Cold)</option>
-                    <option value="pending">Pending Contact</option>
-                    <option value="contacted">Contacted</option>
-                </select>
+        <div style="padding:14px 20px; border-bottom:1px solid #f1f5f9; background:#fafbfc; display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="font-size:12.5px; font-weight:600; color:#64748b;">Filter:</span>
+                    <select id="filterSelect" onchange="setFilter(this.value)" class="form-select" style="width:auto; padding:5px 12px; font-size:12.5px; height:34px;">
+                        <option value="all">All Field Visits</option>
+                        <option value="pending">Pending Initial Contact</option>
+                        <option value="in_discussion">In Discussion</option>
+                        <option value="due_today">⏰ Due Today</option>
+                        <option value="overdue">🚨 Overdue Follow-ups</option>
+                        <option value="urgent">🚨 Urgent Flagged</option>
+                        <option value="hot">🔥 High Priority (Hot)</option>
+                        <option value="warm">⚡ Medium Priority (Warm)</option>
+                        <option value="cold">❄️ Standard Priority (Cold)</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="converted">Converted to CRM</option>
+                        <option value="closed">Closed / Archived</option>
+                    </select>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="font-size:12.5px; font-weight:600; color:#64748b;">Sort:</span>
+                    <select id="sortSelect" onchange="setSort(this.value)" class="form-select" style="width:auto; padding:5px 12px; font-size:12.5px; height:34px;">
+                        <option value="urgency">Urgency & Priority First</option>
+                        <option value="followup_due">Next Follow-Up Due Date</option>
+                        <option value="followup_cnt">Most Follow-ups Completed</option>
+                        <option value="interest">Interest Level (High to Low)</option>
+                        <option value="contact_time">Preferred Contact Window</option>
+                        <option value="newest">Newest Logged First</option>
+                    </select>
+                </div>
             </div>
 
-            <div style="position:relative; width:100%; max-width:320px;">
+            <div style="position:relative; width:100%; max-width:300px;">
                 <input type="text" id="searchInput" oninput="handleSearch(this.value)" placeholder="Search client, company, phone..."
-                       class="form-control" style="padding-left:34px; font-size:13px; height:36px;">
-                <i class="fas fa-search" style="position:absolute; left:12px; top:11px; color:#94a3b8; font-size:13px;"></i>
+                       class="form-control" style="padding-left:32px; font-size:12.5px; height:34px;">
+                <i class="fas fa-search" style="position:absolute; left:11px; top:10px; color:#94a3b8; font-size:12px;"></i>
             </div>
         </div>
 
         <!-- Table Container -->
         <div style="overflow-x:auto;">
-            <table class="data-table" style="width:100%; border-collapse:collapse; min-width:880px;">
+            <table class="data-table" style="width:100%; border-collapse:collapse; min-width:960px;">
                 <thead>
                     <tr>
-                        <th style="width:23%;">Client & Company</th>
-                        <th style="width:18%;">Direct Connect</th>
-                        <th style="width:11%;">Priority</th>
-                        <th style="width:16%;">Contact Window</th>
-                        <th style="width:15%;">Requirements</th>
+                        <th style="width:20%;">Client & Company</th>
+                        <th style="width:14%;">Direct Connect</th>
+                        <th style="width:12%;">Stage & Priority</th>
+                        <th style="width:20%;">Follow-Up Track Record</th>
+                        <th style="width:14%;">Requirements</th>
                         <th style="width:10%;">Logged By</th>
-                        <th style="width:7%; text-align:right;">Actions</th>
+                        <th style="width:10%; text-align:right;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="visitsTableBody">
@@ -205,7 +234,22 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
                     <input type="text" name="contact_availability" id="f_contact_availability" required placeholder="e.g. Tomorrow afternoon at 3:00 PM" class="form-control">
                 </div>
 
-                <!-- Row 5: Requirements Categories & Subcategories -->
+                <!-- Row 5: Initial Scheduled Follow-Up (Optional) -->
+                <div class="form-group" style="margin-bottom:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+                    <label style="font-size:12.5px; font-weight:700; color:#0f172a; margin-bottom:4px; display:block;">
+                        <i class="far fa-calendar-alt" style="color:var(--primary); margin-right:4px;"></i> Schedule Initial Follow-Up (Optional)
+                    </label>
+                    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+                        <button type="button" class="preset-tag" onclick="setVisitNextPreset('tomorrow_am')">Tomorrow Morning (11:00 AM)</button>
+                        <button type="button" class="preset-tag" onclick="setVisitNextPreset('tomorrow_pm')">Tomorrow Afternoon (4:00 PM)</button>
+                        <button type="button" class="preset-tag" onclick="setVisitNextPreset('in_2_days')">In 2 Days</button>
+                        <button type="button" class="preset-tag" onclick="setVisitNextPreset('next_week')">Next Week</button>
+                        <button type="button" class="preset-tag" onclick="document.getElementById('f_next_followup_date').value=''" style="color:#ef4444;">Clear</button>
+                    </div>
+                    <input type="datetime-local" name="next_followup_date" id="f_next_followup_date" class="form-control" style="font-size:12.5px; max-width:280px;">
+                </div>
+
+                <!-- Row 6: Requirements Categories & Subcategories -->
                 <div class="form-group" style="margin-bottom:14px;">
                     <label style="display:flex; justify-content:space-between; align-items:center;">
                         <span>Requirements / Services Discussed</span>
@@ -290,7 +334,7 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
                     </div>
                 </div>
 
-                <!-- Row 6: Remarks & Presets -->
+                <!-- Row 7: Remarks & Presets -->
                 <div class="form-group">
                     <label>Remarks & One-Click Notes</label>
                     <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
@@ -318,29 +362,203 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════════
-     UNIVERSAL MODAL: VIEW VISIT DETAILS
+     UNIVERSAL MODAL: VIEW VISIT DETAILS & TIMELINE
      ══════════════════════════════════════════════════════════════════════════════ -->
 <div id="viewModal" class="modal-overlay" onclick="if(event.target===this)closeViewModal()">
-    <div class="modal-content" style="max-width:580px;">
-        <div class="modal-header">
-            <h4>
-                <div class="modal-header-icon"><i class="fas fa-eye"></i></div>
-                <span>Visit Details</span>
-            </h4>
-            <button class="modal-close" onclick="closeViewModal()">×</button>
+    <div class="modal-content" style="max-width:680px; padding:0; overflow:hidden;">
+        <div class="modal-header" style="padding:16px 20px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <div class="modal-header-icon" style="background:var(--light); color:var(--primary); width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-eye"></i>
+                </div>
+                <div>
+                    <h4 style="margin:0; font-size:15px; font-weight:700; color:#0f172a;">Visit Overview & History</h4>
+                    <span style="font-size:12px; color:#64748b;">Client profile and communication trail</span>
+                </div>
+            </div>
+            <button class="modal-close" onclick="closeViewModal()" style="font-size:20px; color:#94a3b8; background:none; border:none; cursor:pointer;">×</button>
         </div>
-        <div class="modal-body" id="viewModalBody" style="padding:20px;">
+
+        <div class="modal-body" id="viewModalBody" style="padding:20px; max-height:75vh; overflow-y:auto;">
             <!-- Populated dynamically -->
         </div>
-        <div class="modal-footer">
+
+        <div class="modal-footer" style="padding:12px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+            <div id="viewModalActions"></div>
             <button type="button" class="btn btn-secondary-custom" onclick="closeViewModal()">Close</button>
-            <span id="viewModalActions"></span>
         </div>
     </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════════
-     EXPORT SHEETS MODAL (Sales Rep & Date-wise Spreadsheet Export)
+     MODAL: LOG STRUCTURED FOLLOW-UP
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<div id="followupModal" class="modal-overlay" onclick="if(event.target===this)closeFollowupModal()">
+    <div class="modal-content" style="max-width:640px; padding:0; overflow:hidden;">
+        <div class="modal-header" style="padding:16px 20px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <div class="modal-header-icon" style="background:#e0f2fe; color:#0284c7; width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-phone-volume"></i>
+                </div>
+                <div>
+                    <h4 id="fModalCompanyTitle" style="margin:0; font-size:15px; font-weight:700; color:#0f172a;">Log Follow-Up Track Record</h4>
+                    <span id="fModalClientSub" style="font-size:12px; color:#64748b;">Record interaction details and schedule next touchpoint</span>
+                </div>
+            </div>
+            <button class="modal-close" onclick="closeFollowupModal()" style="font-size:20px; color:#94a3b8; background:none; border:none; cursor:pointer;">×</button>
+        </div>
+
+        <form id="followupForm" onsubmit="submitFollowupRecord(event)" style="padding:20px; max-height:80vh; overflow-y:auto;">
+            <input type="hidden" name="visit_id" id="fModalVisitId" value="">
+
+            <!-- Contact Channels Selector -->
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:6px; display:block;">
+                    Contact Channel Used <span style="color:#ef4444;">*</span>
+                </label>
+                <div class="channel-chip-group">
+                    <label class="channel-chip active">
+                        <input type="radio" name="contact_channel" value="call" checked onchange="updateChannelChipUI(this)">
+                        <i class="fas fa-phone-alt"></i> Phone Call
+                    </label>
+                    <label class="channel-chip">
+                        <input type="radio" name="contact_channel" value="whatsapp" onchange="updateChannelChipUI(this)">
+                        <i class="fab fa-whatsapp"></i> WhatsApp
+                    </label>
+                    <label class="channel-chip">
+                        <input type="radio" name="contact_channel" value="meeting" onchange="updateChannelChipUI(this)">
+                        <i class="fas fa-handshake"></i> In-Person Meeting
+                    </label>
+                    <label class="channel-chip">
+                        <input type="radio" name="contact_channel" value="email" onchange="updateChannelChipUI(this)">
+                        <i class="fas fa-envelope"></i> Email
+                    </label>
+                    <label class="channel-chip">
+                        <input type="radio" name="contact_channel" value="office_visit" onchange="updateChannelChipUI(this)">
+                        <i class="fas fa-building"></i> Office Visit
+                    </label>
+                </div>
+            </div>
+
+            <!-- Outcome & Pipeline Stage -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                <div class="form-group">
+                    <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">
+                        Interaction Outcome <span style="color:#ef4444;">*</span>
+                    </label>
+                    <select name="outcome" id="fModalOutcome" class="form-select" required style="font-size:13px; padding:7px 10px;" onchange="handleOutcomeChange(this.value)">
+                        <option value="followup_needed" selected>⏳ Follow-up Needed</option>
+                        <option value="interested">🔥 Highly Interested / Ready</option>
+                        <option value="meeting_scheduled">📅 Meeting Scheduled</option>
+                        <option value="proposal_sent">📄 Proposal / Quote Sent</option>
+                        <option value="callback_requested">🔄 Client Requested Callback</option>
+                        <option value="no_answer">📵 No Answer / Busy</option>
+                        <option value="converted">🎉 Deal Converted (Won)</option>
+                        <option value="not_interested">❌ Not Interested / Lost</option>
+                        <option value="closed">📁 Closed / Resolved</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">
+                        Update Pipeline Stage
+                    </label>
+                    <select name="status" id="fModalStatus" class="form-select" style="font-size:13px; padding:7px 10px;">
+                        <option value="in_discussion" selected>In Discussion</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="converted">Converted to CRM Lead</option>
+                        <option value="closed">Closed / Archived</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Discussion Notes with Quick Tags -->
+            <div class="form-group" style="margin-bottom:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <label style="font-size:12.5px; font-weight:700; color:#334155; margin:0;">
+                        Follow-up Discussion Notes <span style="color:#ef4444;">*</span>
+                    </label>
+                    <span style="font-size:11px; color:#64748b;">Be concise & specific</span>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:6px;">
+                    <button type="button" class="preset-tag" onclick="appendFollowupNote('Called client. Discussed scope of work.')">+ Discussed scope</button>
+                    <button type="button" class="preset-tag" onclick="appendFollowupNote('Shared catalog and price quotation via WhatsApp.')">+ Sent Quotation</button>
+                    <button type="button" class="preset-tag" onclick="appendFollowupNote('Client needs 2 days to consult with partner.')">+ Partner decision</button>
+                    <button type="button" class="preset-tag" onclick="appendFollowupNote('Client agreed to meeting at their office.')">+ Office meeting</button>
+                    <button type="button" class="preset-tag" onclick="appendFollowupNote('No answer, sent follow-up text.')">+ No response</button>
+                </div>
+                <textarea name="notes" id="fModalNotes" rows="3" required placeholder="What was discussed? Client feedback? Any pricing or timeline agreements made?" class="form-control" style="font-size:12.5px; resize:vertical;"></textarea>
+            </div>
+
+            <!-- Schedule Next Follow-up -->
+            <div class="form-group" style="margin-bottom:18px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <label style="font-size:12.5px; font-weight:700; color:#0f172a; margin:0;">
+                        <i class="far fa-calendar-alt" style="color:var(--primary); margin-right:4px;"></i> Schedule Next Follow-Up Date & Time
+                    </label>
+                    <button type="button" onclick="clearNextFollowupDate()" style="background:none; border:none; color:#ef4444; font-size:11px; cursor:pointer; font-weight:600;">
+                        Clear Schedule
+                    </button>
+                </div>
+
+                <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+                    <button type="button" class="preset-tag" onclick="setNextDatePreset('tomorrow_am')">Tomorrow Morning (11:00 AM)</button>
+                    <button type="button" class="preset-tag" onclick="setNextDatePreset('tomorrow_pm')">Tomorrow Afternoon (4:00 PM)</button>
+                    <button type="button" class="preset-tag" onclick="setNextDatePreset('in_2_days')">In 2 Days</button>
+                    <button type="button" class="preset-tag" onclick="setNextDatePreset('next_week')">Next Week Monday</button>
+                </div>
+
+                <input type="datetime-local" name="next_followup_date" id="fModalNextDate" class="form-control" style="font-size:12.5px; max-width:280px; padding:6px 10px;">
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #f1f5f9; padding-top:14px;">
+                <button type="button" class="btn btn-secondary-custom" onclick="closeFollowupModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary-custom" id="fModalSubmitBtn" style="display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fas fa-check"></i> Save Follow-Up Record
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     MODAL: FOLLOW-UP TIMELINE & HISTORY
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<div id="timelineModal" class="modal-overlay" onclick="if(event.target===this)closeTimelineModal()">
+    <div class="modal-content" style="max-width:700px; padding:0; overflow:hidden;">
+        <div class="modal-header" style="padding:16px 20px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <div class="modal-header-icon" style="background:#ede9fe; color:#6d28d9; width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-history"></i>
+                </div>
+                <div>
+                    <h4 id="tModalCompany" style="margin:0; font-size:15px; font-weight:700; color:#0f172a;">Follow-Up Track Record Timeline</h4>
+                    <span id="tModalSub" style="font-size:12px; color:#64748b;">Chronological interaction history</span>
+                </div>
+            </div>
+            <button class="modal-close" onclick="closeTimelineModal()" style="font-size:20px; color:#94a3b8; background:none; border:none; cursor:pointer;">×</button>
+        </div>
+
+        <div style="padding:12px 20px; background:#fff; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div id="tModalQuickBadges" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;"></div>
+            <button type="button" id="tModalAddBtn" class="btn btn-primary-custom" style="padding:5px 12px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:5px;">
+                <i class="fas fa-plus"></i> Log New Follow-Up
+            </button>
+        </div>
+
+        <div class="modal-body" id="tModalTimelineBody" style="padding:20px; max-height:65vh; overflow-y:auto; background:#fafbfc;">
+            <!-- Rendered dynamically -->
+        </div>
+
+        <div class="modal-footer" style="padding:12px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+            <div id="tModalDirectWa"></div>
+            <button type="button" class="btn btn-secondary-custom" onclick="closeTimelineModal()">Close Timeline</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     EXPORT SHEETS MODAL
      ══════════════════════════════════════════════════════════════════════════════ -->
 <div id="exportModal" class="modal-overlay" onclick="if(event.target===this)closeExportModal()">
     <div class="modal-content" style="max-width:540px; padding:0; overflow:hidden;">
@@ -350,7 +568,7 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
                     <i class="fas fa-file-excel"></i>
                 </div>
                 <div>
-                    <h4 style="margin:0; font-size:15px; font-weight:700; color:#0f172a;">Export Field Visits Sheet</h4>
+                    <h4 style="margin:0; font-size:15px; font-weight:700; color:#0f172a;">Export Field Visits & Follow-up Sheets</h4>
                     <span style="font-size:12px; color:#64748b;">Download formatted spreadsheet (Excel & CSV compatible)</span>
                 </div>
             </div>
@@ -358,14 +576,27 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
         </div>
 
         <form id="exportForm" onsubmit="executeExport(event)" style="padding:20px;">
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">Select Report Type</label>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <label class="channel-chip active" style="justify-content:center;">
+                        <input type="radio" name="export_type" value="visits" checked onchange="updateChannelChipUI(this)">
+                        <i class="fas fa-table"></i> Master Visits & Pipeline
+                    </label>
+                    <label class="channel-chip" style="justify-content:center;">
+                        <input type="radio" name="export_type" value="followup_history" onchange="updateChannelChipUI(this)">
+                        <i class="fas fa-history"></i> Follow-ups Activity Log
+                    </label>
+                </div>
+            </div>
+
             <!-- Filter by Sales Rep -->
-            <div class="form-group" style="margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:14px;">
                 <label style="font-size:12.5px; font-weight:700; color:#334155; margin-bottom:5px; display:block;">
                     Sales Representative
                 </label>
-                <select id="exportRepSelect" class="form-select" style="width:100%; font-size:13px; padding:8px 12px;">
+                <select id="exportRepSelect" class="form-select" style="width:100%; font-size:13px; padding:7px 12px;">
                     <option value="0">All Representatives (Company-wide)</option>
-                    <!-- Populated dynamically -->
                 </select>
             </div>
 
@@ -384,7 +615,7 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
             </div>
 
             <!-- Custom Date Range -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
                 <div class="form-group">
                     <label style="font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; display:block;">From Date</label>
                     <input type="date" id="exportStartDate" class="form-control" style="font-size:12.5px; padding:6px 10px;">
@@ -392,30 +623,6 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
                 <div class="form-group">
                     <label style="font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; display:block;">To Date</label>
                     <input type="date" id="exportEndDate" class="form-control" style="font-size:12.5px; padding:6px 10px;">
-                </div>
-            </div>
-
-            <!-- Status & Priority Filters -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:18px;">
-                <div class="form-group">
-                    <label style="font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; display:block;">Status</label>
-                    <select id="exportStatusSelect" class="form-select" style="font-size:12.5px; padding:6px 10px;">
-                        <option value="all">All Statuses</option>
-                        <option value="pending">Pending Contact</option>
-                        <option value="contacted">Contacted</option>
-                        <option value="in_discussion">In Discussion</option>
-                        <option value="converted">Converted to Lead</option>
-                        <option value="closed">Closed / Resolved</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label style="font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; display:block;">Priority</label>
-                    <select id="exportInterestSelect" class="form-select" style="font-size:12.5px; padding:6px 10px;">
-                        <option value="all">All Priorities</option>
-                        <option value="hot">High (Hot)</option>
-                        <option value="warm">Medium (Warm)</option>
-                        <option value="cold">Standard (Cold)</option>
-                    </select>
                 </div>
             </div>
 
@@ -430,7 +637,7 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
 </div>
 
 <style>
-/* ── Clean Universal Form Helpers ── */
+/* ── Clean Form Helpers ── */
 .form-group {
     display: flex;
     flex-direction: column;
@@ -448,40 +655,44 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
     padding: 4px 10px;
     border-radius: 14px;
     font-size: 12px;
-    font-weight: 600;
     cursor: pointer;
     transition: all 0.15s ease;
 }
 .preset-tag:hover {
-    background: var(--primary);
-    color: #fff;
-    border-color: var(--primary);
+    background: #e2e8f0;
+    color: #0f172a;
 }
+
+/* ── Interest Chips ── */
 .interest-chip {
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 12px;
-    border: 1.5px solid #cbd5e1;
+    padding: 8px 10px;
+    border: 1.5px solid #e2e8f0;
     border-radius: 8px;
-    background: #fff;
-    font-size: 13px;
-    font-weight: 700;
     cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    background: #fff;
     transition: all 0.15s ease;
 }
 .interest-chip input { display: none; }
 .interest-chip.active-chip {
-    border-color: var(--primary);
-    background: #f0fdf4;
-    color: var(--primary);
+    border-color: var(--primary, #024442);
+    background: #f0fdfa;
+    color: var(--primary, #024442);
+    font-weight: 700;
 }
+
+/* ── Category Tree Box ── */
 .cat-box {
     border: 1px solid #e2e8f0;
     border-radius: 8px;
-    background: #fff;
     padding: 8px 12px;
+    background: #fbfcfd;
 }
 .cat-label {
     display: flex;
@@ -489,33 +700,42 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
     gap: 8px;
     cursor: pointer;
     font-size: 13px;
+    color: #0f172a;
     margin: 0;
 }
-.cat-label input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+.cat-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary, #024442);
+}
 .sub-box {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px dashed #e2e8f0;
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #e2e8f0;
 }
 .sub-box label {
     font-size: 12px;
     color: #475569;
-    font-weight: 500;
+    font-weight: normal;
     display: flex;
     align-items: center;
     gap: 5px;
     cursor: pointer;
     margin: 0;
 }
-.sub-box input { accent-color: var(--primary); }
+.sub-box label input[type="checkbox"] {
+    accent-color: var(--primary, #024442);
+}
 
-/* ── Clean Universal Table Layout ── */
+/* ── Data Table Layout ── */
 .data-table {
     width: 100%;
     border-collapse: collapse;
+    font-size: 13px;
+    background: #fff;
 }
 .data-table th {
     background: #f8fafc;
@@ -542,27 +762,27 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
     border-bottom: none;
 }
 
-/* ── Direct Reach Out Button ── */
+/* ── Direct Reach Out Buttons ── */
 .btn-wa-direct {
     background: #16a34a !important;
     color: #ffffff !important;
     font-weight: 600;
     font-size: 12px;
-    padding: 5px 12px;
+    padding: 4px 10px;
     border-radius: 6px;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     text-decoration: none !important;
     border: none;
-    box-shadow: 0 1px 3px rgba(22, 163, 74, 0.2);
+    box-shadow: 0 1px 2px rgba(22, 163, 74, 0.2);
     white-space: nowrap;
     transition: all 0.15s ease;
 }
 .btn-wa-direct:hover {
     background: #15803d !important;
     color: #ffffff !important;
-    box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3);
+    box-shadow: 0 2px 5px rgba(22, 163, 74, 0.3);
 }
 
 .contact-phone-link {
@@ -580,34 +800,14 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
     text-decoration: underline;
 }
 
-/* ── Action Buttons ── */
-.dots {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    background: #fff;
-    color: #475569;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    transition: all 0.2s ease;
-}
-.dots:hover {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
-}
-
-/* ── Professional Badges ── */
+/* ── Badges ── */
 .badge-priority {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 3px 8px;
+    padding: 2px 7px;
     border-radius: 6px;
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 700;
 }
 .badge-dot {
@@ -635,6 +835,131 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
     margin-left: 5px;
 }
 
+.badge-stage {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.badge-stage-pending    { background: #fef3c7; color: #92400e; }
+.badge-stage-contacted  { background: #e0f2fe; color: #0369a1; }
+.badge-stage-discussion { background: #ede9fe; color: #6d28d9; }
+.badge-stage-converted  { background: #dcfce7; color: #15803d; }
+.badge-stage-closed     { background: #f1f5f9; color: #64748b; }
+
+.fo-schedule-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.fo-overdue   { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+.fo-duetoday  { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.fo-upcoming  { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+.fo-none      { background: #f1f5f9; color: #94a3b8; }
+.fo-completed { background: #dcfce7; color: #15803d; }
+
+.outcome-pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    display: inline-block;
+}
+.outcome-pill-interested  { background: #dcfce7; color: #15803d; }
+.outcome-pill-meeting     { background: #ede9fe; color: #6d28d9; }
+.outcome-pill-proposal    { background: #e0f2fe; color: #0369a1; }
+.outcome-pill-callback    { background: #fef3c7; color: #b45309; }
+.outcome-pill-followup    { background: #f1f5f9; color: #475569; }
+.outcome-pill-noanswer    { background: #fef2f2; color: #b91c1c; }
+.outcome-pill-notinterest { background: #f8fafc; color: #64748b; }
+.outcome-pill-converted   { background: #bbf7d0; color: #166534; font-weight:700; }
+
+/* ── Action Buttons ── */
+.btn-track-action {
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 4px 9px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+}
+.btn-track-action:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+.btn-track-primary {
+    background: var(--primary, #024442);
+    border: 1px solid var(--primary, #024442);
+    color: #ffffff;
+}
+.btn-track-primary:hover {
+    background: #013331;
+    color: #ffffff;
+}
+
+.dots {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.15s ease;
+}
+.dots:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+/* ── Channel Selector Chips in Modal ── */
+.channel-chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.channel-chip {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+}
+.channel-chip input[type="radio"] { display: none; }
+.channel-chip:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+.channel-chip.active {
+    background: var(--primary, #024442);
+    border-color: var(--primary, #024442);
+    color: #ffffff;
+}
+
+/* ── Date Preset Pills ── */
 .preset-pill {
     background: #f1f5f9;
     color: #475569;
@@ -652,24 +977,70 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
     color: #ffffff;
     border-color: var(--primary, #024442);
 }
+
+/* ── Vertical Timeline CSS ── */
+.v-timeline {
+    position: relative;
+    padding-left: 28px;
+}
+.v-timeline::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: #e2e8f0;
+}
+.v-timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+.v-timeline-item:last-child {
+    margin-bottom: 0;
+}
+.v-timeline-dot {
+    position: absolute;
+    left: -28px;
+    top: 2px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--primary, #024442);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--primary, #024442);
+    z-index: 1;
+}
+.v-timeline-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
 </style>
 
 <script>
 let currentFilter = 'all';
+let currentSort   = 'urgency';
 let searchQuery   = '';
 let allVisits     = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     loadVisits();
     loadSalesRepsForExport();
-    // Auto-open modal if URL has ?log=1
+
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('log') === '1') {
         openVisitModal('add');
     }
 });
 
-// ── Smart WhatsApp Phone Number Formatter ──
+// ── Smart WhatsApp Phone Formatter ──
 function formatWhatsAppNumber(phone) {
     if (!phone) return '';
     let clean = phone.replace(/[^0-9]/g, '');
@@ -703,14 +1074,19 @@ function loadVisits() {
 
 function renderStats(stats) {
     document.getElementById('statTotal').textContent     = stats.total || 0;
-    document.getElementById('statUrgent').textContent    = stats.urgent || 0;
-    document.getElementById('statHot').textContent       = stats.hot || 0;
-    document.getElementById('statContacted').textContent = (parseInt(stats.contacted || 0) + parseInt(stats.converted || 0));
+    document.getElementById('statOverdue').textContent   = stats.overdue || 0;
+    document.getElementById('statDueToday').textContent  = stats.due_today || 0;
+    document.getElementById('statConverted').textContent = stats.converted || 0;
 }
 
 function setFilter(val) {
     currentFilter = val;
     loadVisits();
+}
+
+function setSort(val) {
+    currentSort = val;
+    renderTable();
 }
 
 function handleSearch(val) {
@@ -720,7 +1096,7 @@ function handleSearch(val) {
 
 function renderTable() {
     const container = document.getElementById('visitsTableBody');
-    let items = allVisits;
+    let items = [...allVisits];
 
     if (searchQuery) {
         items = items.filter(v =>
@@ -728,8 +1104,36 @@ function renderTable() {
             (v.company_name && v.company_name.toLowerCase().includes(searchQuery)) ||
             (v.phone && v.phone.includes(searchQuery)) ||
             (v.categories && v.categories.toLowerCase().includes(searchQuery)) ||
-            (v.remarks && v.remarks.toLowerCase().includes(searchQuery))
+            (v.remarks && v.remarks.toLowerCase().includes(searchQuery)) ||
+            (v.admin_notes && v.admin_notes.toLowerCase().includes(searchQuery))
         );
+    }
+
+    // Sort items
+    if (currentSort === 'urgency') {
+        items.sort((a, b) => {
+            if (b.is_urgent !== a.is_urgent) return b.is_urgent - a.is_urgent;
+            const rank = { 'hot': 3, 'warm': 2, 'cold': 1 };
+            return (rank[b.interest_level] || 0) - (rank[a.interest_level] || 0);
+        });
+    } else if (currentSort === 'followup_due') {
+        items.sort((a, b) => {
+            if (!a.next_followup_date && !b.next_followup_date) return 0;
+            if (!a.next_followup_date) return 1;
+            if (!b.next_followup_date) return -1;
+            return new Date(a.next_followup_date) - new Date(b.next_followup_date);
+        });
+    } else if (currentSort === 'followup_cnt') {
+        items.sort((a, b) => parseInt(b.followup_count || 0) - parseInt(a.followup_count || 0));
+    } else if (currentSort === 'interest') {
+        items.sort((a, b) => {
+            const rank = { 'hot': 3, 'warm': 2, 'cold': 1 };
+            return (rank[b.interest_level] || 0) - (rank[a.interest_level] || 0);
+        });
+    } else if (currentSort === 'contact_time') {
+        items.sort((a, b) => (a.contact_availability || '').localeCompare(b.contact_availability || ''));
+    } else if (currentSort === 'newest') {
+        items.sort((a, b) => parseInt(b.id) - parseInt(a.id));
     }
 
     if (items.length === 0) {
@@ -761,6 +1165,41 @@ function renderTable() {
             priorityBadge = '<span class="badge-priority badge-cold"><span class="badge-dot badge-dot-cold"></span>Standard</span>';
         }
 
+        let stageBadge = '';
+        if (v.status === 'converted') {
+            stageBadge = '<span class="badge-stage badge-stage-converted">Converted to Lead</span>';
+        } else if (v.status === 'in_discussion') {
+            stageBadge = '<span class="badge-stage badge-stage-discussion">In Discussion</span>';
+        } else if (v.status === 'contacted') {
+            stageBadge = '<span class="badge-stage badge-stage-contacted">Contacted</span>';
+        } else if (v.status === 'closed') {
+            stageBadge = '<span class="badge-stage badge-stage-closed">Closed</span>';
+        } else {
+            stageBadge = '<span class="badge-stage badge-stage-pending">Pending Contact</span>';
+        }
+
+        // Follow-up Track Record summary
+        const fCount = parseInt(v.followup_count || 0);
+        let scheduleBadge = '';
+        if (v.followup_status === 'overdue') {
+            scheduleBadge = `<span class="fo-schedule-badge fo-overdue"><i class="fas fa-exclamation-circle"></i> Overdue (${v.formatted_next_followup || 'Missed'})</span>`;
+        } else if (v.followup_status === 'due_today') {
+            scheduleBadge = `<span class="fo-schedule-badge fo-duetoday"><i class="fas fa-clock"></i> Due Today (${v.formatted_next_followup ? v.formatted_next_followup.split(' ').slice(-2).join(' ') : 'Today'})</span>`;
+        } else if (v.followup_status === 'upcoming') {
+            scheduleBadge = `<span class="fo-schedule-badge fo-upcoming"><i class="far fa-calendar-alt"></i> ${v.formatted_next_followup}</span>`;
+        } else if (v.status === 'converted' || v.status === 'closed') {
+            scheduleBadge = `<span class="fo-schedule-badge fo-completed"><i class="fas fa-check"></i> Resolved</span>`;
+        } else {
+            scheduleBadge = `<span class="fo-schedule-badge fo-none">No follow-up set</span>`;
+        }
+
+        let outcomeHtml = '';
+        if (v.last_outcome) {
+            const outClean = v.last_outcome.toLowerCase().replace(/[^a-z]/g, '');
+            const outLabel = escapeHtml(v.last_outcome.replace(/_/g, ' '));
+            outcomeHtml = `<span class="outcome-pill outcome-pill-${outClean}" style="text-transform:capitalize;">${outLabel}</span>`;
+        }
+
         let catBadges = '';
         if (v.categories_arr && v.categories_arr.length > 0) {
             catBadges = v.categories_arr.slice(0, 2).map(c => `<span style="background:#e0f2fe; color:#0284c7; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:600;">${escapeHtml(c)}</span>`).join(' ');
@@ -771,7 +1210,6 @@ function renderTable() {
             catBadges = '<span style="color:#94a3b8; font-size:12px;">General</span>';
         }
 
-        // WhatsApp Reach Out Button
         let reachOutHtml = '';
         if (cleanWa) {
             reachOutHtml = `
@@ -794,7 +1232,7 @@ function renderTable() {
         }
 
         html += `
-            <tr style="${isUrgent ? 'background:#fffbfb; border-left:4px solid #ef4444;' : ''}">
+            <tr style="${isUrgent ? 'background:#fffbfb; border-left:4px solid #ef4444;' : (v.followup_status === 'overdue' ? 'background:#fffafa;' : '')}">
                 <td>
                     <div style="font-weight:700; color:#0f172a; font-size:13.5px; display:inline-flex; align-items:center;">
                         ${escapeHtml(v.company_name)}
@@ -809,18 +1247,28 @@ function renderTable() {
                     ${reachOutHtml}
                 </td>
                 <td>
-                    ${priorityBadge}
-                </td>
-                <td>
-                    <div style="font-size:12.5px; color:#334155; display:flex; align-items:center; gap:5px;">
-                        <i class="far fa-clock" style="color:#64748b;"></i>
-                        <strong>${escapeHtml(v.contact_availability)}</strong>
+                    <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+                        ${stageBadge}
+                        ${priorityBadge}
                     </div>
                 </td>
                 <td>
-                    <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                    <div style="display:flex; flex-direction:column; gap:3px; align-items:flex-start;">
+                        ${scheduleBadge}
+                        <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+                            <span style="font-size:11.5px; font-weight:700; color:#475569;">${fCount} Touchpoint${fCount===1?'':'s'}</span>
+                            ${outcomeHtml}
+                        </div>
+                        ${v.last_followup_by ? `<small style="font-size:11px; color:#94a3b8;">Last: ${v.last_followup_ago || 'Recent'} by ${escapeHtml(v.last_followup_by)}</small>` : ''}
+                    </div>
+                </td>
+                <td>
+                    <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:3px;">
                         ${catBadges}
                     </div>
+                    <small style="color:#64748b; font-size:11.5px; display:block;">
+                        <i class="far fa-clock" style="font-size:10px;"></i> ${escapeHtml(v.contact_availability)}
+                    </small>
                 </td>
                 <td>
                     <div style="font-size:12px; color:#64748b;">
@@ -829,10 +1277,18 @@ function renderTable() {
                     </div>
                 </td>
                 <td style="text-align:right;">
-                    <div style="display:inline-flex; gap:6px; justify-content:flex-end; align-items:center;">
+                    <div style="display:inline-flex; gap:5px; justify-content:flex-end; align-items:center;">
+                        <button class="btn-track-action btn-track-primary" onclick="openFollowupModal(${v.id})" title="Log Follow-up Interaction">
+                            <i class="fas fa-plus"></i> Follow-Up
+                        </button>
+                        <button class="dots" onclick="openTimelineModal(${v.id})" title="View Complete Interaction History">
+                            <i class="fas fa-history" style="color:#6d28d9;"></i>
+                        </button>
                         <button class="dots" onclick="viewVisit(${v.id})" title="View Details"><i class="fas fa-eye"></i></button>
                         <button class="dots" onclick="openVisitModal('edit', ${v.id})" title="Edit"><i class="fas fa-pencil-alt"></i></button>
-                        <button class="dots" onclick="deleteVisit(${v.id}, '${escapeHtml(v.company_name)}')" title="Delete" style="color:#ef4444;"><i class="fas fa-trash"></i></button>
+                        <?php if ($is_admin_user): ?>
+                        <button class="dots" onclick="deleteVisit(${v.id}, '${escapeJsString(v.company_name)}')" title="Delete" style="color:#ef4444;"><i class="fas fa-trash"></i></button>
+                        <?php endif; ?>
                     </div>
                 </td>
             </tr>
@@ -840,6 +1296,490 @@ function renderTable() {
     });
 
     container.innerHTML = html;
+}
+
+// ── Follow-Up Modal Logic ──
+function openFollowupModal(visitId) {
+    const v = allVisits.find(item => item.id == visitId);
+    document.getElementById('fModalVisitId').value = visitId;
+    if (v) {
+        document.getElementById('fModalCompanyTitle').textContent = `Log Follow-Up: ${v.company_name}`;
+        document.getElementById('fModalClientSub').textContent = `Client: ${v.client_name} · Phone: ${v.phone} · Stage: ${v.status}`;
+        document.getElementById('fModalStatus').value = (v.status === 'pending') ? 'in_discussion' : v.status;
+    } else {
+        document.getElementById('fModalCompanyTitle').textContent = `Log Follow-Up Record (Visit #${visitId})`;
+    }
+
+    document.getElementById('fModalNotes').value = '';
+    document.getElementById('fModalNextDate').value = '';
+    document.getElementById('fModalOutcome').value = 'followup_needed';
+
+    document.querySelectorAll('#followupModal .channel-chip').forEach(c => c.classList.remove('active'));
+    const callChip = document.querySelector('#followupModal input[value="call"]');
+    if (callChip) {
+        callChip.checked = true;
+        callChip.closest('.channel-chip').classList.add('active');
+    }
+
+    document.getElementById('followupModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeFollowupModal() {
+    document.getElementById('followupModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function updateChannelChipUI(inputEl) {
+    const group = inputEl.closest('.channel-chip-group') || inputEl.closest('div');
+    group.querySelectorAll('.channel-chip').forEach(c => c.classList.remove('active'));
+    inputEl.closest('.channel-chip').classList.add('active');
+}
+
+function appendFollowupNote(text) {
+    const ta = document.getElementById('fModalNotes');
+    ta.value = ta.value ? `${ta.value.trim()} ${text}` : text;
+    ta.focus();
+}
+
+function handleOutcomeChange(val) {
+    const stSel = document.getElementById('fModalStatus');
+    if (val === 'converted') {
+        stSel.value = 'converted';
+    } else if (val === 'not_interested' || val === 'closed') {
+        stSel.value = 'closed';
+    } else if (stSel.value === 'pending') {
+        stSel.value = 'in_discussion';
+    }
+}
+
+function setNextDatePreset(preset) {
+    const input = document.getElementById('fModalNextDate');
+    const now = new Date();
+
+    if (preset === 'tomorrow_am') {
+        now.setDate(now.getDate() + 1);
+        now.setHours(11, 0, 0, 0);
+    } else if (preset === 'tomorrow_pm') {
+        now.setDate(now.getDate() + 1);
+        now.setHours(16, 0, 0, 0);
+    } else if (preset === 'in_2_days') {
+        now.setDate(now.getDate() + 2);
+        now.setHours(15, 0, 0, 0);
+    } else if (preset === 'next_week') {
+        const day = now.getDay();
+        const diff = (day === 0 ? 1 : 8 - day);
+        now.setDate(now.getDate() + diff);
+        now.setHours(11, 0, 0, 0);
+    }
+
+    const yr = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, '0');
+    const da = String(now.getDate()).padStart(2, '0');
+    const hr = String(now.getHours()).padStart(2, '0');
+    const mi = String(now.getMinutes()).padStart(2, '0');
+    input.value = `${yr}-${mo}-${da}T${hr}:${mi}`;
+}
+
+function clearNextFollowupDate() {
+    document.getElementById('fModalNextDate').value = '';
+}
+
+function submitFollowupRecord(e) {
+    e.preventDefault();
+    const btn = document.getElementById('fModalSubmitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+    const fd = new FormData(document.getElementById('followupForm'));
+    fd.append('action', 'add_followup');
+
+    fetch('sales_visits_api.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Save Follow-Up Record';
+
+            if (data.success) {
+                closeFollowupModal();
+                loadVisits();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Save Follow-Up Record';
+            alert('Failed to save follow-up.');
+        });
+}
+
+// ── Follow-Up Timeline Modal ──
+function openTimelineModal(visitId) {
+    document.getElementById('tModalTimelineBody').innerHTML = `
+        <div style="text-align:center; padding:40px; color:#888;">
+            <i class="fas fa-spinner fa-spin" style="font-size:24px; color:var(--primary); margin-bottom:10px;"></i>
+            <p style="margin:0;">Loading full interaction history...</p>
+        </div>
+    `;
+    document.getElementById('timelineModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    fetch(`sales_visits_api.php?action=get_followups&visit_id=${visitId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                renderTimelineModalContent(data.visit, data.followups || []);
+            } else {
+                document.getElementById('tModalTimelineBody').innerHTML = `<p style="color:#ef4444; padding:20px;">${data.message}</p>`;
+            }
+        });
+}
+
+function renderTimelineModalContent(visit, followups) {
+    document.getElementById('tModalCompany').textContent = visit.company_name;
+    document.getElementById('tModalSub').textContent = `Client: ${visit.client_name} · Logged by ${visit.sales_rep_name}`;
+    
+    document.getElementById('tModalAddBtn').onclick = () => {
+        closeTimelineModal();
+        openFollowupModal(visit.id);
+    };
+
+    const rawWa = (visit.whatsapp || visit.phone || '').trim();
+    const cleanWa = formatWhatsAppNumber(rawWa);
+    document.getElementById('tModalDirectWa').innerHTML = cleanWa ? `
+        <a href="https://wa.me/${cleanWa}" target="_blank" class="btn-wa-direct">
+            <i class="fab fa-whatsapp"></i> WhatsApp Chat
+        </a>
+    ` : '';
+
+    const badgeWrap = document.getElementById('tModalQuickBadges');
+    badgeWrap.innerHTML = `
+        <span class="badge-stage badge-stage-${visit.status}">${visit.status.replace(/_/g, ' ').toUpperCase()}</span>
+        <span class="badge-priority badge-${visit.interest_level}">${visit.interest_level.toUpperCase()}</span>
+        <span style="font-size:12px; font-weight:700; color:#475569;">${followups.length} Recorded Touchpoint${followups.length===1?'':'s'}</span>
+    `;
+
+    const container = document.getElementById('tModalTimelineBody');
+
+    let html = '<div class="v-timeline">';
+    if (followups.length === 0) {
+        html += `
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:16px; margin-bottom:16px; text-align:center;">
+                <p style="margin:0; font-size:13px; font-weight:600; color:#475569;">No follow-up touchpoints recorded yet.</p>
+                <small style="color:#94a3b8;">Click "+ Log New Follow-Up" above to add the first interaction.</small>
+            </div>
+        `;
+    } else {
+        followups.forEach(f => {
+            let chIcon = '<i class="fas fa-phone-alt"></i>';
+            if (f.contact_channel === 'whatsapp') chIcon = '<i class="fab fa-whatsapp"></i>';
+            else if (f.contact_channel === 'meeting') chIcon = '<i class="fas fa-handshake"></i>';
+            else if (f.contact_channel === 'email') chIcon = '<i class="fas fa-envelope"></i>';
+            else if (f.contact_channel === 'office_visit') chIcon = '<i class="fas fa-building"></i>';
+
+            html += `
+                <div class="v-timeline-item">
+                    <div class="v-timeline-dot">${chIcon}</div>
+                    <div class="v-timeline-card">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+                            <div>
+                                <strong style="font-size:13px; color:#0f172a;">${escapeHtml(f.channel_label)}</strong>
+                                <span class="outcome-pill outcome-pill-${f.outcome.toLowerCase()}" style="margin-left:6px;">${escapeHtml(f.outcome_label)}</span>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:11.5px; font-weight:600; color:#64748b;">${f.formatted_date}</div>
+                                <small style="color:#94a3b8; font-size:10.5px;">${f.time_ago}</small>
+                            </div>
+                        </div>
+
+                        <div style="font-size:12.5px; color:#334155; line-height:1.45; background:#f8fafc; padding:8px 10px; border-radius:6px; border:1px solid #f1f5f9; margin-bottom:6px;">
+                            ${escapeHtml(f.notes)}
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#64748b;">
+                            <span>Logged by: <strong>${escapeHtml(f.user_name)}</strong></span>
+                            ${f.formatted_next_date ? `
+                                <span style="color:var(--primary); font-weight:600;">
+                                    <i class="far fa-calendar-alt"></i> Next: ${f.formatted_next_date}
+                                </span>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // Original Field Visit Entry
+    html += `
+        <div class="v-timeline-item">
+            <div class="v-timeline-dot" style="border-color:#16a34a; color:#16a34a;"><i class="fas fa-flag"></i></div>
+            <div class="v-timeline-card" style="border-left:3.5px solid #16a34a;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <strong style="font-size:13px; color:#0f172a;"><i class="fas fa-street-view" style="color:#16a34a;"></i> Field Visit Logged</strong>
+                    <span style="font-size:11.5px; color:#64748b;">${visit.time_ago || ''}</span>
+                </div>
+                <div style="font-size:12px; color:#475569; margin-bottom:4px;">
+                    By <strong>${escapeHtml(visit.sales_rep_name)}</strong> · Availability: <strong>${escapeHtml(visit.contact_availability)}</strong>
+                </div>
+                ${visit.remarks ? `
+                    <div style="font-size:12px; color:#334155; background:#f8fafc; padding:6px 8px; border-radius:4px; border:1px dashed #cbd5e1;">
+                        ${escapeHtml(visit.remarks)}
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function closeTimelineModal() {
+    document.getElementById('timelineModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// ── Log / Edit Visit Modal ──
+function openVisitModal(mode, id = null) {
+    document.getElementById('visitForm').reset();
+    document.getElementById('f_visit_id').value = '';
+    document.querySelectorAll('.sub-box').forEach(el => el.style.display = 'none');
+    setInterestUI('warm');
+    document.getElementById('chip_warm').querySelector('input').checked = true;
+
+    if (mode === 'add') {
+        document.getElementById('visitModalTitle').textContent = 'Log Client Field Visit';
+        document.getElementById('visitModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+        document.getElementById('f_client_name').focus();
+    } else if (mode === 'edit' && id) {
+        document.getElementById('visitModalTitle').textContent = 'Edit Client Visit';
+        const v = allVisits.find(item => item.id == id);
+        if (!v) return;
+
+        document.getElementById('f_visit_id').value             = v.id;
+        document.getElementById('f_client_name').value          = v.client_name;
+        document.getElementById('f_company_name').value         = v.company_name;
+        document.getElementById('f_phone').value                = v.phone;
+        document.getElementById('f_whatsapp').value             = v.whatsapp || v.phone;
+        document.getElementById('f_contact_availability').value = v.contact_availability;
+        document.getElementById('f_remarks').value              = v.remarks || '';
+        document.getElementById('f_quick_remark').value         = v.quick_remark || '';
+        document.getElementById('f_is_urgent').checked          = (v.is_urgent == 1);
+        if (v.next_followup_date) {
+            document.getElementById('f_next_followup_date').value = v.next_followup_date.substring(0, 16);
+        }
+
+        const r = document.querySelector(`input[name="interest_level"][value="${v.interest_level}"]`);
+        if (r) { r.checked = true; setInterestUI(v.interest_level); }
+
+        if (v.categories_arr) {
+            v.categories_arr.forEach(cat => {
+                const cb = document.querySelector(`input[name="categories[]"][value="${cat}"]`);
+                if (cb) {
+                    cb.checked = true;
+                    const map = { 'Website':'sub_web', 'Printing':'sub_print', 'Design':'sub_design', 'Social Media Marketing':'sub_smm', 'Managing Social Media':'sub_manage' };
+                    if (map[cat]) document.getElementById(map[cat]).style.display = 'flex';
+                }
+            });
+        }
+        if (v.subcategories_arr) {
+            v.subcategories_arr.forEach(sub => {
+                const scb = document.querySelector(`input[name="subcategories[]"][value="${sub}"]`);
+                if (scb) scb.checked = true;
+            });
+        }
+
+        document.getElementById('visitModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeVisitModal() {
+    document.getElementById('visitModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function setInterestUI(lvl) {
+    document.querySelectorAll('.interest-chip').forEach(c => c.classList.remove('active-chip'));
+    const target = document.getElementById('chip_' + lvl);
+    if (target) target.classList.add('active-chip');
+}
+
+function copyPhoneToWa() {
+    const p = document.getElementById('f_phone').value.trim();
+    if (p) document.getElementById('f_whatsapp').value = p;
+}
+
+function setAvailPreset(txt) {
+    document.getElementById('f_contact_availability').value = txt;
+}
+
+function setVisitNextPreset(preset) {
+    const input = document.getElementById('f_next_followup_date');
+    const now = new Date();
+
+    if (preset === 'tomorrow_am') {
+        now.setDate(now.getDate() + 1);
+        now.setHours(11, 0, 0, 0);
+    } else if (preset === 'tomorrow_pm') {
+        now.setDate(now.getDate() + 1);
+        now.setHours(16, 0, 0, 0);
+    } else if (preset === 'in_2_days') {
+        now.setDate(now.getDate() + 2);
+        now.setHours(15, 0, 0, 0);
+    } else if (preset === 'next_week') {
+        const day = now.getDay();
+        const diff = (day === 0 ? 1 : 8 - day);
+        now.setDate(now.getDate() + diff);
+        now.setHours(11, 0, 0, 0);
+    }
+
+    const yr = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, '0');
+    const da = String(now.getDate()).padStart(2, '0');
+    const hr = String(now.getHours()).padStart(2, '0');
+    const mi = String(now.getMinutes()).padStart(2, '0');
+    input.value = `${yr}-${mo}-${da}T${hr}:${mi}`;
+}
+
+function toggleSub(id, checked) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = checked ? 'flex' : 'none';
+}
+
+function addRemark(preset) {
+    document.getElementById('f_quick_remark').value = preset;
+    const txt = document.getElementById('f_remarks');
+    if (!txt.value.includes(preset)) {
+        txt.value = txt.value ? (txt.value + ' | ' + preset) : preset;
+    }
+}
+
+function submitVisitForm(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+    const formData = new FormData(document.getElementById('visitForm'));
+    fetch('sales_visits_api.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Save Visit Record';
+            if (data.success) {
+                closeVisitModal();
+                loadVisits();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Save Visit Record';
+            alert('Failed to save visit record.');
+        });
+}
+
+function deleteVisit(id, company) {
+    if (!confirm(`Are you sure you want to delete the visit record for "${company}"?`)) return;
+    const fd = new FormData();
+    fd.append('action', 'delete');
+    fd.append('id', id);
+    fd.append('visit_id', id);
+    fetch('sales_visits_api.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                loadVisits();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        });
+}
+
+// ── View Visit Modal ──
+function viewVisit(id) {
+    const v = allVisits.find(item => item.id == id);
+    if (!v) return;
+
+    const cleanWa = formatWhatsAppNumber(v.whatsapp || v.phone);
+    const waMsg   = encodeURIComponent(`Hello ${v.client_name}, this is Graphicafix following up on your discussion regarding ${v.company_name}.`);
+
+    let cats = (v.categories_arr && v.categories_arr.length) ? v.categories_arr.join(', ') : 'None';
+    let subs = (v.subcategories_arr && v.subcategories_arr.length) ? v.subcategories_arr.join('; ') : 'None';
+
+    document.getElementById('viewModalBody').innerHTML = `
+        <div style="margin-bottom:16px;">
+            <div style="font-size:18px; font-weight:800; color:#0f172a;">${escapeHtml(v.company_name)} ${v.is_urgent == 1 ? '<span class="badge-urgent-tag">URGENT</span>' : ''}</div>
+            <div style="color:#64748b; font-size:13px; margin-top:2px;">Contact: <strong>${escapeHtml(v.client_name)}</strong> · Stage: <strong style="text-transform:uppercase;">${v.status}</strong></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; font-size:12.5px;">
+            <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="color:#64748b; font-size:11px; font-weight:700;">PHONE</div>
+                <div style="font-weight:700; color:#0f172a;">${escapeHtml(v.phone)}</div>
+            </div>
+            <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="color:#64748b; font-size:11px; font-weight:700;">WHATSAPP</div>
+                <div style="font-weight:700; color:#16a34a;">${escapeHtml(v.whatsapp || v.phone)}</div>
+            </div>
+            <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="color:#64748b; font-size:11px; font-weight:700;">INTEREST LEVEL</div>
+                <div style="font-weight:700; text-transform:uppercase;">${v.interest_level}</div>
+            </div>
+            <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="color:#64748b; font-size:11px; font-weight:700;">CONTACT WINDOW</div>
+                <div style="font-weight:700; color:#0f172a;">${escapeHtml(v.contact_availability)}</div>
+            </div>
+        </div>
+        <div style="margin-bottom:12px; font-size:13px;">
+            <div style="color:#64748b; font-size:11px; font-weight:700; text-transform:uppercase;">SERVICES REQUESTED</div>
+            <div style="color:#0f172a; margin-top:2px; font-weight:600;">${escapeHtml(cats)}</div>
+            ${subs !== 'None' ? `<div style="color:#64748b; font-size:12px; margin-top:3px;"><em>Sub-items:</em> ${escapeHtml(subs)}</div>` : ''}
+        </div>
+        <div style="margin-bottom:14px; font-size:13px;">
+            <div style="color:#64748b; font-size:11px; font-weight:700; text-transform:uppercase;">FIELD REMARKS</div>
+            <div style="background:#f1f5f9; padding:10px; border-radius:8px; color:#334155; margin-top:4px; font-size:12.5px; line-height:1.4;">${escapeHtml(v.remarks || 'No remarks entered.')}</div>
+        </div>
+
+        ${v.admin_notes ? `
+            <div style="margin-bottom:14px;">
+                <div style="color:#64748b; font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:4px;">COMMUNICATION TRAIL</div>
+                <pre style="background:#fff; padding:10px; border-radius:6px; font-size:12px; color:#475569; white-space:pre-wrap; border:1px solid #e2e8f0; margin:0; font-family:inherit;">${escapeHtml(v.admin_notes)}</pre>
+            </div>
+        ` : ''}
+
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; color:#94a3b8; border-top:1px solid #f1f5f9; padding-top:10px;">
+            <span>Logged by ${escapeHtml(v.sales_rep_name)} · ${v.time_ago || ''}</span>
+            <button type="button" class="btn-track-action" onclick="closeViewModal(); openTimelineModal(${v.id});" style="font-size:11.5px;">
+                <i class="fas fa-history"></i> View Full Timeline
+            </button>
+        </div>
+    `;
+
+    document.getElementById('viewModalActions').innerHTML = `
+        <div style="display:flex; gap:8px;">
+            <button type="button" class="btn-track-action btn-track-primary" onclick="closeViewModal(); openFollowupModal(${v.id});">
+                <i class="fas fa-plus"></i> Log Follow-Up
+            </button>
+            ${cleanWa ? `
+                <a href="https://wa.me/${cleanWa}?text=${waMsg}" target="_blank" class="btn-wa-direct">
+                    <i class="fab fa-whatsapp"></i> WhatsApp Reach Out
+                </a>
+            ` : ''}
+        </div>
+    `;
+
+    document.getElementById('viewModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeViewModal() {
+    document.getElementById('viewModal').classList.remove('active');
+    document.body.style.overflow = '';
 }
 
 // ── Export Sheets Logic ──
@@ -856,8 +1796,7 @@ function loadSalesRepsForExport() {
                     });
                 }
             }
-        })
-        .catch(() => {});
+        });
 }
 
 function openExportModal() {
@@ -909,220 +1848,36 @@ function setExportDatePreset(preset, btn) {
 
 function executeExport(e) {
     e.preventDefault();
+    const type      = document.querySelector('input[name="export_type"]:checked').value;
     const repId     = document.getElementById('exportRepSelect').value;
     const startDate = document.getElementById('exportStartDate').value;
     const endDate   = document.getElementById('exportEndDate').value;
-    const status    = document.getElementById('exportStatusSelect').value;
-    const interest  = document.getElementById('exportInterestSelect').value;
 
     const params = new URLSearchParams({
-        action: 'export_csv',
+        action: 'export_sheet',
+        export_type: type,
         rep_id: repId,
         start_date: startDate,
-        end_date: endDate,
-        status: status,
-        interest: interest
+        end_date: endDate
     });
 
     window.location.href = `sales_visits_api.php?${params.toString()}`;
     closeExportModal();
 }
 
-// ── Modal Handling ──
-function openVisitModal(mode, id = null) {
-    document.getElementById('visitForm').reset();
-    document.getElementById('f_visit_id').value = '';
-    document.querySelectorAll('.sub-box').forEach(el => el.style.display = 'none');
-    setInterestUI('warm');
-    document.getElementById('chip_warm').querySelector('input').checked = true;
-
-    if (mode === 'add') {
-        document.getElementById('visitModalTitle').textContent = 'Log Client Field Visit';
-        document.getElementById('visitModal').classList.add('active');
-        document.body.style.overflow = 'hidden';
-        document.getElementById('f_client_name').focus();
-    } else if (mode === 'edit' && id) {
-        document.getElementById('visitModalTitle').textContent = 'Edit Client Visit';
-        const v = allVisits.find(item => item.id == id);
-        if (!v) return;
-
-        document.getElementById('f_visit_id').value             = v.id;
-        document.getElementById('f_client_name').value          = v.client_name;
-        document.getElementById('f_company_name').value         = v.company_name;
-        document.getElementById('f_phone').value                = v.phone;
-        document.getElementById('f_whatsapp').value             = v.whatsapp || v.phone;
-        document.getElementById('f_contact_availability').value = v.contact_availability;
-        document.getElementById('f_remarks').value              = v.remarks || '';
-        document.getElementById('f_quick_remark').value         = v.quick_remark || '';
-        document.getElementById('f_is_urgent').checked          = (v.is_urgent == 1);
-
-        const r = document.querySelector(`input[name="interest_level"][value="${v.interest_level}"]`);
-        if (r) { r.checked = true; setInterestUI(v.interest_level); }
-
-        if (v.categories_arr) {
-            v.categories_arr.forEach(cat => {
-                const cb = document.querySelector(`input[name="categories[]"][value="${cat}"]`);
-                if (cb) {
-                    cb.checked = true;
-                    const map = { 'Website':'sub_web', 'Printing':'sub_print', 'Design':'sub_design', 'Social Media Marketing':'sub_smm', 'Managing Social Media':'sub_manage' };
-                    if (map[cat]) document.getElementById(map[cat]).style.display = 'flex';
-                }
-            });
-        }
-        if (v.subcategories_arr) {
-            v.subcategories_arr.forEach(sub => {
-                const scb = document.querySelector(`input[name="subcategories[]"][value="${sub}"]`);
-                if (scb) scb.checked = true;
-            });
-        }
-
-        document.getElementById('visitModal').classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-}
-
-function closeVisitModal() {
-    document.getElementById('visitModal').classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-function setInterestUI(lvl) {
-    document.querySelectorAll('.interest-chip').forEach(c => c.classList.remove('active-chip'));
-    const target = document.getElementById('chip_' + lvl);
-    if (target) target.classList.add('active-chip');
-}
-
-function copyPhoneToWa() {
-    const p = document.getElementById('f_phone').value.trim();
-    if (p) document.getElementById('f_whatsapp').value = p;
-}
-
-function setAvailPreset(txt) {
-    document.getElementById('f_contact_availability').value = txt;
-}
-
-function toggleSub(id, checked) {
-    const el = document.getElementById(id);
-    if (el) el.style.display = checked ? 'flex' : 'none';
-}
-
-function addRemark(preset) {
-    document.getElementById('f_quick_remark').value = preset;
-    const txt = document.getElementById('f_remarks');
-    if (!txt.value.includes(preset)) {
-        txt.value = txt.value ? (txt.value + ' | ' + preset) : preset;
-    }
-}
-
-function submitVisitForm(e) {
-    e.preventDefault();
-    const btn = document.getElementById('submitBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-
-    const formData = new FormData(document.getElementById('visitForm'));
-    fetch('sales_visits_api.php', { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-save"></i> Save Visit Record';
-            if (data.success) {
-                closeVisitModal();
-                loadVisits();
-                alert('Client visit record saved successfully!');
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-save"></i> Save Visit Record';
-            alert('Failed to save visit record. Please try again.');
-        });
-}
-
-function deleteVisit(id, company) {
-    if (!confirm(`Are you sure you want to delete the visit record for "${company}"?`)) return;
-    const fd = new FormData();
-    fd.append('action', 'delete');
-    fd.append('id', id);
-    fetch('sales_visits_api.php', { method: 'POST', body: fd })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                loadVisits();
-            } else {
-                alert('Error: ' + data.message);
-            }
-        });
-}
-
-function viewVisit(id) {
-    const v = allVisits.find(item => item.id == id);
-    if (!v) return;
-
-    const cleanWa = (v.whatsapp || v.phone || '').replace(/[^0-9]/g, '');
-    const waMsg   = encodeURIComponent(`Hello ${v.client_name}, this is Graphicafix following up on your discussion regarding ${v.company_name}.`);
-
-    let cats = (v.categories_arr && v.categories_arr.length) ? v.categories_arr.join(', ') : 'None';
-    let subs = (v.subcategories_arr && v.subcategories_arr.length) ? v.subcategories_arr.join('; ') : 'None';
-
-    document.getElementById('viewModalBody').innerHTML = `
-        <div style="margin-bottom:16px;">
-            <div style="font-size:18px; font-weight:800; color:#0f172a;">${escapeHtml(v.company_name)} ${v.is_urgent == 1 ? '<span class="badge-urg">URGENT</span>' : ''}</div>
-            <div style="color:#64748b; font-size:13.5px;">Contact: <strong>${escapeHtml(v.client_name)}</strong></div>
-        </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; font-size:13px;">
-            <div style="background:#f8faf9; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-                <div style="color:#64748b; font-size:11.5px; font-weight:600;">PHONE</div>
-                <div style="font-weight:700; color:#0f172a;">${escapeHtml(v.phone)}</div>
-            </div>
-            <div style="background:#f8faf9; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-                <div style="color:#64748b; font-size:11.5px; font-weight:600;">WHATSAPP</div>
-                <div style="font-weight:700; color:#16a34a;">${escapeHtml(v.whatsapp || v.phone)}</div>
-            </div>
-            <div style="background:#f8faf9; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-                <div style="color:#64748b; font-size:11.5px; font-weight:600;">INTEREST LEVEL</div>
-                <div style="font-weight:700; text-transform:uppercase;">${v.interest_level}</div>
-            </div>
-            <div style="background:#f8faf9; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
-                <div style="color:#64748b; font-size:11.5px; font-weight:600;">CONTACT WINDOW</div>
-                <div style="font-weight:700; color:#0f172a;">${escapeHtml(v.contact_availability)}</div>
-            </div>
-        </div>
-        <div style="margin-bottom:12px; font-size:13px;">
-            <div style="color:#64748b; font-size:11.5px; font-weight:600;">SERVICES REQUESTED</div>
-            <div style="color:#0f172a; margin-top:2px;">${escapeHtml(cats)}</div>
-            ${subs !== 'None' ? `<div style="color:#64748b; font-size:12px; margin-top:3px;"><em>Sub-items:</em> ${escapeHtml(subs)}</div>` : ''}
-        </div>
-        <div style="margin-bottom:12px; font-size:13px;">
-            <div style="color:#64748b; font-size:11.5px; font-weight:600;">REMARKS / NOTES</div>
-            <div style="background:#f1f5f9; padding:10px; border-radius:8px; color:#334155; margin-top:4px; font-size:12.5px;">${escapeHtml(v.remarks || 'No remarks entered.')}</div>
-        </div>
-        <div style="font-size:12px; color:#94a3b8; border-top:1px solid #f1f5f9; padding-top:10px;">
-            Logged by ${escapeHtml(v.sales_rep_name)} on ${v.created_at}
-        </div>
-    `;
-
-    document.getElementById('viewModalActions').innerHTML = cleanWa ? `
-        <a href="https://wa.me/${cleanWa}?text=${waMsg}" target="_blank" class="btn btn-primary-custom" style="background:#16a34a; border-color:#16a34a;">
-            <i class="fab fa-whatsapp"></i> WhatsApp Reach Out
-        </a>
-    ` : '';
-
-    document.getElementById('viewModal').classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeViewModal() {
-    document.getElementById('viewModal').classList.remove('active');
-    document.body.style.overflow = '';
-}
-
 function escapeHtml(str) {
     if (!str) return '';
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function escapeJsString(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '');
 }
 </script>
 
