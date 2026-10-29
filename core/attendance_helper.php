@@ -320,7 +320,7 @@ function recordDailyCheckIn($conn, $user_id, $lat = null, $lng = null, $accuracy
         $gender    = $user_meta['gender']; // 'Male' or 'Female'
 
         // ── Location Resolution & Policy Check ────────────────────────────────────
-        $work_mode = strtolower(trim($work_mode ?? 'remote'));
+        $work_mode = strtolower(trim($user_meta['work_mode'] ?? 'remote'));
         if ($work_mode !== 'onsite') {
             $work_mode = 'remote';
         }
@@ -377,8 +377,11 @@ function recordDailyCheckIn($conn, $user_id, $lat = null, $lng = null, $accuracy
         // Base official time: 09:00:00 AM
         // Male grace: 10 minutes -> 09:10:00
         // Female grace: 30 minutes -> 09:30:00
-        $base_time = '09:00:00';
-        $grace_cutoff = ($gender === 'Female') ? '09:30:00' : '09:10:00';
+        $base_time = defined('OFFICE_START_TIME') ? OFFICE_START_TIME : ($_ENV['OFFICE_START_TIME'] ?? '09:00:00');
+        $male_grace_mins = intval($_ENV['MALE_GRACE_MINUTES'] ?? 10);
+        $female_grace_mins = intval($_ENV['FEMALE_GRACE_MINUTES'] ?? 30);
+        $grace_mins = ($gender === 'Female') ? $female_grace_mins : $male_grace_mins;
+        $grace_cutoff = date('H:i:s', strtotime($base_time) + ($grace_mins * 60));
 
         $is_late             = 0;
         $is_grace_period     = 0;
@@ -446,7 +449,7 @@ function recordDailyCheckIn($conn, $user_id, $lat = null, $lng = null, $accuracy
             (user_id, attendance_date, check_in_time, last_heartbeat, status, is_late, late_minutes, is_grace_period, grace_count_month, penalty_amount, penalty_reason, location_type, latitude, longitude, location_accuracy, distance_meters, location_denied, ip_address, user_agent, notes)
             VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE 
-                check_in_time = IFNULL(check_in_time, VALUES(check_in_time)),
+                check_in_time = IF(check_in_time IS NULL OR check_in_time = '' OR (latitude IS NULL AND location_denied = 0), VALUES(check_in_time), check_in_time),
                 last_heartbeat = NOW(),
                 status = VALUES(status),
                 is_late = VALUES(is_late),

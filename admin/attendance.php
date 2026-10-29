@@ -506,22 +506,41 @@ foreach ($final_records as $row) {
             $stat_late++;
             $stat_penalties += floatval($row['penalty_amount'] ?? 100);
         } else {
-            if (!empty($row['penalty_amount']) && floatval($row['penalty_amount']) > 0) {
+            // Robust check: Is check_in_time past the grace deadline?
+            $user_gender = !empty($row['gender']) ? ucfirst(strtolower(trim($row['gender']))) : 'Male';
+            $grace_limit = ($user_gender === 'Female') ? '09:30:00' : '09:10:00';
+            $is_actually_late = (!empty($row['check_in_time']) && empty($row['is_override']) && $row['check_in_time'] > $grace_limit);
+
+            if ($is_actually_late) {
+                $row['att_status'] = 'Late';
+                $row['att_class']  = 'late';
+                $row['filter_cat'] = 'late';
+                $row['is_late']    = 1;
+                if (empty($row['penalty_amount'])) {
+                    $row['penalty_amount'] = 100.00;
+                    $row['penalty_reason'] = 'Late arrival: Signed in at ' . date('h:i A', strtotime($row['check_in_time']));
+                }
+                $stat_late++;
+                $stat_penalties += floatval($row['penalty_amount']);
+            } elseif (!empty($row['penalty_amount']) && floatval($row['penalty_amount']) > 0) {
                 $row['att_status'] = 'Present (Penalized)';
                 $row['att_class']  = 'present';
                 $row['filter_cat'] = 'penalized';
                 $stat_penalties += floatval($row['penalty_amount']);
+                $stat_present++;
+            } elseif (!empty($row['is_grace_period']) || (!empty($row['check_in_time']) && empty($row['is_override']) && $row['check_in_time'] > '09:00:00')) {
+                $row['att_status'] = 'Grace Period';
+                $row['att_class']  = 'grace';
+                $row['filter_cat'] = 'grace';
+                $stat_grace++;
+                $stat_present++;
             } else {
                 $row['att_status'] = 'On Time';
                 $row['att_class']  = 'present';
                 $row['filter_cat'] = 'present';
-            }
-            if (!empty($row['is_grace_period'])) {
-                $stat_grace++;
-            } else {
                 $stat_on_time++;
+                $stat_present++;
             }
-            $stat_present++;
         }
 
         // Location determination
@@ -808,7 +827,8 @@ $total_records = count($attendance_records);
 
                 <select id="recordTypeFilter" onchange="filterAttendanceTable(this.value)" style="padding:8px 12px; border-radius:8px; border:1.5px solid #e2e8f0; font-size:13px; font-weight:600; background:#f8fafc; color:#334155; outline:none; cursor:pointer;">
                     <option value="all">All Records (<?= $total_records ?>)</option>
-                    <option value="present">Present Only (<?= $stat_present ?>)</option>
+                    <option value="present">Present (On Time) (<?= $stat_on_time ?>)</option>
+                    <option value="grace">⏳ Grace Arrivals (<?= $stat_grace ?>)</option>
                     <option value="medical">🏥 Medical Leaves (<?= $stat_medical ?>)</option>
                     <option value="special">⭐ Special Leaves (<?= $stat_special ?>)</option>
                     <option value="all_leaves">🌴 All Leaves (<?= $stat_leave ?>)</option>
@@ -1106,6 +1126,7 @@ function filterAttendanceTable(cat) {
         let show = false;
         if (cat === 'all') show = true;
         else if (cat === 'present') show = (rowFilter === 'present');
+        else if (cat === 'grace') show = (rowFilter === 'grace');
         else if (cat === 'medical') show = (rowFilter === 'medical');
         else if (cat === 'special') show = (rowFilter === 'special');
         else if (cat === 'all_leaves') show = (rowFilter === 'medical' || rowFilter === 'special' || rowFilter === 'leave');

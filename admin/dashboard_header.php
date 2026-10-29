@@ -718,7 +718,7 @@ $notifications_html = ob_get_clean();
 
         <?php if ($role !== 'client' && $role !== 'student'): 
             $user_work_mode = strtolower($user_meta['work_mode'] ?? 'remote');
-            $att_has_verified_loc = (!empty($today_attendance['latitude']) || !empty($today_attendance['location_denied']) || ($today_attendance['location_type'] ?? '') === 'remote');
+            $att_has_verified_loc = ($user_work_mode === 'onsite') ? (!empty($today_attendance['latitude']) || !empty($today_attendance['location_denied'])) : (!empty($today_attendance['check_in_time']));
             $att_is_checked_in = (!empty($today_attendance) && !empty($today_attendance['check_in_time']) && $att_has_verified_loc);
             $att_is_checked_out = (!empty($today_attendance) && !empty($today_attendance['check_out_time']));
             $att_loc_display = (!empty($today_attendance['location_denied']) && $user_work_mode === 'onsite') ? 'Denied Loc' : ucfirst($today_attendance['location_type'] ?? ($user_work_mode === 'onsite' ? 'Onsite' : 'Remote'));
@@ -1164,7 +1164,7 @@ $global_sales_init_id = intval(($global_last_id_q && $r = $global_last_id_q->fet
 <!-- Daily Attendance Geolocation Modal & Engine -->
 <?php if ($role !== 'client' && $role !== 'student'): 
     $user_work_mode = strtolower($user_meta['work_mode'] ?? 'remote');
-    $att_has_verified_loc = (!empty($today_attendance['latitude']) || !empty($today_attendance['location_denied']) || ($today_attendance['location_type'] ?? '') === 'remote');
+    $att_has_verified_loc = ($user_work_mode === 'onsite') ? (!empty($today_attendance['latitude']) || !empty($today_attendance['location_denied'])) : (!empty($today_attendance['check_in_time']));
     $att_needs_checkin = (empty($today_attendance) || empty($today_attendance['check_in_time']) || !$att_has_verified_loc);
     $user_gender = $user_meta['gender'] ?? 'Male';
 ?>

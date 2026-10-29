@@ -135,6 +135,11 @@ if (!function_exists('ensure_attendance_schema')) {
                     `check_in_time`,
                     `check_out_time`,
                     `status`,
+                    `is_late`,
+                    `late_minutes`,
+                    `is_grace_period`,
+                    `penalty_amount`,
+                    `penalty_reason`,
                     `location_type`,
                     `ip_address`,
                     `created_at`
@@ -144,16 +149,76 @@ if (!function_exists('ensure_attendance_schema')) {
                     DATE(l.login_time) as att_date,
                     MIN(TIME(l.login_time)) as in_time,
                     IF(MAX(TIME(l.login_time)) != MIN(TIME(l.login_time)), MAX(TIME(l.login_time)), NULL) as out_time,
-                    'present' as status,
+                    CASE 
+                        WHEN MIN(TIME(l.login_time)) > '09:30:00' THEN 'late'
+                        WHEN MIN(TIME(l.login_time)) > '09:10:00' AND COALESCE(u.gender, 'Male') = 'Male' THEN 'late'
+                        ELSE 'present'
+                    END as status,
+                    CASE 
+                        WHEN MIN(TIME(l.login_time)) > '09:30:00' THEN 1
+                        WHEN MIN(TIME(l.login_time)) > '09:10:00' AND COALESCE(u.gender, 'Male') = 'Male' THEN 1
+                        ELSE 0
+                    END as is_late,
+                    GREATEST(0, ROUND(TIMESTAMPDIFF(SECOND, CONCAT(DATE(l.login_time), ' 09:00:00'), MIN(l.login_time)) / 60)) as late_minutes,
+                    CASE 
+                        WHEN MIN(TIME(l.login_time)) > '09:00:00' AND MIN(TIME(l.login_time)) <= '09:30:00' THEN 1
+                        ELSE 0
+                    END as is_grace_period,
+                    CASE 
+                        WHEN MIN(TIME(l.login_time)) > '09:30:00' THEN 100.00
+                        WHEN MIN(TIME(l.login_time)) > '09:10:00' AND COALESCE(u.gender, 'Male') = 'Male' THEN 100.00
+                        ELSE 0.00
+                    END as penalty_amount,
+                    CASE 
+                        WHEN MIN(TIME(l.login_time)) > '09:30:00' OR (MIN(TIME(l.login_time)) > '09:10:00' AND COALESCE(u.gender, 'Male') = 'Male')
+                            THEN CONCAT('Late arrival: Signed in at ', TIME_FORMAT(MIN(TIME(l.login_time)), '%h:%i %p'))
+                        ELSE NULL
+                    END as penalty_reason,
                     {$loc_expr} as location_type,
                     MAX(l.ip_address) as ip_address,
                     MIN(l.login_time) as created_at
                 FROM `login_logs` l
-                WHERE l.status = 'success' AND l.user_id IS NOT NULL AND l.user_id > 0
+                LEFT JOIN `users` u ON CAST(l.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
+                WHERE l.status = 'success' AND l.user_id IS NOT NULL AND l.user_id > 0 AND DATE(l.login_time) < CURDATE()
                 GROUP BY l.user_id, DATE(l.login_time)");
             }
         } catch (Throwable $e_bfill) {
             error_log("attendance_records backfill notice: " . $e_bfill->getMessage());
+        }
+
+        // ── 1c. Retroactive Repair of Records Mistakenly Marked On Time ────────
+        try {
+            // Fix records where arrival was after grace deadline but marked present / not late
+            $conn->query("UPDATE `attendance_records` a
+                LEFT JOIN `users` u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
+                SET 
+                    a.status = 'late',
+                    a.is_late = 1,
+                    a.late_minutes = GREATEST(1, ROUND(TIMESTAMPDIFF(SECOND, CONCAT(a.attendance_date, ' 09:00:00'), CONCAT(a.attendance_date, ' ', a.check_in_time)) / 60)),
+                    a.penalty_amount = IF(a.penalty_amount > 0, a.penalty_amount, 100.00),
+                    a.penalty_reason = IF(a.penalty_reason IS NOT NULL AND a.penalty_reason != '', a.penalty_reason, CONCAT('Late arrival: Signed in at ', TIME_FORMAT(a.check_in_time, '%h:%i %p')))
+                WHERE a.check_in_time IS NOT NULL 
+                  AND (a.leave_type IS NULL OR a.leave_type = '')
+                  AND (a.status = 'present' OR a.is_late = 0)
+                  AND (
+                      (COALESCE(u.gender, 'Male') = 'Male' AND a.check_in_time > '09:10:00')
+                      OR (COALESCE(u.gender, 'Male') = 'Female' AND a.check_in_time > '09:30:00')
+                  )");
+
+            // Mark grace period flag accurately for arrivals between 09:00:01 and cutoff
+            $conn->query("UPDATE `attendance_records` a
+                LEFT JOIN `users` u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
+                SET a.is_grace_period = 1
+                WHERE a.check_in_time IS NOT NULL 
+                  AND (a.leave_type IS NULL OR a.leave_type = '')
+                  AND a.is_grace_period = 0
+                  AND a.check_in_time > '09:00:00'
+                  AND (
+                      (COALESCE(u.gender, 'Male') = 'Male' AND a.check_in_time <= '09:10:00')
+                      OR (COALESCE(u.gender, 'Male') = 'Female' AND a.check_in_time <= '09:30:00')
+                  )");
+        } catch (Throwable $e_rep) {
+            error_log("attendance repair notice: " . $e_rep->getMessage());
         }
 
         // ── 2. Create & Sync `attendance_overrides` table ─────────────────────
