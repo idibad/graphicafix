@@ -49,7 +49,7 @@ function notifyClientOnProjectProgress($conn, $project_id, $progress) {
     
     // Get emails of main client users (role = 'client') linked to this client
     if ($client_id) {
-        $user_stmt = $conn->prepare("SELECT email FROM users WHERE client_id = ? AND role = 'client'");
+        $user_stmt = $conn->prepare("SELECT email FROM users WHERE client_id = ? AND role = 'client' AND (status = 'active' OR status IS NULL)");
         $user_stmt->bind_param("i", $client_id);
         $user_stmt->execute();
         $users = $user_stmt->get_result();

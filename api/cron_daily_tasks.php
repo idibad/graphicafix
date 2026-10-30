@@ -29,6 +29,7 @@ $sql = "SELECT u.user_id, u.name, u.email, t.title, t.priority, t.status, t.due_
         FROM users u
         JOIN tasks t ON u.user_id = t.assigned_to
         WHERE u.role IN ('admin', 'user', 'hrm') 
+        AND (u.status = 'active' OR u.status IS NULL)
         AND t.status IN ('Pending', 'In Progress')
         AND u.email IS NOT NULL AND u.email != ''
         ORDER BY u.user_id, t.due_date ASC";

@@ -85,19 +85,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_broadcast'])) {
         $subs = $conn->query("SELECT email FROM newsletter_subscribers WHERE email IS NOT NULL AND email != ''");
         if ($subs) { while ($r = $subs->fetch_assoc()) $emails[] = $r['email']; }
     } elseif ($target_audience === 'All Users') {
-        $subs = $conn->query("SELECT email FROM users WHERE email IS NOT NULL AND email != ''");
+        $subs = $conn->query("SELECT email FROM users WHERE email IS NOT NULL AND email != '' AND (status = 'active' OR status IS NULL)");
         if ($subs) { while ($r = $subs->fetch_assoc()) $emails[] = $r['email']; }
     } elseif ($target_audience === 'All Clients') {
-        $subs = $conn->query("SELECT email FROM clients WHERE email IS NOT NULL AND email != '' UNION SELECT email FROM users WHERE role IN ('client', 'client_sub') AND email IS NOT NULL AND email != ''");
+        $subs = $conn->query("SELECT email FROM clients WHERE email IS NOT NULL AND email != '' UNION SELECT email FROM users WHERE role IN ('client', 'client_sub') AND email IS NOT NULL AND email != '' AND (status = 'active' OR status IS NULL)");
         if ($subs) { while ($r = $subs->fetch_assoc()) $emails[] = $r['email']; }
     } elseif ($target_audience === 'Staff & Team') {
-        $subs = $conn->query("SELECT email FROM users WHERE role IN ('super_admin', 'superadmin', 'admin', 'pm', 'user', 'hrm', 'sales', 'manager') AND email IS NOT NULL AND email != ''");
+        $subs = $conn->query("SELECT email FROM users WHERE role IN ('super_admin', 'superadmin', 'admin', 'pm', 'user', 'hrm', 'sales', 'manager') AND email IS NOT NULL AND email != '' AND (status = 'active' OR status IS NULL)");
         if ($subs) { while ($r = $subs->fetch_assoc()) $emails[] = $r['email']; }
     } else {
         $role_prefix = 'Role: ';
         if (strpos($target_audience, $role_prefix) === 0) {
             $role = substr($target_audience, strlen($role_prefix));
-            $stmt_u = $conn->prepare("SELECT email FROM users WHERE role = ? AND email IS NOT NULL AND email != ''");
+            $stmt_u = $conn->prepare("SELECT email FROM users WHERE role = ? AND email IS NOT NULL AND email != '' AND (status = 'active' OR status IS NULL)");
             $stmt_u->bind_param("s", $role);
             $stmt_u->execute();
             $res_u = $stmt_u->get_result();

@@ -37,7 +37,7 @@ if (isset($_POST['upload_proof']) && isset($_POST['invoice_id'])) {
                     // Send notification to admin/PM
                     require_once __DIR__ . '/../core/task_email_helper.php';
                     // Fetch admins
-                    $admins = $conn->query("SELECT email FROM users WHERE role = 'admin' OR role = 'pm'");
+                    $admins = $conn->query("SELECT email FROM users WHERE (role IN ('super_admin', 'superadmin', 'admin', 'pm')) AND (status = 'active' OR status IS NULL)");
                     $subject = "Payment Receipt Uploaded: Invoice #{$inv_id}";
                     $heading = "New Payment Proof Uploaded";
                     $body = "<p>Client contact <strong>" . htmlspecialchars($name) . "</strong> has uploaded a payment proof screenshot for Invoice #<strong>" . intval($inv_id) . "</strong>.</p>

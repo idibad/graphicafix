@@ -75,13 +75,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_client_request
         $heading = "Client Requirement Submitted";
         $bodyHtml = "<p>Client contact <strong>" . htmlspecialchars($name) . "</strong> has submitted requested assets for project <strong>" . htmlspecialchars($project['project_name']) . "</strong>.</p>";
 
-        $t_res = $conn->query("SELECT u.email FROM project_team pt JOIN users u ON pt.user_id = u.user_id WHERE pt.project_id = {$project_id}");
+        $t_res = $conn->query("SELECT u.email FROM project_team pt JOIN users u ON pt.user_id = u.user_id WHERE pt.project_id = {$project_id} AND (u.status = 'active' OR u.status IS NULL)");
         if ($t_res) {
             while ($tm = $t_res->fetch_assoc()) {
                 if (!empty($tm['email'])) sendTaskEmail($tm['email'], $subject, $heading, $bodyHtml, 0);
             }
         }
-        $admin_res = $conn->query("SELECT email FROM users WHERE role IN ('super_admin', 'superadmin', 'admin')");
+        $admin_res = $conn->query("SELECT email FROM users WHERE role IN ('super_admin', 'superadmin', 'admin') AND (status = 'active' OR status IS NULL)");
         if ($admin_res) {
             while ($adm = $admin_res->fetch_assoc()) {
                 if (!empty($adm['email'])) sendTaskEmail($adm['email'], $subject, $heading, $bodyHtml, 0);
@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['client_deliverable_ac
         $bodyHtml = "<p>Client contact <strong>" . htmlspecialchars($name) . "</strong> has requested revisions on a deliverable for project <strong>" . htmlspecialchars($project['project_name']) . "</strong>.</p>
                      <div style='background:#f8fafc; border-left:4px solid #f59e0b; padding:12px; margin:16px 0;'>" . nl2br(htmlspecialchars($revision_notes)) . "</div>";
 
-        $t_res = $conn->query("SELECT u.email FROM project_team pt JOIN users u ON pt.user_id = u.user_id WHERE pt.project_id = {$project_id}");
+        $t_res = $conn->query("SELECT u.email FROM project_team pt JOIN users u ON pt.user_id = u.user_id WHERE pt.project_id = {$project_id} AND (u.status = 'active' OR u.status IS NULL)");
         if ($t_res) {
             while ($tm = $t_res->fetch_assoc()) {
                 if (!empty($tm['email'])) sendTaskEmail($tm['email'], $subject, $heading, $bodyHtml, 0);
@@ -190,7 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_client_query']
                          <p><strong>Category:</strong> " . htmlspecialchars($category) . "<br><strong>Priority:</strong> " . htmlspecialchars($priority) . "</p>
                          <blockquote style='background:#f8fafc; border-left:4px solid #024442; padding:12px; margin:16px 0;'>" . nl2br(htmlspecialchars($message)) . "</blockquote>";
 
-            $admin_res = $conn->query("SELECT email FROM users WHERE role IN ('super_admin', 'superadmin', 'admin', 'pm')");
+            $admin_res = $conn->query("SELECT email FROM users WHERE role IN ('super_admin', 'superadmin', 'admin', 'pm') AND (status = 'active' OR status IS NULL)");
             if ($admin_res) {
                 while ($adm = $admin_res->fetch_assoc()) {
                     if (!empty($adm['email'])) sendTaskEmail($adm['email'], $mailSubject, $heading, $bodyHtml, 0);

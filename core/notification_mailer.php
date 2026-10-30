@@ -85,7 +85,7 @@ if (!function_exists('notifyTaskAssigned')) {
             JOIN users u ON t.assigned_to = u.user_id
             LEFT JOIN users c ON t.created_by = c.user_id
             LEFT JOIN projects p ON t.project_id = p.id
-            WHERE t.id = ?
+            WHERE t.id = ? AND (u.status = 'active' OR u.status IS NULL)
         ");
         $stmt->bind_param("i", $task_id);
         $stmt->execute();
@@ -146,13 +146,13 @@ if (!function_exists('notifyTaskStatusChanged')) {
 
         $stmt = $conn->prepare("
             SELECT t.title, t.created_by, t.assigned_to, t.project_id,
-                   c.name as creator_name, c.email as creator_email,
+                   c.name as creator_name, c.email as creator_email, c.status as creator_status,
                    u.name as updater_name, p.project_name
             FROM tasks t
             LEFT JOIN users c ON t.created_by = c.user_id
             LEFT JOIN users u ON u.user_id = ?
             LEFT JOIN projects p ON t.project_id = p.id
-            WHERE t.id = ?
+            WHERE t.id = ? AND (c.status = 'active' OR c.status IS NULL)
         ");
         $stmt->bind_param("ii", $changed_by_user_id, $task_id);
         $stmt->execute();
@@ -236,7 +236,7 @@ if (!function_exists('notifyProjectTeamAssigned')) {
             $uid = intval($uid);
             if ($uid <= 0) continue;
 
-            $u_stmt = $conn->prepare("SELECT name, email FROM users WHERE user_id = ?");
+            $u_stmt = $conn->prepare("SELECT name, email FROM users WHERE user_id = ? AND (status = 'active' OR status IS NULL)");
             $u_stmt->bind_param("i", $uid);
             $u_stmt->execute();
             $user = $u_stmt->get_result()->fetch_assoc();
@@ -315,7 +315,9 @@ if (!function_exists('notifyDeliverableApproved')) {
             SELECT DISTINCT u.email 
             FROM project_team pt 
             JOIN users u ON pt.user_id = u.user_id 
-            WHERE pt.project_id = {$project_id} AND u.email IS NOT NULL AND u.email != ''
+            WHERE pt.project_id = {$project_id} 
+              AND (u.status = 'active' OR u.status IS NULL)
+              AND u.email IS NOT NULL AND u.email != ''
         ");
         if ($t_res) {
             while ($tm = $t_res->fetch_assoc()) {
@@ -383,7 +385,7 @@ if (!function_exists('notifyCriticalDPRBlocker')) {
         </div>";
 
         // Query only super_admin, admin, and pm
-        $m_res = $conn->query("SELECT email FROM users WHERE role IN ('super_admin', 'superadmin', 'admin', 'pm') AND email IS NOT NULL AND email != ''");
+        $m_res = $conn->query("SELECT email FROM users WHERE role IN ('super_admin', 'superadmin', 'admin', 'pm') AND (status = 'active' OR status IS NULL) AND email IS NOT NULL AND email != ''");
         if ($m_res) {
             while ($mgr = $m_res->fetch_assoc()) {
                 sendNotificationEmail($mgr['email'], $subject, $heading, $body, "Review Report in DPR Desk", $ctaUrl);
@@ -445,7 +447,7 @@ if (!function_exists('notifyAttendanceApproved')) {
             SELECT u.name, u.email, a.name as approver_name
             FROM users u
             LEFT JOIN users a ON a.user_id = ?
-            WHERE u.user_id = ?
+            WHERE u.user_id = ? AND (u.status = 'active' OR u.status IS NULL)
         ");
         $stmt->bind_param("ii", $approved_by_id, $user_id);
         $stmt->execute();
@@ -553,7 +555,7 @@ if (!function_exists('notifyInboundProjectLead')) {
                 " . nl2br(htmlspecialchars($description)) . "
             </div>";
 
-            $res_adm = $conn->query("SELECT email FROM users WHERE role IN ('super_admin', 'superadmin', 'admin', 'sales') AND email IS NOT NULL AND email != ''");
+            $res_adm = $conn->query("SELECT email FROM users WHERE role IN ('super_admin', 'superadmin', 'admin', 'sales') AND (status = 'active' OR status IS NULL) AND email IS NOT NULL AND email != ''");
             if ($res_adm) {
                 while ($adm = $res_adm->fetch_assoc()) {
                     sendNotificationEmail($adm['email'], $subjectInternal, $headingInternal, $bodyInternal, "View in Inbound Requests", $ctaUrl);
@@ -779,6 +781,7 @@ if (!function_exists('notifyNoticePublished')) {
             WHERE email IS NOT NULL 
               AND email != '' 
               AND email LIKE '%@%'
+              AND (status = 'active' OR status IS NULL)
               AND role IN ('super_admin', 'superadmin', 'admin', 'pm', 'hrm', 'user', 'teacher')
         ");
 

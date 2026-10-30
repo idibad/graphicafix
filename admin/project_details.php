@@ -302,7 +302,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_project_task']
         if ($stmt_task->execute()) {
             $stmt_task->close();
             if ($assigned_to > 0) {
-                $u_stmt = $conn->query("SELECT name, email FROM users WHERE user_id = $assigned_to");
+                $u_stmt = $conn->query("SELECT name, email FROM users WHERE user_id = $assigned_to AND (status = 'active' OR status IS NULL)");
                 if ($u_row = $u_stmt->fetch_assoc()) {
                     if (!empty($u_row['email'])) {
                         require_once __DIR__ . '/../core/task_email_helper.php';

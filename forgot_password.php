@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error_message = 'Please enter a valid email address.';
     } else {
-        $stmt = $conn->prepare("SELECT user_id, name FROM users WHERE email = ?");
+        $stmt = $conn->prepare("SELECT user_id, name FROM users WHERE email = ? AND (status = 'active' OR status IS NULL)");
         if ($stmt) {
             $stmt->bind_param("s", $email);
             $stmt->execute();

@@ -174,7 +174,7 @@ if (!function_exists('notifyProjectClient')) {
         }
 
         if (!empty($proj['client_id'])) {
-            $u_stmt = $conn->prepare("SELECT email FROM users WHERE client_id = ? AND role IN ('client', 'client_sub')");
+            $u_stmt = $conn->prepare("SELECT email FROM users WHERE client_id = ? AND role IN ('client', 'client_sub') AND (status = 'active' OR status IS NULL)");
             if ($u_stmt) {
                 $u_stmt->bind_param("i", $proj['client_id']);
                 $u_stmt->execute();

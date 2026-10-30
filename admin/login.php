@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_reset'])) {
     $reset_email = trim($_POST['reset_email'] ?? '');
     
     if (filter_var($reset_email, FILTER_VALIDATE_EMAIL)) {
-        $stmt = $conn->prepare("SELECT user_id FROM users WHERE email = ?");
+        $stmt = $conn->prepare("SELECT user_id FROM users WHERE email = ? AND (status = 'active' OR status IS NULL)");
         $stmt->bind_param("s", $reset_email);
         $stmt->execute();
         
