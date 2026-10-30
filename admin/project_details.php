@@ -399,9 +399,12 @@ $stmt_files->execute();
 $files = $stmt_files->get_result();
 $stmt_files->close();
 
-// Tasks Query
+// Tasks Query with comment counts, subtask metrics and detailed data
 $stmt_tasks = $conn->prepare("
-    SELECT t.*, u.name as assigned_name, u.role as assigned_role, m.title as milestone_name
+    SELECT t.*, u.name as assigned_name, u.role as assigned_role, m.title as milestone_name,
+           (SELECT COUNT(*) FROM task_comments tc WHERE tc.task_id = t.id) AS comments_count,
+           (SELECT COUNT(*) FROM task_subtasks ts WHERE ts.task_id = t.id) AS subtasks_count,
+           (SELECT COUNT(*) FROM task_subtasks ts WHERE ts.task_id = t.id AND ts.status = 'Completed') AS subtasks_done
     FROM tasks t
     LEFT JOIN users u ON t.assigned_to = u.user_id
     LEFT JOIN project_milestones m ON t.milestone_id = m.id
@@ -415,6 +418,7 @@ $stmt_tasks = $conn->prepare("
             WHEN t.status = 'Completed' THEN 5
             ELSE 6
         END,
+        t.priority = 'High' DESC,
         t.due_date ASC,
         t.id DESC
 ");
@@ -425,18 +429,92 @@ $stmt_tasks->close();
 
 // Tasks grouped for Kanban board
 $kanban_tasks = [
-    'Pending' => [],
+    'Pending'     => [],
     'In Progress' => [],
-    'In Review' => [],
-    'Completed' => []
+    'In Review'   => [],
+    'Completed'   => [],
+    'Cancelled'   => []
 ];
 foreach ($all_project_tasks as $tk) {
     $s = $tk['status'];
-    if ($s === 'Not Started') $s = 'Pending';
-    if (isset($kanban_tasks[$s])) {
-        $kanban_tasks[$s][] = $tk;
-    } else {
-        $kanban_tasks['Pending'][] = $tk;
+    if ($s === 'Not Started' || $s === 'To-do') $s = 'Pending';
+    if ($s === 'Pending Review') $s = 'In Review';
+    if (!isset($kanban_tasks[$s])) $s = 'Pending';
+    $kanban_tasks[$s][] = $tk;
+}
+
+// ── Shared Workspace Helpers for Tasks ───────────────────────────────────────
+if (!function_exists('formatDuration')) {
+    function formatDuration($hours) {
+        if (!$hours || $hours <= 0) return '0h';
+        $h = floor($hours);
+        $m = round(($hours - $h) * 60);
+        if ($h > 0 && $m > 0) return "{$h}h {$m}min";
+        if ($h > 0) return "{$h}h";
+        return "{$m}min";
+    }
+}
+
+if (!function_exists('getTaskTypeBadge')) {
+    function getTaskTypeBadge($type, $priority, $milestone = '') {
+        $tag = !empty($type) ? $type : (!empty($milestone) ? $milestone : '');
+        $t = strtolower(trim($tag ?: ''));
+        if (strpos($t, 'design') !== false || strpos($t, 'ui') !== false || strpos($t, 'ux') !== false) {
+            return ['bg' => '#f3e8ff', 'color' => '#7e22ce', 'border' => '#e9d5ff', 'label' => $tag ?: 'Design'];
+        }
+        if (strpos($t, 'dev') !== false || strpos($t, 'code') !== false || strpos($t, 'tech') !== false) {
+            return ['bg' => '#e0f2fe', 'color' => '#0369a1', 'border' => '#bae6fd', 'label' => $tag ?: 'Development'];
+        }
+        if (strpos($t, 'wireframe') !== false || strpos($t, 'flow') !== false) {
+            return ['bg' => '#eef2ff', 'color' => '#4338ca', 'border' => '#c7d2fe', 'label' => $tag ?: 'Wireframes'];
+        }
+        if (strpos($t, 'media') !== false || strpos($t, 'social') !== false || strpos($t, 'marketing') !== false) {
+            return ['bg' => '#fef3c7', 'color' => '#b45309', 'border' => '#fde68a', 'label' => $tag ?: 'Media'];
+        }
+        if (strpos($t, 'brand') !== false || strpos($t, 'identity') !== false) {
+            return ['bg' => '#fce7f3', 'color' => '#be185d', 'border' => '#fbcfe8', 'label' => $tag ?: 'Branding'];
+        }
+        if (strpos($t, 'infra') !== false || strpos($t, 'server') !== false || strpos($t, 'devops') !== false) {
+            return ['bg' => '#ecfeff', 'color' => '#0e7490', 'border' => '#a5f3fc', 'label' => $tag ?: 'Infrastructure'];
+        }
+        if (strpos($t, 'operation') !== false || strpos($t, 'qa') !== false) {
+            return ['bg' => '#dcfce7', 'color' => '#15803d', 'border' => '#bbf7d0', 'label' => $tag ?: 'Operations'];
+        }
+
+        if (strtolower($priority) === 'high') {
+            return ['bg' => '#fee2e2', 'color' => '#b91c1c', 'border' => '#fecaca', 'label' => $tag ?: 'High Priority'];
+        } elseif (strtolower($priority) === 'medium') {
+            return ['bg' => '#fef3c7', 'color' => '#b45309', 'border' => '#fde68a', 'label' => $tag ?: 'Medium Priority'];
+        }
+        return ['bg' => '#f1f5f9', 'color' => '#475569', 'border' => '#e2e8f0', 'label' => $tag ?: 'General'];
+    }
+}
+
+if (!function_exists('getAvatarStyle')) {
+    function getAvatarStyle($name) {
+        $palettes = [
+            ['bg' => '#024442', 'color' => '#ffffff'],
+            ['bg' => '#4f46e5', 'color' => '#ffffff'],
+            ['bg' => '#0284c7', 'color' => '#ffffff'],
+            ['bg' => '#d97706', 'color' => '#ffffff'],
+            ['bg' => '#db2777', 'color' => '#ffffff'],
+            ['bg' => '#059669', 'color' => '#ffffff'],
+            ['bg' => '#7c3aed', 'color' => '#ffffff'],
+            ['bg' => '#475569', 'color' => '#ffffff'],
+        ];
+        $idx = abs(crc32($name ?: 'User')) % count($palettes);
+        return $palettes[$idx];
+    }
+}
+
+if (!function_exists('getUserInitials')) {
+    function getUserInitials($name) {
+        if (!$name) return 'U';
+        $parts = explode(' ', trim($name));
+        if (count($parts) >= 2) {
+            return strtoupper(substr($parts[0], 0, 1) . substr($parts[1], 0, 1));
+        }
+        return strtoupper(substr($name, 0, 2));
     }
 }
 ?>
@@ -926,142 +1004,992 @@ foreach ($all_project_tasks as $tk) {
     <?php endif; ?>
 
     <!-- ======================================================================= -->
-    <!-- TAB 3: TASKS & KANBAN BOARD                                             -->
+    <!-- TAB 3: TASKS & KANBAN BOARD (CLICKUP / LINEAR WORKSPACE STYLE)          -->
     <!-- ======================================================================= -->
     <?php if ($active_tab === 'tasks'):
-        $view_mode = $_GET['view'] ?? 'table';
+        $proj_task_columns = [
+            'Pending'     => ['title' => 'To-do',        'badge_class' => 'badge-todo',     'db_status' => 'Pending'],
+            'In Progress' => ['title' => 'In Progress',  'badge_class' => 'badge-progress', 'db_status' => 'In Progress'],
+            'In Review'   => ['title' => 'Review Ready', 'badge_class' => 'badge-review',   'db_status' => 'In Review'],
+            'Completed'   => ['title' => 'Completed',    'badge_class' => 'badge-complete', 'db_status' => 'Completed']
+        ];
     ?>
-    <div style="display:flex; flex-direction:column; gap:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-            <div>
-                <h3 style="margin:0; font-size:18px; font-weight:700; color:#0f172a;">Project Tasks</h3>
-                <p style="margin:2px 0 0; font-size:13px; color:#64748b;">Manage production backlog, task execution, and assignments.</p>
-            </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <!-- View Switcher -->
-                <div class="btn-group" role="group">
-                    <a href="project_details.php?id=<?= $project_id ?>&tab=tasks&view=table" class="btn btn-sm <?= $view_mode === 'table' ? 'btn-primary' : 'btn-outline-secondary' ?>" style="<?= $view_mode === 'table' ? 'background:#024442; border-color:#024442;' : '' ?>">
-                        <i class="fas fa-list"></i> Table View
-                    </a>
-                    <a href="project_details.php?id=<?= $project_id ?>&tab=tasks&view=kanban" class="btn btn-sm <?= $view_mode === 'kanban' ? 'btn-primary' : 'btn-outline-secondary' ?>" style="<?= $view_mode === 'kanban' ? 'background:#024442; border-color:#024442;' : '' ?>">
-                        <i class="fas fa-columns"></i> Kanban Board
-                    </a>
+    <div class="workspace-wrapper project-tasks-workspace">
+        <!-- Top Workspace Bar for Project -->
+        <div class="workspace-header">
+            <div class="header-left-col">
+                <div class="d-flex align-items-center gap-3">
+                    <h3 class="workspace-title mb-0" style="font-size: 20px;">Project Tasks</h3>
+                    <span class="badge bg-light text-dark border px-2 py-1" style="font-size: 12px; font-weight: 600;">
+                        <?= count($all_project_tasks) ?> <?= count($all_project_tasks) === 1 ? 'task' : 'tasks' ?>
+                    </span>
                 </div>
-                <a href="export_project_tasks_pdf.php?id=<?= $project_id ?>" target="_blank" class="btn btn-sm btn-outline-danger">
-                    <i class="fas fa-file-pdf"></i> Export PDF
+                
+                <!-- View Mode Switcher -->
+                <div class="view-switcher-tabs" role="tablist">
+                    <button type="button" class="tab-btn active" data-view="board">
+                        <span class="active-dot"></span>
+                        Board
+                    </button>
+                    <button type="button" class="tab-btn" data-view="list">
+                        List
+                    </button>
+                    <button type="button" class="tab-btn" data-view="calendar">
+                        Calendar
+                    </button>
+                    <button type="button" class="tab-btn" data-view="table">
+                        Table
+                    </button>
+                </div>
+            </div>
+
+            <div class="header-right-col">
+                <!-- Filters Toggle button -->
+                <button type="button" class="btn-ctrl-action" id="btnToggleProjFilters" onclick="toggleProjFilterBar()">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>Filters</span>
+                </button>
+
+                <!-- Export PDF button (Preserved) -->
+                <a href="export_project_tasks_pdf.php?id=<?= $project_id ?>" target="_blank" class="btn-ctrl-action text-danger border-danger-subtle">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>Export PDF</span>
                 </a>
+
                 <?php if ($can_edit || $role === 'user'): ?>
-                <button class="btn btn-sm btn-primary" onclick="document.getElementById('taskFormModal').style.display='flex'" style="background:#024442; border:none;">
-                    <i class="fas fa-plus"></i> Add Task
+                <!-- Primary Add Task button -->
+                <button type="button" class="btn-primary-add" onclick="openProjectAddTaskModal('Pending')">
+                    <i class="fas fa-plus"></i>
+                    <span>Add Task</span>
                 </button>
                 <?php endif; ?>
             </div>
         </div>
 
-        <?php if ($view_mode === 'kanban'): ?>
-            <!-- Kanban View (Clean 4 Columns) -->
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start;">
-                <?php
-                $col_titles = [
-                    'Pending' => 'Pending',
-                    'In Progress' => 'In Progress',
-                    'In Review' => 'In Review',
-                    'Completed' => 'Completed'
-                ];
-                foreach ($col_titles as $status_key => $col_label):
-                    $col_items = $kanban_tasks[$status_key] ?? [];
-                ?>
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; min-height: 480px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
-                        <span style="font-weight:700; font-size:13.5px; color:#334155; text-transform:uppercase;"><?= $col_label ?></span>
-                        <span class="badge bg-secondary" style="font-size:11px;"><?= count($col_items) ?></span>
-                    </div>
+        <!-- Collapsible Filter Bar -->
+        <div class="workspace-filter-bar" id="projFilterBarContainer">
+            <div class="filter-form">
+                <div class="filter-input-wrap search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search tasks, titles, tags, milestones..." class="form-ctrl-compact" id="projLiveSearchInput">
+                </div>
 
-                    <div style="display:flex; flex-direction:column; gap:10px;">
-                        <?php if (!empty($col_items)): ?>
-                            <?php foreach ($col_items as $tk):
-                                $prioColor = ($tk['priority'] === 'High' ? '#ef4444' : ($tk['priority'] === 'Medium' ? '#f59e0b' : '#3b82f6'));
-                            ?>
-                            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:12px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
-                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-                                    <span style="font-weight:700; font-size:13.5px; color:#1e293b;"><?= htmlspecialchars($tk['title']) ?></span>
-                                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:<?= $prioColor ?>;" title="<?= htmlspecialchars($tk['priority']) ?> Priority"></span>
+                <div class="filter-input-wrap">
+                    <select class="form-ctrl-compact" id="projFilterAssignee" onchange="applyProjClientFilters()">
+                        <option value="">All Assignees</option>
+                        <?php foreach ($active_task_users as $u): ?>
+                        <option value="<?= $u['user_id'] ?>"><?= htmlspecialchars($u['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="filter-input-wrap">
+                    <select class="form-ctrl-compact" id="projFilterPriority" onchange="applyProjClientFilters()">
+                        <option value="">All Priorities</option>
+                        <option value="High">High Priority</option>
+                        <option value="Medium">Medium Priority</option>
+                        <option value="Low">Low Priority</option>
+                    </select>
+                </div>
+
+                <?php if (!empty($milestones)): ?>
+                <div class="filter-input-wrap">
+                    <select class="form-ctrl-compact" id="projFilterMilestone" onchange="applyProjClientFilters()">
+                        <option value="">All Milestones</option>
+                        <?php foreach ($milestones as $m): ?>
+                        <option value="<?= $m['id'] ?>">Phase <?= $m['order_num'] ?>: <?= htmlspecialchars($m['title']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+
+                <button type="button" class="btn-clear-filter" onclick="resetProjFilters()">
+                    <i class="fas fa-times"></i> Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- MAIN VIEWS CONTAINER -->
+        <div class="workspace-main-views">
+
+            <!-- 1. BOARD VIEW -->
+            <div class="view-panel active" id="view-board">
+                <div class="kanban-grid-wrapper">
+                    <?php foreach ($proj_task_columns as $status_key => $col_meta): 
+                        $col_tasks = $kanban_tasks[$status_key] ?? [];
+                        $task_count = count($col_tasks);
+                    ?>
+                    <div class="kanban-column" data-status="<?= $status_key ?>">
+                        <div class="column-header">
+                            <div class="col-title-group">
+                                <span class="col-title-text"><?= htmlspecialchars($col_meta['title']) ?></span>
+                                <span class="col-counter-badge" id="proj-badge-count-<?= $status_key ?>"><?= $task_count ?></span>
+                            </div>
+                            <?php if ($can_edit || $role === 'user'): ?>
+                            <div class="col-header-actions">
+                                <button type="button" class="btn-col-action" title="Add task to <?= htmlspecialchars($col_meta['title']) ?>" onclick="openProjectAddTaskModal('<?= $status_key ?>')">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Droppable container -->
+                        <div class="kanban-cards-list" data-status="<?= $status_key ?>">
+                            <?php if ($task_count === 0): ?>
+                            <!-- Empty State matching design -->
+                            <div class="empty-column-box" data-empty-for="<?= $status_key ?>">
+                                <div class="empty-icon-wrap">
+                                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                        <polyline points="10 9 9 9 8 9"></polyline>
+                                    </svg>
                                 </div>
-                                <?php if (!empty($tk['milestone_name'])): ?>
-                                    <div style="font-size:11px; color:#0284c7; font-weight:600; margin-bottom:4px;">
-                                        <i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($tk['milestone_name']) ?>
-                                    </div>
+                                <p class="empty-text">No tasks currently. Board is empty</p>
+                                <?php if ($can_edit || $role === 'user'): ?>
+                                <button type="button" class="btn-create-task-empty" onclick="openProjectAddTaskModal('<?= $status_key ?>')">
+                                    + Create Task
+                                </button>
                                 <?php endif; ?>
-                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; color:#64748b; margin-top:8px; border-top:1px solid #f1f5f9; padding-top:6px;">
-                                    <span><?= !empty($tk['assigned_name']) ? htmlspecialchars($tk['assigned_name']) : 'Unassigned' ?></span>
-                                    <span><?= !empty($tk['due_date']) ? date('M d', strtotime($tk['due_date'])) : 'No date' ?></span>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php foreach ($col_tasks as $tk):
+                                $badge = getTaskTypeBadge($tk['task_type'] ?? '', $tk['priority'] ?? 'Medium', $tk['milestone_name'] ?? '');
+                                $avatar = getAvatarStyle($tk['assigned_name'] ?? '');
+                                $initials = getUserInitials($tk['assigned_name'] ?? '');
+                                $is_overdue = (!empty($tk['due_date']) && strtotime($tk['due_date']) < strtotime(date('Y-m-d')) && $tk['status'] !== 'Completed');
+                                $est_str = ($tk['estimated_hours'] > 0) ? formatDuration($tk['estimated_hours']) : '3h';
+                                $log_str = formatDuration($tk['logged_hours'] ?? 0);
+                            ?>
+                            <div class="kanban-task-card" draggable="true" data-id="<?= $tk['id'] ?>" data-status="<?= $status_key ?>" data-priority="<?= htmlspecialchars($tk['priority'] ?? 'Medium') ?>" data-assignee="<?= intval($tk['assigned_to'] ?? 0) ?>" data-milestone="<?= intval($tk['milestone_id'] ?? 0) ?>">
+                                <!-- Card Top: Tag + Assignee Avatar -->
+                                <div class="card-top-row">
+                                    <span class="task-tag-chip" style="background: <?= $badge['bg'] ?>; color: <?= $badge['color'] ?>; border: 1px solid <?= $badge['border'] ?>;">
+                                        <?= htmlspecialchars($badge['label']) ?>
+                                    </span>
+
+                                    <div class="card-top-right">
+                                        <div class="task-avatar-circle" style="background: <?= $avatar['bg'] ?>; color: <?= $avatar['color'] ?>;" title="<?= htmlspecialchars($tk['assigned_name'] ?: 'Unassigned') ?>">
+                                            <?= $initials ?>
+                                        </div>
+                                        <div class="dropdown d-inline-block">
+                                            <button type="button" class="btn-card-more" data-bs-toggle="dropdown" aria-expanded="false" onclick="event.stopPropagation();">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="openProjectEditTaskModal(<?= $tk['id'] ?>)"><i class="fas fa-edit me-2 text-muted"></i> Edit Task</a></li>
+                                                <li><a class="dropdown-item" href="task_details.php?id=<?= $tk['id'] ?>" target="_blank"><i class="fas fa-external-link-alt me-2 text-muted"></i> View Details</a></li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><h6 class="dropdown-header">Move to:</h6></li>
+                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveProjTask(<?= $tk['id'] ?>, 'Pending')">📋 To-do</a></li>
+                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveProjTask(<?= $tk['id'] ?>, 'In Progress')">⚡ In Progress</a></li>
+                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveProjTask(<?= $tk['id'] ?>, 'In Review')">🔍 Review Ready</a></li>
+                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveProjTask(<?= $tk['id'] ?>, 'Completed')">✅ Completed</a></li>
+                                                <?php if ($can_edit || $tk['created_by'] == $user_id): ?>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteProjTask(<?= $tk['id'] ?>)"><i class="fas fa-trash-alt me-2"></i> Delete</a></li>
+                                                <?php endif; ?>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Card Title -->
+                                <div class="task-title-text" onclick="openProjectEditTaskModal(<?= $tk['id'] ?>)">
+                                    <?= htmlspecialchars($tk['title']) ?>
+                                </div>
+
+                                <?php if (!empty($tk['description'])): ?>
+                                <div class="task-snippet-text">
+                                    <?= htmlspecialchars(mb_strimwidth($tk['description'], 0, 75, '...')) ?>
+                                </div>
+                                <?php endif; ?>
+
+                                <!-- Card Middle: Date + Estimated Duration -->
+                                <div class="card-schedule-row">
+                                    <span class="schedule-pill <?= $is_overdue ? 'overdue' : '' ?>">
+                                        <i class="far fa-calendar-alt"></i>
+                                        <span><?= !empty($tk['due_date']) ? date('M d', strtotime($tk['due_date'])) : 'No date' ?></span>
+                                    </span>
+                                    <span class="duration-pill">
+                                        <i class="far fa-clock"></i>
+                                        <span><?= $est_str ?></span>
+                                    </span>
+                                </div>
+
+                                <!-- Card Footer: Time Logged + Metrics -->
+                                <div class="card-footer-row">
+                                    <div class="log-time-badge">
+                                        <i class="fas fa-history"></i>
+                                        <span>Log: <?= $log_str ?></span>
+                                    </div>
+
+                                    <div class="card-metrics-group">
+                                        <?php if (($tk['subtasks_count'] ?? 0) > 0): ?>
+                                        <span class="metric-item" title="Subtasks completed">
+                                            <i class="far fa-check-square"></i>
+                                            <span><?= $tk['subtasks_done'] ?>/<?= $tk['subtasks_count'] ?></span>
+                                        </span>
+                                        <?php endif; ?>
+
+                                        <span class="metric-item" title="Comments">
+                                            <i class="far fa-comment-alt"></i>
+                                            <span><?= intval($tk['comments_count'] ?? 0) ?></span>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                             <?php endforeach; ?>
-                        <?php else: ?>
-                            <div style="text-align:center; padding:20px; font-size:12px; color:#94a3b8;">No tasks</div>
-                        <?php endif; ?>
+                        </div>
                     </div>
+                    <?php endforeach; ?>
                 </div>
-                <?php endforeach; ?>
             </div>
-        <?php else: ?>
-            <!-- Table View -->
-            <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff; overflow:hidden;">
-                <div class="table-responsive">
-                    <table class="table" style="width:100%; margin:0; font-size:13.5px; border-collapse:collapse;">
-                        <thead>
-                            <tr style="background:#fafbfc; border-bottom:2px solid #e2e8f0; color:#475569; text-align:left;">
-                                <th style="padding:12px 16px;">Task Title</th>
-                                <th style="padding:12px 16px;">Milestone</th>
-                                <th style="padding:12px 16px;">Assignee</th>
-                                <th style="padding:12px 16px;">Priority</th>
-                                <th style="padding:12px 16px;">Due Date</th>
-                                <th style="padding:12px 16px;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (!empty($all_project_tasks)): ?>
-                                <?php foreach ($all_project_tasks as $tk):
-                                    $pClass = ($tk['priority'] === 'High' ? 'text-danger' : ($tk['priority'] === 'Medium' ? 'text-warning' : 'text-info'));
+
+            <!-- 2. LIST VIEW -->
+            <div class="view-panel" id="view-list">
+                <div class="modern-list-container">
+                    <div class="list-table-responsive">
+                        <table class="modern-list-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;"><input type="checkbox" id="selectProjAllCheckbox"></th>
+                                    <th>Task Title</th>
+                                    <th>Tag / Phase</th>
+                                    <th>Assignee</th>
+                                    <th>Due Date</th>
+                                    <th>Log / Est</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($all_project_tasks)): ?>
+                                <tr>
+                                    <td colspan="9" class="text-center py-5 text-muted">
+                                        <i class="far fa-clipboard fa-2x mb-3 d-block text-secondary"></i>
+                                        No tasks found in this project.
+                                    </td>
+                                </tr>
+                                <?php else: ?>
+                                <?php foreach ($all_project_tasks as $tk): 
+                                    $badge = getTaskTypeBadge($tk['task_type'] ?? '', $tk['priority'] ?? 'Medium', $tk['milestone_name'] ?? '');
+                                    $avatar = getAvatarStyle($tk['assigned_name'] ?? '');
+                                    $initials = getUserInitials($tk['assigned_name'] ?? '');
+                                    $is_overdue = (!empty($tk['due_date']) && strtotime($tk['due_date']) < strtotime(date('Y-m-d')) && $tk['status'] !== 'Completed');
                                 ?>
-                                <tr style="border-bottom:1px solid #f1f5f9;">
-                                    <td style="padding:12px 16px; font-weight:600; color:#1e293b;">
-                                        <?= htmlspecialchars($tk['title']) ?>
+                                <tr class="list-row <?= $tk['status'] === 'Completed' ? 'task-completed-row' : '' ?>" data-id="<?= $tk['id'] ?>" data-priority="<?= htmlspecialchars($tk['priority'] ?? 'Medium') ?>" data-assignee="<?= intval($tk['assigned_to'] ?? 0) ?>" data-milestone="<?= intval($tk['milestone_id'] ?? 0) ?>">
+                                    <td>
+                                        <input type="checkbox" class="task-checkbox" <?= $tk['status'] === 'Completed' ? 'checked' : '' ?> onchange="quickToggleProjComplete(<?= $tk['id'] ?>, this.checked)">
                                     </td>
-                                    <td style="padding:12px 16px; color:#64748b;">
-                                        <?= htmlspecialchars($tk['milestone_name'] ?? 'General') ?>
+                                    <td>
+                                        <div class="list-task-title-cell">
+                                            <span class="list-title" onclick="openProjectEditTaskModal(<?= $tk['id'] ?>)">
+                                                <?= htmlspecialchars($tk['title']) ?>
+                                            </span>
+                                            <?php if (!empty($tk['description'])): ?>
+                                            <span class="list-desc-hint"><?= htmlspecialchars(mb_strimwidth($tk['description'], 0, 50, '...')) ?></span>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
-                                    <td style="padding:12px 16px; color:#334155;">
-                                        <?= htmlspecialchars($tk['assigned_name'] ?? 'Unassigned') ?>
+                                    <td>
+                                        <span class="task-tag-chip" style="background: <?= $badge['bg'] ?>; color: <?= $badge['color'] ?>; border: 1px solid <?= $badge['border'] ?>;">
+                                            <?= htmlspecialchars($badge['label']) ?>
+                                        </span>
                                     </td>
-                                    <td style="padding:12px 16px; font-weight:600;" class="<?= $pClass ?>">
-                                        <?= htmlspecialchars($tk['priority']) ?>
+                                    <td>
+                                        <div class="list-assignee-cell">
+                                            <div class="task-avatar-circle small" style="background: <?= $avatar['bg'] ?>; color: <?= $avatar['color'] ?>;">
+                                                <?= $initials ?>
+                                            </div>
+                                            <span><?= htmlspecialchars($tk['assigned_name'] ?: 'Unassigned') ?></span>
+                                        </div>
                                     </td>
-                                    <td style="padding:12px 16px; color:#64748b;">
-                                        <?= !empty($tk['due_date']) ? date('M d, Y', strtotime($tk['due_date'])) : 'None' ?>
+                                    <td>
+                                        <span class="schedule-pill <?= $is_overdue ? 'overdue' : '' ?>">
+                                            <?= !empty($tk['due_date']) ? date('M d, Y', strtotime($tk['due_date'])) : '—' ?>
+                                        </span>
                                     </td>
-                                    <td style="padding:12px 16px;">
-                                        <select onchange="onTaskStatusDropdownChange(this, <?= $tk['id'] ?>)" class="form-select form-select-sm" style="font-size:12.5px; padding:3px 8px; width:auto;">
-                                            <option value="Pending" <?= $tk['status'] === 'Pending' || $tk['status'] === 'Not Started' ? 'selected' : '' ?>>Pending</option>
+                                    <td>
+                                        <span class="list-time-stats">
+                                            <?= formatDuration($tk['logged_hours'] ?? 0) ?> / <?= formatDuration($tk['estimated_hours'] ?? 0) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="priority-pill priority-<?= strtolower($tk['priority'] ?: 'medium') ?>">
+                                            <?= ucfirst($tk['priority'] ?: 'Medium') ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <select class="status-select-inline" onchange="quickMoveProjTask(<?= $tk['id'] ?>, this.value)">
+                                            <option value="Pending" <?= $tk['status'] === 'Pending' || $tk['status'] === 'Not Started' ? 'selected' : '' ?>>To-do</option>
                                             <option value="In Progress" <?= $tk['status'] === 'In Progress' ? 'selected' : '' ?>>In Progress</option>
-                                            <option value="In Review" <?= $tk['status'] === 'In Review' ? 'selected' : '' ?>>In Review</option>
+                                            <option value="In Review" <?= ($tk['status'] === 'In Review' || $tk['status'] === 'Pending Review') ? 'selected' : '' ?>>Review Ready</option>
                                             <option value="Completed" <?= $tk['status'] === 'Completed' ? 'selected' : '' ?>>Completed</option>
                                         </select>
                                     </td>
+                                    <td style="text-align: right;">
+                                        <button class="btn-table-action" onclick="openProjectEditTaskModal(<?= $tk['id'] ?>)" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <a href="task_details.php?id=<?= $tk['id'] ?>" target="_blank" class="btn-table-action" title="Details">
+                                            <i class="fas fa-external-link-alt"></i>
+                                        </a>
+                                        <?php if ($can_edit || $tk['created_by'] == $user_id): ?>
+                                        <button class="btn-table-action text-danger" onclick="deleteProjTask(<?= $tk['id'] ?>)" title="Delete">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                                 <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="6" style="text-align:center; padding:32px; color:#94a3b8;">No tasks created for this project yet.</td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        <?php endif; ?>
+
+            <!-- 3. CALENDAR VIEW -->
+            <div class="view-panel" id="view-calendar">
+                <div class="modern-calendar-box">
+                    <div class="calendar-top-bar">
+                        <h4 class="cal-month-title mb-0"><?= date('F Y') ?></h4>
+                        <button class="btn-ctrl-action" onclick="showToast('Calendar synced to project schedule')">Current Month</button>
+                    </div>
+                    <div class="calendar-week-headers">
+                        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                    </div>
+                    <div class="calendar-days-grid">
+                        <?php
+                        $c_m = date('m'); $c_y = date('Y');
+                        $first_day = mktime(0,0,0,$c_m,1,$c_y);
+                        $days_count = date('t', $first_day);
+                        $start_offset = date('w', $first_day);
+
+                        $cal_map = [];
+                        foreach ($all_project_tasks as $ctk) {
+                            if (!empty($ctk['due_date'])) {
+                                if (date('m', strtotime($ctk['due_date'])) == $c_m && date('Y', strtotime($ctk['due_date'])) == $c_y) {
+                                    $d = intval(date('j', strtotime($ctk['due_date'])));
+                                    $cal_map[$d][] = $ctk;
+                                }
+                            }
+                        }
+
+                        for ($i = 0; $i < $start_offset; $i++): ?>
+                        <div class="cal-day-cell empty"></div>
+                        <?php endfor; ?>
+
+                        <?php for ($day = 1; $day <= $days_count; $day++): 
+                            $is_today = ($day == date('j') && $c_m == date('m') && $c_y == date('Y'));
+                            $day_tasks = $cal_map[$day] ?? [];
+                        ?>
+                        <div class="cal-day-cell <?= $is_today ? 'is-today' : '' ?>">
+                            <div class="cal-day-num"><?= $day ?></div>
+                            <div class="cal-task-chips">
+                                <?php foreach ($day_tasks as $dtk): 
+                                    $badge = getTaskTypeBadge($dtk['task_type'] ?? '', $dtk['priority'] ?? 'Medium', $dtk['milestone_name'] ?? '');
+                                ?>
+                                <div class="cal-task-pill" onclick="openProjectEditTaskModal(<?= $dtk['id'] ?>)" title="<?= htmlspecialchars($dtk['title']) ?>" style="background: <?= $badge['bg'] ?>; color: <?= $badge['color'] ?>;">
+                                    <?= htmlspecialchars(mb_strimwidth($dtk['title'], 0, 18, '..')) ?>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <?php endfor; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. TABLE VIEW -->
+            <div class="view-panel" id="view-table">
+                <div class="modern-list-container">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0 font-weight-bold">Summary Table View</h5>
+                        <button type="button" class="btn-ctrl-action" onclick="exportProjTasksTableCSV()">
+                            <i class="fas fa-file-export me-1"></i> Export CSV
+                        </button>
+                    </div>
+                    <div class="list-table-responsive">
+                        <table class="modern-list-table" id="exportProjSummaryTable">
+                            <thead>
+                                <tr>
+                                    <th>#ID</th>
+                                    <th>Title</th>
+                                    <th>Milestone / Tag</th>
+                                    <th>Assignee</th>
+                                    <th>Status</th>
+                                    <th>Priority</th>
+                                    <th>Due Date</th>
+                                    <th>Est. Hours</th>
+                                    <th>Logged Hours</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($all_project_tasks as $tk): ?>
+                                <tr>
+                                    <td>#<?= $tk['id'] ?></td>
+                                    <td><strong><?= htmlspecialchars($tk['title']) ?></strong></td>
+                                    <td><?= htmlspecialchars($tk['milestone_name'] ?: ($tk['task_type'] ?: 'General')) ?></td>
+                                    <td><?= htmlspecialchars($tk['assigned_name'] ?: 'Unassigned') ?></td>
+                                    <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($tk['status']) ?></span></td>
+                                    <td><?= ucfirst($tk['priority']) ?></td>
+                                    <td><?= !empty($tk['due_date']) ? $tk['due_date'] : '—' ?></td>
+                                    <td><?= floatval($tk['estimated_hours']) ?>h</td>
+                                    <td><?= floatval($tk['logged_hours'] ?? 0) ?>h</td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
     </div>
+
+    <!-- Project Tasks Workspace Scoped Styles -->
+    <style>
+    .project-tasks-workspace {
+        color: #0f172a;
+    }
+    .project-tasks-workspace .workspace-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+    .project-tasks-workspace .header-left-col {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .project-tasks-workspace .view-switcher-tabs {
+        display: inline-flex;
+        align-items: center;
+        background: #f1f5f9;
+        border-radius: 10px;
+        padding: 3px;
+        gap: 2px;
+        width: fit-content;
+    }
+    .project-tasks-workspace .tab-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: transparent;
+        border: none;
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #64748b;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.16s ease-in-out;
+    }
+    .project-tasks-workspace .tab-btn:hover { color: #0f172a; }
+    .project-tasks-workspace .tab-btn.active {
+        background: #ffffff;
+        color: #0f172a;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .project-tasks-workspace .active-dot {
+        width: 6px;
+        height: 6px;
+        background: #2563eb;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .project-tasks-workspace .header-right-col {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .project-tasks-workspace .btn-ctrl-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        color: #334155;
+        padding: 7px 13px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.15s ease;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .project-tasks-workspace .btn-ctrl-action:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #0f172a;
+    }
+    .project-tasks-workspace .btn-primary-add {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #024442;
+        color: #ffffff;
+        border: none;
+        padding: 7px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        box-shadow: 0 2px 4px rgba(2,68,66,0.15);
+    }
+    .project-tasks-workspace .btn-primary-add:hover {
+        background: #035a57;
+        transform: translateY(-1px);
+    }
+    .project-tasks-workspace .workspace-filter-bar {
+        display: none;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    }
+    .project-tasks-workspace .workspace-filter-bar.show { display: block; }
+    .project-tasks-workspace .filter-form {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .project-tasks-workspace .filter-input-wrap.search-box {
+        position: relative;
+        flex: 1;
+        min-width: 200px;
+    }
+    .project-tasks-workspace .filter-input-wrap.search-box i {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 13px;
+    }
+    .project-tasks-workspace .form-ctrl-compact {
+        height: 38px;
+        border: 1px solid #e2e8f0;
+        border-radius: 7px;
+        font-size: 13px;
+        padding: 6px 12px;
+        color: #1e293b;
+        outline: none;
+        background: #f8fafc;
+        transition: border 0.15s;
+    }
+    .project-tasks-workspace .filter-input-wrap.search-box input {
+        width: 100%;
+        padding-left: 34px;
+    }
+    .project-tasks-workspace .btn-clear-filter {
+        background: none;
+        border: none;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #ef4444;
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+    .project-tasks-workspace .btn-clear-filter:hover { background: #fee2e2; }
+    .project-tasks-workspace .view-panel { display: none; }
+    .project-tasks-workspace .view-panel.active { display: block; }
+    .project-tasks-workspace .kanban-grid-wrapper {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        align-items: start;
+        width: 100%;
+    }
+    @media (max-width: 1200px) {
+        .project-tasks-workspace .kanban-grid-wrapper { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 768px) {
+        .project-tasks-workspace .kanban-grid-wrapper { grid-template-columns: 1fr; }
+    }
+    .project-tasks-workspace .kanban-column {
+        background: #f8fafc;
+        border-radius: 14px;
+        padding: 14px;
+        border: 1px solid #e2e8f0;
+        min-height: 480px;
+        display: flex;
+        flex-direction: column;
+    }
+    .project-tasks-workspace .column-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+        padding: 2px 4px;
+    }
+    .project-tasks-workspace .col-title-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .project-tasks-workspace .col-title-text {
+        font-size: 14.5px;
+        font-weight: 700;
+        color: #1e293b;
+    }
+    .project-tasks-workspace .col-counter-badge {
+        background: #e2e8f0;
+        color: #475569;
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 20px;
+        min-width: 22px;
+        text-align: center;
+    }
+    .project-tasks-workspace .btn-col-action {
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    .project-tasks-workspace .btn-col-action:hover {
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+    .project-tasks-workspace .kanban-cards-list {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-height: 180px;
+    }
+    .project-tasks-workspace .kanban-cards-list.drag-over {
+        background: #f1f5f9;
+        border-radius: 10px;
+        outline: 2px dashed #94a3b8;
+    }
+    .project-tasks-workspace .kanban-task-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        cursor: grab;
+        transition: all 0.18s ease-in-out;
+        position: relative;
+        user-select: none;
+    }
+    .project-tasks-workspace .kanban-task-card:hover {
+        box-shadow: 0 6px 14px rgba(0,0,0,0.06);
+        border-color: #cbd5e1;
+        transform: translateY(-2px);
+    }
+    .project-tasks-workspace .kanban-task-card.is-dragging {
+        opacity: 0.4;
+        border: 2px dashed #64748b;
+        background: #f8fafc;
+    }
+    .project-tasks-workspace .card-top-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+    .project-tasks-workspace .task-tag-chip {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: capitalize;
+        padding: 3px 9px;
+        border-radius: 20px;
+        display: inline-block;
+    }
+    .project-tasks-workspace .card-top-right {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .project-tasks-workspace .task-avatar-circle {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10.5px;
+        font-weight: 700;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    .project-tasks-workspace .btn-card-more {
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11.5px;
+        cursor: pointer;
+    }
+    .project-tasks-workspace .btn-card-more:hover {
+        color: #334155;
+        background: #f1f5f9;
+    }
+    .project-tasks-workspace .task-title-text {
+        font-size: 14px;
+        font-weight: 600;
+        color: #0f172a;
+        line-height: 1.4;
+        margin-bottom: 5px;
+        cursor: pointer;
+    }
+    .project-tasks-workspace .task-title-text:hover { color: #2563eb; }
+    .project-tasks-workspace .task-snippet-text {
+        font-size: 12px;
+        color: #64748b;
+        line-height: 1.35;
+        margin-bottom: 10px;
+    }
+    .project-tasks-workspace .card-schedule-row {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
+    .project-tasks-workspace .schedule-pill, .project-tasks-workspace .duration-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #f1f5f9;
+        color: #475569;
+        padding: 3px 7px;
+        border-radius: 6px;
+        font-size: 11.5px;
+        font-weight: 500;
+    }
+    .project-tasks-workspace .schedule-pill.overdue {
+        background: #fef2f2;
+        color: #ef4444;
+    }
+    .project-tasks-workspace .card-footer-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 8px;
+        border-top: 1px solid #f1f5f9;
+    }
+    .project-tasks-workspace .log-time-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .project-tasks-workspace .card-metrics-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #94a3b8;
+        font-size: 11.5px;
+    }
+    .project-tasks-workspace .metric-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .project-tasks-workspace .empty-column-box {
+        border: 2px dashed #cbd5e1;
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 30px 14px;
+        text-align: center;
+        margin: 6px 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .project-tasks-workspace .empty-icon-wrap { margin-bottom: 10px; opacity: 0.8; }
+    .project-tasks-workspace .empty-text {
+        font-size: 12.5px;
+        color: #64748b;
+        margin: 0 0 12px 0;
+        font-weight: 500;
+    }
+    .project-tasks-workspace .btn-create-task-empty {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 5px 12px;
+        border-radius: 7px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .project-tasks-workspace .btn-create-task-empty:hover {
+        background: #f8fafc;
+        border-color: #94a3b8;
+        color: #0f172a;
+    }
+    .project-tasks-workspace .modern-list-container {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .project-tasks-workspace .modern-list-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .project-tasks-workspace .modern-list-table th {
+        background: #f8fafc;
+        padding: 10px 12px;
+        font-weight: 600;
+        color: #64748b;
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+        white-space: nowrap;
+    }
+    .project-tasks-workspace .modern-list-table td {
+        padding: 12px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #334155;
+    }
+    .project-tasks-workspace .list-row:hover { background: #f8fafc; }
+    .project-tasks-workspace .task-completed-row td { opacity: 0.65; }
+    .project-tasks-workspace .task-completed-row .list-title { text-decoration: line-through; }
+    .project-tasks-workspace .list-task-title-cell { display: flex; flex-direction: column; }
+    .project-tasks-workspace .list-title { font-weight: 600; color: #0f172a; cursor: pointer; }
+    .project-tasks-workspace .list-title:hover { color: #2563eb; }
+    .project-tasks-workspace .list-desc-hint { font-size: 11px; color: #94a3b8; }
+    .project-tasks-workspace .list-assignee-cell { display: flex; align-items: center; gap: 7px; }
+    .project-tasks-workspace .task-avatar-circle.small { width: 22px; height: 22px; font-size: 9px; }
+    .project-tasks-workspace .status-select-inline {
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        border-radius: 6px;
+        font-size: 11.5px;
+        padding: 3px 6px;
+        color: #334155;
+        font-weight: 500;
+    }
+    .project-tasks-workspace .priority-pill {
+        font-size: 10.5px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 12px;
+        text-transform: uppercase;
+    }
+    .project-tasks-workspace .priority-high { background: #fee2e2; color: #dc2626; }
+    .project-tasks-workspace .priority-medium { background: #fef3c7; color: #b45309; }
+    .project-tasks-workspace .priority-low { background: #dcfce7; color: #16a34a; }
+    .project-tasks-workspace .btn-table-action {
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        padding: 3px 5px;
+        cursor: pointer;
+        font-size: 12px;
+        text-decoration: none;
+    }
+    .project-tasks-workspace .btn-table-action:hover { color: #1e293b; }
+    .project-tasks-workspace .modern-calendar-box {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .project-tasks-workspace .calendar-top-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+    }
+    .project-tasks-workspace .cal-month-title { font-size: 16px; font-weight: 700; color: #0f172a; }
+    .project-tasks-workspace .calendar-week-headers {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        font-weight: 600;
+        color: #64748b;
+        font-size: 12.5px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .project-tasks-workspace .calendar-days-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+        padding-top: 10px;
+    }
+    .project-tasks-workspace .cal-day-cell {
+        min-height: 80px;
+        border: 1px solid #f1f5f9;
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+    }
+    .project-tasks-workspace .cal-day-cell.is-today {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+    .project-tasks-workspace .cal-day-num {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 3px;
+    }
+    .project-tasks-workspace .cal-task-chips {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+    .project-tasks-workspace .cal-task-pill {
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 2px 5px;
+        border-radius: 4px;
+        cursor: pointer;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    </style>
     <?php endif; ?>
 
     <!-- ======================================================================= -->
@@ -1594,74 +2522,123 @@ foreach ($all_project_tasks as $tk) {
 </div>
 <?php endif; ?>
 
-<!-- Modal: Add Task -->
-<div id="taskFormModal" class="modal-overlay" style="display:none;">
-    <div class="modal-content">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:16px;">
-            <h4 style="margin:0; font-size:16px; font-weight:700; color:#0f172a;">Add Project Task</h4>
-            <span style="font-size:22px; cursor:pointer; color:#64748b;" onclick="document.getElementById('taskFormModal').style.display='none'">&times;</span>
+<!-- ── UPGRADED PROJECT TASK MODAL ───────────────────────────────────────────── -->
+<div class="modal fade" id="taskModalProject" tabindex="-1" aria-labelledby="taskModalProjectLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modern-modal-card" style="border-radius:16px; border:1px solid #e2e8f0; box-shadow:0 20px 40px rgba(0,0,0,0.12);">
+            <div class="modal-header" style="border-bottom:1px solid #f1f5f9; padding:20px 24px;">
+                <div class="d-flex align-items-center gap-2">
+                    <div style="width:38px; height:38px; background:#f1f5f9; color:#024442; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px;">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title mb-0" id="taskModalProjectLabel" style="font-size:17px; font-weight:700; color:#0f172a;">Add Project Task</h5>
+                        <p class="modal-subtitle mb-0" style="font-size:12.5px; color:#64748b;">Manage tasks under <?= htmlspecialchars($project['project_name']) ?></p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="projectTaskForm" onsubmit="handleProjTaskFormSubmit(event)">
+                <input type="hidden" name="task_id" id="projModalTaskId" value="0">
+                <input type="hidden" name="project_id" value="<?= $project_id ?>">
+                <input type="hidden" name="ajax_action" id="projModalAjaxAction" value="create_task">
+
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:6px; display:block;">Task Title <span class="text-danger">*</span></label>
+                        <input type="text" name="title" id="projModalTaskTitle" class="form-control form-control-lg" placeholder="e.g. Design responsive navbar component" required style="border-radius:8px; font-size:14px;">
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:6px; display:block;">Category / Tag</label>
+                            <input type="text" name="task_type" id="projModalTaskType" list="projTaskTypeList" class="form-control" placeholder="e.g. UI Design, Development, Media..." style="border-radius:8px; font-size:13px;">
+                            <datalist id="projTaskTypeList">
+                                <option value="UI Design">
+                                <option value="Wireframes">
+                                <option value="Development">
+                                <option value="Media">
+                                <option value="Branding">
+                                <option value="Operations">
+                                <option value="Infrastructure">
+                                <option value="Marketing">
+                            </datalist>
+                        </div>
+                        <div class="col-md-6">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:6px; display:block;">Milestone Phase</label>
+                            <select name="milestone_id" id="projModalTaskMilestone" class="form-select" style="border-radius:8px; font-size:13px;">
+                                <option value="">General (No Milestone)</option>
+                                <?php foreach ($milestones as $m): ?>
+                                    <option value="<?= $m['id'] ?>">Phase <?= $m['order_num'] ?>: <?= htmlspecialchars($m['title']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:6px; display:block;">Assignee</label>
+                            <select name="assigned_to" id="projModalTaskAssignee" class="form-select" style="border-radius:8px; font-size:13px;">
+                                <option value="">Unassigned</option>
+                                <?php foreach ($active_task_users as $u): ?>
+                                <option value="<?= $u['user_id'] ?>">
+                                    <?= htmlspecialchars($u['name']) ?> (<?= ucfirst($u['role']) ?>)
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:6px; display:block;">Priority</label>
+                            <select name="priority" id="projModalTaskPriority" class="form-select" style="border-radius:8px; font-size:13px;">
+                                <option value="Low">Low</option>
+                                <option value="Medium" selected>Medium</option>
+                                <option value="High">High</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:6px; display:block;">Column / Status</label>
+                            <select name="status" id="projModalTaskStatus" class="form-select" style="border-radius:8px; font-size:13px;">
+                                <option value="Pending">To-do</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="In Review">Review Ready</option>
+                                <option value="Completed">Completed</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:6px; display:block;">Due Date</label>
+                            <input type="date" name="due_date" id="projModalTaskDueDate" class="form-control" value="<?= date('Y-m-d', strtotime('+3 days')) ?>" style="border-radius:8px; font-size:13px;">
+                        </div>
+                        <div class="col-md-4">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:6px; display:block;">Estimated Hours</label>
+                            <input type="number" step="0.5" name="estimated_hours" id="projModalTaskEstHours" class="form-control" placeholder="e.g. 3.0" value="3.0" style="border-radius:8px; font-size:13px;">
+                        </div>
+                        <div class="col-md-4">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:6px; display:block;">Logged Hours</label>
+                            <input type="number" step="0.25" name="logged_hours" id="projModalTaskLogHours" class="form-control" placeholder="e.g. 1.75" value="0.0" style="border-radius:8px; font-size:13px;">
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:6px; display:block;">Description & Requirements</label>
+                        <textarea name="description" id="projModalTaskDesc" rows="3" class="form-control" placeholder="Task requirements, deliverables, checklist..." style="border-radius:8px; font-size:13px;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" style="border-radius:8px; font-weight:600;">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm" id="btnSubmitProjModal" style="background:#024442; border:none; border-radius:8px; font-weight:600; padding:7px 18px;">
+                        <span>Save Task</span>
+                    </button>
+                </div>
+            </form>
         </div>
-        <form method="POST">
-            <input type="hidden" name="create_project_task" value="1">
-
-            <div class="mb-3">
-                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Task Title</label>
-                <input type="text" name="task_title" placeholder="e.g. Design responsive navbar component" class="form-control form-control-sm" required style="font-size:13.5px;">
-            </div>
-
-            <div class="mb-3">
-                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Milestone Phase</label>
-                <select name="task_milestone_id" class="form-select form-select-sm" style="font-size:13px;">
-                    <option value="">General (No Milestone)</option>
-                    <?php foreach ($milestones as $m): ?>
-                        <option value="<?= $m['id'] ?>">Phase <?= $m['order_num'] ?>: <?= htmlspecialchars($m['title']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
-                <div>
-                    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Priority</label>
-                    <select name="task_priority" class="form-select form-select-sm" style="font-size:13px;">
-                        <option value="Medium">Medium</option>
-                        <option value="High">High</option>
-                        <option value="Low">Low</option>
-                    </select>
-                </div>
-                <div>
-                    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Due Date</label>
-                    <input type="date" name="task_due_date" class="form-control form-control-sm" style="font-size:13px;">
-                </div>
-            </div>
-
-            <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px; margin-bottom:16px;">
-                <div>
-                    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Assignee</label>
-                    <select name="task_assigned_to" class="form-select form-select-sm" style="font-size:13px;">
-                        <option value="">Unassigned</option>
-                        <?php foreach ($active_task_users as $u): ?>
-                            <option value="<?= $u['user_id'] ?>"><?= htmlspecialchars($u['name']) ?> (<?= ucfirst($u['role']) ?>)</option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div>
-                    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Est. Hours</label>
-                    <input type="number" step="0.5" name="task_estimated_hours" value="0" class="form-control form-control-sm" style="font-size:13px;">
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <label style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Description / Details</label>
-                <textarea name="task_desc" rows="3" class="form-control form-control-sm" placeholder="Task requirements..." style="font-size:13px;"></textarea>
-            </div>
-
-            <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('taskFormModal').style.display='none'">Cancel</button>
-                <button type="submit" class="btn btn-sm btn-primary" style="background:#024442; border:none; font-weight:600;">Save Task</button>
-            </div>
-        </form>
     </div>
 </div>
+
+<!-- Compatibility element for legacy taskFormModal calls -->
+<div id="taskFormModal" style="display:none;"></div>
 
 <script>
 function openRejectModal(id) {
@@ -1669,30 +2646,364 @@ function openRejectModal(id) {
     document.getElementById('modalRejectRequest').style.display = 'flex';
 }
 
-function onTaskStatusDropdownChange(selectEl, taskId) {
-    const newStatus = selectEl.value;
-    selectEl.disabled = true;
+// ── Project Tasks JavaScript Controller ───────────────────────────────────────
+let bsProjModal = null;
+function getProjModalInstance() {
+    const el = document.getElementById('taskModalProject');
+    if (!el) return null;
+    if (!bsProjModal) bsProjModal = new bootstrap.Modal(el);
+    return bsProjModal;
+}
 
-    const formData = new FormData();
-    formData.append('id', taskId);
-    formData.append('status', newStatus);
+function openProjectAddTaskModal(preselectedStatus = 'Pending') {
+    const form = document.getElementById('projectTaskForm');
+    if (form) form.reset();
+    document.getElementById('projModalTaskId').value = '0';
+    document.getElementById('projModalAjaxAction').value = 'create_task';
+    document.getElementById('taskModalProjectLabel').textContent = 'Add Project Task';
+    document.getElementById('projModalTaskStatus').value = preselectedStatus;
+    const modal = getProjModalInstance();
+    if (modal) modal.show();
+}
 
-    fetch('update_task_status.php', {
+function openProjectEditTaskModal(taskId) {
+    postTaskAction({ ajax_action: 'get_task', task_id: taskId })
+        .then(res => {
+            if (res.success && res.task) {
+                const t = res.task;
+                document.getElementById('projModalTaskId').value = t.id;
+                document.getElementById('projModalAjaxAction').value = 'edit_task';
+                document.getElementById('taskModalProjectLabel').textContent = 'Edit Task #' + t.id;
+                document.getElementById('projModalTaskTitle').value = t.title || '';
+                document.getElementById('projModalTaskType').value = t.task_type || '';
+                document.getElementById('projModalTaskMilestone').value = t.milestone_id || '';
+                document.getElementById('projModalTaskAssignee').value = t.assigned_to || '';
+                document.getElementById('projModalTaskPriority').value = t.priority || 'Medium';
+                document.getElementById('projModalTaskStatus').value = t.status || 'Pending';
+                document.getElementById('projModalTaskDueDate').value = t.due_date || '';
+                document.getElementById('projModalTaskEstHours').value = t.estimated_hours || 0;
+                document.getElementById('projModalTaskLogHours').value = t.logged_hours || 0;
+                document.getElementById('projModalTaskDesc').value = t.description || '';
+                const modal = getProjModalInstance();
+                if (modal) modal.show();
+            } else {
+                showToast(res.message || 'Could not load task details', 'error');
+            }
+        })
+        .catch(err => {
+            showToast('Failed to load task details', 'error');
+        });
+}
+
+function handleProjTaskFormSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    postTaskAction(data)
+        .then(res => {
+            if (res.success) {
+                showToast(res.message || 'Task saved successfully!');
+                const modal = getProjModalInstance();
+                if (modal) modal.hide();
+                setTimeout(() => {
+                    const currentUrl = new URL(window.location.href);
+                    currentUrl.searchParams.set('tab', 'tasks');
+                    window.location.href = currentUrl.toString();
+                }, 400);
+            } else {
+                showToast(res.message || 'Save failed', 'error');
+            }
+        })
+        .catch(err => {
+            showToast('Network error while saving task', 'error');
+        });
+}
+
+function quickMoveProjTask(taskId, newStatus) {
+    postTaskAction({ ajax_action: 'update_status', task_id: taskId, status: newStatus })
+        .then(res => {
+            if (res.success) {
+                showToast(`Moved to ${newStatus}`);
+                setTimeout(() => {
+                    const currentUrl = new URL(window.location.href);
+                    currentUrl.searchParams.set('tab', 'tasks');
+                    window.location.href = currentUrl.toString();
+                }, 300);
+            } else {
+                showToast(res.message || 'Update failed', 'error');
+            }
+        });
+}
+
+function quickToggleProjComplete(taskId, isChecked) {
+    const status = isChecked ? 'Completed' : 'In Progress';
+    quickMoveProjTask(taskId, status);
+}
+
+function deleteProjTask(taskId) {
+    if (!confirm('Are you sure you want to delete this task? This cannot be undone.')) return;
+    postTaskAction({ ajax_action: 'delete_task', task_id: taskId })
+        .then(res => {
+            if (res.success) {
+                showToast('Task deleted successfully');
+                const card = document.querySelector(`.kanban-task-card[data-id="${taskId}"]`);
+                if (card) card.remove();
+                const row = document.querySelector(`tr[data-id="${taskId}"]`);
+                if (row) row.remove();
+                refreshProjColumnCounters();
+            } else {
+                showToast(res.message || 'Delete failed', 'error');
+            }
+        });
+}
+
+function postTaskAction(data) {
+    return fetch('task_action.php', {
         method: 'POST',
-        body: formData
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(data)
     })
-    .then(r => r.json())
-    .then(data => {
-        selectEl.disabled = false;
-        if (!data.success) {
-            alert('Failed to update task status: ' + (data.message || 'Error'));
-        }
-    })
-    .catch(err => {
-        selectEl.disabled = false;
-        console.error(err);
+    .then(r => r.json());
+}
+
+function showToast(message, type = 'success') {
+    let shelf = document.getElementById('toastContainer');
+    if (!shelf) {
+        shelf = document.createElement('div');
+        shelf.id = 'toastContainer';
+        shelf.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:10000;display:flex;flex-direction:column;gap:8px;';
+        document.body.appendChild(shelf);
+    }
+    const toast = document.createElement('div');
+    toast.style.cssText = `background:#0f172a;color:#fff;padding:12px 18px;border-radius:10px;font-size:13.5px;font-weight:500;box-shadow:0 6px 18px rgba(15,23,42,0.25);display:flex;align-items:center;gap:10px;animation:toastSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);`;
+    if (type === 'error') toast.style.background = '#ef4444';
+    const icon = type === 'success' ? '<i class="fas fa-check-circle text-success"></i>' : '<i class="fas fa-exclamation-circle"></i>';
+    toast.innerHTML = `${icon}<span>${message}</span>`;
+    shelf.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+        toast.style.transition = 'all 0.25s ease';
+        setTimeout(() => toast.remove(), 250);
+    }, 3200);
+}
+
+function toggleProjFilterBar() {
+    const bar = document.getElementById('projFilterBarContainer');
+    if (bar) bar.classList.toggle('show');
+}
+
+function applyProjClientFilters() {
+    const q = (document.getElementById('projLiveSearchInput')?.value || '').toLowerCase().trim();
+    const assignee = document.getElementById('projFilterAssignee')?.value || '';
+    const priority = document.getElementById('projFilterPriority')?.value || '';
+    const milestone = document.getElementById('projFilterMilestone')?.value || '';
+
+    // Filter Cards
+    document.querySelectorAll('.kanban-task-card').forEach(card => {
+        const title = (card.querySelector('.task-title-text')?.textContent || '').toLowerCase();
+        const tag = (card.querySelector('.task-tag-chip')?.textContent || '').toLowerCase();
+        const cardAssignee = card.dataset.assignee || '';
+        const cardPriority = card.dataset.priority || '';
+        const cardMilestone = card.dataset.milestone || '';
+
+        const matchQ = (q === '' || title.includes(q) || tag.includes(q));
+        const matchAssignee = (assignee === '' || cardAssignee === assignee);
+        const matchPriority = (priority === '' || cardPriority === priority);
+        const matchMilestone = (milestone === '' || cardMilestone === milestone);
+
+        card.style.display = (matchQ && matchAssignee && matchPriority && matchMilestone) ? 'block' : 'none';
+    });
+
+    // Filter List Rows
+    document.querySelectorAll('.project-tasks-workspace .list-row').forEach(row => {
+        const title = (row.querySelector('.list-title')?.textContent || '').toLowerCase();
+        const tag = (row.querySelector('.task-tag-chip')?.textContent || '').toLowerCase();
+        const rowAssignee = row.dataset.assignee || '';
+        const rowPriority = row.dataset.priority || '';
+        const rowMilestone = row.dataset.milestone || '';
+
+        const matchQ = (q === '' || title.includes(q) || tag.includes(q));
+        const matchAssignee = (assignee === '' || rowAssignee === assignee);
+        const matchPriority = (priority === '' || rowPriority === priority);
+        const matchMilestone = (milestone === '' || rowMilestone === milestone);
+
+        row.style.display = (matchQ && matchAssignee && matchPriority && matchMilestone) ? '' : 'none';
     });
 }
+
+function resetProjFilters() {
+    if (document.getElementById('projLiveSearchInput')) document.getElementById('projLiveSearchInput').value = '';
+    if (document.getElementById('projFilterAssignee')) document.getElementById('projFilterAssignee').value = '';
+    if (document.getElementById('projFilterPriority')) document.getElementById('projFilterPriority').value = '';
+    if (document.getElementById('projFilterMilestone')) document.getElementById('projFilterMilestone').value = '';
+    applyProjClientFilters();
+}
+
+function bindProjDragAndDrop() {
+    let activeCard = null;
+
+    document.querySelectorAll('.project-tasks-workspace .kanban-task-card').forEach(card => {
+        card.addEventListener('dragstart', function(e) {
+            activeCard = this;
+            this.classList.add('is-dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', this.dataset.id);
+        });
+
+        card.addEventListener('dragend', function() {
+            this.classList.remove('is-dragging');
+            document.querySelectorAll('.project-tasks-workspace .kanban-cards-list').forEach(list => list.classList.remove('drag-over'));
+            activeCard = null;
+        });
+    });
+
+    document.querySelectorAll('.project-tasks-workspace .kanban-cards-list').forEach(list => {
+        list.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            this.classList.add('drag-over');
+
+            if (!activeCard) return;
+            const afterElement = getProjDragAfterElement(this, e.clientY);
+            if (afterElement == null) {
+                this.appendChild(activeCard);
+            } else {
+                this.insertBefore(activeCard, afterElement);
+            }
+        });
+
+        list.addEventListener('dragleave', function() {
+            this.classList.remove('drag-over');
+        });
+
+        list.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            if (!activeCard) return;
+
+            const newStatus = this.dataset.status;
+            const taskId    = activeCard.dataset.id;
+            const prevStatus = activeCard.dataset.status;
+
+            if (newStatus !== prevStatus) {
+                activeCard.dataset.status = newStatus;
+                postTaskAction({ ajax_action: 'update_status', task_id: taskId, status: newStatus })
+                    .then(res => {
+                        if (res.success) {
+                            showToast(`Moved to ${newStatus}`);
+                            refreshProjColumnCounters();
+                        } else {
+                            showToast(res.message || 'Failed to update status', 'error');
+                        }
+                    })
+                    .catch(() => showToast('Network error while updating status', 'error'));
+            }
+
+            refreshProjColumnCounters();
+        });
+    });
+}
+
+function getProjDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.kanban-task-card:not(.is-dragging)')];
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function refreshProjColumnCounters() {
+    document.querySelectorAll('.project-tasks-workspace .kanban-column').forEach(col => {
+        const status = col.dataset.status;
+        const list = col.querySelector('.kanban-cards-list');
+        const cards = list ? list.querySelectorAll('.kanban-task-card') : [];
+        const count = cards.length;
+
+        const badge = document.getElementById(`proj-badge-count-${status}`);
+        if (badge) badge.textContent = count;
+
+        let emptyBox = list ? list.querySelector('.empty-column-box') : null;
+        if (count === 0) {
+            if (!emptyBox && list) {
+                const box = document.createElement('div');
+                box.className = 'empty-column-box';
+                box.dataset.emptyFor = status;
+                box.innerHTML = `
+                    <div class="empty-icon-wrap">
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </div>
+                    <p class="empty-text">No tasks currently. Board is empty</p>
+                    <button type="button" class="btn-create-task-empty" onclick="openProjectAddTaskModal('${status}')">
+                        + Create Task
+                    </button>
+                `;
+                list.appendChild(box);
+            } else if (emptyBox) {
+                emptyBox.style.display = 'flex';
+            }
+        } else if (emptyBox) {
+            emptyBox.style.display = 'none';
+        }
+    });
+}
+
+function exportProjTasksTableCSV() {
+    const table = document.getElementById('exportProjSummaryTable');
+    if (!table) return;
+    let csv = [];
+    for (let row of table.rows) {
+        let cols = [];
+        for (let cell of row.cells) {
+            cols.push('"' + cell.innerText.replace(/"/g, '""').trim() + '"');
+        }
+        csv.push(cols.join(','));
+    }
+    const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `project_tasks_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+}
+
+// Bind project tasks interactions on DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+    // View Switcher Tab clicks
+    document.querySelectorAll('.project-tasks-workspace .tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.project-tasks-workspace .tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.project-tasks-workspace .view-panel').forEach(p => p.classList.remove('active'));
+
+            this.classList.add('active');
+            const view = this.dataset.view;
+            const panel = document.getElementById(`view-${view}`);
+            if (panel) panel.classList.add('active');
+        });
+    });
+
+    // Live Search
+    const searchInp = document.getElementById('projLiveSearchInput');
+    if (searchInp) {
+        searchInp.addEventListener('input', applyProjClientFilters);
+    }
+
+    bindProjDragAndDrop();
+    refreshProjColumnCounters();
+});
 
 // ── Horizontal Tabs Scrolling & Active Center ───────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {

@@ -42,6 +42,7 @@ if ($action === 'create_task') {
     $due_date        = !empty($_POST['due_date']) ? $_POST['due_date'] : date('Y-m-d', strtotime('+3 days'));
     $assigned_to     = intval($_POST['assigned_to'] ?? 0) ?: $user_id;
     $project_id      = intval($_POST['project_id'] ?? 0) ?: null;
+    $milestone_id    = intval($_POST['milestone_id'] ?? 0) ?: null;
     $task_type       = trim($_POST['task_type'] ?? 'Design');
     $estimated_hours = floatval($_POST['estimated_hours'] ?? 0);
     $logged_hours    = floatval($_POST['logged_hours'] ?? 0);
@@ -53,8 +54,8 @@ if ($action === 'create_task') {
     $allowed = ['Pending', 'In Progress', 'In Review', 'Completed', 'Cancelled'];
     if (!in_array($status, $allowed)) $status = 'Pending';
 
-    $stmt = $conn->prepare("INSERT INTO tasks (title, description, priority, status, due_date, assigned_to, project_id, task_type, estimated_hours, logged_hours, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
-    $stmt->bind_param("sssssiisddi", $title, $description, $priority, $status, $due_date, $assigned_to, $project_id, $task_type, $estimated_hours, $logged_hours, $user_id);
+    $stmt = $conn->prepare("INSERT INTO tasks (title, description, priority, status, due_date, assigned_to, project_id, milestone_id, task_type, estimated_hours, logged_hours, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
+    $stmt->bind_param("sssssiiisddi", $title, $description, $priority, $status, $due_date, $assigned_to, $project_id, $milestone_id, $task_type, $estimated_hours, $logged_hours, $user_id);
     
     if ($stmt->execute()) {
         $new_id = $conn->insert_id;
@@ -82,6 +83,7 @@ if ($action === 'create_task') {
     $due_date        = !empty($_POST['due_date']) ? $_POST['due_date'] : date('Y-m-d');
     $assigned_to     = intval($_POST['assigned_to'] ?? 0) ?: $user_id;
     $project_id      = intval($_POST['project_id'] ?? 0) ?: null;
+    $milestone_id    = intval($_POST['milestone_id'] ?? 0) ?: null;
     $task_type       = trim($_POST['task_type'] ?? 'Design');
     $estimated_hours = floatval($_POST['estimated_hours'] ?? 0);
     $logged_hours    = floatval($_POST['logged_hours'] ?? 0);
@@ -93,8 +95,8 @@ if ($action === 'create_task') {
     $allowed = ['Pending', 'In Progress', 'In Review', 'Completed', 'Cancelled'];
     if (!in_array($status, $allowed)) $status = 'Pending';
 
-    $stmt = $conn->prepare("UPDATE tasks SET title=?, description=?, priority=?, status=?, due_date=?, assigned_to=?, project_id=?, task_type=?, estimated_hours=?, logged_hours=?, updated_at=NOW() WHERE id=?");
-    $stmt->bind_param("sssssiisddi", $title, $description, $priority, $status, $due_date, $assigned_to, $project_id, $task_type, $estimated_hours, $logged_hours, $task_id);
+    $stmt = $conn->prepare("UPDATE tasks SET title=?, description=?, priority=?, status=?, due_date=?, assigned_to=?, project_id=?, milestone_id=?, task_type=?, estimated_hours=?, logged_hours=?, updated_at=NOW() WHERE id=?");
+    $stmt->bind_param("sssssiiisddi", $title, $description, $priority, $status, $due_date, $assigned_to, $project_id, $milestone_id, $task_type, $estimated_hours, $logged_hours, $task_id);
 
     if ($stmt->execute()) {
         echo json_encode(['success' => true, 'message' => 'Task updated successfully']);
