@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $discount_amount = floatval($_POST['discount_amount'] ?? 0);
     $notes           = trim($_POST['notes']  ?? '');
     $terms           = trim($_POST['terms']  ?? '');
-    $currency        = $_POST['currency'] ?? 'USD';
+    $currency        = $_POST['currency'] ?? 'PKR';
     $from_quot       = intval($_POST['from_quot'] ?? 0);
 
     // New Fields
@@ -174,8 +174,8 @@ if ($lastRow) {
         <div class="form-group">
             <label>Currency</label>
             <select name="currency" id="currSel" onchange="updateCurrency(this.value)">
-                <option value="USD" selected>USD — US Dollar</option>
-                <option value="PKR">PKR — Pakistani Rupee</option>
+                <option value="PKR" selected>PKR — Pakistani Rupee</option>
+                <option value="USD">USD — US Dollar</option>
                 <option value="EUR">EUR — Euro</option>
                 <option value="GBP">GBP — British Pound</option>
             </select>
@@ -430,7 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <script>
 const TABS = ['det','itm','nts'];
 let tabIdx = 0;
-let currentCurrency = 'USD';
+let currentCurrency = 'PKR';
 
 function showTab(id) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));

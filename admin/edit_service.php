@@ -270,7 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                        value="<?= htmlspecialchars($pkg['name']) ?>">
                             </div>
                             <div class="form-group" style="margin-bottom:0">
-                                <label>Price (PKR)</label>
+                                <label>Price ($ USD)</label>
                                 <input type="number" name="packages[<?= $i ?>][price]"
                                        placeholder="0.00" step="0.01" min="0"
                                        value="<?= htmlspecialchars($pkg['price']) ?>">
@@ -560,7 +560,7 @@ function addPackage() {
                 <input type="text" name="packages[${idx}][name]" placeholder="e.g. Basic, Standard, Premium">
             </div>
             <div class="form-group" style="margin-bottom:0">
-                <label>Price (PKR)</label>
+                <label>Price ($ USD)</label>
                 <input type="number" name="packages[${idx}][price]" placeholder="0.00" step="0.01" min="0">
             </div>
         </div>

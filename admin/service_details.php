@@ -80,7 +80,7 @@ function getServiceStatusClass($status) {
             <div class="meta-item">
                 <span class="meta-label">Starting Price</span>
                 <span class="meta-value">
-                    <?= !empty($service['starting_price']) ? 'PKR ' . number_format($service['starting_price'], 0) : 'Not set' ?>
+                    <?= !empty($service['starting_price']) ? '$' . number_format($service['starting_price'], 0) : 'Not set' ?>
                 </span>
             </div>
             <div class="meta-item">
@@ -147,7 +147,7 @@ function getServiceStatusClass($status) {
                                     <?php endif; ?>
                                 </div>
                                 <div class="pkg-detail-price">
-                                    PKR <?= number_format($pkg['price'], 0) ?>
+                                    $<?= number_format($pkg['price'], 0) ?>
                                 </div>
                             </div>
 
@@ -229,7 +229,7 @@ function getServiceStatusClass($status) {
                         <div class="timeline-content">
                             <div class="timeline-title">Starting Price</div>
                             <div class="timeline-date">
-                                PKR <?= !empty($service['starting_price']) ? number_format($service['starting_price'], 0) : '—' ?>
+                                $<?= !empty($service['starting_price']) ? number_format($service['starting_price'], 0) : '—' ?>
                             </div>
                         </div>
                     </div>

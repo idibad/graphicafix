@@ -126,6 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $role === 'teacher') {
 $notice_query = "SELECT * FROM notices ORDER BY `date` DESC";
 $notice_result = mysqli_query($conn, $notice_query);
 $notice_cout = mysqli_num_rows($notice_result);
+$notice_count = $notice_cout;
 
 // Fetch tasks based on role
 if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin') {
@@ -141,10 +142,10 @@ $resource_query  = "SELECT * FROM resources ORDER BY created_at DESC";
 $resource_result = mysqli_query($conn, $resource_query);
 $resource_count  = mysqli_num_rows($resource_result);
 
-// Admin/PM/Manager/Sales stats
-if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $role === 'pm' || $role === 'manager' || $role === 'sales') {
+// Admin/PM/Manager/Sales/Staff stats
+if (in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'sales', 'user', 'hrm'])) {
     $stats_filter = "1=1";
-    if ($role !== 'super_admin' && $role !== 'superadmin' && $role !== 'admin') {
+    if (!in_array($role, ['super_admin', 'superadmin', 'admin'])) {
         $stats_filter = "(assigned_to = $user_id OR created_by = $user_id)";
     }
 
@@ -153,6 +154,73 @@ if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $r
         $total_users            = mysqli_fetch_assoc($total_users_result)['cnt'];
         // Recent users
         $recent_users_result = mysqli_query($conn, "SELECT * FROM users WHERE role != 'student' ORDER BY created_at DESC LIMIT 5");
+
+        // ── Executive Business KPIs for Super Admin ──
+        // A. Projects
+        $exec_proj_res = $conn->query("
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status IN ('In Progress', 'active') OR (progress > 0 AND progress < 100) THEN 1 ELSE 0 END) as in_progress,
+                SUM(CASE WHEN status = 'Completed' OR progress = 100 THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status = 'On Hold' THEN 1 ELSE 0 END) as on_hold,
+                SUM(CASE WHEN status = 'Not Started' THEN 1 ELSE 0 END) as not_started
+            FROM projects
+        ");
+        $exec_proj = $exec_proj_res ? $exec_proj_res->fetch_assoc() : ['total' => 0, 'in_progress' => 0, 'completed' => 0, 'on_hold' => 0, 'not_started' => 0];
+        $active_projects_count = intval($exec_proj['in_progress'] ?? 0);
+
+        // B. Clients
+        $exec_clients_res = $conn->query("SELECT COUNT(*) as cnt FROM clients");
+        $total_clients = $exec_clients_res ? intval($exec_clients_res->fetch_assoc()['cnt']) : 0;
+
+        // C. Invoices & Revenue Snapshot
+        $exec_inv_res = $conn->query("
+            SELECT 
+                COUNT(*) as total_invoices,
+                SUM(IF(status = 'paid', amount_paid, 0)) as total_paid,
+                SUM(IF(status IN ('sent', 'overdue'), amount_due, 0)) as total_pending_due,
+                COUNT(IF(status = 'paid', 1, NULL)) as paid_count,
+                COUNT(IF(status = 'overdue', 1, NULL)) as overdue_count,
+                COUNT(IF(status = 'sent', 1, NULL)) as sent_count
+            FROM invoices
+        ");
+        $exec_inv = $exec_inv_res ? $exec_inv_res->fetch_assoc() : ['total_invoices' => 0, 'total_paid' => 0, 'total_pending_due' => 0, 'paid_count' => 0, 'overdue_count' => 0, 'sent_count' => 0];
+
+        // D. Quotations & Pipeline
+        $exec_quot_res = $conn->query("
+            SELECT 
+                COUNT(*) as total,
+                COUNT(IF(status = 'accepted', 1, NULL)) as accepted_count,
+                COUNT(IF(status = 'sent', 1, NULL)) as pending_count,
+                SUM(IF(status = 'accepted', total_amount, 0)) as accepted_val
+            FROM quotations
+        ");
+        $exec_quot = $exec_quot_res ? $exec_quot_res->fetch_assoc() : ['total' => 0, 'accepted_count' => 0, 'pending_count' => 0, 'accepted_val' => 0];
+
+        // E. Daily Progress Reports & Team Attendance Today
+        $today_str = date('Y-m-d');
+        $exec_dpr_res = $conn->query("SELECT COUNT(DISTINCT user_id) as cnt FROM daily_progress_reports WHERE report_date = '$today_str'");
+        $dpr_today_count = $exec_dpr_res ? intval($exec_dpr_res->fetch_assoc()['cnt']) : 0;
+        
+        $exec_team_res = $conn->query("SELECT COUNT(*) as cnt FROM users WHERE (status = 'active' OR status IS NULL) AND role NOT IN ('client', 'client_sub', 'student')");
+        $active_team_count = $exec_team_res ? intval($exec_team_res->fetch_assoc()['cnt']) : 0;
+        $dpr_compliance_rate = $active_team_count > 0 ? round(($dpr_today_count / $active_team_count) * 100) : 0;
+
+        // F. Recent Active Projects for Executive View
+        $recent_projects_res = $conn->query("
+            SELECT p.id, p.project_name, p.status, p.progress, p.start_date, p.end_date, c.client_name
+            FROM projects p
+            LEFT JOIN clients c ON p.client_id = c.id
+            ORDER BY p.id DESC LIMIT 5
+        ");
+
+        // G. Recent Invoices for Executive Financial Snapshot
+        $recent_invoices_res = $conn->query("
+            SELECT i.id, i.invoice_number, i.total_amount, i.amount_paid, i.amount_due, i.status, i.currency, i.due_date, c.client_name
+            FROM invoices i
+            LEFT JOIN clients c ON i.client_id = c.id
+            ORDER BY i.created_at DESC LIMIT 5
+        ");
     }
 
     $total_tasks_result     = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM tasks WHERE $stats_filter");
@@ -175,6 +243,20 @@ if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $r
     $priority_data   = [];
     while ($row = mysqli_fetch_assoc($priority_result)) {
         $priority_data[$row['priority']] = $row['cnt'];
+    }
+
+    // Personal Project & DPR KPIs for Staff / Employees
+    if ($role === 'user' || $role === 'hrm') {
+        $today_str = date('Y-m-d');
+        $user_proj_res = $conn->query("
+            SELECT COUNT(DISTINCT pt.project_id) as cnt 
+            FROM project_team pt
+            WHERE pt.user_id = $user_id
+        ");
+        $user_projects_count = $user_proj_res ? intval($user_proj_res->fetch_assoc()['cnt']) : 0;
+
+        $user_dpr_res = $conn->query("SELECT id FROM daily_progress_reports WHERE user_id = $user_id AND report_date = '$today_str' LIMIT 1");
+        $has_submitted_dpr = ($user_dpr_res && $user_dpr_res->num_rows > 0);
     }
 }
 elseif ($role === 'teacher') {
@@ -269,12 +351,87 @@ elseif ($role === 'student') {
     margin-bottom: 30px;
 }
 
-.stat-card { border-top: 4px solid var(--accent); position: relative; overflow: hidden; background:#fff; padding:20px; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.02);}
+/* Interactive clickable stat cards matching base aesthetics */
+.stat-card { 
+    border-top: 4px solid var(--accent); 
+    position: relative; 
+    overflow: hidden; 
+    background:#fff; 
+    padding:20px 22px; 
+    border-radius:10px; 
+    box-shadow:0 4px 12px rgba(0,0,0,0.02);
+    border: 1px solid #f0f3f6;
+    border-top: 4px solid var(--accent);
+}
 .stat-card::before { content: ''; position: absolute; top: -40px; right: -40px; width: 100px; height: 100px; background: rgba(0,0,0,0.03); border-radius: 50%; }
 .stat-card.red    { border-top-color: #d63031; }
 .stat-card.green  { border-top-color: #00b894; }
 .stat-card.orange { border-top-color: #e17055; }
 .stat-card.blue   { border-top-color: #0984e3; }
+.stat-card.purple { border-top-color: #8b5cf6; }
+.stat-card.emerald{ border-top-color: #10b981; }
+.stat-card.teal   { border-top-color: #0f766e; }
+
+a.stat-card {
+    text-decoration: none !important;
+    color: inherit !important;
+    display: block;
+    cursor: pointer;
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+a.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    color: inherit !important;
+}
+a.stat-card:active {
+    transform: translateY(-1px);
+}
+/* Clean executive stat cards */
+.section-kpi-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 22px 0 14px 0;
+}
+.section-kpi-header h4 {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.status-pill {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: capitalize;
+    display: inline-block;
+}
+.status-pill.paid, .status-pill.completed { background: #dcfce7; color: #15803d; }
+.status-pill.sent, .status-pill.in-progress, .status-pill.in_progress { background: #e0f2fe; color: #0284c7; }
+.status-pill.overdue, .status-pill.rejected, .status-pill.high { background: #fee2e2; color: #b91c1c; }
+.status-pill.draft, .status-pill.on-hold, .status-pill.on_hold { background: #fef3c7; color: #b45309; }
+.status-pill.not-started, .status-pill.not_started { background: #f1f5f9; color: #64748b; }
+.mini-progress {
+    width: 100%;
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 5px;
+}
+.mini-progress-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
 .stat-icon  { font-size: 2rem; margin-bottom:10px;}
 .stat-value { font-size: 2.2rem; font-weight: 700; color: #333; line-height: 1; margin-bottom:5px;}
 .stat-label { font-size: .85rem; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -363,81 +520,237 @@ elseif ($role === 'student') {
             else echo '👋'; 
         ?></h1>
         <p><?php 
-            if ($role === 'super_admin' || $role === 'superadmin') echo "Here's your comprehensive system overview for today (Super Admin).";
+            if ($role === 'super_admin' || $role === 'superadmin') echo "Executive dashboard &amp; agency operations overview.";
             elseif ($role === 'admin') echo "Here's your administrative and operational overview for today.";
-            else echo "Here's what's happening with your projects today."; 
+            elseif ($role === 'client' || $role === 'client_sub') echo "Welcome to your client workspace — track your project deliverables and invoices.";
+            elseif ($role === 'teacher') echo "Manage your assigned courses, students, and live teaching sessions.";
+            elseif ($role === 'student') echo "Continue learning and track your course progress.";
+            else echo "Your daily workspace — track your assigned tasks, attendance &amp; project deliverables."; 
         ?></p>
     </div>
 
     <?php if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $role === 'pm' || $role === 'manager' || $role === 'sales'): ?>
-    <div class="admin-stats-grid">
-        <?php if ($role === 'super_admin' || $role === 'superadmin'): ?>
-        <div class="stat-card">
-            <div class="stat-icon"><i class="fas fa-users"></i></div>
-            <div class="stat-value"><?= $total_users ?></div>
-            <div class="stat-label">Total Users</div>
-        </div>
-        <?php endif; ?>
-        <div class="stat-card">
-            <div class="stat-icon"><i class="fas fa-clipboard"></i></div>
-            <div class="stat-value"><?= $total_tasks ?></div>
+
+    <?php if ($role === 'super_admin' || $role === 'superadmin'): ?>
+    
+    <!-- ══════════════════════════════════════════════════════════════════════════ -->
+    <!-- SUPER ADMIN EXECUTIVE COMMAND CENTER                                      -->
+    <!-- ══════════════════════════════════════════════════════════════════════════ -->
+
+    <!-- 1. Executive Business & Financial Overview -->
+    <div class="section-kpi-header">
+        <h4><i class="fas fa-chart-line" style="color:var(--primary);"></i> Business &amp; Financial Overview</h4>
+    </div>
+
+    <div class="admin-stats-grid" style="grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); margin-bottom: 24px;">
+        <!-- Active Projects -->
+        <a href="manage_projects.php" class="stat-card green" title="View active projects">
+            <div class="stat-icon" style="color:#00b894;"><i class="fas fa-project-diagram"></i></div>
+            <div class="stat-value"><?= number_format($active_projects_count) ?></div>
+            <div class="stat-label">Active Projects</div>
+        </a>
+
+        <!-- Total Clients -->
+        <a href="manage_clients.php" class="stat-card blue" title="View client directory">
+            <div class="stat-icon" style="color:#0984e3;"><i class="fas fa-handshake"></i></div>
+            <div class="stat-value"><?= number_format($total_clients) ?></div>
+            <div class="stat-label">Client Accounts</div>
+        </a>
+
+        <!-- Revenue Collected -->
+        <a href="manage_invoices.php?filter=paid" class="stat-card emerald" title="View paid billing & invoices">
+            <div class="stat-icon" style="color:#10b981;"><i class="fas fa-file-invoice-dollar"></i></div>
+            <div class="stat-value" style="font-size:1.75rem;">PKR <?= number_format($exec_inv['total_paid'] ?? 0) ?></div>
+            <div class="stat-label">Revenue Collected</div>
+        </a>
+
+        <!-- Receivables & Pending Due -->
+        <a href="manage_invoices.php?filter=sent" class="stat-card <?= (intval($exec_inv['overdue_count'] ?? 0) > 0) ? 'red' : 'orange' ?>" title="View outstanding due">
+            <div class="stat-icon" style="color:<?= (intval($exec_inv['overdue_count'] ?? 0) > 0) ? '#ef4444' : '#f59e0b' ?>;"><i class="fas fa-receipt"></i></div>
+            <div class="stat-value" style="font-size:1.75rem;">PKR <?= number_format($exec_inv['total_pending_due'] ?? 0) ?></div>
+            <div class="stat-label">Outstanding Due</div>
+        </a>
+
+        <!-- Proposals & Quotations Pipeline -->
+        <a href="manage_invoices.php?tab=quotations" class="stat-card purple" title="View quotations & proposals">
+            <div class="stat-icon" style="color:#8b5cf6;"><i class="fas fa-file-contract"></i></div>
+            <div class="stat-value"><?= number_format($exec_quot['total']) ?></div>
+            <div class="stat-label">Quotations</div>
+        </a>
+
+        <!-- Today's DPR Compliance -->
+        <a href="dpr.php" class="stat-card orange" title="View team DPR logs">
+            <div class="stat-icon" style="color:#e17055;"><i class="fas fa-calendar-check"></i></div>
+            <div class="stat-value"><?= $dpr_today_count ?> <span style="font-size:1.1rem; color:#94a3b8; font-weight:600;">/ <?= $active_team_count ?></span></div>
+            <div class="stat-label">Today's DPR Logs</div>
+        </a>
+    </div>
+
+    <!-- 2. Operations & Execution Velocity KPIs -->
+    <div class="section-kpi-header">
+        <h4><i class="fas fa-tasks" style="color:var(--primary);"></i> Tasks &amp; Operations</h4>
+        <a href="tasks.php" class="view-all-link">Full Task Board &rarr;</a>
+    </div>
+
+    <div class="admin-stats-grid" style="grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); margin-bottom: 26px;">
+        <a href="tasks.php" class="stat-card" title="View all tasks">
+            <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
+            <div class="stat-value"><?= number_format($total_tasks) ?></div>
             <div class="stat-label">Total Tasks</div>
-        </div>
-        <div class="stat-card green">
-            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-            <div class="stat-value"><?= $completed_tasks ?></div>
-            <div class="stat-label">Completed</div>
-        </div>
-        <div class="stat-card orange">
-            <div class="stat-icon">⏳</div>
-            <div class="stat-value"><?= $pending_tasks ?></div>
-            <div class="stat-label">Pending Tasks</div>
-        </div>
-        <div class="stat-card red">
-            <div class="stat-icon">🚨</div>
-            <div class="stat-value"><?= $overdue_tasks ?></div>
-            <div class="stat-label">Overdue</div>
-        </div>
-        <div class="stat-card blue">
-            <div class="stat-icon"><i class="fas fa-fire"></i></div>
-            <div class="stat-value"><?= $high_priority_tasks ?></div>
+        </a>
+        <a href="tasks.php" class="stat-card orange" title="View pending tasks">
+            <div class="stat-icon" style="color:#e17055;"><i class="fas fa-hourglass-half"></i></div>
+            <div class="stat-value"><?= number_format($pending_tasks) ?></div>
+            <div class="stat-label">Pending / Active</div>
+        </a>
+        <a href="tasks.php" class="stat-card blue" title="View high priority tasks">
+            <div class="stat-icon" style="color:#0984e3;"><i class="fas fa-fire"></i></div>
+            <div class="stat-value"><?= number_format($high_priority_tasks) ?></div>
             <div class="stat-label">High Priority</div>
-        </div>
+        </a>
+        <a href="tasks.php" class="stat-card red" title="View overdue tasks">
+            <div class="stat-icon" style="color:#d63031;"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="stat-value"><?= number_format($overdue_tasks) ?></div>
+            <div class="stat-label">Overdue Tasks</div>
+        </a>
+        <a href="tasks.php" class="stat-card green" title="View completed tasks">
+            <div class="stat-icon" style="color:#00b894;"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-value"><?= number_format($completed_tasks) ?></div>
+            <div class="stat-label">Completed</div>
+        </a>
     </div>
 
+    <!-- 3. Super Admin Quick Actions -->
     <div class="tasks-card" style="margin-bottom:30px;">
-        <div class="card-header-custom"><h3><i class="fas fa-bolt"></i> Quick Actions</h3></div>
+        <div class="card-header-custom">
+            <h3><i class="fas fa-bolt" style="color:#f59e0b;"></i> Quick Actions</h3>
+        </div>
         <div class="quick-actions-grid">
-            <?php if ($role === 'super_admin' || $role === 'superadmin'): ?>
-            <a href="manage_users.php?add_user=1"         class="quick-action-btn"><span class="qa-icon"><i class="fas fa-plus"></i></span> Add User</a>
-            <?php endif; ?>
-            <a href="create_task.php"                      class="quick-action-btn"><span class="qa-icon"><i class="fas fa-edit"></i></span> New Task</a>
-            <?php if ($role === 'super_admin' || $role === 'superadmin'): ?>
-            <a href="manage_users.php"                     class="quick-action-btn"><span class="qa-icon"><i class="fas fa-users"></i></span> Manage Users</a>
-            <?php endif; ?>
-            <a href="tasks.php"                            class="quick-action-btn"><span class="qa-icon"><i class="fas fa-clipboard"></i></span> All Tasks</a>
-            <a href="price_calculator.php"                 class="quick-action-btn"><span class="qa-icon"><i class="fas fa-calculator"></i></span> Price Calc</a>
-            <?php if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $role === 'manager'): ?>
-            <a href="manage_notices.php?add_notice=1"      class="quick-action-btn"><span class="qa-icon"><i class="fas fa-bullhorn"></i></span> Post Notice</a>
-            <?php endif; ?>
-            <?php if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin'): ?>
-            <a href="manage_resources.php?add_resource=1"  class="quick-action-btn"><span class="qa-icon"><i class="fas fa-book"></i></span> Add Resource</a>
-            <?php endif; ?>
-            <?php if ($role === 'admin'): ?>
-            <a href="correspondence.php"                   class="quick-action-btn"><span class="qa-icon"><i class="fas fa-envelope"></i></span> Letters / Docs</a>
-            <a href="attendance.php"                       class="quick-action-btn"><span class="qa-icon"><i class="fas fa-clock"></i></span> Attendance</a>
-            <?php endif; ?>
-            <a href="profile.php"                          class="quick-action-btn"><span class="qa-icon">⚙️</span> Settings</a>
+            <a href="create_quotation.php" class="quick-action-btn"><span class="qa-icon" style="color:#8b5cf6;"><i class="fas fa-file-contract"></i></span> New Quotation</a>
+            <a href="create_invoice.php"   class="quick-action-btn"><span class="qa-icon" style="color:#10b981;"><i class="fas fa-file-invoice-dollar"></i></span> New Invoice</a>
+            <a href="project_add.php"      class="quick-action-btn"><span class="qa-icon" style="color:#0284c7;"><i class="fas fa-folder-plus"></i></span> New Project</a>
+            <a href="manage_users.php?add_user=1" class="quick-action-btn"><span class="qa-icon" style="color:#f59e0b;"><i class="fas fa-user-plus"></i></span> Add User</a>
+            <a href="create_task.php"      class="quick-action-btn"><span class="qa-icon"><i class="fas fa-edit"></i></span> New Task</a>
+            <a href="manage_clients.php"   class="quick-action-btn"><span class="qa-icon" style="color:#0984e3;"><i class="fas fa-handshake"></i></span> Clients</a>
+            <a href="dpr.php"              class="quick-action-btn"><span class="qa-icon" style="color:#e17055;"><i class="fas fa-calendar-check"></i></span> DPR Desk</a>
+            <a href="attendance.php"       class="quick-action-btn"><span class="qa-icon" style="color:#0f766e;"><i class="fas fa-clock"></i></span> Attendance</a>
+            <a href="tasks.php"            class="quick-action-btn"><span class="qa-icon"><i class="fas fa-clipboard"></i></span> Task Board</a>
+            <a href="price_calculator.php" class="quick-action-btn"><span class="qa-icon"><i class="fas fa-calculator"></i></span> Price Calc</a>
+            <a href="manage_notices.php?add_notice=1" class="quick-action-btn"><span class="qa-icon"><i class="fas fa-bullhorn"></i></span> Post Notice</a>
+            <a href="profile.php"          class="quick-action-btn"><span class="qa-icon">⚙️</span> Settings</a>
         </div>
     </div>
 
+    <!-- 4. Executive Row 1: Active Projects Pulse & Recent Invoices -->
     <div class="admin-panels">
-
-        <?php if ($role === 'super_admin' || $role === 'superadmin'): ?>
+        <!-- Active Projects Pulse -->
         <div class="tasks-card">
             <div class="card-header-custom">
-                <h3><i class="fas fa-users"></i> Recent Users</h3>
-                <a href="manage_users.php" class="view-all-link">View All →</a>
+                <h3><i class="fas fa-project-diagram" style="color:var(--primary);"></i> Active Projects Pulse</h3>
+                <a href="manage_projects.php" class="view-all-link">Manage Projects &rarr;</a>
+            </div>
+            <?php if ($recent_projects_res && $recent_projects_res->num_rows > 0): ?>
+            <div class="main-table">
+                <div class="table-head" style="grid-template-columns: 2.2fr 1.3fr 1fr 0.6fr;">
+                    <span>Project &amp; Client</span>
+                    <span>Progress</span>
+                    <span>Status</span>
+                    <span>Action</span>
+                </div>
+                <?php while($p = $recent_projects_res->fetch_assoc()): 
+                    $pProg = intval($p['progress'] ?? 0);
+                    $pStatus = strtolower(str_replace(' ', '-', $p['status'] ?? 'not-started'));
+                ?>
+                <div class="table-row" style="grid-template-columns: 2.2fr 1.3fr 1fr 0.6fr; align-items:center;">
+                    <div style="overflow:hidden;">
+                        <a href="project_details.php?id=<?= $p['id'] ?>" style="font-size:13.5px; font-weight:700; color:#0f172a; text-decoration:none; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            <?= htmlspecialchars($p['project_name']) ?>
+                        </a>
+                        <small style="font-size:12px; color:#64748b;"><?= htmlspecialchars($p['client_name'] ?: 'Internal / Direct') ?></small>
+                    </div>
+                    <div style="padding-right:12px;">
+                        <div style="display:flex; justify-content:space-between; font-size:11.5px; font-weight:700; color:#475569;">
+                            <span><?= $pProg ?>%</span>
+                        </div>
+                        <div class="mini-progress">
+                            <div class="mini-progress-fill" style="width:<?= $pProg ?>%;"></div>
+                        </div>
+                    </div>
+                    <span>
+                        <span class="status-pill <?= $pStatus ?>"><?= htmlspecialchars($p['status'] ?? 'Pending') ?></span>
+                    </span>
+                    <span>
+                        <a href="project_details.php?id=<?= $p['id'] ?>" class="btn-meet" style="padding:4px 10px; font-size:11.5px; border-radius:6px;" title="Open Project Details">
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </span>
+                </div>
+                <?php endwhile; ?>
+            </div>
+            <?php else: ?>
+            <div style="text-align:center; padding:35px 20px; color:#94a3b8;">
+                <i class="fas fa-folder-open" style="font-size:2rem; margin-bottom:8px; display:block;"></i>
+                No projects found. <a href="project_add.php" style="color:var(--primary); font-weight:600;">Create your first project</a>.
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Recent Billing & Invoices Pulse -->
+        <div class="tasks-card">
+            <div class="card-header-custom">
+                <h3><i class="fas fa-receipt" style="color:#10b981;"></i> Financial &amp; Billing Pulse</h3>
+                <a href="manage_invoices.php" class="view-all-link">Billing Desk &rarr;</a>
+            </div>
+            <?php if ($recent_invoices_res && $recent_invoices_res->num_rows > 0): ?>
+            <div class="main-table">
+                <div class="table-head" style="grid-template-columns: 1.6fr 1.6fr 1fr 0.6fr;">
+                    <span>Invoice #</span>
+                    <span>Client / Total</span>
+                    <span>Status</span>
+                    <span>Action</span>
+                </div>
+                <?php while($inv = $recent_invoices_res->fetch_assoc()): 
+                    $invStatus = strtolower($inv['status'] ?? 'draft');
+                    $curr = htmlspecialchars($inv['currency'] ?? 'PKR');
+                ?>
+                <div class="table-row" style="grid-template-columns: 1.6fr 1.6fr 1fr 0.6fr; align-items:center;">
+                    <div>
+                        <a href="invoice_details.php?id=<?= $inv['id'] ?>" style="font-size:13.5px; font-weight:700; color:var(--primary); text-decoration:none;">
+                            <?= htmlspecialchars($inv['invoice_number']) ?>
+                        </a>
+                        <div style="font-size:11px; color:#94a3b8;">Due <?= date('M d, Y', strtotime($inv['due_date'])) ?></div>
+                    </div>
+                    <div>
+                        <strong style="font-size:13px; color:#0f172a;"><?= $curr ?> <?= number_format($inv['total_amount'], 0) ?></strong>
+                        <div style="font-size:11.5px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($inv['client_name'] ?: 'Direct Client') ?></div>
+                    </div>
+                    <span>
+                        <span class="status-pill <?= $invStatus ?>"><?= ucfirst($invStatus) ?></span>
+                    </span>
+                    <span>
+                        <a href="invoice_details.php?id=<?= $inv['id'] ?>" class="btn-meet" style="padding:4px 10px; font-size:11.5px; border-radius:6px;" title="View Invoice">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </span>
+                </div>
+                <?php endwhile; ?>
+            </div>
+            <?php else: ?>
+            <div style="text-align:center; padding:35px 20px; color:#94a3b8;">
+                <i class="fas fa-file-invoice" style="font-size:2rem; margin-bottom:8px; display:block;"></i>
+                No invoices recorded yet. <a href="create_invoice.php" style="color:var(--primary); font-weight:600;">Create an invoice</a>.
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- 5. Executive Row 2: Recent Users & Tasks by Priority -->
+    <div class="admin-panels">
+        <!-- Recent Users Card -->
+        <div class="tasks-card">
+            <div class="card-header-custom">
+                <h3><i class="fas fa-users" style="color:var(--primary);"></i> Recent Users &amp; Role Access</h3>
+                <a href="manage_users.php" class="view-all-link">Directory &rarr;</a>
             </div>
             <div class="main-table">
                 <div class="table-head" style="grid-template-columns:1.5fr 2fr 0.8fr;">
@@ -446,7 +759,7 @@ elseif ($role === 'student') {
                     <span>Role</span>
                 </div>
                 <?php while($u = mysqli_fetch_assoc($recent_users_result)): ?>
-                <div class="table-row" style="grid-template-columns:1.5fr 2fr 0.8fr;">
+                <div class="table-row" style="grid-template-columns:1.5fr 2fr 0.8fr; align-items:center;">
                     <div class="client">
                         <div class="avatar <?= in_array($u['role'],['pink','blue','green','orange','purple']) ? $u['role'] : 'blue' ?>"
                              style="width:32px;height:32px;font-size:13px;">
@@ -460,8 +773,104 @@ elseif ($role === 'student') {
                 <?php endwhile; ?>
             </div>
         </div>
-        <?php endif; ?>
 
+        <!-- Priority Breakdown & Notices -->
+        <div class="tasks-card">
+            <div class="card-header-custom">
+                <h3><i class="fas fa-chart-bar" style="color:#0984e3;"></i> Tasks by Priority</h3>
+                <a href="tasks.php" class="view-all-link">Task Board &rarr;</a>
+            </div>
+            <?php
+                $maxP   = max(array_values($priority_data) ?: [1]);
+                $high   = $priority_data['High']   ?? 0;
+                $medium = $priority_data['Medium']  ?? 0;
+                $low    = $priority_data['Low']     ?? 0;
+            ?>
+            <div class="priority-bars" style="margin-bottom:25px;">
+                <div class="pbar-row">
+                    <span class="pbar-label"><i class="fas fa-circle text-danger"></i> High</span>
+                    <div class="pbar-track"><div class="pbar-fill high"   style="width:<?= $maxP ? round($high/$maxP*100)   : 0 ?>%"></div></div>
+                    <span class="pbar-count"><?= $high ?></span>
+                </div>
+                <div class="pbar-row">
+                    <span class="pbar-label"><i class="fas fa-circle text-warning"></i> Medium</span>
+                    <div class="pbar-track"><div class="pbar-fill medium" style="width:<?= $maxP ? round($medium/$maxP*100) : 0 ?>%"></div></div>
+                    <span class="pbar-count"><?= $medium ?></span>
+                </div>
+                <div class="pbar-row">
+                    <span class="pbar-label"><i class="fas fa-circle text-success"></i> Low</span>
+                    <div class="pbar-track"><div class="pbar-fill low"    style="width:<?= $maxP ? round($low/$maxP*100)    : 0 ?>%"></div></div>
+                    <span class="pbar-count"><?= $low ?></span>
+                </div>
+            </div>
+
+            <div class="card-header-custom" style="margin-top:10px;">
+                <h3><i class="fas fa-bullhorn" style="color:#e17055;"></i> Latest Notices</h3>
+                <a href="manage_notices.php" class="view-all-link">Manage &rarr;</a>
+            </div>
+            <?php
+                mysqli_data_seek($notice_result, 0);
+                $nc = 0;
+                while($nd = mysqli_fetch_assoc($notice_result)):
+                    if ($nc >= 3) break; $nc++;
+            ?>
+            <a href="notice_details.php?id=<?= $nd['notice_id'] ?>" class="notice-item" style="display:block; text-decoration:none;">
+                <div class="notice-title"><?= htmlspecialchars($nd['notice_title']) ?></div>
+            </a>
+            <?php endwhile; ?>
+        </div>
+    </div>
+
+    <?php else: // Admin, PM, Manager, Sales ?>
+
+    <!-- Standard Staff & Ops Overview -->
+    <div class="admin-stats-grid">
+        <a href="tasks.php" class="stat-card" title="View all tasks">
+            <div class="stat-icon"><i class="fas fa-clipboard"></i></div>
+            <div class="stat-value"><?= $total_tasks ?></div>
+            <div class="stat-label">Total Tasks</div>
+        </a>
+        <a href="tasks.php" class="stat-card green" title="View completed tasks">
+            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-value"><?= $completed_tasks ?></div>
+            <div class="stat-label">Completed</div>
+        </a>
+        <a href="tasks.php" class="stat-card orange" title="View pending tasks">
+            <div class="stat-icon">⏳</div>
+            <div class="stat-value"><?= $pending_tasks ?></div>
+            <div class="stat-label">Pending Tasks</div>
+        </a>
+        <a href="tasks.php" class="stat-card red" title="View overdue tasks">
+            <div class="stat-icon">🚨</div>
+            <div class="stat-value"><?= $overdue_tasks ?></div>
+            <div class="stat-label">Overdue</div>
+        </a>
+        <a href="tasks.php" class="stat-card blue" title="View high priority tasks">
+            <div class="stat-icon"><i class="fas fa-fire"></i></div>
+            <div class="stat-value"><?= $high_priority_tasks ?></div>
+            <div class="stat-label">High Priority</div>
+        </a>
+    </div>
+
+    <div class="tasks-card" style="margin-bottom:30px;">
+        <div class="card-header-custom"><h3><i class="fas fa-bolt"></i> Quick Actions</h3></div>
+        <div class="quick-actions-grid">
+            <a href="create_task.php"                      class="quick-action-btn"><span class="qa-icon"><i class="fas fa-edit"></i></span> New Task</a>
+            <a href="tasks.php"                            class="quick-action-btn"><span class="qa-icon"><i class="fas fa-clipboard"></i></span> All Tasks</a>
+            <a href="price_calculator.php"                 class="quick-action-btn"><span class="qa-icon"><i class="fas fa-calculator"></i></span> Price Calc</a>
+            <?php if ($role === 'admin' || $role === 'manager'): ?>
+            <a href="manage_notices.php?add_notice=1"      class="quick-action-btn"><span class="qa-icon"><i class="fas fa-bullhorn"></i></span> Post Notice</a>
+            <?php endif; ?>
+            <?php if ($role === 'admin'): ?>
+            <a href="manage_resources.php?add_resource=1"  class="quick-action-btn"><span class="qa-icon"><i class="fas fa-book"></i></span> Add Resource</a>
+            <a href="correspondence.php"                   class="quick-action-btn"><span class="qa-icon"><i class="fas fa-envelope"></i></span> Letters / Docs</a>
+            <a href="attendance.php"                       class="quick-action-btn"><span class="qa-icon"><i class="fas fa-clock"></i></span> Attendance</a>
+            <?php endif; ?>
+            <a href="profile.php"                          class="quick-action-btn"><span class="qa-icon">⚙️</span> Settings</a>
+        </div>
+    </div>
+
+    <div class="admin-panels">
         <div class="tasks-card">
             <div class="card-header-custom">
                 <h3><i class="fas fa-chart-bar"></i> Tasks by Priority</h3>
@@ -507,6 +916,7 @@ elseif ($role === 'student') {
             <?php endwhile; ?>
         </div>
     </div>
+    <?php endif; ?>
 
     <div class="main-card" style="margin-bottom:30px;">
         <div class="main-header">
@@ -925,34 +1335,34 @@ elseif ($role === 'student') {
             WHERE client_id = {$client_id} AND status != 'draft'
         ")->fetch_assoc();
     ?>
-        <div class="row g-4 mb-4">
-            <div class="col-md-4">
-                <div class="stat-card" style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0; display:flex; align-items:center; gap:16px;">
-                    <div style="width:50px; height:50px; background:#e0f2fe; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#0284c7; font-size:20px;"><i class="fas fa-tasks"></i></div>
-                    <div>
-                        <div style="font-size:24px; font-weight:800; color:#1e293b;"><?= intval($proj_stats['total']) ?></div>
-                        <div style="font-size:13px; color:#64748b; font-weight:600;">Total Projects</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stat-card" style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0; display:flex; align-items:center; gap:16px;">
-                    <div style="width:50px; height:50px; background:#ecfdf5; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#10b981; font-size:20px;"><i class="fas fa-spinner"></i></div>
-                    <div>
-                        <div style="font-size:24px; font-weight:800; color:#1e293b;"><?= intval($proj_stats['active']) ?></div>
-                        <div style="font-size:13px; color:#64748b; font-weight:600;">In Progress</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stat-card" style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0; display:flex; align-items:center; gap:16px;">
-                    <div style="width:50px; height:50px; background:#fef3c7; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#d97706; font-size:20px;"><i class="fas fa-check-double"></i></div>
-                    <div>
-                        <div style="font-size:24px; font-weight:800; color:#1e293b;"><?= intval($proj_stats['completed']) ?></div>
-                        <div style="font-size:13px; color:#64748b; font-weight:600;">Completed Projects</div>
-                    </div>
-                </div>
-            </div>
+        <div class="admin-stats-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); margin-bottom: 24px;">
+            <a href="client_projects.php" class="stat-card" title="View all my projects">
+                <div class="stat-icon" style="color:var(--primary);"><i class="fas fa-folder-open"></i></div>
+                <div class="stat-value"><?= intval($proj_stats['total']) ?></div>
+                <div class="stat-label">Total Projects</div>
+            </a>
+            <a href="client_projects.php?filter=active" class="stat-card blue" title="View active projects in progress">
+                <div class="stat-icon" style="color:#0984e3;"><i class="fas fa-spinner"></i></div>
+                <div class="stat-value"><?= intval($proj_stats['active']) ?></div>
+                <div class="stat-label">In Progress</div>
+            </a>
+            <a href="client_projects.php?filter=completed" class="stat-card green" title="View delivered projects">
+                <div class="stat-icon" style="color:#00b894;"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-value"><?= intval($proj_stats['completed']) ?></div>
+                <div class="stat-label">Completed</div>
+            </a>
+            <?php if ($role === 'client'): ?>
+            <a href="client_invoices.php" class="stat-card orange" title="View pending invoices">
+                <div class="stat-icon" style="color:#e17055;"><i class="fas fa-file-invoice"></i></div>
+                <div class="stat-value"><?= intval($inv_stats['pending']) ?></div>
+                <div class="stat-label">Pending Invoices</div>
+            </a>
+            <a href="client_invoices.php" class="stat-card red" title="View outstanding balance">
+                <div class="stat-icon" style="color:#d63031;"><i class="fas fa-receipt"></i></div>
+                <div class="stat-value" style="font-size:1.65rem;">PKR <?= number_format($inv_stats['total_due'] ?? 0, 0) ?></div>
+                <div class="stat-label">Outstanding Due</div>
+            </a>
+            <?php endif; ?>
         </div>
 
         <div class="row g-4">
@@ -1042,85 +1452,151 @@ elseif ($role === 'student') {
             </div>
         </div>
 
-    <?php else: ?>
-    <div class="row g-4 mb-4">
-            <div class="col-lg-4">
-                <div class="user-card">
-                    <div class="user-avatar"><i class="fas fa-user-tie"></i>‍<i class="fas fa-briefcase"></i></div>
-                    <div class="user-name"><?php echo htmlspecialchars($name); ?></div>
-                    <div class="user-role"><?php echo htmlspecialchars($designation ?? ''); ?></div>
-                </div>
+    <?php else: // Standard Employee / Staff Dashboard (role === 'user' or 'hrm') ?>
+
+    <!-- 1. Personal Work KPIs (Interactive Buttons, Scoped Strictly to Permitted Rights) -->
+    <div class="section-kpi-header">
+        <h4><i class="fas fa-clipboard-check" style="color:var(--primary);"></i> My Work Overview</h4>
+    </div>
+
+    <div class="admin-stats-grid" style="grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); margin-bottom: 24px;">
+        <a href="tasks.php" class="stat-card" title="View my active tasks">
+            <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
+            <div class="stat-value"><?= number_format($pending_tasks ?? 0) ?></div>
+            <div class="stat-label">Active Tasks</div>
+        </a>
+        <a href="tasks.php" class="stat-card blue" title="View my high priority tasks">
+            <div class="stat-icon" style="color:#0984e3;"><i class="fas fa-fire"></i></div>
+            <div class="stat-value"><?= number_format($high_priority_tasks ?? 0) ?></div>
+            <div class="stat-label">High Priority</div>
+        </a>
+        <a href="tasks.php" class="stat-card red" title="View my overdue tasks">
+            <div class="stat-icon" style="color:#d63031;"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="stat-value"><?= number_format($overdue_tasks ?? 0) ?></div>
+            <div class="stat-label">Overdue Tasks</div>
+        </a>
+        <a href="tasks.php" class="stat-card green" title="View my completed tasks">
+            <div class="stat-icon" style="color:#00b894;"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-value"><?= number_format($completed_tasks ?? 0) ?></div>
+            <div class="stat-label">Completed</div>
+        </a>
+        <a href="manage_projects.php" class="stat-card purple" title="View my assigned projects">
+            <div class="stat-icon" style="color:#8b5cf6;"><i class="fas fa-folder-open"></i></div>
+            <div class="stat-value"><?= number_format($user_projects_count ?? 0) ?></div>
+            <div class="stat-label">My Projects</div>
+        </a>
+        <a href="dpr.php" class="stat-card <?= !empty($has_submitted_dpr) ? 'green' : 'orange' ?>" title="Submit or review today's Daily Progress Report">
+            <div class="stat-icon" style="color:<?= !empty($has_submitted_dpr) ? '#00b894' : '#e17055' ?>;"><i class="fas fa-calendar-check"></i></div>
+            <div class="stat-value" style="font-size:1.5rem;"><?= !empty($has_submitted_dpr) ? 'Submitted' : 'Pending' ?></div>
+            <div class="stat-label">Today's DPR</div>
+        </a>
+    </div>
+
+    <!-- 2. Self-Service Quick Actions (Strictly Scoped to Rights) -->
+    <div class="tasks-card" style="margin-bottom:30px;">
+        <div class="card-header-custom">
+            <h3><i class="fas fa-bolt" style="color:#f59e0b;"></i> Quick Actions</h3>
+        </div>
+        <div class="quick-actions-grid">
+            <a href="dpr.php"               class="quick-action-btn"><span class="qa-icon" style="color:#e17055;"><i class="fas fa-calendar-check"></i></span> Submit DPR</a>
+            <a href="attendance.php"        class="quick-action-btn"><span class="qa-icon" style="color:#0f766e;"><i class="fas fa-clock"></i></span> Attendance</a>
+            <a href="tasks.php"             class="quick-action-btn"><span class="qa-icon"><i class="fas fa-clipboard"></i></span> My Tasks</a>
+            <a href="manage_projects.php"   class="quick-action-btn"><span class="qa-icon" style="color:#8b5cf6;"><i class="fas fa-folder-open"></i></span> My Projects</a>
+            <a href="my_salary.php"         class="quick-action-btn"><span class="qa-icon" style="color:#10b981;"><i class="fas fa-receipt"></i></span> Salary Slips</a>
+            <a href="deduction_tickets.php" class="quick-action-btn"><span class="qa-icon" style="color:#ef4444;"><i class="fas fa-ticket-alt"></i></span> Dispute Ticket</a>
+            <a href="price_calculator.php"  class="quick-action-btn"><span class="qa-icon" style="color:#0284c7;"><i class="fas fa-calculator"></i></span> Price Calc</a>
+            <a href="entertainment.php"     class="quick-action-btn"><span class="qa-icon" style="color:#ec4899;"><i class="fas fa-gamepad"></i></span> Entertainment</a>
+            <a href="profile.php"           class="quick-action-btn"><span class="qa-icon">⚙️</span> Settings</a>
+        </div>
+    </div>
+
+    <!-- 3. Two-Column Workspace: Active Tasks & Company Notices -->
+    <div class="admin-panels">
+        <!-- My Assigned Tasks -->
+        <div class="tasks-card">
+            <div class="card-header-custom">
+                <h3><i class="fas fa-check-circle" style="color:var(--primary);"></i> My Active Tasks</h3>
+                <a href="tasks.php" class="view-all-link">Full Task Board &rarr;</a>
             </div>
-            <div class="col-lg-8">
-                <div class="notice-board">
-                    <div class="card-header-custom">
-                        <h3><i class="fas fa-bullhorn"></i> Notice Board</h3>
-                        <span class="badge-count"><?php echo $notice_cout; ?></span>
+            <?php if ($task_count > 0): ?>
+                <?php mysqli_data_seek($task_result, 0); while($task = mysqli_fetch_assoc($task_result)): ?>
+                <div class="task-item" style="padding:14px 16px; border-bottom:1px solid #f1f5f9; display:flex; align-items:flex-start; gap:12px;">
+                    <div class="task-checkbox" style="padding-top:2px;">
+                        <input type="checkbox" class="task-status" data-task-id="<?= $task['id'] ?>" <?= $task['status'] === 'Completed' ? 'checked' : '' ?> style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent);">
                     </div>
-                    <div class="notices-body">
-                        <?php mysqli_data_seek($notice_result, 0); while($data = mysqli_fetch_assoc($notice_result)): 
-                            $notice_time = isset($data['created_at']) ? date('M d, g:i A', strtotime($data['created_at'])) : 'Today, 2:30 PM';
-                        ?>
-                        <a href="notice_details.php?id=<?= $data['notice_id'] ?>" class="notice-item" style="display:block; text-decoration:none;">
-                            <div class="notice-title"><?= htmlspecialchars($data['notice_title']) ?></div>
-                            <div class="notice-time"><?= $notice_time ?></div>
-                        </a>
-                        <?php endwhile; ?>
+                    <div class="task-content" style="flex:1;">
+                        <div class="task-title" style="font-weight:700; color:#1e293b; font-size:14px;"><?= htmlspecialchars($task['title']) ?></div>
+                        <?php if (!empty($task['description'])): ?>
+                        <div class="task-description" style="font-size:12.5px; color:#64748b; margin-top:3px;"><?= htmlspecialchars(mb_strimwidth($task['description'], 0, 95, '...')) ?></div>
+                        <?php endif; ?>
+                        <div class="task-meta" style="margin-top:6px; display:flex; gap:10px; align-items:center;">
+                            <span class="status-pill <?= strtolower($task['priority'] ?? 'low') ?>"><?= htmlspecialchars($task['priority'] ?? 'Normal') ?></span>
+                            <span style="font-size:11.5px; color:#94a3b8;"><i class="fas fa-clock"></i> Due: <?= !empty($task['due_date']) ? date('M d, Y', strtotime($task['due_date'])) : 'No date' ?></span>
+                        </div>
                     </div>
                 </div>
-            </div>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <div style="text-align:center; padding:35px 20px; color:#94a3b8;">
+                    <i class="fas fa-check-double" style="font-size:2rem; margin-bottom:8px; display:block; color:#10b981;"></i>
+                    All caught up! You have no pending tasks assigned right now.
+                </div>
+            <?php endif; ?>
         </div>
 
-        <div class="row g-4 mb-4">
-            <div class="col-12">
-                <div class="tasks-card">
-                    <div class="card-header-custom">
-                        <h3><i class="fas fa-check-circle"></i> Your Tasks</h3>
-                        <span class="badge-count"><?php echo $task_count; ?> Active</span>
-                    </div>
-                    <?php while($task = mysqli_fetch_assoc($task_result)): ?>
-                    <div class="task-item">
-                        <div class="task-checkbox">
-                            <input type="checkbox" class="task-status" data-task-id="<?= $task['id'] ?>" <?= $task['status'] === 'Completed' ? 'checked' : '' ?>>
+        <!-- Right Side: Notices & Resources -->
+        <div>
+            <!-- Notice Board -->
+            <div class="tasks-card" style="margin-bottom:20px;">
+                <div class="card-header-custom">
+                    <h3><i class="fas fa-bullhorn" style="color:#e17055;"></i> Company Notices</h3>
+                    <span class="badge-count"><?= $notice_count ?></span>
+                </div>
+                <div class="notices-body">
+                    <?php 
+                    mysqli_data_seek($notice_result, 0); 
+                    $nc = 0;
+                    while($notice = mysqli_fetch_assoc($notice_result)): 
+                        if ($nc >= 4) break; $nc++;
+                        $notice_time = isset($notice['created_at']) ? date('M d, g:i A', strtotime($notice['created_at'])) : '';
+                    ?>
+                    <a href="notice_details.php?id=<?= $notice['notice_id'] ?>" class="notice-item" style="display:block; text-decoration:none; padding:12px 14px; border-bottom:1px solid #f1f5f9;">
+                        <div class="notice-title" style="font-weight:700; color:#1e293b; font-size:13.5px;"><?= htmlspecialchars($notice['notice_title']) ?></div>
+                        <?php if ($notice_time): ?>
+                        <div style="font-size:11.5px; color:#94a3b8; margin-top:3px;"><i class="fas fa-clock"></i> <?= $notice_time ?></div>
+                        <?php endif; ?>
+                    </a>
+                    <?php endwhile; ?>
+                </div>
+            </div>
+
+            <!-- Resources & Guidelines -->
+            <div class="resources-card">
+                <div class="card-header-custom">
+                    <h3><i class="fas fa-book" style="color:var(--primary);"></i> Resources &amp; Guides</h3>
+                    <span class="badge-count"><?= $resource_count ?></span>
+                </div>
+                <div class="resources-list" style="padding:10px 14px;">
+                    <?php 
+                    mysqli_data_seek($resource_result, 0); 
+                    $rc = 0;
+                    while($resource = mysqli_fetch_assoc($resource_result)): 
+                        if ($rc >= 4) break; $rc++;
+                    ?>
+                    <a href="<?= htmlspecialchars($resource['link']) ?>" class="resource-item" target="_blank" style="display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid #f8fafc; text-decoration:none;">
+                        <div class="resource-icon" style="color:var(--primary); font-size:14px;"><i class="fas fa-file-alt"></i></div>
+                        <div class="resource-info" style="flex:1;">
+                            <div class="resource-title" style="font-weight:600; font-size:13px; color:#334155;"><?= htmlspecialchars($resource['title']) ?></div>
                         </div>
-                        <div class="task-content">
-                            <div class="task-title"><?= htmlspecialchars($task['title']) ?></div>
-                            <div class="task-description"><?= htmlspecialchars($task['description']) ?></div>
-                            <div class="task-meta">
-                                <span class="task-priority priority-<?= strtolower($task['priority']) ?>"><?= $task['priority'] ?> Priority</span>
-                                <span class="task-deadline">⏰ Due: <?= date('M d, Y', strtotime($task['due_date'])) ?></span>
-                            </div>
-                        </div>
-                    </div>
+                        <i class="fas fa-external-link-alt" style="font-size:11px; color:#cbd5e1;"></i>
+                    </a>
                     <?php endwhile; ?>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="row g-4">
-            <div class="col-12">
-                <div class="resources-card">
-                    <div class="card-header-custom">
-                        <h3><i class="fas fa-book"></i> Resources & Links</h3>
-                        <span class="badge-count"><?php echo $resource_count; ?> Items</span>
-                    </div>
-                    <div class="resources-list">
-                        <?php while($resource = mysqli_fetch_assoc($resource_result)): ?>
-                        <a href="<?= htmlspecialchars($resource['link']) ?>" class="resource-item" target="_blank">
-                            <div class="resource-icon"><i class="fas fa-file-alt"></i></div>
-                            <div class="resource-info">
-                                <div class="resource-title"><?= htmlspecialchars($resource['title']) ?></div>
-                                <div class="resource-description"><?= htmlspecialchars($resource['description']) ?></div>
-                            </div>
-                            <span class="resource-link-icon">→</span>
-                        </a>
-                        <?php endwhile; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    <?php endif; ?>
+        <?php endif; ?>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -1167,4 +1643,4 @@ $(document).ready(function () {
 });
 </script>
 
-<?php include('dashboard_footer.php'); ?>); ?>
+<?php include('dashboard_footer.php'); ?>

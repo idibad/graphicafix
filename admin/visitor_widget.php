@@ -1,25 +1,32 @@
 <?php
 /**
  * visitor_widget.php
- * Drop this anywhere in your admin dashboard.
- * Fetches its own stats — works even if visitor_counter.php returned early.
+ * Included in admin dashboard overview.
  */
+
+if (!isset($conn)) {
+    header("Location: index.php");
+    exit;
+}
 
 $_today = date('Y-m-d');
 $_month = date('Y-m');
 
-$totalUnique   = $conn->query("SELECT SUM(unique_visits) AS t FROM visitor_stats")->fetch_assoc()['t'] ?? 0;
-$todayUnique   = $conn->query("SELECT unique_visits FROM visitor_stats WHERE stat_date = '$_today'")->fetch_assoc()['unique_visits'] ?? 0;
-$monthlyUnique = $conn->query("SELECT SUM(unique_visits) AS t FROM visitor_stats WHERE DATE_FORMAT(stat_date,'%Y-%m') = '$_month'")->fetch_assoc()['t'] ?? 0;
+$totalUnique   = (int)($conn->query("SELECT SUM(unique_visits) AS t FROM visitor_stats")->fetch_assoc()['t'] ?? 0);
+$todayUnique   = (int)($conn->query("SELECT SUM(unique_visits) AS t FROM visitor_stats WHERE stat_date = '$_today'")->fetch_assoc()['t'] ?? 0);
+$monthlyUnique = (int)($conn->query("SELECT SUM(unique_visits) AS t FROM visitor_stats WHERE DATE_FORMAT(stat_date,'%Y-%m') = '$_month'")->fetch_assoc()['t'] ?? 0);
 
-$last7  = [];
-$_r7    = $conn->query("
-    SELECT stat_date, unique_visits FROM visitor_stats
+$last7 = [];
+$_r7 = $conn->query("
+    SELECT stat_date, SUM(unique_visits) AS unique_visits FROM visitor_stats
     WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+    GROUP BY stat_date
     ORDER BY stat_date ASC
 ");
-while ($_row = $_r7->fetch_assoc()) {
-    $last7[$_row['stat_date']] = (int)$_row['unique_visits'];
+if ($_r7) {
+    while ($_row = $_r7->fetch_assoc()) {
+        $last7[$_row['stat_date']] = (int)$_row['unique_visits'];
+    }
 }
 for ($i = 6; $i >= 0; $i--) {
     $d = date('Y-m-d', strtotime("-$i days"));
@@ -76,20 +83,21 @@ $sparkValues = array_values($last7);
     const values = <?= json_encode($sparkValues) ?>;
     const canvas = document.getElementById('visitorSparkline');
     if (!canvas) return;
-    const ctx    = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d');
 
-    // Hi-DPI
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
-    canvas.width  = rect.width  * dpr || 400 * dpr;
+    const parentWidth = canvas.parentElement ? canvas.parentElement.clientWidth : 0;
+    const canvasWidth = rect.width || parentWidth || 400;
+    canvas.width  = canvasWidth * dpr;
     canvas.height = 60 * dpr;
     ctx.scale(dpr, dpr);
 
-    const W    = canvas.width  / dpr;
-    const H    = canvas.height / dpr;
+    const W    = canvasWidth;
+    const H    = 60;
     const max  = Math.max(...values, 1);
     const pad  = 6;
-    const step = (W - pad * 2) / (values.length - 1);
+    const step = values.length > 1 ? (W - pad * 2) / (values.length - 1) : 0;
 
     const points = values.map((v, i) => ({
         x: pad + i * step,

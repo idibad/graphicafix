@@ -777,7 +777,7 @@ while ($row = $result->fetch_assoc()) {
                                     </div>
                                     <div class="meta-item">
                                         <span class="meta-label">Starting From</span>
-                                        <span class="meta-value">PKR <?php echo number_format($service['starting_price']); ?></span>
+                                        <span class="meta-value">$<?php echo number_format($service['starting_price']); ?></span>
                                     </div>
                                     <div class="meta-item">
                                         <span class="meta-label">Orders</span>

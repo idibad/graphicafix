@@ -139,7 +139,6 @@ $menus = [
                 ['title' => 'Company Notices',      'link' => 'manage_notices.php',      'icon' => 'fas fa-bullhorn'],
                 ['title' => 'Notifications',        'link' => 'manage_notifications.php', 'icon' => 'fas fa-bell'],
                 ['title' => 'Entertainment Hub',    'link' => 'entertainment.php',       'icon' => 'fas fa-gamepad'],
-                ['title' => 'Visitor Widget',       'link' => 'visitor_widget.php',      'icon' => 'fas fa-chart-line'],
             ]
         ],
         [

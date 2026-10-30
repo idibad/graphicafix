@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $issue_date      = $_POST['issue_date'];
     $valid_until     = $_POST['valid_until'];
     $status          = $_POST['status'] ?? 'draft';
-    $currency        = $_POST['currency'] ?? 'USD';
+    $currency        = $_POST['currency'] ?? 'PKR';
     $tax_percent     = floatval($_POST['tax_percent']    ?? 0);
     $discount_amount = floatval($_POST['discount_amount'] ?? 0);
     $notes           = trim($_POST['notes']   ?? ''); // Project Overview
