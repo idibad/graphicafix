@@ -798,3 +798,171 @@ if (!function_exists('notifyNoticePublished')) {
         return $sentCount;
     }
 }
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 12. TASK DELAYS, WARNINGS & EXTENSION NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+if (!function_exists('notifyTaskDelayWarning')) {
+    function notifyTaskDelayWarning($conn, $task_id) {
+        $task_id = intval($task_id);
+        if ($task_id <= 0 || !$conn) return false;
+
+        $stmt = $conn->prepare("
+            SELECT t.title, t.priority, t.due_date, t.assigned_to,
+                   u.name as assignee_name, u.email as assignee_email,
+                   p.project_name
+            FROM tasks t
+            JOIN users u ON t.assigned_to = u.user_id
+            LEFT JOIN projects p ON t.project_id = p.id
+            WHERE t.id = ? AND (u.status = 'active' OR u.status IS NULL)
+        ");
+        $stmt->bind_param("i", $task_id);
+        $stmt->execute();
+        $task = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$task || empty($task['assignee_email'])) return false;
+
+        $siteUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'https://graphicafix.com';
+        $ctaUrl  = $siteUrl . '/admin/task_details.php?id=' . $task_id;
+
+        $dueDate = !empty($task['due_date']) ? date('M d, Y', strtotime($task['due_date'])) : 'Today';
+        $subject = "Task Deadline Notice: " . $task['title'];
+        $heading = "Task Deadline Alert (24 Hours Remaining)";
+
+        $body = "
+        <p style='margin:0 0 16px 0;'>Hello <strong>" . htmlspecialchars($task['assignee_name']) . "</strong>,</p>
+        <p style='margin:0 0 20px 0;'>This is an automated reminder that your assigned task is due by <strong>{$dueDate}</strong>:</p>
+        
+        <table style='width:100%; border-collapse:collapse; margin-bottom:20px; font-size:14px;'>
+            <tr>
+                <td style='padding:8px 0; color:#64748b; font-weight:600; width:130px; border-bottom:1px solid #f1f5f9;'>Task Title:</td>
+                <td style='padding:8px 0; color:#0f172a; font-weight:700; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($task['title']) . "</td>
+            </tr>
+            <tr>
+                <td style='padding:8px 0; color:#64748b; font-weight:600; border-bottom:1px solid #f1f5f9;'>Priority:</td>
+                <td style='padding:8px 0; color:#0f172a; font-weight:600; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($task['priority']) . "</td>
+            </tr>
+            <tr>
+                <td style='padding:8px 0; color:#64748b; font-weight:600;'>Due Date:</td>
+                <td style='padding:8px 0; color:#dc2626; font-weight:700;'>{$dueDate}</td>
+            </tr>
+        </table>
+        
+        <p style='margin:0 0 16px 0; color:#475569; font-size:13px;'>
+            <em>Need more time due to client blockers or technical constraints? You can request a deadline extension directly from the task details page.</em>
+        </p>";
+
+        return sendNotificationEmail($task['assignee_email'], $subject, $heading, $body, "View Task & Submit / Extend", $ctaUrl);
+    }
+}
+
+if (!function_exists('notifyTaskDelayDeductionApplied')) {
+    function notifyTaskDelayDeductionApplied($conn, $task_id, $amount, $days) {
+        $task_id = intval($task_id);
+        $amount = floatval($amount);
+        $days = intval($days);
+        if ($task_id <= 0 || !$conn) return false;
+
+        $stmt = $conn->prepare("
+            SELECT t.title, t.priority, t.due_date, t.assigned_to,
+                   u.name as assignee_name, u.email as assignee_email
+            FROM tasks t
+            JOIN users u ON t.assigned_to = u.user_id
+            WHERE t.id = ? AND (u.status = 'active' OR u.status IS NULL)
+        ");
+        $stmt->bind_param("i", $task_id);
+        $stmt->execute();
+        $task = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$task || empty($task['assignee_email'])) return false;
+
+        $siteUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'https://graphicafix.com';
+        $ctaUrl  = $siteUrl . '/admin/task_details.php?id=' . $task_id;
+
+        $subject = "Task Delay Deduction Notice: Task #{$task_id} (" . htmlspecialchars($task['title']) . ")";
+        $heading = "Task Delay Penalty Registered";
+
+        $body = "
+        <p style='margin:0 0 16px 0;'>Hello <strong>" . htmlspecialchars($task['assignee_name']) . "</strong>,</p>
+        <p style='margin:0 0 20px 0;'>Your assigned task has exceeded its scheduled deadline by <strong>{$days} business day(s)</strong>. An automated delay penalty has been registered in your payroll deductions:</p>
+        
+        <table style='width:100%; border-collapse:collapse; margin-bottom:20px; font-size:14px;'>
+            <tr>
+                <td style='padding:8px 0; color:#64748b; font-weight:600; width:130px; border-bottom:1px solid #f1f5f9;'>Task Title:</td>
+                <td style='padding:8px 0; color:#0f172a; font-weight:700; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($task['title']) . "</td>
+            </tr>
+            <tr>
+                <td style='padding:8px 0; color:#64748b; font-weight:600; border-bottom:1px solid #f1f5f9;'>Days Overdue:</td>
+                <td style='padding:8px 0; color:#dc2626; font-weight:700; border-bottom:1px solid #f1f5f9;'>{$days} Day(s)</td>
+            </tr>
+            <tr>
+                <td style='padding:8px 0; color:#64748b; font-weight:600;'>Deduction Amount:</td>
+                <td style='padding:8px 0; color:#dc2626; font-weight:700;'>PKR " . number_format($amount, 2) . "</td>
+            </tr>
+        </table>
+        
+        <div style='background:#fef2f2; border-left:4px solid #ef4444; padding:12px 16px; margin-bottom:20px; color:#991b1b; font-size:13px;'>
+            <strong>Note on Disputes & Extensions:</strong> If this delay was caused by pending client feedback, third-party blockers, or emergency conditions, you can submit an extension request or dispute this deduction under <em>My Salary & Slips</em> for administrative review and waiver.
+        </div>";
+
+        return sendNotificationEmail($task['assignee_email'], $subject, $heading, $body, "Open Task Details", $ctaUrl);
+    }
+}
+
+if (!function_exists('notifyTaskExtensionDecision')) {
+    function notifyTaskExtensionDecision($conn, $task_id, $decision, $admin_notes = '') {
+        $task_id = intval($task_id);
+        if ($task_id <= 0 || !$conn) return false;
+
+        $stmt = $conn->prepare("
+            SELECT t.title, t.due_date, t.extension_requested_date,
+                   u.name as assignee_name, u.email as assignee_email
+            FROM tasks t
+            JOIN users u ON t.assigned_to = u.user_id
+            WHERE t.id = ? AND (u.status = 'active' OR u.status IS NULL)
+        ");
+        $stmt->bind_param("i", $task_id);
+        $stmt->execute();
+        $task = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$task || empty($task['assignee_email'])) return false;
+
+        $siteUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'https://graphicafix.com';
+        $ctaUrl  = $siteUrl . '/admin/task_details.php?id=' . $task_id;
+
+        $isApproved = ($decision === 'approved');
+        $subject = "Deadline Extension Request " . ($isApproved ? "Approved" : "Rejected") . ": " . $task['title'];
+        $heading = "Task Extension Request " . ($isApproved ? "Approved" : "Rejected");
+
+        $color = $isApproved ? "#16a34a" : "#dc2626";
+        $bg = $isApproved ? "#f0fdf4" : "#fef2f2";
+
+        $body = "
+        <p style='margin:0 0 16px 0;'>Hello <strong>" . htmlspecialchars($task['assignee_name']) . "</strong>,</p>
+        <p style='margin:0 0 20px 0;'>Your deadline extension request for <strong>" . htmlspecialchars($task['title']) . "</strong> has been reviewed:</p>
+        
+        <div style='background:{$bg}; border:1px solid {$color}; border-radius:8px; padding:16px; margin-bottom:20px;'>
+            <div style='font-size:16px; font-weight:700; color:{$color}; margin-bottom:8px;'>
+                Decision: " . strtoupper($decision) . "
+            </div>
+            <div style='font-size:14px; color:#334155;'>
+                <strong>New Due Date:</strong> " . date('M d, Y', strtotime($task['due_date'])) . "
+            </div>";
+
+        if (!empty($admin_notes)) {
+            $body .= "
+            <div style='margin-top:10px; font-size:13px; color:#475569;'>
+                <strong>Remarks:</strong> " . htmlspecialchars($admin_notes) . "
+            </div>";
+        }
+
+        $body .= "</div>";
+
+        return sendNotificationEmail($task['assignee_email'], $subject, $heading, $body, "View Task", $ctaUrl);
+    }
+}

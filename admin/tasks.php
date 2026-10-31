@@ -33,9 +33,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['ajax_action']
         if (!in_array($new_status, $allowed)) {
             echo json_encode(['success' => false, 'message' => 'Invalid status']); exit;
         }
+        if ($new_status === 'Completed' && function_exists('canUserCompleteTask') && !canUserCompleteTask($_SESSION['role'] ?? '')) {
+            echo json_encode(['success' => false, 'message' => 'Restricted: Only Super Admins, Admins, or Project Managers can mark tasks as Completed. Please submit for "In Review".']); exit;
+        }
         $stmt = $conn->prepare("UPDATE tasks SET status=?, updated_at=NOW() WHERE id=?");
         $stmt->bind_param("si", $new_status, $task_id);
         $stmt->execute();
+        if (file_exists(__DIR__ . '/../core/task_delay_helper.php')) {
+            require_once __DIR__ . '/../core/task_delay_helper.php';
+            if (function_exists('recordTaskStatusTimestamp')) {
+                recordTaskStatusTimestamp($conn, $task_id, $new_status);
+            }
+        }
         if (function_exists('logActivity')) {
             logActivity($conn, 'update_task_status', "Updated task #$task_id status to '$new_status'", 'task', $task_id);
         }
@@ -430,7 +439,9 @@ function getUserInitials($name) {
                             $badge = getTaskTypeBadge($task['task_type'], $task['priority']);
                             $avatar = getAvatarStyle($task['assignee_name']);
                             $initials = getUserInitials($task['assignee_name']);
-                            $is_overdue = (!empty($task['due_date']) && strtotime($task['due_date']) < strtotime(date('Y-m-d')) && $task['status'] !== 'Completed');
+                            $is_overdue = (!empty($task['due_date']) && strtotime($task['due_date']) < strtotime(date('Y-m-d')) && !in_array($task['status'], ['Completed', 'In Review']));
+                            $overdue_days = $is_overdue ? max(1, round((time() - strtotime($task['due_date'])) / 86400)) : 0;
+                            $has_pending_ext = (!empty($task['extension_status']) && $task['extension_status'] === 'pending');
                             $est_str = ($task['estimated_hours'] > 0) ? formatDuration($task['estimated_hours']) : '3h';
                             $log_str = formatDuration($task['logged_hours']);
                         ?>
@@ -457,7 +468,11 @@ function getUserInitials($name) {
                                             <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveTask(<?= $task['id'] ?>, 'Pending')">📋 To-do</a></li>
                                             <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveTask(<?= $task['id'] ?>, 'In Progress')">⚡ In Progress</a></li>
                                             <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveTask(<?= $task['id'] ?>, 'In Review')">🔍 Review Ready</a></li>
+                                            <?php if ($is_admin): ?>
                                             <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveTask(<?= $task['id'] ?>, 'Completed')">✅ Completed</a></li>
+                                            <?php else: ?>
+                                            <li><span class="dropdown-item text-muted disabled" style="cursor:not-allowed;" title="Admin / PM approval required">🔒 Completed (Admin/PM Only)</span></li>
+                                            <?php endif; ?>
                                             <?php if ($is_admin || $task['created_by'] == $user_id): ?>
                                             <li><hr class="dropdown-divider"></li>
                                             <li><a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteTask(<?= $task['id'] ?>)"><i class="fas fa-trash-alt me-2"></i> Delete</a></li>
@@ -480,10 +495,17 @@ function getUserInitials($name) {
 
                             <!-- Card Middle: Date + Estimated Duration -->
                             <div class="card-schedule-row">
-                                <span class="schedule-pill <?= $is_overdue ? 'overdue' : '' ?>">
-                                    <i class="far fa-calendar-alt"></i>
-                                    <span><?= !empty($task['due_date']) ? date('M d', strtotime($task['due_date'])) : 'No date' ?></span>
-                                </span>
+                                <?php if ($has_pending_ext): ?>
+                                    <span class="schedule-pill" style="background:#fffbeb; color:#d97706; border:1px solid #fde68a;" title="Extension requested: <?= htmlspecialchars($task['extension_requested_date']) ?>">
+                                        <i class="fas fa-clock"></i>
+                                        <span>Ext Pending</span>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="schedule-pill <?= $is_overdue ? 'overdue' : '' ?>" title="<?= $is_overdue ? 'Overdue by ' . $overdue_days . ' day(s)' : '' ?>">
+                                        <i class="<?= $is_overdue ? 'fas fa-exclamation-triangle' : 'far fa-calendar-alt' ?>"></i>
+                                        <span><?= !empty($task['due_date']) ? date('M d', strtotime($task['due_date'])) : 'No date' ?><?= $is_overdue ? " ({$overdue_days}d)" : '' ?></span>
+                                    </span>
+                                <?php endif; ?>
                                 <span class="duration-pill">
                                     <i class="far fa-clock"></i>
                                     <span><?= $est_str ?></span>
@@ -551,11 +573,13 @@ function getUserInitials($name) {
                                 $badge = getTaskTypeBadge($t['task_type'], $t['priority']);
                                 $avatar = getAvatarStyle($t['assignee_name']);
                                 $initials = getUserInitials($t['assignee_name']);
-                                $is_overdue = (!empty($t['due_date']) && strtotime($t['due_date']) < strtotime(date('Y-m-d')) && $t['status'] !== 'Completed');
+                                $is_overdue = (!empty($t['due_date']) && strtotime($t['due_date']) < strtotime(date('Y-m-d')) && !in_array($t['status'], ['Completed', 'In Review']));
+                                $t_has_pending_ext = (!empty($t['extension_status']) && $t['extension_status'] === 'pending');
+                                $t_overdue_days = $is_overdue ? max(1, round((time() - strtotime($t['due_date'])) / 86400)) : 0;
                             ?>
                             <tr class="list-row <?= $t['status'] === 'Completed' ? 'task-completed-row' : '' ?>" data-id="<?= $t['id'] ?>">
                                 <td>
-                                    <input type="checkbox" class="task-checkbox" <?= $t['status'] === 'Completed' ? 'checked' : '' ?> onchange="quickToggleComplete(<?= $t['id'] ?>, this.checked)">
+                                    <input type="checkbox" class="task-checkbox" <?= $t['status'] === 'Completed' ? 'checked' : '' ?> <?= !$is_admin ? 'disabled title="Only Super Admins, Admins, or PMs can approve and complete tasks"' : '' ?> onchange="quickToggleComplete(<?= $t['id'] ?>, this.checked)">
                                 </td>
                                 <td>
                                     <div class="list-task-title-cell">
@@ -584,9 +608,15 @@ function getUserInitials($name) {
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="schedule-pill <?= $is_overdue ? 'overdue' : '' ?>">
-                                        <?= !empty($t['due_date']) ? date('M d, Y', strtotime($t['due_date'])) : '—' ?>
-                                    </span>
+                                    <?php if ($t_has_pending_ext): ?>
+                                        <span class="schedule-pill" style="background:#fffbeb; color:#d97706; border:1px solid #fde68a;" title="Extension requested">
+                                            <i class="fas fa-clock"></i> Ext Pending
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="schedule-pill <?= $is_overdue ? 'overdue' : '' ?>" title="<?= $is_overdue ? "Overdue by {$t_overdue_days} day(s)" : '' ?>">
+                                            <?= !empty($t['due_date']) ? date('M d, Y', strtotime($t['due_date'])) : '—' ?><?= $is_overdue ? " ({$t_overdue_days}d)" : '' ?>
+                                        </span>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <span class="list-time-stats">
@@ -1924,8 +1954,15 @@ function quickToggleComplete(taskId, isChecked) {
 }
 
 // ── Delete Task ───────────────────────────────────────────────────────────────
-function deleteTask(taskId) {
-    if (!confirm('Are you sure you want to delete this task? This cannot be undone.')) return;
+async function deleteTask(taskId) {
+    const confirmed = await showConfirmDialog({
+        title: 'Delete Task',
+        message: 'Are you sure you want to delete this task? This action cannot be undone.',
+        confirmText: 'Delete Task',
+        confirmClass: 'btn-danger',
+        icon: 'fas fa-trash-alt'
+    });
+    if (!confirmed) return;
     postTaskAction({ ajax_action: 'delete_task', task_id: taskId })
         .then(res => {
             if (res.success) {

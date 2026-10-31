@@ -279,6 +279,13 @@ $stmt_ded->close();
 
                         <td>
                             <div style="color:#475569; font-size:12.5px;"><?= htmlspecialchars($d['description']) ?></div>
+                            <?php if (!empty($d['task_id'])): ?>
+                                <div style="margin-top:3px;">
+                                    <a href="task_details.php?id=<?= $d['task_id'] ?>" target="_blank" style="color:#024442; font-weight:700; font-size:11.5px; text-decoration:underline;">
+                                        <i class="fas fa-tasks"></i> View Task #<?= $d['task_id'] ?>
+                                    </a>
+                                </div>
+                            <?php endif; ?>
                             <?php if (!empty($d['admin_remarks'])): ?>
                                 <small style="display:block; color:#0284c7; margin-top:3px;">
                                     <i class="fas fa-info-circle"></i> HR Note: <?= htmlspecialchars($d['admin_remarks']) ?>

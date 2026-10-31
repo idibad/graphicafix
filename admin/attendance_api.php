@@ -171,7 +171,7 @@ try {
                 exit;
             }
 
-            $stmt = $conn->prepare("SELECT t.*, d.user_id, d.salary_month, d.amount FROM deduction_tickets t 
+            $stmt = $conn->prepare("SELECT t.*, d.user_id, d.salary_month, d.amount, d.task_id FROM deduction_tickets t 
                 INNER JOIN salary_deductions d ON t.deduction_id = d.id 
                 WHERE t.id = ? LIMIT 1");
             if (!$stmt) {
@@ -201,6 +201,9 @@ try {
             if ($decision === 'approved_waived') {
                 // Mark deduction as waived
                 $conn->query("UPDATE salary_deductions SET status = 'waived' WHERE id = " . intval($ticket['deduction_id']));
+                if (!empty($ticket['task_id'])) {
+                    $conn->query("UPDATE tasks SET delay_status = 'exempted', delay_deduction_amount = 0.00 WHERE id = " . intval($ticket['task_id']));
+                }
             } else {
                 // Revert deduction to applied
                 $conn->query("UPDATE salary_deductions SET status = 'applied' WHERE id = " . intval($ticket['deduction_id']));

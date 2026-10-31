@@ -3,6 +3,7 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 require_once __DIR__ . '/../core/config.php';
+require_once __DIR__ . '/../core/task_delay_helper.php';
 
 header('Content-Type: application/json');
 
@@ -41,13 +42,29 @@ if (isset($_POST['id'], $_POST['status'])) {
         exit;
     }
 
+    // Restrict 'Completed' status to Super Admins, Admins, PMs, and Managers
+    if ($status === 'Completed' && function_exists('canUserCompleteTask') && !canUserCompleteTask($role)) {
+        echo json_encode([
+            'success' => false, 
+            'message' => 'Restricted: Only Super Admins, Admins, or Project Managers can approve and mark a task as Completed. Please submit your task for "In Review" for manager verification.'
+        ]);
+        exit;
+    }
+
     $stmt = $conn->prepare("UPDATE tasks SET status = ?, updated_at = NOW() WHERE id = ?");
     $stmt->bind_param("si", $status, $task_id);
 
     if ($stmt->execute()) {
+        // Record completion / review timestamp and sync delay deductions
+        if (function_exists('recordTaskStatusTimestamp')) {
+            recordTaskStatusTimestamp($conn, $task_id, $status);
+        }
+
         if (in_array($status, ['In Review', 'Completed'])) {
             require_once __DIR__ . '/../core/notification_mailer.php';
-            notifyTaskStatusChanged($conn, $task_id, $status, $user_id);
+            if (function_exists('notifyTaskStatusChanged')) {
+                notifyTaskStatusChanged($conn, $task_id, $status, $user_id);
+            }
         }
 
         echo json_encode([

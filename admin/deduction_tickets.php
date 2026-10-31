@@ -46,11 +46,13 @@ $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses
 $sql = "
     SELECT t.*, 
            u.name as user_name, u.username, u.department,
-           d.deduction_type, d.amount, d.description as deduction_desc, d.date_incurred, d.salary_month,
+           d.deduction_type, d.amount, d.description as deduction_desc, d.date_incurred, d.salary_month, d.task_id,
+           tasks.title as task_title,
            rev.name as reviewer_name
     FROM deduction_tickets t
     INNER JOIN users u ON t.user_id = u.user_id
     INNER JOIN salary_deductions d ON t.deduction_id = d.id
+    LEFT JOIN tasks ON d.task_id = tasks.id
     LEFT JOIN users rev ON t.reviewed_by = rev.user_id
     {$where_sql}
     ORDER BY t.created_at DESC
@@ -289,6 +291,13 @@ if ($count_stmt) {
                         <td>
                             <strong style="color:#334155; font-size:13px;"><?= htmlspecialchars($t['deduction_type']) ?></strong>
                             <small style="display:block; color:#64748b; font-size:11.5px;"><?= date('d M Y', strtotime($t['date_incurred'])) ?> · <?= htmlspecialchars($t['deduction_desc']) ?></small>
+                            <?php if (!empty($t['task_id'])): ?>
+                                <div style="margin-top:3px;">
+                                    <a href="task_details.php?id=<?= $t['task_id'] ?>" target="_blank" style="display:inline-flex; align-items:center; gap:4px; color:#024442; font-weight:700; font-size:11px; text-decoration:underline;">
+                                        <i class="fas fa-tasks"></i> Task #<?= $t['task_id'] ?><?= !empty($t['task_title']) ? ': ' . htmlspecialchars(mb_strimwidth($t['task_title'], 0, 30, '...')) : '' ?>
+                                    </a>
+                                </div>
+                            <?php endif; ?>
                         </td>
 
                         <td style="font-weight:800; color:#dc2626; white-space:nowrap;">

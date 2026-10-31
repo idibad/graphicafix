@@ -1429,6 +1429,7 @@ function viewDeductions(salary, deductions) {
                     <td style="padding:6px 8px;">
                         <strong style="color:#0f172a; display:block;">${escapeHtml(d.deduction_type)}</strong>
                         <small style="color:#64748b;">${escapeHtml(d.description)}</small>
+                        ${d.task_id && Number(d.task_id) > 0 ? `<div><a href="task_details.php?id=${d.task_id}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; margin-top:3px; font-size:11px; color:#024442; font-weight:600; text-decoration:underline;"><i class="fas fa-external-link-alt"></i> View Task #${d.task_id}</a></div>` : ''}
                     </td>
                     <td style="padding:6px 8px; text-align:right; font-weight:600; color:#dc2626; white-space:nowrap;">-PKR ${Number(d.amount).toLocaleString()}</td>
                     <td style="padding:6px 8px; text-align:center;">${statusBadge}</td>

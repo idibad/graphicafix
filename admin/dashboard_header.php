@@ -91,6 +91,11 @@ ensure_attendance_schema($conn);
 $today_attendance = getTodayAttendanceRecord($conn, $user_id);
 $user_meta        = getUserAttendanceMeta($conn, $user_id);
 
+// Task Delay & Deductions Integration
+require_once __DIR__ . '/../core/task_delay_schema.php';
+require_once __DIR__ . '/../core/task_delay_helper.php';
+ensure_task_delay_schema($conn);
+
 // ── Helper: check active state for menu / subitems ────────────────────────────
 if (!function_exists('isMenuItemActive')) {
     function isMenuItemActive($link) {
@@ -1323,13 +1328,20 @@ $global_sales_init_id = intval(($global_last_id_q && $r = $global_last_id_q->fet
         })
         .catch(() => {
             closeDailyCheckInModal();
-            alert('Attendance check-in completed.');
-            window.location.reload();
+            showToast('Attendance check-in completed.', 'success');
+            setTimeout(() => window.location.reload(), 800);
         });
     }
 
-    window.doHeaderCheckOut = function() {
-        if (!confirm('Are you ready to sign out / check out for today?')) return;
+    window.doHeaderCheckOut = async function() {
+        const confirmed = await showConfirmDialog({
+            title: 'Sign Out / Check Out',
+            message: 'Are you ready to record your sign out for today?',
+            confirmText: 'Yes, Sign Out',
+            confirmClass: 'btn-primary',
+            icon: 'fas fa-sign-out-alt'
+        });
+        if (!confirmed) return;
         const btn = document.getElementById('headerCheckoutBtn');
         if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking out...';
 
@@ -1337,10 +1349,10 @@ $global_sales_init_id = intval(($global_last_id_q && $r = $global_last_id_q->fet
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    alert('Sign out time recorded: ' + (data.check_out_time || 'Done'));
-                    window.location.reload();
+                    showToast('Sign out time recorded: ' + (data.check_out_time || 'Done'), 'success');
+                    setTimeout(() => window.location.reload(), 900);
                 } else {
-                    alert('Could not record sign out.');
+                    showToast('Could not record sign out.', 'error');
                 }
             })
             .catch(() => window.location.reload());
@@ -1364,3 +1376,228 @@ $global_sales_init_id = intval(($global_last_id_q && $r = $global_last_id_q->fet
 })();
 </script>
 <?php endif; ?>
+
+<!-- ============================================================
+     GRAPHICAFIX ENTERPRISE MODAL DIALOG SYSTEM (CONFIRM & REMARKS)
+     ============================================================ -->
+<div id="gfGlobalModalOverlay" style="display:none; position:fixed; inset:0; z-index:10999; background:rgba(15, 23, 42, 0.65); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:16px; box-sizing:border-box;">
+    <div id="gfGlobalModalBox" style="background:#ffffff; border-radius:20px; width:100%; max-width:480px; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25); border:1px solid #e2e8f0; overflow:hidden; transform:scale(0.95); opacity:0; transition:all 0.22s cubic-bezier(0.16, 1, 0.3, 1); box-sizing:border-box;">
+        
+        <div style="padding:28px 26px 18px 26px; text-align:center;">
+            <!-- Icon Badge -->
+            <div id="gfModalIconWrap" style="width:58px; height:58px; border-radius:50%; margin:0 auto 16px; display:inline-flex; align-items:center; justify-content:center; font-size:24px; background:#e0f2fe; color:#0284c7; transition:all 0.2s;">
+                <i id="gfModalIcon" class="fas fa-question-circle"></i>
+            </div>
+            
+            <h3 id="gfModalTitle" style="margin:0 0 8px 0; font-size:18px; font-weight:800; color:#0f172a; line-height:1.3;">Confirm Action</h3>
+            <div id="gfModalMessage" style="font-size:13.5px; color:#64748b; line-height:1.55; margin-bottom:16px; word-break:break-word;">Are you sure you want to proceed?</div>
+            
+            <!-- Prompt / Remark Input Container (Hidden in confirm/alert mode) -->
+            <div id="gfModalInputWrap" style="display:none; text-align:left; margin-bottom:16px;">
+                <label id="gfModalInputLabel" for="gfModalInput" style="display:block; font-size:11.5px; font-weight:800; text-transform:uppercase; color:#475569; margin-bottom:6px; letter-spacing:0.5px;">Remarks / Reason</label>
+                <textarea id="gfModalInput" rows="3" style="width:100%; border:1px solid #cbd5e1; border-radius:10px; padding:10px 14px; font-size:13.5px; color:#0f172a; resize:vertical; outline:none; font-family:inherit; transition:border 0.2s; box-sizing:border-box;" placeholder="Enter details..."></textarea>
+                <div id="gfModalInputError" style="display:none; color:#dc2626; font-size:12px; margin-top:4px; font-weight:600;">This field is required.</div>
+            </div>
+        </div>
+        
+        <!-- Modal Footer Actions -->
+        <div style="padding:16px 26px; background:#f8fafc; border-top:1px solid #f1f5f9; display:flex; justify-content:flex-end; gap:10px; box-sizing:border-box;">
+            <button type="button" id="gfModalCancelBtn" style="padding:9px 18px; border-radius:10px; font-size:13.5px; font-weight:700; color:#64748b; background:#ffffff; border:1px solid #cbd5e1; cursor:pointer; transition:all 0.15s;">
+                Cancel
+            </button>
+            <button type="button" id="gfModalConfirmBtn" style="padding:9px 22px; border-radius:10px; font-size:13.5px; font-weight:700; color:#ffffff; background:#024442; border:none; cursor:pointer; transition:all 0.15s; box-shadow:0 4px 10px rgba(2,68,66,0.25);">
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Global Modal System API ──────────────────────────────────────────────────
+(function() {
+    let currentResolver = null;
+    let isRemarkMode = false;
+    let isRequiredRemark = false;
+
+    const overlay     = document.getElementById('gfGlobalModalOverlay');
+    const box         = document.getElementById('gfGlobalModalBox');
+    const titleEl     = document.getElementById('gfModalTitle');
+    const msgEl       = document.getElementById('gfModalMessage');
+    const iconWrap    = document.getElementById('gfModalIconWrap');
+    const iconEl      = document.getElementById('gfModalIcon');
+    const inputWrap   = document.getElementById('gfModalInputWrap');
+    const inputEl     = document.getElementById('gfModalInput');
+    const inputError  = document.getElementById('gfModalInputError');
+    const cancelBtn   = document.getElementById('gfModalCancelBtn');
+    const confirmBtn  = document.getElementById('gfModalConfirmBtn');
+
+    function openModal() {
+        if (!overlay || !box) return;
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        requestAnimationFrame(() => {
+            box.style.opacity = '1';
+            box.style.transform = 'scale(1)';
+        });
+    }
+
+    function closeModal(result) {
+        if (!overlay || !box) return;
+        box.style.opacity = '0';
+        box.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            document.body.style.overflow = '';
+            if (currentResolver) {
+                currentResolver(result);
+                currentResolver = null;
+            }
+        }, 180);
+    }
+
+    // Set contextual theme colors based on action
+    function applyIconTheme(theme, customIcon) {
+        if (theme === 'danger') {
+            iconWrap.style.background = '#fee2e2';
+            iconWrap.style.color = '#dc2626';
+            confirmBtn.style.background = '#dc2626';
+            confirmBtn.style.boxShadow = '0 4px 10px rgba(220,38,38,0.25)';
+            iconEl.className = customIcon || 'fas fa-exclamation-triangle';
+        } else if (theme === 'success') {
+            iconWrap.style.background = '#dcfce7';
+            iconWrap.style.color = '#16a34a';
+            confirmBtn.style.background = '#16a34a';
+            confirmBtn.style.boxShadow = '0 4px 10px rgba(22,163,74,0.25)';
+            iconEl.className = customIcon || 'fas fa-check-circle';
+        } else if (theme === 'warning') {
+            iconWrap.style.background = '#fef3c7';
+            iconWrap.style.color = '#d97706';
+            confirmBtn.style.background = '#d97706';
+            confirmBtn.style.boxShadow = '0 4px 10px rgba(217,119,6,0.25)';
+            iconEl.className = customIcon || 'fas fa-exclamation-circle';
+        } else {
+            // Default primary
+            iconWrap.style.background = '#e6f4f2';
+            iconWrap.style.color = '#024442';
+            confirmBtn.style.background = '#024442';
+            confirmBtn.style.boxShadow = '0 4px 10px rgba(2,68,66,0.25)';
+            iconEl.className = customIcon || 'fas fa-question-circle';
+        }
+    }
+
+    // 1. Show Confirmation Dialog
+    window.showConfirmDialog = function(opts) {
+        opts = opts || {};
+        return new Promise((resolve) => {
+            currentResolver = resolve;
+            isRemarkMode = false;
+
+            titleEl.textContent = opts.title || 'Please Confirm';
+            msgEl.innerHTML = opts.message || 'Are you sure you want to proceed?';
+            cancelBtn.textContent = opts.cancelText || 'Cancel';
+            cancelBtn.style.display = 'inline-block';
+            confirmBtn.textContent = opts.confirmText || 'Confirm';
+
+            inputWrap.style.display = 'none';
+            inputError.style.display = 'none';
+
+            const theme = (opts.confirmClass && opts.confirmClass.includes('danger')) ? 'danger' 
+                        : (opts.confirmClass && opts.confirmClass.includes('success')) ? 'success' : 'primary';
+            applyIconTheme(theme, opts.icon);
+
+            openModal();
+            confirmBtn.focus();
+        });
+    };
+
+    // 2. Show Remark / Prompt Dialog
+    window.showRemarkDialog = function(opts) {
+        opts = opts || {};
+        return new Promise((resolve) => {
+            currentResolver = resolve;
+            isRemarkMode = true;
+            isRequiredRemark = !!opts.required;
+
+            titleEl.textContent = opts.title || 'Enter Details';
+            msgEl.innerHTML = opts.message || 'Please provide any remarks or notes:';
+            cancelBtn.textContent = opts.cancelText || 'Cancel';
+            cancelBtn.style.display = 'inline-block';
+            confirmBtn.textContent = opts.confirmText || 'Submit';
+
+            inputWrap.style.display = 'block';
+            inputError.style.display = 'none';
+            inputEl.value = opts.defaultValue || '';
+            inputEl.placeholder = opts.placeholder || 'Type here...';
+
+            const theme = (opts.confirmClass && opts.confirmClass.includes('danger')) ? 'danger' 
+                        : (opts.confirmClass && opts.confirmClass.includes('success')) ? 'success' : 'primary';
+            applyIconTheme(theme, opts.icon || 'fas fa-comment-alt');
+
+            openModal();
+            setTimeout(() => {
+                inputEl.focus();
+                inputEl.select();
+            }, 50);
+        });
+    };
+
+    // 3. Show Alert Dialog (replaces browser alert())
+    window.showAlertDialog = function(opts) {
+        opts = typeof opts === 'string' ? { message: opts } : (opts || {});
+        return new Promise((resolve) => {
+            currentResolver = resolve;
+            isRemarkMode = false;
+
+            titleEl.textContent = opts.title || 'Notification';
+            msgEl.innerHTML = opts.message || '';
+            cancelBtn.style.display = 'none';
+            confirmBtn.textContent = opts.okText || 'OK';
+
+            inputWrap.style.display = 'none';
+            inputError.style.display = 'none';
+
+            const theme = opts.type === 'error' ? 'danger' : opts.type === 'warning' ? 'warning' : 'success';
+            applyIconTheme(theme, opts.icon || (theme === 'danger' ? 'fas fa-times-circle' : 'fas fa-info-circle'));
+
+            openModal();
+            confirmBtn.focus();
+        });
+    };
+
+    // Event handlers
+    cancelBtn.addEventListener('click', () => closeModal(isRemarkMode ? null : false));
+
+    confirmBtn.addEventListener('click', () => {
+        if (isRemarkMode) {
+            const val = inputEl.value.trim();
+            if (isRequiredRemark && val === '') {
+                inputError.style.display = 'block';
+                inputEl.focus();
+                return;
+            }
+            closeModal(val);
+        } else {
+            closeModal(true);
+        }
+    });
+
+    // Close on backdrop click
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            closeModal(isRemarkMode ? null : false);
+        }
+    });
+
+    // Keyboard support: Escape cancels, Ctrl+Enter or Enter in input submits
+    document.addEventListener('keydown', (e) => {
+        if (overlay.style.display === 'flex') {
+            if (e.key === 'Escape') {
+                closeModal(isRemarkMode ? null : false);
+            } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || !isRemarkMode)) {
+                e.preventDefault();
+                confirmBtn.click();
+            }
+        }
+    });
+})();
+</script>

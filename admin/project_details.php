@@ -2742,8 +2742,15 @@ function quickToggleProjComplete(taskId, isChecked) {
     quickMoveProjTask(taskId, status);
 }
 
-function deleteProjTask(taskId) {
-    if (!confirm('Are you sure you want to delete this task? This cannot be undone.')) return;
+async function deleteProjTask(taskId) {
+    const confirmed = await showConfirmDialog({
+        title: 'Delete Task',
+        message: 'Are you sure you want to delete this task? This cannot be undone.',
+        confirmText: 'Delete Task',
+        confirmClass: 'btn-danger',
+        icon: 'fas fa-trash-alt'
+    });
+    if (!confirmed) return;
     postTaskAction({ ajax_action: 'delete_task', task_id: taskId })
         .then(res => {
             if (res.success) {
@@ -2897,6 +2904,7 @@ function bindProjDragAndDrop() {
                             refreshProjColumnCounters();
                         } else {
                             showToast(res.message || 'Failed to update status', 'error');
+                            setTimeout(() => location.reload(), 800);
                         }
                     })
                     .catch(() => showToast('Network error while updating status', 'error'));

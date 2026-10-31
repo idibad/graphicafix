@@ -64,7 +64,12 @@ $username = $_ENV['DB_USERNAME'] ?? ($_SERVER['DB_USERNAME'] ?? (getenv('DB_USER
 $password = $_ENV['DB_PASSWORD'] ?? ($_SERVER['DB_PASSWORD'] ?? (getenv('DB_PASSWORD') ?: ""));
 $db = $_ENV['DB_DATABASE'] ?? ($_SERVER['DB_DATABASE'] ?? (getenv('DB_DATABASE') ?: "graphica_fix_db"));
 
-$conn = @mysqli_connect($server, $username, $password, $db);
+try {
+    mysqli_report(MYSQLI_REPORT_OFF);
+    $conn = @mysqli_connect($server, $username, $password, $db);
+} catch (Throwable $e_conn) {
+    $conn = false;
+}
 
 if (!$conn) {
     echo "<div class='alert alert-danger alert-dismissible fade show' role='alert'>

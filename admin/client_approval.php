@@ -211,16 +211,31 @@ function setDecision(decision) {
     clientDecision = decision;
 }
 
-function submitClientReview(event) {
+async function submitClientReview(event) {
     event.preventDefault();
     const comment = document.getElementById('client-review-comment').value;
     
     if (clientDecision === 'Request Changes' && comment.trim() === '') {
-        alert('Please provide feedback comments describing the adjustments you require.');
+        await showAlertDialog({
+            title: 'Feedback Required',
+            message: 'Please provide feedback comments describing the adjustments you require.',
+            type: 'warning'
+        });
+        document.getElementById('client-review-comment').focus();
         return;
     }
     
-    if (!confirm('Are you sure you want to submit this review?')) return;
+    const isApprove = (clientDecision === 'Approve');
+    const confirmed = await showConfirmDialog({
+        title: isApprove ? 'Approve Deliverables' : 'Request Changes',
+        message: isApprove 
+            ? 'Are you sure you want to approve Revision ' + <?= $rev ?> + ' and advance to final delivery?' 
+            : 'Are you sure you want to submit revision requests back to the production team?',
+        confirmText: isApprove ? 'Yes, Approve' : 'Submit Revisions',
+        confirmClass: isApprove ? 'btn-success' : 'btn-danger',
+        icon: isApprove ? 'fas fa-check-circle' : 'fas fa-undo'
+    });
+    if (!confirmed) return;
     
     const formData = new FormData();
     formData.append('action', 'submit_review');
@@ -233,11 +248,22 @@ function submitClientReview(event) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert('Review submitted successfully.');
-            window.location.reload();
+            showToast('Review submitted successfully.', 'success');
+            setTimeout(() => window.location.reload(), 900);
         } else {
-            alert('Error: ' + data.message);
+            showAlertDialog({
+                title: 'Review Submission Error',
+                message: data.message || 'An error occurred while saving review.',
+                type: 'error'
+            });
         }
+    })
+    .catch(() => {
+        showAlertDialog({
+            title: 'Network Error',
+            message: 'Could not connect to server. Please try again.',
+            type: 'error'
+        });
     });
 }
 </script>
