@@ -577,13 +577,16 @@ $menus = [
     ],
     'sales' => [
         [
-            'title' => 'Executive & Dashboard',
+            'title' => 'Self Service',
             'link'  => 'index.php',
             'icon'  => 'fas fa-tachometer-alt',
             'submenus' => [
                 ['title' => 'Overview',             'link' => 'index.php',               'icon' => 'fas fa-home'],
                 ['title' => 'Daily Reports (DPR)',  'link' => 'dpr.php',                 'icon' => 'fas fa-calendar-check'],
                 ['title' => 'Company Notices',      'link' => 'manage_notices.php',      'icon' => 'fas fa-bullhorn'],
+                ['title' => 'My Attendance',        'link' => 'attendance.php',          'icon' => 'fas fa-user-clock'],
+                ['title' => 'My Salary & Slips',    'link' => 'my_salary.php',           'icon' => 'fas fa-receipt'],
+
             ]
         ],
         [
