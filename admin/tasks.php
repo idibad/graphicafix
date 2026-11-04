@@ -344,11 +344,13 @@ function getUserInitials($name) {
 ?>
 
 <style>
-/* Critical Instant Render Guards */
+/* Critical Instant Render Guards - Fixed Width, Zero Horizontal Scroll */
 .view-panel:not(.active) { display: none !important; }
-.kanban-grid-wrapper { display: grid !important; grid-template-columns: repeat(4, minmax(280px, 1fr)) !important; gap: 18px !important; min-width: 1160px; }
-.kanban-column { height: calc(100vh - 210px); min-height: 480px; max-height: 820px; overflow: hidden; display: flex; flex-direction: column; }
-.kanban-cards-list { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; }
+#view-board { width: 100%; max-width: 100%; overflow-x: hidden !important; }
+.kanban-grid-wrapper { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 14px !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; }
+.kanban-column { height: calc(100vh - 210px); min-height: 480px; max-height: 820px; overflow: hidden; display: flex; flex-direction: column; width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; }
+.kanban-cards-list { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden !important; width: 100% !important; box-sizing: border-box !important; }
+.kanban-task-card { width: 100% !important; max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; overflow: hidden; }
 </style>
 
 <div class="height-100 workspace-wrapper">

@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    WORKSPACE & KANBAN TASKS STYLESHEET
    Graphicafix Workspace Module
    Instant Render, Anti-FOUC & Viewport Contained Architecture
@@ -250,39 +250,40 @@
     background: #fee2e2;
 }
 
-/* ── 3. KANBAN BOARD GRID & SCROLL CONTAINMENT (Viewport Fit) ─────────────── */
+/* ── 3. KANBAN BOARD GRID & SCROLL CONTAINMENT (Viewport Fit - Zero Horizontal Scroll) ─────────── */
 #view-board {
     width: 100%;
-    overflow-x: auto;
+    max-width: 100%;
+    overflow-x: hidden !important;
     overflow-y: visible;
     padding-bottom: 12px;
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 #f1f5f9;
-}
-
-#view-board::-webkit-scrollbar {
-    height: 7px;
-}
-#view-board::-webkit-scrollbar-track {
-    background: #f1f5f9;
-    border-radius: 4px;
-}
-#view-board::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
-}
-#view-board::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    box-sizing: border-box;
 }
 
 .kanban-grid-wrapper,
 .project-tasks-workspace .kanban-grid-wrapper {
     display: grid !important;
-    grid-template-columns: repeat(4, minmax(280px, 1fr)) !important;
-    gap: 18px !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 14px !important;
     align-items: stretch !important;
-    min-width: 1160px;
-    width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+}
+
+@media (max-width: 900px) {
+    .kanban-grid-wrapper,
+    .project-tasks-workspace .kanban-grid-wrapper {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .kanban-grid-wrapper,
+    .project-tasks-workspace .kanban-grid-wrapper {
+        grid-template-columns: 1fr !important;
+    }
 }
 
 /* Kanban Column: viewport bounded so columns don't stretch indefinitely */
@@ -297,7 +298,10 @@
     max-height: 820px;
     display: flex;
     flex-direction: column;
-    box-sizing: border-box;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     overflow: hidden;
     box-shadow: 0 1px 3px rgba(0,0,0,0.02);
 }
@@ -380,9 +384,12 @@
     flex-direction: column;
     gap: 12px;
     overflow-y: auto;
-    overflow-x: hidden;
-    padding: 2px 4px 12px 2px;
+    overflow-x: hidden !important;
+    padding: 2px 2px 12px 2px;
     min-height: 120px;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
     scrollbar-width: thin;
     scrollbar-color: #cbd5e1 transparent;
 }
@@ -421,13 +428,18 @@
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    padding: 15px;
+    padding: 14px 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.03);
     cursor: grab;
     transition: all 0.18s ease-in-out;
     position: relative;
     user-select: none;
     z-index: 1;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden;
     flex-shrink: 0;
 }
 
@@ -534,7 +546,7 @@
 /* Card Title */
 .task-title-text,
 .project-tasks-workspace .task-title-text {
-    font-size: 14.5px;
+    font-size: 14px;
     font-weight: 600;
     color: #0f172a;
     line-height: 1.42;
@@ -543,6 +555,9 @@
     transition: color 0.15s;
     display: block;
     text-decoration: none;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
 }
 
 .task-title-text:hover,
@@ -553,10 +568,13 @@
 
 .task-snippet-text,
 .project-tasks-workspace .task-snippet-text {
-    font-size: 12.5px;
+    font-size: 12px;
     color: #64748b;
     line-height: 1.4;
     margin-bottom: 12px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
 }
 
 /* Schedule Row */
@@ -564,9 +582,10 @@
 .project-tasks-workspace .card-schedule-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     margin-bottom: 12px;
     flex-wrap: wrap;
+    max-width: 100%;
 }
 
 .schedule-pill, .duration-pill,
