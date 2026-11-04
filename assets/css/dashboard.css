@@ -1528,3 +1528,25 @@ select.gfx-input-invalid {
     margin-left: 2px;
 }
 
+
+/* -- KANBAN TASK CARD DROPDOWN ELEVATION FIX -------------------------- */
+.kanban-task-card {
+    position: relative;
+    z-index: 1;
+}
+
+.kanban-task-card:hover {
+    z-index: 10;
+}
+
+.kanban-task-card:focus-within,
+.kanban-task-card.dropdown-open,
+.kanban-task-card:has(.dropdown.show),
+.kanban-task-card:has(.dropdown-menu.show) {
+    z-index: 1050 !important;
+}
+
+.kanban-task-card .dropdown-menu {
+    z-index: 1060 !important;
+    position: absolute !important;
+}

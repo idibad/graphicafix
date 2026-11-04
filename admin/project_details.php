@@ -1199,9 +1199,9 @@ if (!function_exists('getUserInitials')) {
                                 </div>
 
                                 <!-- Card Title -->
-                                <div class="task-title-text" onclick="openProjectEditTaskModal(<?= $tk['id'] ?>)">
+                                <a href="task_details.php?id=<?= $tk['id'] ?>" class="task-title-text" onclick="event.stopPropagation();" title="View Task Details">
                                     <?= htmlspecialchars($tk['title']) ?>
-                                </div>
+                                </a>
 
                                 <?php if (!empty($tk['description'])): ?>
                                 <div class="task-snippet-text">
@@ -1289,9 +1289,9 @@ if (!function_exists('getUserInitials')) {
                                     </td>
                                     <td>
                                         <div class="list-task-title-cell">
-                                            <span class="list-title" onclick="openProjectEditTaskModal(<?= $tk['id'] ?>)">
+                                            <a href="task_details.php?id=<?= $tk['id'] ?>" class="list-title" style="text-decoration:none; color:inherit;" title="View Task Details">
                                                 <?= htmlspecialchars($tk['title']) ?>
-                                            </span>
+                                            </a>
                                             <?php if (!empty($tk['description'])): ?>
                                             <span class="list-desc-hint"><?= htmlspecialchars(mb_strimwidth($tk['description'], 0, 50, '...')) ?></span>
                                             <?php endif; ?>
@@ -1396,9 +1396,9 @@ if (!function_exists('getUserInitials')) {
                                 <?php foreach ($day_tasks as $dtk): 
                                     $badge = getTaskTypeBadge($dtk['task_type'] ?? '', $dtk['priority'] ?? 'Medium', $dtk['milestone_name'] ?? '');
                                 ?>
-                                <div class="cal-task-pill" onclick="openProjectEditTaskModal(<?= $dtk['id'] ?>)" title="<?= htmlspecialchars($dtk['title']) ?>" style="background: <?= $badge['bg'] ?>; color: <?= $badge['color'] ?>;">
+                                <a href="task_details.php?id=<?= $dtk['id'] ?>" class="cal-task-pill" title="<?= htmlspecialchars($dtk['title']) ?>" style="background: <?= $badge['bg'] ?>; color: <?= $badge['color'] ?>; display:block; text-decoration:none;">
                                     <?= htmlspecialchars(mb_strimwidth($dtk['title'], 0, 18, '..')) ?>
-                                </div>
+                                </a>
                                 <?php endforeach; ?>
                             </div>
                         </div>
@@ -1435,7 +1435,7 @@ if (!function_exists('getUserInitials')) {
                                 <?php foreach ($all_project_tasks as $tk): ?>
                                 <tr>
                                     <td>#<?= $tk['id'] ?></td>
-                                    <td><strong><?= htmlspecialchars($tk['title']) ?></strong></td>
+                                    <td><a href="task_details.php?id=<?= $tk['id'] ?>" style="color:#0f172a; text-decoration:none; font-weight:700;" onmouseover="this.style.color='#024442'" onmouseout="this.style.color='#0f172a'"><?= htmlspecialchars($tk['title']) ?></a></td>
                                     <td><?= htmlspecialchars($tk['milestone_name'] ?: ($tk['task_type'] ?: 'General')) ?></td>
                                     <td><?= htmlspecialchars($tk['assigned_name'] ?: 'Unassigned') ?></td>
                                     <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($tk['status']) ?></span></td>
@@ -1699,11 +1699,23 @@ if (!function_exists('getUserInitials')) {
         transition: all 0.18s ease-in-out;
         position: relative;
         user-select: none;
+        z-index: 1;
     }
     .project-tasks-workspace .kanban-task-card:hover {
         box-shadow: 0 6px 14px rgba(0,0,0,0.06);
         border-color: #cbd5e1;
         transform: translateY(-2px);
+        z-index: 10;
+    }
+    .project-tasks-workspace .kanban-task-card:focus-within,
+    .project-tasks-workspace .kanban-task-card.dropdown-open,
+    .project-tasks-workspace .kanban-task-card:has(.dropdown.show),
+    .project-tasks-workspace .kanban-task-card:has(.dropdown-menu.show) {
+        z-index: 1050 !important;
+    }
+    .project-tasks-workspace .kanban-task-card .dropdown-menu {
+        z-index: 1060 !important;
+        position: absolute !important;
     }
     .project-tasks-workspace .kanban-task-card.is-dragging {
         opacity: 0.4;
@@ -1764,8 +1776,13 @@ if (!function_exists('getUserInitials')) {
         line-height: 1.4;
         margin-bottom: 5px;
         cursor: pointer;
+        display: block;
+        text-decoration: none;
     }
-    .project-tasks-workspace .task-title-text:hover { color: #2563eb; }
+    .project-tasks-workspace .task-title-text:hover {
+        color: #024442 !important;
+        text-decoration: underline;
+    }
     .project-tasks-workspace .task-snippet-text {
         font-size: 12px;
         color: #64748b;
@@ -3011,6 +3028,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
     bindProjDragAndDrop();
     refreshProjColumnCounters();
+
+    // Elevate active card z-index when dropdown is open
+    document.addEventListener('show.bs.dropdown', function(e) {
+        const card = e.target.closest('.kanban-task-card');
+        if (card) {
+            card.classList.add('dropdown-open');
+            card.style.zIndex = '1050';
+        }
+    });
+    document.addEventListener('hidden.bs.dropdown', function(e) {
+        const card = e.target.closest('.kanban-task-card');
+        if (card) {
+            card.classList.remove('dropdown-open');
+            card.style.zIndex = '';
+        }
+    });
 });
 
 // ── Horizontal Tabs Scrolling & Active Center ───────────────────────────────

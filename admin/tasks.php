@@ -103,6 +103,63 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['ajax_action']
             echo json_encode(['success' => false, 'message' => $conn->error]);
         }
         exit;
+
+    } elseif ($action === 'get_task') {
+        if (!$task_id || !$t) {
+            echo json_encode(['success' => false, 'message' => 'Task not found']); exit;
+        }
+        $stmt = $conn->prepare("SELECT * FROM tasks WHERE id=?");
+        $stmt->bind_param("i", $task_id);
+        $stmt->execute();
+        $task_data = $stmt->get_result()->fetch_assoc();
+        echo json_encode(['success' => true, 'task' => $task_data]);
+        exit;
+
+    } elseif ($action === 'edit_task') {
+        if (!$task_id || !$t) {
+            echo json_encode(['success' => false, 'message' => 'Task not found']); exit;
+        }
+
+        $title           = trim($_POST['title'] ?? '');
+        $description     = trim($_POST['description'] ?? '');
+        $priority        = $_POST['priority'] ?? 'Medium';
+        $status          = $_POST['status'] ?? 'Pending';
+        $due_date        = !empty($_POST['due_date']) ? $_POST['due_date'] : date('Y-m-d');
+        $assigned_to     = intval($_POST['assigned_to'] ?? 0) ?: $user_id;
+        $project_id      = intval($_POST['project_id'] ?? 0) ?: null;
+        $task_type       = trim($_POST['task_type'] ?? 'Design');
+        $estimated_hours = floatval($_POST['estimated_hours'] ?? 0);
+        $logged_hours    = floatval($_POST['logged_hours'] ?? 0);
+
+        if (empty($title)) {
+            echo json_encode(['success' => false, 'message' => 'Task title is required']); exit;
+        }
+
+        $allowed_status = ['Pending', 'In Progress', 'In Review', 'Completed', 'Cancelled'];
+        if (!in_array($status, $allowed_status)) $status = 'Pending';
+
+        if ($status === 'Completed' && function_exists('canUserCompleteTask') && !canUserCompleteTask($_SESSION['role'] ?? '')) {
+            $status = 'In Review';
+        }
+
+        $stmt = $conn->prepare("UPDATE tasks SET title=?, description=?, priority=?, status=?, due_date=?, assigned_to=?, project_id=?, task_type=?, estimated_hours=?, logged_hours=?, updated_at=NOW() WHERE id=?");
+        $stmt->bind_param("sssssiisddi", $title, $description, $priority, $status, $due_date, $assigned_to, $project_id, $task_type, $estimated_hours, $logged_hours, $task_id);
+        
+        if ($stmt->execute()) {
+            if (file_exists(__DIR__ . '/../core/task_delay_helper.php')) {
+                require_once __DIR__ . '/../core/task_delay_helper.php';
+                if (function_exists('recordTaskStatusTimestamp')) {
+                    recordTaskStatusTimestamp($conn, $task_id, $status);
+                }
+            }
+            if (function_exists('logActivity')) {
+                logActivity($conn, 'edit_task', "Updated task: '$title'", 'task', $task_id);
+            }
+            echo json_encode(['success' => true, 'message' => 'Task updated successfully']);
+        } else {
+            echo json_encode(['success' => false, 'message' => $conn->error]);
+        }
+        exit;
     }
     echo json_encode(['success' => false, 'message' => 'Unknown action']);
     exit;
@@ -483,9 +540,9 @@ function getUserInitials($name) {
                             </div>
 
                             <!-- Card Title -->
-                            <div class="task-title-text" onclick="openEditTaskModal(<?= $task['id'] ?>)">
+                            <a href="task_details.php?id=<?= $task['id'] ?>" class="task-title-text" onclick="event.stopPropagation();" title="View Task Details">
                                 <?= htmlspecialchars($task['title']) ?>
-                            </div>
+                            </a>
 
                             <?php if (!empty($task['description'])): ?>
                             <div class="task-snippet-text">
@@ -583,9 +640,9 @@ function getUserInitials($name) {
                                 </td>
                                 <td>
                                     <div class="list-task-title-cell">
-                                        <span class="list-title" onclick="openEditTaskModal(<?= $t['id'] ?>)">
+                                        <a href="task_details.php?id=<?= $t['id'] ?>" class="list-title" style="text-decoration:none; color:inherit;" title="View Task Details">
                                             <?= htmlspecialchars($t['title']) ?>
-                                        </span>
+                                        </a>
                                         <?php if (!empty($t['description'])): ?>
                                         <span class="list-desc-hint"><?= htmlspecialchars(mb_strimwidth($t['description'], 0, 50, '...')) ?></span>
                                         <?php endif; ?>
@@ -704,9 +761,9 @@ function getUserInitials($name) {
                             <?php foreach ($cell_tasks as $ct): 
                                 $badge = getTaskTypeBadge($ct['task_type'], $ct['priority']);
                             ?>
-                            <div class="cal-task-pill" onclick="openEditTaskModal(<?= $ct['id'] ?>)" title="<?= htmlspecialchars($ct['title']) ?>" style="background: <?= $badge['bg'] ?>; color: <?= $badge['color'] ?>;">
+                            <a href="task_details.php?id=<?= $ct['id'] ?>" class="cal-task-pill" title="<?= htmlspecialchars($ct['title']) ?>" style="background: <?= $badge['bg'] ?>; color: <?= $badge['color'] ?>; display:block; text-decoration:none;">
                                 <?= htmlspecialchars(mb_strimwidth($ct['title'], 0, 18, '..')) ?>
-                            </div>
+                            </a>
                             <?php endforeach; ?>
                         </div>
                     </div>
@@ -744,7 +801,7 @@ function getUserInitials($name) {
                             <?php foreach ($all_tasks_list as $t): ?>
                             <tr>
                                 <td>#<?= $t['id'] ?></td>
-                                <td><strong><?= htmlspecialchars($t['title']) ?></strong></td>
+                                <td><a href="task_details.php?id=<?= $t['id'] ?>" style="color:#0f172a; text-decoration:none; font-weight:700;" onmouseover="this.style.color='#024442'" onmouseout="this.style.color='#0f172a'"><?= htmlspecialchars($t['title']) ?></a></td>
                                 <td><?= htmlspecialchars($t['task_type'] ?: 'General') ?></td>
                                 <td><?= htmlspecialchars($t['project_name'] ?: 'None') ?></td>
                                 <td><?= htmlspecialchars($t['assignee_name'] ?: 'Unassigned') ?></td>
@@ -1214,12 +1271,26 @@ function getUserInitials($name) {
     transition: all 0.18s ease-in-out;
     position: relative;
     user-select: none;
+    z-index: 1;
 }
 
 .kanban-task-card:hover {
     box-shadow: 0 6px 14px rgba(0,0,0,0.06);
     border-color: #cbd5e1;
     transform: translateY(-2px);
+    z-index: 10;
+}
+
+.kanban-task-card:focus-within,
+.kanban-task-card.dropdown-open,
+.kanban-task-card:has(.dropdown.show),
+.kanban-task-card:has(.dropdown-menu.show) {
+    z-index: 1050 !important;
+}
+
+.kanban-task-card .dropdown-menu {
+    z-index: 1060 !important;
+    position: absolute !important;
 }
 
 .kanban-task-card:active {
@@ -1298,10 +1369,13 @@ function getUserInitials($name) {
     margin-bottom: 6px;
     cursor: pointer;
     transition: color 0.15s;
+    display: block;
+    text-decoration: none;
 }
 
 .task-title-text:hover {
-    color: #2563eb;
+    color: #024442 !important;
+    text-decoration: underline;
 }
 
 .task-snippet-text {
@@ -2077,6 +2151,22 @@ function switchGroupBy(criterion) {
 document.addEventListener('DOMContentLoaded', function() {
     bindDragAndDrop();
     refreshColumnCounters();
+
+    // Elevate active card z-index when dropdown is open
+    document.addEventListener('show.bs.dropdown', function(e) {
+        const card = e.target.closest('.kanban-task-card');
+        if (card) {
+            card.classList.add('dropdown-open');
+            card.style.zIndex = '1050';
+        }
+    });
+    document.addEventListener('hidden.bs.dropdown', function(e) {
+        const card = e.target.closest('.kanban-task-card');
+        if (card) {
+            card.classList.remove('dropdown-open');
+            card.style.zIndex = '';
+        }
+    });
 });
 </script>
 
