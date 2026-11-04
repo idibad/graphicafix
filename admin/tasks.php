@@ -1,5 +1,5 @@
 <?php
-// ── AJAX handler — must be BEFORE any HTML output ─────────────────────────────
+// â”€â”€ AJAX handler â€” must be BEFORE any HTML output â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['ajax_action'])) {
     ob_start();
     include('dashboard_header.php');
@@ -186,7 +186,7 @@ $can_create_task = canUserCreateTask($user_role);
 $can_complete_task = canUserCompleteTask($user_role);
 $is_admin        = $can_create_task;
 
-// ── Build Base WHERE clause based on Role & Filters ───────────────────────────
+// â”€â”€ Build Base WHERE clause based on Role & Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $where_parts = [];
 if (!$is_admin) {
     $where_parts[] = "(t.assigned_to = $user_id OR t.created_by = $user_id)";
@@ -219,7 +219,7 @@ if ($filter_project > 0) {
 
 $where_sql = !empty($where_parts) ? implode(' AND ', $where_parts) : "1=1";
 
-// ── Tasks Query with details, comments count, and subtasks count ──────────────
+// â”€â”€ Tasks Query with details, comments count, and subtasks count â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $tasks_result = $conn->query("
     SELECT t.*, 
            u.name AS assignee_name, u.email AS assignee_email,
@@ -234,7 +234,7 @@ $tasks_result = $conn->query("
     ORDER BY t.priority = 'High' DESC, t.due_date ASC, t.id DESC
 ");
 
-// ── Define Canonical Columns matching reference image ─────────────────────────
+// â”€â”€ Define Canonical Columns matching reference image â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $columns = [
     'Pending'     => ['title' => 'To-do',        'badge_class' => 'badge-todo',     'db_status' => 'Pending'],
     'In Progress' => ['title' => 'In Progress',  'badge_class' => 'badge-progress', 'db_status' => 'In Progress'],
@@ -260,14 +260,14 @@ while ($task = $tasks_result->fetch_assoc()) {
     $all_tasks_list[] = $task;
 }
 
-// ── Users list for assignment and filtering ───────────────────────────────────
+// â”€â”€ Users list for assignment and filtering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $users_result = $conn->query("SELECT user_id AS id, name, role FROM users WHERE status='active' OR status IS NULL ORDER BY name");
 $users_list = [];
 while ($u = $users_result->fetch_assoc()) {
     $users_list[] = $u;
 }
 
-// ── Projects list for project selector ────────────────────────────────────────
+// â”€â”€ Projects list for project selector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $projects_result = $conn->query("SELECT id, project_name FROM projects ORDER BY project_name ASC");
 $projects_list = [];
 if ($projects_result) {
@@ -276,7 +276,7 @@ if ($projects_result) {
     }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function formatDuration($hours) {
     if (!$hours || $hours <= 0) return '0h';
     $h = floor($hours);
@@ -343,6 +343,14 @@ function getUserInitials($name) {
 }
 ?>
 
+<style>
+/* Critical Instant Render Guards */
+.view-panel:not(.active) { display: none !important; }
+.kanban-grid-wrapper { display: grid !important; grid-template-columns: repeat(4, minmax(280px, 1fr)) !important; gap: 18px !important; min-width: 1160px; }
+.kanban-column { height: calc(100vh - 210px); min-height: 480px; max-height: 820px; overflow: hidden; display: flex; flex-direction: column; }
+.kanban-cards-list { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; }
+</style>
+
 <div class="height-100 workspace-wrapper">
     <!-- Top Control Bar -->
     <div class="workspace-header">
@@ -377,7 +385,7 @@ function getUserInitials($name) {
             <!-- Filters Toggle button -->
             <button type="button" class="btn-ctrl-action <?= ($filter_q || $filter_assignee || $filter_priority || $filter_project) ? 'active-filter' : '' ?>" id="btnToggleFilters" onclick="toggleFilterBar()">
                 <i class="fas fa-sliders-h"></i>
-                <span>Filters <?= ($filter_q || $filter_assignee || $filter_priority || $filter_project) ? '•' : '' ?></span>
+                <span>Filters <?= ($filter_q || $filter_assignee || $filter_priority || $filter_project) ? 'â€¢' : '' ?></span>
             </button>
 
             <!-- Group by Selector -->
@@ -541,13 +549,13 @@ function getUserInitials($name) {
                                             <li><a class="dropdown-item" href="task_details.php?id=<?= $task['id'] ?>"><i class="fas fa-external-link-alt me-2 text-muted"></i> View Details</a></li>
                                             <li><hr class="dropdown-divider"></li>
                                             <li><h6 class="dropdown-header">Move to:</h6></li>
-                                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveTask(<?= $task['id'] ?>, 'Pending')">📋 To-do</a></li>
-                                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveTask(<?= $task['id'] ?>, 'In Progress')">⚡ In Progress</a></li>
-                                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveTask(<?= $task['id'] ?>, 'In Review')">🔍 Review Ready</a></li>
+                                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveTask(<?= $task['id'] ?>, 'Pending')">ðŸ“‹ To-do</a></li>
+                                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveTask(<?= $task['id'] ?>, 'In Progress')">âš¡ In Progress</a></li>
+                                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveTask(<?= $task['id'] ?>, 'In Review')">ðŸ” Review Ready</a></li>
                                             <?php if ($is_admin): ?>
-                                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveTask(<?= $task['id'] ?>, 'Completed')">✅ Completed</a></li>
+                                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveTask(<?= $task['id'] ?>, 'Completed')">âœ… Completed</a></li>
                                             <?php else: ?>
-                                            <li><span class="dropdown-item text-muted disabled" style="cursor:not-allowed;" title="Admin / PM approval required">🔒 Completed (Admin/PM Only)</span></li>
+                                            <li><span class="dropdown-item text-muted disabled" style="cursor:not-allowed;" title="Admin / PM approval required">ðŸ”’ Completed (Admin/PM Only)</span></li>
                                             <?php endif; ?>
                                             <?php if ($is_admin || $task['created_by'] == $user_id): ?>
                                             <li><hr class="dropdown-divider"></li>
@@ -618,7 +626,7 @@ function getUserInitials($name) {
         </div>
 
         <!-- 2. LIST VIEW TAB -->
-        <div class="view-panel" id="view-list">
+        <div class="view-panel" id="view-list" style="display: none;">
             <div class="modern-list-container">
                 <div class="list-table-responsive">
                     <table class="modern-list-table">
@@ -673,7 +681,7 @@ function getUserInitials($name) {
                                     </span>
                                 </td>
                                 <td>
-                                    <span class="list-project-name"><?= htmlspecialchars($t['project_name'] ?: '—') ?></span>
+                                    <span class="list-project-name"><?= htmlspecialchars($t['project_name'] ?: 'â€”') ?></span>
                                 </td>
                                 <td>
                                     <div class="list-assignee-cell">
@@ -690,7 +698,7 @@ function getUserInitials($name) {
                                         </span>
                                     <?php else: ?>
                                         <span class="schedule-pill <?= $is_overdue ? 'overdue' : '' ?>" title="<?= $is_overdue ? "Overdue by {$t_overdue_days} day(s)" : '' ?>">
-                                            <?= !empty($t['due_date']) ? date('M d, Y', strtotime($t['due_date'])) : '—' ?><?= $is_overdue ? " ({$t_overdue_days}d)" : '' ?>
+                                            <?= !empty($t['due_date']) ? date('M d, Y', strtotime($t['due_date'])) : 'â€”' ?><?= $is_overdue ? " ({$t_overdue_days}d)" : '' ?>
                                         </span>
                                     <?php endif; ?>
                                 </td>
@@ -739,7 +747,7 @@ function getUserInitials($name) {
         </div>
 
         <!-- 3. CALENDAR VIEW TAB -->
-        <div class="view-panel" id="view-calendar">
+        <div class="view-panel" id="view-calendar" style="display: none;">
             <div class="modern-calendar-box">
                 <div class="calendar-top-bar">
                     <h3 class="cal-month-title"><?= date('F Y') ?></h3>
@@ -796,7 +804,7 @@ function getUserInitials($name) {
         </div>
 
         <!-- 4. TABLE VIEW TAB -->
-        <div class="view-panel" id="view-table">
+        <div class="view-panel" id="view-table" style="display: none;">
             <div class="modern-list-container">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="mb-0 font-weight-bold">Summary Table View</h5>
@@ -830,7 +838,7 @@ function getUserInitials($name) {
                                 <td><?= htmlspecialchars($t['assignee_name'] ?: 'Unassigned') ?></td>
                                 <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($t['status']) ?></span></td>
                                 <td><?= ucfirst($t['priority']) ?></td>
-                                <td><?= !empty($t['due_date']) ? $t['due_date'] : '—' ?></td>
+                                <td><?= !empty($t['due_date']) ? $t['due_date'] : 'â€”' ?></td>
                                 <td><?= floatval($t['estimated_hours']) ?>h</td>
                                 <td><?= floatval($t['logged_hours']) ?>h</td>
                             </tr>
@@ -844,7 +852,7 @@ function getUserInitials($name) {
     </div>
 </div>
 
-<!-- ── ADD / EDIT TASK MODAL ────────────────────────────────────────────────── -->
+<!-- â”€â”€ ADD / EDIT TASK MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content modern-modal-card">
@@ -965,873 +973,11 @@ function getUserInitials($name) {
 <!-- Toast Container -->
 <div id="toastContainer" class="workspace-toast-shelf"></div>
 
-<!-- ── STYLES MATCHING THE REFERENCE DESIGN ─────────────────────────────────── -->
-<style>
-/* Workspace Container & Fonts */
-.workspace-wrapper {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    color: #0f172a;
-    padding-bottom: 40px;
-}
+<!-- Workspace & Kanban styles loaded in <head> via assets/css/tasks_workspace.css -->
 
-/* Header & Controls */
-.workspace-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 16px;
-    margin-bottom: 24px;
-    padding-top: 6px;
-}
-
-.header-left-col {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-
-.workspace-title {
-    font-size: 26px;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0;
-    letter-spacing: -0.02em;
-}
-
-/* View Switcher Tabs */
-.view-switcher-tabs {
-    display: inline-flex;
-    align-items: center;
-    background: #f1f5f9;
-    border-radius: 10px;
-    padding: 3px;
-    gap: 2px;
-}
-
-.tab-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: transparent;
-    border: none;
-    padding: 7px 16px;
-    font-size: 13.5px;
-    font-weight: 600;
-    color: #64748b;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.16s ease-in-out;
-}
-
-.tab-btn:hover {
-    color: #0f172a;
-}
-
-.tab-btn.active {
-    background: #ffffff;
-    color: #0f172a;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
-
-.active-dot {
-    width: 6px;
-    height: 6px;
-    background: #2563eb;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-/* Header Right Buttons */
-.header-right-col {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.btn-ctrl-action {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    color: #334155;
-    padding: 8px 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-}
-
-.btn-ctrl-action:hover {
-    background: #f8fafc;
-    border-color: #cbd5e1;
-    color: #0f172a;
-}
-
-.btn-ctrl-action.active-filter {
-    background: #eff6ff;
-    border-color: #bfdbfe;
-    color: #1d4ed8;
-}
-
-.btn-primary-add {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #0f172a;
-    color: #ffffff;
-    border: none;
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-size: 13.5px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    box-shadow: 0 2px 4px rgba(15,23,42,0.15);
-}
-
-.btn-primary-add:hover {
-    background: #1e293b;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(15,23,42,0.2);
-}
-
-/* Collapsible Filter Bar */
-.workspace-filter-bar {
-    display: none;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.03);
-}
-
-.workspace-filter-bar.show {
-    display: block;
-}
-
-.filter-form {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.filter-input-wrap.search-box {
-    position: relative;
-    flex: 1;
-    min-width: 220px;
-}
-
-.filter-input-wrap.search-box i {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #94a3b8;
-    font-size: 13px;
-}
-
-.form-ctrl-compact {
-    height: 38px;
-    border: 1px solid #e2e8f0;
-    border-radius: 7px;
-    font-size: 13px;
-    padding: 6px 12px;
-    color: #1e293b;
-    outline: none;
-    background: #f8fafc;
-    transition: border 0.15s;
-}
-
-.filter-input-wrap.search-box input {
-    width: 100%;
-    padding-left: 34px;
-}
-
-.form-ctrl-compact:focus {
-    border-color: #94a3b8;
-    background: #ffffff;
-}
-
-.btn-clear-filter {
-    font-size: 12.5px;
-    font-weight: 600;
-    color: #ef4444;
-    text-decoration: none;
-    padding: 6px 10px;
-    border-radius: 6px;
-    transition: background 0.15s;
-}
-
-.btn-clear-filter:hover {
-    background: #fee2e2;
-}
-
-/* View Panels */
-.view-panel {
-    display: none;
-}
-
-.view-panel.active {
-    display: block;
-}
-
-/* ── KANBAN BOARD GRID ─────────────────────────────────────────────────────── */
-.kanban-grid-wrapper {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
-    align-items: start;
-    width: 100%;
-}
-
-@media (max-width: 1200px) {
-    .kanban-grid-wrapper {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 768px) {
-    .kanban-grid-wrapper {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* Kanban Column */
-.kanban-column {
-    background: #f8fafc;
-    border-radius: 14px;
-    padding: 14px 14px 18px 14px;
-    border: 1px solid #e2e8f0;
-    min-height: 520px;
-    display: flex;
-    flex-direction: column;
-}
-
-.column-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 14px;
-    padding: 2px 4px;
-}
-
-.col-title-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.col-title-text {
-    font-size: 15px;
-    font-weight: 700;
-    color: #1e293b;
-    letter-spacing: -0.01em;
-}
-
-.col-counter-badge {
-    background: #e2e8f0;
-    color: #475569;
-    font-size: 12px;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 20px;
-    min-width: 22px;
-    text-align: center;
-}
-
-.col-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.btn-col-action {
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.btn-col-action:hover {
-    background: #e2e8f0;
-    color: #1e293b;
-}
-
-/* Cards List */
-.kanban-cards-list {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    min-height: 200px;
-}
-
-.kanban-cards-list.drag-over {
-    background: #f1f5f9;
-    border-radius: 10px;
-    outline: 2px dashed #94a3b8;
-}
-
-/* ── KANBAN CARD STYLING ───────────────────────────────────────────────────── */
-.kanban-task-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-    cursor: grab;
-    transition: all 0.18s ease-in-out;
-    position: relative;
-    user-select: none;
-    z-index: 1;
-}
-
-.kanban-task-card:hover {
-    box-shadow: 0 6px 14px rgba(0,0,0,0.06);
-    border-color: #cbd5e1;
-    transform: translateY(-2px);
-    z-index: 10;
-}
-
-.kanban-task-card:focus-within,
-.kanban-task-card.dropdown-open,
-.kanban-task-card:has(.dropdown.show),
-.kanban-task-card:has(.dropdown-menu.show) {
-    z-index: 1050 !important;
-}
-
-.kanban-task-card .dropdown-menu {
-    z-index: 1060 !important;
-    position: absolute !important;
-}
-
-.kanban-task-card:active {
-    cursor: grabbing;
-}
-
-.kanban-task-card.is-dragging {
-    opacity: 0.45;
-    border: 2px dashed #64748b;
-    background: #f8fafc;
-    pointer-events: none !important;
-}
-
-/* Card Top Row */
-.card-top-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
-}
-
-.task-tag-chip {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: capitalize;
-    padding: 3px 10px;
-    border-radius: 20px;
-    letter-spacing: 0.02em;
-    display: inline-block;
-}
-
-.card-top-right {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.task-avatar-circle {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.btn-card-more {
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    width: 22px;
-    height: 22px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    cursor: pointer;
-    transition: color 0.15s;
-}
-
-.btn-card-more:hover {
-    color: #334155;
-    background: #f1f5f9;
-}
-
-/* Card Title */
-.task-title-text {
-    font-size: 14.5px;
-    font-weight: 600;
-    color: #0f172a;
-    line-height: 1.42;
-    margin-bottom: 6px;
-    cursor: pointer;
-    transition: color 0.15s;
-    display: block;
-    text-decoration: none;
-}
-
-.task-title-text:hover {
-    color: #024442 !important;
-    text-decoration: underline;
-}
-
-.task-snippet-text {
-    font-size: 12.5px;
-    color: #64748b;
-    line-height: 1.4;
-    margin-bottom: 12px;
-}
-
-/* Schedule Row */
-.card-schedule-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 14px;
-    flex-wrap: wrap;
-}
-
-.schedule-pill, .duration-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: #f1f5f9;
-    color: #475569;
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.schedule-pill.overdue {
-    background: #fef2f2;
-    color: #ef4444;
-}
-
-/* Card Footer Row */
-.card-footer-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-top: 10px;
-    border-top: 1px solid #f1f5f9;
-}
-
-.log-time-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    color: #475569;
-    padding: 3px 9px;
-    border-radius: 6px;
-    font-size: 11.5px;
-    font-weight: 600;
-}
-
-.card-metrics-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: #94a3b8;
-    font-size: 12px;
-}
-
-.metric-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-
-/* ── EMPTY STATE MATCHING SCREENSHOT ───────────────────────────────────────── */
-.empty-column-box {
-    border: 2px dashed #cbd5e1;
-    border-radius: 12px;
-    background: #ffffff;
-    padding: 36px 16px;
-    text-align: center;
-    margin: 8px 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-.empty-icon-wrap {
-    margin-bottom: 12px;
-    opacity: 0.8;
-}
-
-.empty-text {
-    font-size: 13px;
-    color: #64748b;
-    margin: 0 0 14px 0;
-    font-weight: 500;
-}
-
-.btn-create-task-empty {
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
-    color: #334155;
-    font-size: 12.5px;
-    font-weight: 600;
-    padding: 6px 14px;
-    border-radius: 7px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.btn-create-task-empty:hover {
-    background: #f8fafc;
-    border-color: #94a3b8;
-    color: #0f172a;
-}
-
-/* ── LIST VIEW STYLES ──────────────────────────────────────────────────────── */
-.modern-list-container {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-}
-
-.list-table-responsive {
-    overflow-x: auto;
-}
-
-.modern-list-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13.5px;
-}
-
-.modern-list-table th {
-    background: #f8fafc;
-    padding: 12px 14px;
-    font-weight: 600;
-    color: #64748b;
-    text-align: left;
-    border-bottom: 1px solid #e2e8f0;
-    white-space: nowrap;
-}
-
-.modern-list-table td {
-    padding: 13px 14px;
-    border-bottom: 1px solid #f1f5f9;
-    vertical-align: middle;
-    color: #334155;
-}
-
-.list-row:hover {
-    background: #f8fafc;
-}
-
-.task-completed-row td {
-    opacity: 0.65;
-}
-
-.task-completed-row .list-title {
-    text-decoration: line-through;
-}
-
-.list-task-title-cell {
-    display: flex;
-    flex-direction: column;
-}
-
-.list-title {
-    font-weight: 600;
-    color: #0f172a;
-    cursor: pointer;
-}
-
-.list-title:hover {
-    color: #2563eb;
-}
-
-.list-desc-hint {
-    font-size: 11.5px;
-    color: #94a3b8;
-}
-
-.list-assignee-cell {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.task-avatar-circle.small {
-    width: 24px;
-    height: 24px;
-    font-size: 9.5px;
-}
-
-.status-select-inline {
-    border: 1px solid #e2e8f0;
-    background: #ffffff;
-    border-radius: 6px;
-    font-size: 12px;
-    padding: 4px 8px;
-    color: #334155;
-    font-weight: 500;
-}
-
-.priority-pill {
-    font-size: 11px;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 12px;
-    text-transform: uppercase;
-}
-
-.priority-high { background: #fee2e2; color: #dc2626; }
-.priority-medium { background: #fef3c7; color: #b45309; }
-.priority-low { background: #dcfce7; color: #16a34a; }
-
-.btn-table-action {
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    padding: 4px 6px;
-    cursor: pointer;
-    font-size: 13px;
-    transition: color 0.15s;
-    text-decoration: none;
-}
-
-.btn-table-action:hover {
-    color: #1e293b;
-}
-
-/* ── CALENDAR VIEW STYLES ──────────────────────────────────────────────────── */
-.modern-calendar-box {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 24px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-}
-
-.calendar-top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
-}
-
-.cal-month-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0;
-}
-
-.calendar-week-headers {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    text-align: center;
-    font-weight: 600;
-    color: #64748b;
-    font-size: 13px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.calendar-days-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 8px;
-    padding-top: 10px;
-}
-
-.cal-day-cell {
-    min-height: 95px;
-    border: 1px solid #f1f5f9;
-    background: #f8fafc;
-    border-radius: 8px;
-    padding: 8px;
-    display: flex;
-    flex-direction: column;
-}
-
-.cal-day-cell.is-today {
-    background: #eff6ff;
-    border-color: #bfdbfe;
-}
-
-.cal-day-cell.is-today .cal-day-num {
-    color: #1d4ed8;
-    font-weight: 700;
-}
-
-.cal-day-num {
-    font-size: 12px;
-    font-weight: 600;
-    color: #475569;
-    margin-bottom: 4px;
-}
-
-.cal-task-chips {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.cal-task-pill {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 4px;
-    cursor: pointer;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* ── MODAL STYLES ──────────────────────────────────────────────────────────── */
-.modern-modal-card {
-    border-radius: 16px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.12);
-}
-
-.modal-header {
-    border-bottom: 1px solid #f1f5f9;
-    padding: 20px 24px;
-}
-
-.modal-header-icon {
-    width: 38px;
-    height: 38px;
-    background: #f1f5f9;
-    color: #0f172a;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-}
-
-.modal-title {
-    font-size: 17px;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0;
-}
-
-.modal-subtitle {
-    font-size: 12.5px;
-    color: #64748b;
-    margin: 0;
-}
-
-.form-label-custom {
-    font-size: 12.5px;
-    font-weight: 600;
-    color: #334155;
-    margin-bottom: 6px;
-}
-
-.modern-input {
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    font-size: 13.5px;
-    padding: 8px 12px;
-}
-
-.modern-input:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
-}
-
-.btn-cancel-modal {
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    color: #475569;
-    font-weight: 600;
-    font-size: 13.5px;
-    padding: 8px 16px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.btn-cancel-modal:hover {
-    background: #e2e8f0;
-    color: #0f172a;
-}
-
-/* ── TOAST NOTIFICATIONS ───────────────────────────────────────────────────── */
-.workspace-toast-shelf {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 10000;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.ws-toast {
-    background: #0f172a;
-    color: #ffffff;
-    padding: 12px 18px;
-    border-radius: 10px;
-    font-size: 13.5px;
-    font-weight: 500;
-    box-shadow: 0 6px 18px rgba(15,23,42,0.25);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    animation: toastSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.ws-toast.error {
-    background: #ef4444;
-}
-
-@keyframes toastSlideIn {
-    from { transform: translateY(12px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-</style>
-
-<!-- ── JAVASCRIPT INTERACTIONS ──────────────────────────────────────────────── -->
+<!-- â”€â”€ JAVASCRIPT INTERACTIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <script>
-// ── Toast Notification Helper ─────────────────────────────────────────────────
+// â”€â”€ Toast Notification Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function showToast(message, type = 'success') {
     const shelf = document.getElementById('toastContainer');
     const toast = document.createElement('div');
@@ -1851,22 +997,28 @@ function showToast(message, type = 'success') {
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.view-panel').forEach(p => {
+            p.classList.remove('active');
+            p.style.display = 'none';
+        });
 
         this.classList.add('active');
         const view = this.dataset.view;
         const panel = document.getElementById(`view-${view}`);
-        if (panel) panel.classList.add('active');
+        if (panel) {
+            panel.classList.add('active');
+            panel.style.display = 'block';
+        }
     });
 });
 
-// ── Toggle Filters Bar ────────────────────────────────────────────────────────
+// â”€â”€ Toggle Filters Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function toggleFilterBar() {
     const bar = document.getElementById('filterBarContainer');
     bar.classList.toggle('show');
 }
 
-// ── Share Workspace Link ──────────────────────────────────────────────────────
+// â”€â”€ Share Workspace Link â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function copyShareLink() {
     const url = window.location.href;
     if (navigator.clipboard) {
@@ -1878,7 +1030,7 @@ function copyShareLink() {
     }
 }
 
-// ── Live Instant Search on Board ──────────────────────────────────────────────
+// â”€â”€ Live Instant Search on Board â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const liveSearch = document.getElementById('liveSearchInput');
 if (liveSearch) {
     liveSearch.addEventListener('input', function() {
@@ -1895,7 +1047,7 @@ if (liveSearch) {
     });
 }
 
-// ── AJAX Action Dispatcher ───────────────────────────────────────────────────
+// â”€â”€ AJAX Action Dispatcher â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function postTaskAction(data) {
     return fetch('task_action.php', {
         method: 'POST',
@@ -1905,11 +1057,11 @@ function postTaskAction(data) {
     .then(r => r.json());
 }
 
-// ── Permissions Flags for Frontend ──────────────────────────────────────────
+// â”€â”€ Permissions Flags for Frontend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 window.CAN_CREATE_TASK = <?= $can_create_task ? 'true' : 'false' ?>;
 window.CAN_COMPLETE_TASK = <?= $can_complete_task ? 'true' : 'false' ?>;
 
-// ── Drag & Drop Kanban Logic ─────────────────────────────────────────────────
+// â”€â”€ Drag & Drop Kanban Logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let activeDraggedCard = null;
 let originContainer = null;
 let originNextSibling = null;
@@ -2100,7 +1252,7 @@ function refreshColumnCounters() {
     });
 }
 
-// ── Quick Move Task (From Menu or Select) ─────────────────────────────────────
+// â”€â”€ Quick Move Task (From Menu or Select) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function quickMoveTask(taskId, newStatus, selectElement = null) {
     postTaskAction({ ajax_action: 'update_status', task_id: taskId, status: newStatus })
         .then(res => {
@@ -2122,13 +1274,13 @@ function quickMoveTask(taskId, newStatus, selectElement = null) {
         });
 }
 
-// ── Quick Toggle Complete in List View ────────────────────────────────────────
+// â”€â”€ Quick Toggle Complete in List View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function quickToggleComplete(taskId, isChecked) {
     const status = isChecked ? 'Completed' : 'In Progress';
     quickMoveTask(taskId, status);
 }
 
-// ── Delete Task ───────────────────────────────────────────────────────────────
+// â”€â”€ Delete Task â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function deleteTask(taskId) {
     const confirmed = await showConfirmDialog({
         title: 'Delete Task',
@@ -2153,7 +1305,7 @@ async function deleteTask(taskId) {
         });
 }
 
-// ── Add / Edit Modal Logic ────────────────────────────────────────────────────
+// â”€â”€ Add / Edit Modal Logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let bsModal = null;
 
 function getModalInstance() {
@@ -2225,7 +1377,7 @@ function handleTaskFormSubmit(e) {
         });
 }
 
-// ── Export CSV for Table View ─────────────────────────────────────────────────
+// â”€â”€ Export CSV for Table View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function exportTasksTableCSV() {
     const table = document.getElementById('exportSummaryTable');
     let csv = [];

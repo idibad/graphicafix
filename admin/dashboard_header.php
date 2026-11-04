@@ -655,6 +655,7 @@ $notifications_html = ob_get_clean();
     <link href='https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css' rel='stylesheet'>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
     <link href="<?= BASE_URL ?>assets/css/dashboard.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= BASE_URL ?>assets/css/tasks_workspace.css?v=<?= time() ?>" rel="stylesheet">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
 
@@ -706,6 +707,13 @@ $notifications_html = ob_get_clean();
         .header-dropdown-logout              { color: #e53e3e; }
         .header-dropdown-logout:hover        { background: #fef2f2; color: #c53030; }
     </style>
+
+    <script>
+        // Anti-layout-shift: immediately set desktop body padding before render
+        if (window.innerWidth >= 768) {
+            document.write('<style>#body-pd { padding-left: calc(var(--nav-width, 68px) + 218px) !important; } #header { padding-left: calc(var(--nav-width, 68px) + 218px) !important; } #nav-bar { width: calc(var(--nav-width, 68px) + 196px) !important; left: 0 !important; }</style>');
+        }
+    </script>
 </head>
 
 <body id="body-pd">

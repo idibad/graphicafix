@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 include 'dashboard_header.php';
 require_once __DIR__ . '/../core/project_pm_schema.php';
 require_once __DIR__ . '/../core/project_pm_helper.php';
@@ -56,7 +56,7 @@ $active_users_stmt->execute();
 $active_task_users = $active_users_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $active_users_stmt->close();
 
-// ── Form Processing Actions ──────────────────────────────────────────────────
+// â”€â”€ Form Processing Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // 1. Manual Progress Override
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['manual_progress_override']) && $can_edit) {
@@ -347,7 +347,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_project_comment']
     }
 }
 
-// ── Read Data for Views ──────────────────────────────────────────────────────
+// â”€â”€ Read Data for Views â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $active_tab = $_GET['tab'] ?? 'overview';
 $allowed_tabs = ['overview', 'deliverables', 'tasks', 'updates', 'invoices'];
 if ($is_super_admin) {
@@ -443,7 +443,7 @@ foreach ($all_project_tasks as $tk) {
     $kanban_tasks[$s][] = $tk;
 }
 
-// ── Shared Workspace Helpers for Tasks ───────────────────────────────────────
+// â”€â”€ Shared Workspace Helpers for Tasks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 if (!function_exists('formatDuration')) {
     function formatDuration($hours) {
         if (!$hours || $hours <= 0) return '0h';
@@ -790,7 +790,7 @@ if (!function_exists('getUserInitials')) {
                 <div class="card" style="border: 1px solid #e2e8f0; border-radius: 12px; background:#fff;">
                     <div class="card-header" style="background:#fff; border-bottom: 1px solid #f1f5f9; padding: 16px 20px; display:flex; justify-content:space-between; align-items:center;">
                         <h2 class="card-title" style="margin:0; font-size:16px; font-weight:700; color:#0f172a;"><i class="fas fa-map-marker-alt text-muted"></i> Milestones Roadmap</h2>
-                        <a href="project_details.php?id=<?= $project_id ?>&tab=deliverables" style="font-size:12.5px; color:#024442; font-weight:600; text-decoration:none;">Manage Milestones →</a>
+                        <a href="project_details.php?id=<?= $project_id ?>&tab=deliverables" style="font-size:12.5px; color:#024442; font-weight:600; text-decoration:none;">Manage Milestones â†’</a>
                     </div>
                     <div style="padding: 20px;">
                         <?php if (!empty($milestones)): ?>
@@ -1185,10 +1185,10 @@ if (!function_exists('getUserInitials')) {
                                                 <li><a class="dropdown-item" href="task_details.php?id=<?= $tk['id'] ?>" target="_blank"><i class="fas fa-external-link-alt me-2 text-muted"></i> View Details</a></li>
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li><h6 class="dropdown-header">Move to:</h6></li>
-                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveProjTask(<?= $tk['id'] ?>, 'Pending')">📋 To-do</a></li>
-                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveProjTask(<?= $tk['id'] ?>, 'In Progress')">⚡ In Progress</a></li>
-                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveProjTask(<?= $tk['id'] ?>, 'In Review')">🔍 Review Ready</a></li>
-                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveProjTask(<?= $tk['id'] ?>, 'Completed')">✅ Completed</a></li>
+                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveProjTask(<?= $tk['id'] ?>, 'Pending')">ðŸ“‹ To-do</a></li>
+                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveProjTask(<?= $tk['id'] ?>, 'In Progress')">âš¡ In Progress</a></li>
+                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveProjTask(<?= $tk['id'] ?>, 'In Review')">ðŸ” Review Ready</a></li>
+                                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="quickMoveProjTask(<?= $tk['id'] ?>, 'Completed')">âœ… Completed</a></li>
                                                 <?php if ($can_edit || $tk['created_by'] == $user_id): ?>
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li><a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteProjTask(<?= $tk['id'] ?>)"><i class="fas fa-trash-alt me-2"></i> Delete</a></li>
@@ -1251,7 +1251,7 @@ if (!function_exists('getUserInitials')) {
             </div>
 
             <!-- 2. LIST VIEW -->
-            <div class="view-panel" id="view-list">
+            <div class="view-panel" id="view-list" style="display: none;">
                 <div class="modern-list-container">
                     <div class="list-table-responsive">
                         <table class="modern-list-table">
@@ -1312,7 +1312,7 @@ if (!function_exists('getUserInitials')) {
                                     </td>
                                     <td>
                                         <span class="schedule-pill <?= $is_overdue ? 'overdue' : '' ?>">
-                                            <?= !empty($tk['due_date']) ? date('M d, Y', strtotime($tk['due_date'])) : '—' ?>
+                                            <?= !empty($tk['due_date']) ? date('M d, Y', strtotime($tk['due_date'])) : 'â€”' ?>
                                         </span>
                                     </td>
                                     <td>
@@ -1360,7 +1360,7 @@ if (!function_exists('getUserInitials')) {
             </div>
 
             <!-- 3. CALENDAR VIEW -->
-            <div class="view-panel" id="view-calendar">
+            <div class="view-panel" id="view-calendar" style="display: none;">
                 <div class="modern-calendar-box">
                     <div class="calendar-top-bar">
                         <h4 class="cal-month-title mb-0"><?= date('F Y') ?></h4>
@@ -1412,7 +1412,7 @@ if (!function_exists('getUserInitials')) {
             </div>
 
             <!-- 4. TABLE VIEW -->
-            <div class="view-panel" id="view-table">
+            <div class="view-panel" id="view-table" style="display: none;">
                 <div class="modern-list-container">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="mb-0 font-weight-bold">Summary Table View</h5>
@@ -1444,7 +1444,7 @@ if (!function_exists('getUserInitials')) {
                                     <td><?= htmlspecialchars($tk['assigned_name'] ?: 'Unassigned') ?></td>
                                     <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($tk['status']) ?></span></td>
                                     <td><?= ucfirst($tk['priority']) ?></td>
-                                    <td><?= !empty($tk['due_date']) ? $tk['due_date'] : '—' ?></td>
+                                    <td><?= !empty($tk['due_date']) ? $tk['due_date'] : 'â€”' ?></td>
                                     <td><?= floatval($tk['estimated_hours']) ?>h</td>
                                     <td><?= floatval($tk['logged_hours'] ?? 0) ?>h</td>
                                 </tr>
@@ -1458,560 +1458,7 @@ if (!function_exists('getUserInitials')) {
         </div>
     </div>
 
-    <!-- Project Tasks Workspace Scoped Styles -->
-    <style>
-    .project-tasks-workspace {
-        color: #0f172a;
-    }
-    .project-tasks-workspace .workspace-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 16px;
-        margin-bottom: 20px;
-    }
-    .project-tasks-workspace .header-left-col {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-    .project-tasks-workspace .view-switcher-tabs {
-        display: inline-flex;
-        align-items: center;
-        background: #f1f5f9;
-        border-radius: 10px;
-        padding: 3px;
-        gap: 2px;
-        width: fit-content;
-    }
-    .project-tasks-workspace .tab-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: transparent;
-        border: none;
-        padding: 6px 14px;
-        font-size: 13px;
-        font-weight: 600;
-        color: #64748b;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.16s ease-in-out;
-    }
-    .project-tasks-workspace .tab-btn:hover { color: #0f172a; }
-    .project-tasks-workspace .tab-btn.active {
-        background: #ffffff;
-        color: #0f172a;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-    }
-    .project-tasks-workspace .active-dot {
-        width: 6px;
-        height: 6px;
-        background: #2563eb;
-        border-radius: 50%;
-        display: inline-block;
-    }
-    .project-tasks-workspace .header-right-col {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-    .project-tasks-workspace .btn-ctrl-action {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        color: #334155;
-        padding: 7px 13px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        text-decoration: none;
-        transition: all 0.15s ease;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-    }
-    .project-tasks-workspace .btn-ctrl-action:hover {
-        background: #f8fafc;
-        border-color: #cbd5e1;
-        color: #0f172a;
-    }
-    .project-tasks-workspace .btn-primary-add {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: #024442;
-        color: #ffffff;
-        border: none;
-        padding: 7px 16px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        box-shadow: 0 2px 4px rgba(2,68,66,0.15);
-    }
-    .project-tasks-workspace .btn-primary-add:hover {
-        background: #035a57;
-        transform: translateY(-1px);
-    }
-    .project-tasks-workspace .workspace-filter-bar {
-        display: none;
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 12px 16px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
-    }
-    .project-tasks-workspace .workspace-filter-bar.show { display: block; }
-    .project-tasks-workspace .filter-form {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-    .project-tasks-workspace .filter-input-wrap.search-box {
-        position: relative;
-        flex: 1;
-        min-width: 200px;
-    }
-    .project-tasks-workspace .filter-input-wrap.search-box i {
-        position: absolute;
-        left: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #94a3b8;
-        font-size: 13px;
-    }
-    .project-tasks-workspace .form-ctrl-compact {
-        height: 38px;
-        border: 1px solid #e2e8f0;
-        border-radius: 7px;
-        font-size: 13px;
-        padding: 6px 12px;
-        color: #1e293b;
-        outline: none;
-        background: #f8fafc;
-        transition: border 0.15s;
-    }
-    .project-tasks-workspace .filter-input-wrap.search-box input {
-        width: 100%;
-        padding-left: 34px;
-    }
-    .project-tasks-workspace .btn-clear-filter {
-        background: none;
-        border: none;
-        font-size: 12.5px;
-        font-weight: 600;
-        color: #ef4444;
-        padding: 6px 10px;
-        border-radius: 6px;
-        cursor: pointer;
-    }
-    .project-tasks-workspace .btn-clear-filter:hover { background: #fee2e2; }
-    .project-tasks-workspace .view-panel { display: none; }
-    .project-tasks-workspace .view-panel.active { display: block; }
-    .project-tasks-workspace .kanban-grid-wrapper {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 16px;
-        align-items: start;
-        width: 100%;
-    }
-    @media (max-width: 1200px) {
-        .project-tasks-workspace .kanban-grid-wrapper { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 768px) {
-        .project-tasks-workspace .kanban-grid-wrapper { grid-template-columns: 1fr; }
-    }
-    .project-tasks-workspace .kanban-column {
-        background: #f8fafc;
-        border-radius: 14px;
-        padding: 14px;
-        border: 1px solid #e2e8f0;
-        min-height: 480px;
-        display: flex;
-        flex-direction: column;
-    }
-    .project-tasks-workspace .column-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 14px;
-        padding: 2px 4px;
-    }
-    .project-tasks-workspace .col-title-group {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .project-tasks-workspace .col-title-text {
-        font-size: 14.5px;
-        font-weight: 700;
-        color: #1e293b;
-    }
-    .project-tasks-workspace .col-counter-badge {
-        background: #e2e8f0;
-        color: #475569;
-        font-size: 11.5px;
-        font-weight: 700;
-        padding: 2px 8px;
-        border-radius: 20px;
-        min-width: 22px;
-        text-align: center;
-    }
-    .project-tasks-workspace .btn-col-action {
-        background: transparent;
-        border: none;
-        color: #94a3b8;
-        width: 26px;
-        height: 26px;
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        cursor: pointer;
-    }
-    .project-tasks-workspace .btn-col-action:hover {
-        background: #e2e8f0;
-        color: #1e293b;
-    }
-    .project-tasks-workspace .kanban-cards-list {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        min-height: 180px;
-    }
-    .project-tasks-workspace .kanban-cards-list.drag-over {
-        background: #f1f5f9;
-        border-radius: 10px;
-        outline: 2px dashed #94a3b8;
-    }
-    .project-tasks-workspace .kanban-task-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 14px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-        cursor: grab;
-        transition: all 0.18s ease-in-out;
-        position: relative;
-        user-select: none;
-        z-index: 1;
-    }
-    .project-tasks-workspace .kanban-task-card:hover {
-        box-shadow: 0 6px 14px rgba(0,0,0,0.06);
-        border-color: #cbd5e1;
-        transform: translateY(-2px);
-        z-index: 10;
-    }
-    .project-tasks-workspace .kanban-task-card:focus-within,
-    .project-tasks-workspace .kanban-task-card.dropdown-open,
-    .project-tasks-workspace .kanban-task-card:has(.dropdown.show),
-    .project-tasks-workspace .kanban-task-card:has(.dropdown-menu.show) {
-        z-index: 1050 !important;
-    }
-    .project-tasks-workspace .kanban-task-card .dropdown-menu {
-        z-index: 1060 !important;
-        position: absolute !important;
-    }
-    .project-tasks-workspace .kanban-task-card.is-dragging {
-        opacity: 0.45;
-        border: 2px dashed #64748b;
-        background: #f8fafc;
-        pointer-events: none !important;
-    }
-    .project-tasks-workspace .card-top-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 8px;
-    }
-    .project-tasks-workspace .task-tag-chip {
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: capitalize;
-        padding: 3px 9px;
-        border-radius: 20px;
-        display: inline-block;
-    }
-    .project-tasks-workspace .card-top-right {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .project-tasks-workspace .task-avatar-circle {
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10.5px;
-        font-weight: 700;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }
-    .project-tasks-workspace .btn-card-more {
-        background: transparent;
-        border: none;
-        color: #94a3b8;
-        width: 20px;
-        height: 20px;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 11.5px;
-        cursor: pointer;
-    }
-    .project-tasks-workspace .btn-card-more:hover {
-        color: #334155;
-        background: #f1f5f9;
-    }
-    .project-tasks-workspace .task-title-text {
-        font-size: 14px;
-        font-weight: 600;
-        color: #0f172a;
-        line-height: 1.4;
-        margin-bottom: 5px;
-        cursor: pointer;
-        display: block;
-        text-decoration: none;
-    }
-    .project-tasks-workspace .task-title-text:hover {
-        color: #024442 !important;
-        text-decoration: underline;
-    }
-    .project-tasks-workspace .task-snippet-text {
-        font-size: 12px;
-        color: #64748b;
-        line-height: 1.35;
-        margin-bottom: 10px;
-    }
-    .project-tasks-workspace .card-schedule-row {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        margin-bottom: 12px;
-        flex-wrap: wrap;
-    }
-    .project-tasks-workspace .schedule-pill, .project-tasks-workspace .duration-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        background: #f1f5f9;
-        color: #475569;
-        padding: 3px 7px;
-        border-radius: 6px;
-        font-size: 11.5px;
-        font-weight: 500;
-    }
-    .project-tasks-workspace .schedule-pill.overdue {
-        background: #fef2f2;
-        color: #ef4444;
-    }
-    .project-tasks-workspace .card-footer-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding-top: 8px;
-        border-top: 1px solid #f1f5f9;
-    }
-    .project-tasks-workspace .log-time-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        color: #475569;
-        padding: 2px 8px;
-        border-radius: 6px;
-        font-size: 11px;
-        font-weight: 600;
-    }
-    .project-tasks-workspace .card-metrics-group {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: #94a3b8;
-        font-size: 11.5px;
-    }
-    .project-tasks-workspace .metric-item {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-    .project-tasks-workspace .empty-column-box {
-        border: 2px dashed #cbd5e1;
-        border-radius: 12px;
-        background: #ffffff;
-        padding: 30px 14px;
-        text-align: center;
-        margin: 6px 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-    }
-    .project-tasks-workspace .empty-icon-wrap { margin-bottom: 10px; opacity: 0.8; }
-    .project-tasks-workspace .empty-text {
-        font-size: 12.5px;
-        color: #64748b;
-        margin: 0 0 12px 0;
-        font-weight: 500;
-    }
-    .project-tasks-workspace .btn-create-task-empty {
-        background: #ffffff;
-        border: 1px solid #cbd5e1;
-        color: #334155;
-        font-size: 12px;
-        font-weight: 600;
-        padding: 5px 12px;
-        border-radius: 7px;
-        cursor: pointer;
-        transition: all 0.15s ease;
-    }
-    .project-tasks-workspace .btn-create-task-empty:hover {
-        background: #f8fafc;
-        border-color: #94a3b8;
-        color: #0f172a;
-    }
-    .project-tasks-workspace .modern-list-container {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-    }
-    .project-tasks-workspace .modern-list-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-    }
-    .project-tasks-workspace .modern-list-table th {
-        background: #f8fafc;
-        padding: 10px 12px;
-        font-weight: 600;
-        color: #64748b;
-        text-align: left;
-        border-bottom: 1px solid #e2e8f0;
-        white-space: nowrap;
-    }
-    .project-tasks-workspace .modern-list-table td {
-        padding: 12px;
-        border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
-        color: #334155;
-    }
-    .project-tasks-workspace .list-row:hover { background: #f8fafc; }
-    .project-tasks-workspace .task-completed-row td { opacity: 0.65; }
-    .project-tasks-workspace .task-completed-row .list-title { text-decoration: line-through; }
-    .project-tasks-workspace .list-task-title-cell { display: flex; flex-direction: column; }
-    .project-tasks-workspace .list-title { font-weight: 600; color: #0f172a; cursor: pointer; }
-    .project-tasks-workspace .list-title:hover { color: #2563eb; }
-    .project-tasks-workspace .list-desc-hint { font-size: 11px; color: #94a3b8; }
-    .project-tasks-workspace .list-assignee-cell { display: flex; align-items: center; gap: 7px; }
-    .project-tasks-workspace .task-avatar-circle.small { width: 22px; height: 22px; font-size: 9px; }
-    .project-tasks-workspace .status-select-inline {
-        border: 1px solid #e2e8f0;
-        background: #ffffff;
-        border-radius: 6px;
-        font-size: 11.5px;
-        padding: 3px 6px;
-        color: #334155;
-        font-weight: 500;
-    }
-    .project-tasks-workspace .priority-pill {
-        font-size: 10.5px;
-        font-weight: 700;
-        padding: 2px 7px;
-        border-radius: 12px;
-        text-transform: uppercase;
-    }
-    .project-tasks-workspace .priority-high { background: #fee2e2; color: #dc2626; }
-    .project-tasks-workspace .priority-medium { background: #fef3c7; color: #b45309; }
-    .project-tasks-workspace .priority-low { background: #dcfce7; color: #16a34a; }
-    .project-tasks-workspace .btn-table-action {
-        background: transparent;
-        border: none;
-        color: #94a3b8;
-        padding: 3px 5px;
-        cursor: pointer;
-        font-size: 12px;
-        text-decoration: none;
-    }
-    .project-tasks-workspace .btn-table-action:hover { color: #1e293b; }
-    .project-tasks-workspace .modern-calendar-box {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-    }
-    .project-tasks-workspace .calendar-top-bar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 16px;
-    }
-    .project-tasks-workspace .cal-month-title { font-size: 16px; font-weight: 700; color: #0f172a; }
-    .project-tasks-workspace .calendar-week-headers {
-        display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        text-align: center;
-        font-weight: 600;
-        color: #64748b;
-        font-size: 12.5px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #e2e8f0;
-    }
-    .project-tasks-workspace .calendar-days-grid {
-        display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        gap: 6px;
-        padding-top: 10px;
-    }
-    .project-tasks-workspace .cal-day-cell {
-        min-height: 80px;
-        border: 1px solid #f1f5f9;
-        background: #f8fafc;
-        border-radius: 8px;
-        padding: 6px;
-        display: flex;
-        flex-direction: column;
-    }
-    .project-tasks-workspace .cal-day-cell.is-today {
-        background: #eff6ff;
-        border-color: #bfdbfe;
-    }
-    .project-tasks-workspace .cal-day-num {
-        font-size: 11.5px;
-        font-weight: 600;
-        color: #475569;
-        margin-bottom: 3px;
-    }
-    .project-tasks-workspace .cal-task-chips {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-    }
-    .project-tasks-workspace .cal-task-pill {
-        font-size: 10.5px;
-        font-weight: 600;
-        padding: 2px 5px;
-        border-radius: 4px;
-        cursor: pointer;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    </style>
+    <!-- Project tasks workspace styles loaded in <head> via assets/css/tasks_workspace.css -->
     <?php endif; ?>
 
     <!-- ======================================================================= -->
@@ -2046,7 +1493,7 @@ if (!function_exists('getUserInitials')) {
                             <?php endif; ?>
                             <strong style="font-size:15px; color:#0f172a;"><?= htmlspecialchars($req['request_title']) ?></strong>
                             <div style="font-size:12px; color:#64748b; margin-top:2px;">
-                                Type: <span class="text-capitalize"><?= htmlspecialchars($req['request_type']) ?></span> • Due: <?= !empty($req['due_date']) ? date('M d, Y', strtotime($req['due_date'])) : 'Flexible' ?>
+                                Type: <span class="text-capitalize"><?= htmlspecialchars($req['request_type']) ?></span> â€¢ Due: <?= !empty($req['due_date']) ? date('M d, Y', strtotime($req['due_date'])) : 'Flexible' ?>
                             </div>
                         </div>
                         <div>
@@ -2135,7 +1582,7 @@ if (!function_exists('getUserInitials')) {
                             <span class="badge bg-light text-dark border text-capitalize me-2"><?= htmlspecialchars($q['category']) ?></span>
                             <strong style="font-size:15px; color:#0f172a;"><?= htmlspecialchars($q['subject']) ?></strong>
                             <div style="font-size:12px; color:#64748b; margin-top:2px;">
-                                Asked by <?= htmlspecialchars($q['client_name']) ?> • <?= date('M d, Y H:i', strtotime($q['created_at'])) ?>
+                                Asked by <?= htmlspecialchars($q['client_name']) ?> â€¢ <?= date('M d, Y H:i', strtotime($q['created_at'])) ?>
                             </div>
                         </div>
                         <div style="display:flex; align-items:center; gap:8px;">
@@ -2544,7 +1991,7 @@ if (!function_exists('getUserInitials')) {
 </div>
 <?php endif; ?>
 
-<!-- ── UPGRADED PROJECT TASK MODAL ───────────────────────────────────────────── -->
+<!-- â”€â”€ UPGRADED PROJECT TASK MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div class="modal fade" id="taskModalProject" tabindex="-1" aria-labelledby="taskModalProjectLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content modern-modal-card" style="border-radius:16px; border:1px solid #e2e8f0; box-shadow:0 20px 40px rgba(0,0,0,0.12);">
@@ -2672,7 +2119,7 @@ function openRejectModal(id) {
     document.getElementById('modalRejectRequest').style.display = 'flex';
 }
 
-// ── Project Tasks JavaScript Controller ───────────────────────────────────────
+// â”€â”€ Project Tasks JavaScript Controller â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 window.CAN_CREATE_TASK = <?= $can_edit ? 'true' : 'false' ?>;
 window.CAN_COMPLETE_TASK = <?= $can_edit ? 'true' : 'false' ?>;
 
@@ -3101,12 +2548,18 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.project-tasks-workspace .tab-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.project-tasks-workspace .tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.project-tasks-workspace .view-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.project-tasks-workspace .view-panel').forEach(p => {
+                p.classList.remove('active');
+                p.style.display = 'none';
+            });
 
             this.classList.add('active');
             const view = this.dataset.view;
             const panel = document.getElementById(`view-${view}`);
-            if (panel) panel.classList.add('active');
+            if (panel) {
+                panel.classList.add('active');
+                panel.style.display = 'block';
+            }
         });
     });
 
@@ -3136,7 +2589,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// ── Horizontal Tabs Scrolling & Active Center ───────────────────────────────
+// â”€â”€ Horizontal Tabs Scrolling & Active Center â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 document.addEventListener('DOMContentLoaded', function() {
     const tabsWrapper = document.querySelector('.pm-nav-tabs-wrapper');
     if (tabsWrapper) {
