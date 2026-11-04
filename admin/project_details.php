@@ -1056,7 +1056,7 @@ if (!function_exists('getUserInitials')) {
                     <span>Export PDF</span>
                 </a>
 
-                <?php if ($can_edit || $role === 'user'): ?>
+                <?php if ($can_edit): ?>
                 <!-- Primary Add Task button -->
                 <button type="button" class="btn-primary-add" onclick="openProjectAddTaskModal('Pending')">
                     <i class="fas fa-plus"></i>
@@ -1125,7 +1125,7 @@ if (!function_exists('getUserInitials')) {
                                 <span class="col-title-text"><?= htmlspecialchars($col_meta['title']) ?></span>
                                 <span class="col-counter-badge" id="proj-badge-count-<?= $status_key ?>"><?= $task_count ?></span>
                             </div>
-                            <?php if ($can_edit || $role === 'user'): ?>
+                            <?php if ($can_edit): ?>
                             <div class="col-header-actions">
                                 <button type="button" class="btn-col-action" title="Add task to <?= htmlspecialchars($col_meta['title']) ?>" onclick="openProjectAddTaskModal('<?= $status_key ?>')">
                                     <i class="fas fa-plus"></i>
@@ -1149,7 +1149,7 @@ if (!function_exists('getUserInitials')) {
                                     </svg>
                                 </div>
                                 <p class="empty-text">No tasks currently. Board is empty</p>
-                                <?php if ($can_edit || $role === 'user'): ?>
+                                <?php if ($can_edit): ?>
                                 <button type="button" class="btn-create-task-empty" onclick="openProjectAddTaskModal('<?= $status_key ?>')">
                                     + Create Task
                                 </button>
@@ -1285,7 +1285,7 @@ if (!function_exists('getUserInitials')) {
                                 ?>
                                 <tr class="list-row <?= $tk['status'] === 'Completed' ? 'task-completed-row' : '' ?>" data-id="<?= $tk['id'] ?>" data-priority="<?= htmlspecialchars($tk['priority'] ?? 'Medium') ?>" data-assignee="<?= intval($tk['assigned_to'] ?? 0) ?>" data-milestone="<?= intval($tk['milestone_id'] ?? 0) ?>">
                                     <td>
-                                        <input type="checkbox" class="task-checkbox" <?= $tk['status'] === 'Completed' ? 'checked' : '' ?> onchange="quickToggleProjComplete(<?= $tk['id'] ?>, this.checked)">
+                                        <input type="checkbox" class="task-checkbox" <?= $tk['status'] === 'Completed' ? 'checked' : '' ?> <?= !$can_edit ? 'disabled title="Only Admins or PMs can mark as Completed"' : '' ?> onchange="quickToggleProjComplete(<?= $tk['id'] ?>, this.checked)">
                                     </td>
                                     <td>
                                         <div class="list-task-title-cell">
@@ -1293,7 +1293,7 @@ if (!function_exists('getUserInitials')) {
                                                 <?= htmlspecialchars($tk['title']) ?>
                                             </a>
                                             <?php if (!empty($tk['description'])): ?>
-                                            <span class="list-desc-hint"><?= htmlspecialchars(mb_strimwidth($tk['description'], 0, 50, '...')) ?></span>
+                                             <span class="list-desc-hint"><?= htmlspecialchars(mb_strimwidth($tk['description'], 0, 50, '...')) ?></span>
                                             <?php endif; ?>
                                         </div>
                                     </td>
@@ -1326,11 +1326,15 @@ if (!function_exists('getUserInitials')) {
                                         </span>
                                     </td>
                                     <td>
-                                        <select class="status-select-inline" onchange="quickMoveProjTask(<?= $tk['id'] ?>, this.value)">
+                                        <select class="status-select-inline" onfocus="this.setAttribute('data-prev', this.value)" onchange="quickMoveProjTask(<?= $tk['id'] ?>, this.value, this)">
                                             <option value="Pending" <?= $tk['status'] === 'Pending' || $tk['status'] === 'Not Started' ? 'selected' : '' ?>>To-do</option>
                                             <option value="In Progress" <?= $tk['status'] === 'In Progress' ? 'selected' : '' ?>>In Progress</option>
                                             <option value="In Review" <?= ($tk['status'] === 'In Review' || $tk['status'] === 'Pending Review') ? 'selected' : '' ?>>Review Ready</option>
+                                            <?php if ($can_edit): ?>
                                             <option value="Completed" <?= $tk['status'] === 'Completed' ? 'selected' : '' ?>>Completed</option>
+                                            <?php else: ?>
+                                            <option value="Completed" disabled <?= $tk['status'] === 'Completed' ? 'selected' : '' ?>>Completed (Admin Only)</option>
+                                            <?php endif; ?>
                                         </select>
                                     </td>
                                     <td style="text-align: right;">
@@ -1718,9 +1722,10 @@ if (!function_exists('getUserInitials')) {
         position: absolute !important;
     }
     .project-tasks-workspace .kanban-task-card.is-dragging {
-        opacity: 0.4;
+        opacity: 0.45;
         border: 2px dashed #64748b;
         background: #f8fafc;
+        pointer-events: none !important;
     }
     .project-tasks-workspace .card-top-row {
         display: flex;
@@ -2618,7 +2623,11 @@ if (!function_exists('getUserInitials')) {
                                 <option value="Pending">To-do</option>
                                 <option value="In Progress">In Progress</option>
                                 <option value="In Review">Review Ready</option>
+                                <?php if ($can_edit): ?>
                                 <option value="Completed">Completed</option>
+                                <?php else: ?>
+                                <option value="Completed" disabled>Completed (Admin Only)</option>
+                                <?php endif; ?>
                             </select>
                         </div>
                     </div>
@@ -2664,6 +2673,9 @@ function openRejectModal(id) {
 }
 
 // ── Project Tasks JavaScript Controller ───────────────────────────────────────
+window.CAN_CREATE_TASK = <?= $can_edit ? 'true' : 'false' ?>;
+window.CAN_COMPLETE_TASK = <?= $can_edit ? 'true' : 'false' ?>;
+
 let bsProjModal = null;
 function getProjModalInstance() {
     const el = document.getElementById('taskModalProject');
@@ -2673,6 +2685,10 @@ function getProjModalInstance() {
 }
 
 function openProjectAddTaskModal(preselectedStatus = 'Pending') {
+    if (!window.CAN_CREATE_TASK) {
+        showToast('Restricted: Only Super Admins, Admins, and Project Managers can create tasks.', 'error');
+        return;
+    }
     const form = document.getElementById('projectTaskForm');
     if (form) form.reset();
     document.getElementById('projModalTaskId').value = '0';
@@ -2738,7 +2754,7 @@ function handleProjTaskFormSubmit(e) {
         });
 }
 
-function quickMoveProjTask(taskId, newStatus) {
+function quickMoveProjTask(taskId, newStatus, selectElement = null) {
     postTaskAction({ ajax_action: 'update_status', task_id: taskId, status: newStatus })
         .then(res => {
             if (res.success) {
@@ -2750,6 +2766,15 @@ function quickMoveProjTask(taskId, newStatus) {
                 }, 300);
             } else {
                 showToast(res.message || 'Update failed', 'error');
+                if (selectElement && selectElement.getAttribute('data-prev')) {
+                    selectElement.value = selectElement.getAttribute('data-prev');
+                }
+            }
+        })
+        .catch(() => {
+            showToast('Network error while updating status', 'error');
+            if (selectElement && selectElement.getAttribute('data-prev')) {
+                selectElement.value = selectElement.getAttribute('data-prev');
             }
         });
 }
@@ -2868,10 +2893,19 @@ function resetProjFilters() {
 
 function bindProjDragAndDrop() {
     let activeCard = null;
+    let originContainer = null;
+    let originNextSibling = null;
+    let originStatus = null;
+    let dropHandled = false;
 
     document.querySelectorAll('.project-tasks-workspace .kanban-task-card').forEach(card => {
         card.addEventListener('dragstart', function(e) {
             activeCard = this;
+            originContainer = this.parentElement;
+            originNextSibling = this.nextElementSibling;
+            originStatus = this.dataset.status;
+            dropHandled = false;
+
             this.classList.add('is-dragging');
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', this.dataset.id);
@@ -2880,7 +2914,23 @@ function bindProjDragAndDrop() {
         card.addEventListener('dragend', function() {
             this.classList.remove('is-dragging');
             document.querySelectorAll('.project-tasks-workspace .kanban-cards-list').forEach(list => list.classList.remove('drag-over'));
+
+            // If dropped outside or drag cancelled without a valid drop, revert card to origin spot
+            if (!dropHandled && originContainer && this.parentElement !== originContainer) {
+                if (originNextSibling && originNextSibling.parentElement === originContainer) {
+                    originContainer.insertBefore(this, originNextSibling);
+                } else {
+                    originContainer.appendChild(this);
+                }
+                this.dataset.status = originStatus;
+                refreshProjColumnCounters();
+            }
+
             activeCard = null;
+            originContainer = null;
+            originNextSibling = null;
+            originStatus = null;
+            dropHandled = false;
         });
     });
 
@@ -2899,21 +2949,42 @@ function bindProjDragAndDrop() {
             }
         });
 
-        list.addEventListener('dragleave', function() {
-            this.classList.remove('drag-over');
+        list.addEventListener('dragleave', function(e) {
+            if (!this.contains(e.relatedTarget)) {
+                this.classList.remove('drag-over');
+            }
         });
 
         list.addEventListener('drop', function(e) {
             e.preventDefault();
+            e.stopPropagation();
             this.classList.remove('drag-over');
             if (!activeCard) return;
+            dropHandled = true;
 
-            const newStatus = this.dataset.status;
+            const targetList = this;
+            const newStatus = targetList.dataset.status;
             const taskId    = activeCard.dataset.id;
-            const prevStatus = activeCard.dataset.status;
+            const prevStatus = originStatus;
+            const draggedEl = activeCard;
+            const origCont  = originContainer;
+            const origSib   = originNextSibling;
+
+            // Strict check: if non-completer drags into Completed, instantly snap back
+            if (newStatus === 'Completed' && !window.CAN_COMPLETE_TASK) {
+                showToast('Restricted: Only Super Admins, Admins, or Project Managers can mark tasks as Completed.', 'error');
+                if (origSib && origSib.parentElement === origCont) {
+                    origCont.insertBefore(draggedEl, origSib);
+                } else {
+                    origCont.appendChild(draggedEl);
+                }
+                draggedEl.dataset.status = prevStatus;
+                refreshProjColumnCounters();
+                return;
+            }
 
             if (newStatus !== prevStatus) {
-                activeCard.dataset.status = newStatus;
+                draggedEl.dataset.status = newStatus;
                 postTaskAction({ ajax_action: 'update_status', task_id: taskId, status: newStatus })
                     .then(res => {
                         if (res.success) {
@@ -2921,10 +2992,26 @@ function bindProjDragAndDrop() {
                             refreshProjColumnCounters();
                         } else {
                             showToast(res.message || 'Failed to update status', 'error');
-                            setTimeout(() => location.reload(), 800);
+                            // Revert smoothly without whole page reload
+                            if (origSib && origSib.parentElement === origCont) {
+                                origCont.insertBefore(draggedEl, origSib);
+                            } else {
+                                origCont.appendChild(draggedEl);
+                            }
+                            draggedEl.dataset.status = prevStatus;
+                            refreshProjColumnCounters();
                         }
                     })
-                    .catch(() => showToast('Network error while updating status', 'error'));
+                    .catch(() => {
+                        showToast('Network error while updating status', 'error');
+                        if (origSib && origSib.parentElement === origCont) {
+                            origCont.insertBefore(draggedEl, origSib);
+                        } else {
+                            origCont.appendChild(draggedEl);
+                        }
+                        draggedEl.dataset.status = prevStatus;
+                        refreshProjColumnCounters();
+                    });
             }
 
             refreshProjColumnCounters();
@@ -2961,6 +3048,11 @@ function refreshProjColumnCounters() {
                 const box = document.createElement('div');
                 box.className = 'empty-column-box';
                 box.dataset.emptyFor = status;
+                const addBtn = window.CAN_CREATE_TASK ? `
+                    <button type="button" class="btn-create-task-empty" onclick="openProjectAddTaskModal('${status}')">
+                        + Create Task
+                    </button>
+                ` : '';
                 box.innerHTML = `
                     <div class="empty-icon-wrap">
                         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -2972,9 +3064,7 @@ function refreshProjColumnCounters() {
                         </svg>
                     </div>
                     <p class="empty-text">No tasks currently. Board is empty</p>
-                    <button type="button" class="btn-create-task-empty" onclick="openProjectAddTaskModal('${status}')">
-                        + Create Task
-                    </button>
+                    ${addBtn}
                 `;
                 list.appendChild(box);
             } else if (emptyBox) {

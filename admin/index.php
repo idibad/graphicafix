@@ -855,7 +855,9 @@ a.stat-card:active {
     <div class="tasks-card" style="margin-bottom:30px;">
         <div class="card-header-custom"><h3><i class="fas fa-bolt"></i> Quick Actions</h3></div>
         <div class="quick-actions-grid">
+            <?php if (function_exists('canUserCreateTask') && canUserCreateTask($role)): ?>
             <a href="create_task.php"                      class="quick-action-btn"><span class="qa-icon"><i class="fas fa-edit"></i></span> New Task</a>
+            <?php endif; ?>
             <a href="tasks.php"                            class="quick-action-btn"><span class="qa-icon"><i class="fas fa-clipboard"></i></span> All Tasks</a>
             <a href="price_calculator.php"                 class="quick-action-btn"><span class="qa-icon"><i class="fas fa-calculator"></i></span> Price Calc</a>
             <?php if ($role === 'admin' || $role === 'manager'): ?>

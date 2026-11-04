@@ -218,4 +218,18 @@ function amountToWords($amount, $currencyCode) {
         return $currencyName . ' ' . $wholeWords . ' and ' . $centsString . ' Only.';
     }
 }
+
+if (!function_exists('canUserCompleteTask')) {
+    function canUserCompleteTask($role) {
+        $clean_role = strtolower(trim($role ?? ''));
+        return in_array($clean_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager']);
+    }
+}
+
+if (!function_exists('canUserCreateTask')) {
+    function canUserCreateTask($role) {
+        $clean_role = strtolower(trim($role ?? ''));
+        return in_array($clean_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager']);
+    }
+}
 ?>

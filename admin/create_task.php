@@ -6,17 +6,21 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id   = intval($_SESSION['user_id']);
-$user_role = $role;
-if (!in_array($user_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'sales', 'user'])) {
-    header('Location: index.php?error=unauthorized');
-    exit;
-}
-$is_admin  = (in_array($user_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'sales']));
+$user_role = strtolower($role);
+require_once __DIR__ . '/../core/task_delay_helper.php';
+
+$can_create = canUserCreateTask($user_role);
+$is_admin   = $can_create;
 
 // Edit mode?
 $edit_id = intval($_GET['edit'] ?? 0);
 $is_edit = $edit_id > 0;
 $task = null;
+
+if (!$is_edit && !$can_create) {
+    header('Location: tasks.php?error=unauthorized_create');
+    exit;
+}
 
 if ($is_edit) {
     $stmt = $conn->prepare("SELECT * FROM tasks WHERE id=?");
@@ -44,6 +48,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $errors = [];
     if (!$title)    $errors[] = 'Title is required.';
     if (!$due_date) $errors[] = 'Due date is required.';
+
+    if (!$is_edit && !$can_create) {
+        $errors[] = 'Restricted: Only Super Admins, Admins, and Project Managers can create tasks.';
+    }
 
     if (empty($errors)) {
         if ($is_edit) {

@@ -1550,3 +1550,11 @@ select.gfx-input-invalid {
     z-index: 1060 !important;
     position: absolute !important;
 }
+
+/* Dragging stability: prevents pointer events hijacking that causes flicker & glitches */
+.kanban-task-card.is-dragging {
+    opacity: 0.45;
+    border: 2px dashed #64748b;
+    background: #f8fafc;
+    pointer-events: none !important;
+}

@@ -373,6 +373,8 @@ function recordTaskStatusTimestamp($conn, $task_id, $new_status) {
             $conn->query("UPDATE tasks SET submitted_for_review_at = COALESCE(submitted_for_review_at, NOW()) WHERE id = " . intval($task_id));
         } elseif ($new_status === 'Completed') {
             $conn->query("UPDATE tasks SET completed_at = COALESCE(completed_at, NOW()) WHERE id = " . intval($task_id));
+        } elseif (in_array($new_status, ['Pending', 'In Progress'])) {
+            $conn->query("UPDATE tasks SET completed_at = NULL WHERE id = " . intval($task_id));
         }
 
         // Re-evaluate task delay deduction to lock in final amount
@@ -569,6 +571,16 @@ function exemptTaskDelayPenalty($conn, $task_id, $admin_id, $admin_notes = '') {
  * Strictly restricted to Super Admins, Admins, Project Managers (PM), and Managers.
  */
 function canUserCompleteTask($role) {
+    $clean_role = strtolower(trim($role ?? ''));
+    return in_array($clean_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager']);
+}
+
+/**
+ * Checks whether the user role has administrative/managerial permission to create tasks.
+ * Strictly restricted to Super Admins, Admins, Project Managers (PM), and Managers.
+ * Regular users/staff are NOT allowed to create their own tasks.
+ */
+function canUserCreateTask($role) {
     $clean_role = strtolower(trim($role ?? ''));
     return in_array($clean_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager']);
 }

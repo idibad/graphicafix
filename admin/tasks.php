@@ -5,10 +5,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['ajax_action']
     include('dashboard_header.php');
     while (ob_get_level() > 0) ob_end_clean();
 
-    $user_id  = intval($_SESSION['user_id'] ?? 0);
-    $is_admin = ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin');
-    $action   = $_POST['ajax_action'];
-    $task_id  = intval($_POST['task_id'] ?? 0);
+    $user_id   = intval($_SESSION['user_id'] ?? 0);
+    $user_role = strtolower($_SESSION['role'] ?? $role ?? '');
+    require_once __DIR__ . '/../core/task_delay_helper.php';
+    $is_admin  = canUserCreateTask($user_role);
+    $action    = $_POST['ajax_action'];
+    $task_id   = intval($_POST['task_id'] ?? 0);
 
     header('Content-Type: application/json');
 
@@ -69,6 +71,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['ajax_action']
         exit;
 
     } elseif ($action === 'create_task') {
+        if (!canUserCreateTask($user_role)) {
+            echo json_encode(['success' => false, 'message' => 'Restricted: Only Super Admins, Admins, and Project Managers can create tasks.']);
+            exit;
+        }
+
         $title           = trim($_POST['title'] ?? '');
         $description     = trim($_POST['description'] ?? '');
         $priority        = $_POST['priority'] ?? 'Medium';
@@ -172,8 +179,12 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: login.php'); exit;
 }
 
-$user_id   = intval($_SESSION['user_id']);
-$is_admin  = ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin');
+$user_id         = intval($_SESSION['user_id']);
+$user_role       = strtolower($_SESSION['role'] ?? $role ?? '');
+require_once __DIR__ . '/../core/task_delay_helper.php';
+$can_create_task = canUserCreateTask($user_role);
+$can_complete_task = canUserCompleteTask($user_role);
+$is_admin        = $can_create_task;
 
 // ── Build Base WHERE clause based on Role & Filters ───────────────────────────
 $where_parts = [];
@@ -381,11 +392,13 @@ function getUserInitials($name) {
                 </ul>
             </div>
 
+            <?php if ($can_create_task): ?>
             <!-- Primary Add Task button -->
             <button type="button" class="btn-primary-add" onclick="openAddTaskModal('Pending')">
                 <i class="fas fa-plus"></i>
                 <span>Add Task</span>
             </button>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -456,15 +469,19 @@ function getUserInitials($name) {
                             <span class="col-counter-badge" id="badge-count-<?= $status_key ?>"><?= $task_count ?></span>
                         </div>
                         <div class="col-header-actions">
+                            <?php if ($can_create_task): ?>
                             <button type="button" class="btn-col-action" title="Add task to <?= htmlspecialchars($col_meta['title']) ?>" onclick="openAddTaskModal('<?= $status_key ?>')">
                                 <i class="fas fa-plus"></i>
                             </button>
+                            <?php endif; ?>
                             <div class="dropdown d-inline-block">
                                 <button type="button" class="btn-col-action" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fas fa-ellipsis-h"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                    <?php if ($can_create_task): ?>
                                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="openAddTaskModal('<?= $status_key ?>')">+ Add Task</a></li>
+                                    <?php endif; ?>
                                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="filterByColumnStatus('<?= $status_key ?>')">Focus this column</a></li>
                                 </ul>
                             </div>
@@ -486,9 +503,11 @@ function getUserInitials($name) {
                                 </svg>
                             </div>
                             <p class="empty-text">No tasks currently. Board is empty</p>
+                            <?php if ($can_create_task): ?>
                             <button type="button" class="btn-create-task-empty" onclick="openAddTaskModal('<?= $status_key ?>')">
                                 + Create Task
                             </button>
+                            <?php endif; ?>
                         </div>
                         <?php endif; ?>
 
@@ -686,11 +705,15 @@ function getUserInitials($name) {
                                     </span>
                                 </td>
                                 <td>
-                                    <select class="status-select-inline" onchange="quickMoveTask(<?= $t['id'] ?>, this.value)">
+                                    <select class="status-select-inline" onchange="quickMoveTask(<?= $t['id'] ?>, this.value, this)">
                                         <option value="Pending" <?= $t['status'] === 'Pending' ? 'selected' : '' ?>>To-do</option>
                                         <option value="In Progress" <?= $t['status'] === 'In Progress' ? 'selected' : '' ?>>In Progress</option>
                                         <option value="In Review" <?= ($t['status'] === 'In Review' || $t['status'] === 'Pending Review') ? 'selected' : '' ?>>Review Ready</option>
+                                        <?php if ($can_complete_task): ?>
                                         <option value="Completed" <?= $t['status'] === 'Completed' ? 'selected' : '' ?>>Completed</option>
+                                        <?php else: ?>
+                                        <option value="Completed" disabled <?= $t['status'] === 'Completed' ? 'selected' : '' ?>>Completed (Admin Only)</option>
+                                        <?php endif; ?>
                                     </select>
                                 </td>
                                 <td style="text-align: right;">
@@ -899,7 +922,11 @@ function getUserInitials($name) {
                                 <option value="Pending">To-do</option>
                                 <option value="In Progress">In Progress</option>
                                 <option value="In Review">Review Ready</option>
+                                <?php if ($can_complete_task): ?>
                                 <option value="Completed">Completed</option>
+                                <?php else: ?>
+                                <option value="Completed" disabled>Completed (Admin Only)</option>
+                                <?php endif; ?>
                             </select>
                         </div>
                     </div>
@@ -1298,9 +1325,10 @@ function getUserInitials($name) {
 }
 
 .kanban-task-card.is-dragging {
-    opacity: 0.4;
+    opacity: 0.45;
     border: 2px dashed #64748b;
     background: #f8fafc;
+    pointer-events: none !important;
 }
 
 /* Card Top Row */
@@ -1877,15 +1905,26 @@ function postTaskAction(data) {
     .then(r => r.json());
 }
 
+// ── Permissions Flags for Frontend ──────────────────────────────────────────
+window.CAN_CREATE_TASK = <?= $can_create_task ? 'true' : 'false' ?>;
+window.CAN_COMPLETE_TASK = <?= $can_complete_task ? 'true' : 'false' ?>;
+
 // ── Drag & Drop Kanban Logic ─────────────────────────────────────────────────
 let activeDraggedCard = null;
-let originColumnStatus = null;
+let originContainer = null;
+let originNextSibling = null;
+let originStatus = null;
+let dropHandled = false;
 
 function bindDragAndDrop() {
     document.querySelectorAll('.kanban-task-card').forEach(card => {
         card.addEventListener('dragstart', function(e) {
             activeDraggedCard = this;
-            originColumnStatus = this.closest('.kanban-cards-list').dataset.status;
+            originContainer = this.parentElement;
+            originNextSibling = this.nextElementSibling;
+            originStatus = this.dataset.status;
+            dropHandled = false;
+
             this.classList.add('is-dragging');
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', this.dataset.id);
@@ -1894,8 +1933,23 @@ function bindDragAndDrop() {
         card.addEventListener('dragend', function() {
             this.classList.remove('is-dragging');
             document.querySelectorAll('.kanban-cards-list').forEach(list => list.classList.remove('drag-over'));
+
+            // If dropped outside or drag cancelled without a valid drop, revert card to origin spot
+            if (!dropHandled && originContainer && this.parentElement !== originContainer) {
+                if (originNextSibling && originNextSibling.parentElement === originContainer) {
+                    originContainer.insertBefore(this, originNextSibling);
+                } else {
+                    originContainer.appendChild(this);
+                }
+                this.dataset.status = originStatus;
+                refreshColumnCounters();
+            }
+
             activeDraggedCard = null;
-            originColumnStatus = null;
+            originContainer = null;
+            originNextSibling = null;
+            originStatus = null;
+            dropHandled = false;
         });
     });
 
@@ -1905,9 +1959,9 @@ function bindDragAndDrop() {
             e.dataTransfer.dropEffect = 'move';
             this.classList.add('drag-over');
 
-            const afterElement = getDragAfterElement(this, e.clientY);
             if (!activeDraggedCard) return;
 
+            const afterElement = getDragAfterElement(this, e.clientY);
             if (afterElement == null) {
                 this.appendChild(activeDraggedCard);
             } else {
@@ -1915,22 +1969,43 @@ function bindDragAndDrop() {
             }
         });
 
-        list.addEventListener('dragleave', function() {
-            this.classList.remove('drag-over');
+        list.addEventListener('dragleave', function(e) {
+            if (!this.contains(e.relatedTarget)) {
+                this.classList.remove('drag-over');
+            }
         });
 
         list.addEventListener('drop', function(e) {
             e.preventDefault();
+            e.stopPropagation();
             this.classList.remove('drag-over');
 
             if (!activeDraggedCard) return;
+            dropHandled = true;
 
-            const newStatus = this.dataset.status;
-            const taskId    = activeDraggedCard.dataset.id;
-            const prevStatus = activeDraggedCard.dataset.status;
+            const targetList = this;
+            const newStatus  = targetList.dataset.status;
+            const taskId     = activeDraggedCard.dataset.id;
+            const prevStatus = originStatus;
+            const draggedEl  = activeDraggedCard;
+            const origCont   = originContainer;
+            const origSib    = originNextSibling;
+
+            // Strict check: if non-completer drags into Completed, instantly snap back
+            if (newStatus === 'Completed' && !window.CAN_COMPLETE_TASK) {
+                showToast('Restricted: Only Super Admins, Admins, or Project Managers can mark tasks as Completed.', 'error');
+                if (origSib && origSib.parentElement === origCont) {
+                    origCont.insertBefore(draggedEl, origSib);
+                } else {
+                    origCont.appendChild(draggedEl);
+                }
+                draggedEl.dataset.status = prevStatus;
+                refreshColumnCounters();
+                return;
+            }
 
             if (newStatus !== prevStatus) {
-                activeDraggedCard.dataset.status = newStatus;
+                draggedEl.dataset.status = newStatus;
                 
                 postTaskAction({ ajax_action: 'update_status', task_id: taskId, status: newStatus })
                     .then(res => {
@@ -1939,11 +2014,25 @@ function bindDragAndDrop() {
                             refreshColumnCounters();
                         } else {
                             showToast(res.message || 'Failed to update status', 'error');
-                            location.reload();
+                            // Snap back cleanly without whole page reload
+                            if (origSib && origSib.parentElement === origCont) {
+                                origCont.insertBefore(draggedEl, origSib);
+                            } else {
+                                origCont.appendChild(draggedEl);
+                            }
+                            draggedEl.dataset.status = prevStatus;
+                            refreshColumnCounters();
                         }
                     })
                     .catch(err => {
                         showToast('Network error while saving task status', 'error');
+                        if (origSib && origSib.parentElement === origCont) {
+                            origCont.insertBefore(draggedEl, origSib);
+                        } else {
+                            origCont.appendChild(draggedEl);
+                        }
+                        draggedEl.dataset.status = prevStatus;
+                        refreshColumnCounters();
                     });
             }
 
@@ -1983,6 +2072,11 @@ function refreshColumnCounters() {
                 const box = document.createElement('div');
                 box.className = 'empty-column-box';
                 box.dataset.emptyFor = status;
+                const addBtn = window.CAN_CREATE_TASK ? `
+                    <button type="button" class="btn-create-task-empty" onclick="openAddTaskModal('${status}')">
+                        + Create Task
+                    </button>
+                ` : '';
                 box.innerHTML = `
                     <div class="empty-icon-wrap">
                         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -1994,9 +2088,7 @@ function refreshColumnCounters() {
                         </svg>
                     </div>
                     <p class="empty-text">No tasks currently. Board is empty</p>
-                    <button type="button" class="btn-create-task-empty" onclick="openAddTaskModal('${status}')">
-                        + Create Task
-                    </button>
+                    ${addBtn}
                 `;
                 list.appendChild(box);
             } else {
@@ -2009,7 +2101,7 @@ function refreshColumnCounters() {
 }
 
 // ── Quick Move Task (From Menu or Select) ─────────────────────────────────────
-function quickMoveTask(taskId, newStatus) {
+function quickMoveTask(taskId, newStatus, selectElement = null) {
     postTaskAction({ ajax_action: 'update_status', task_id: taskId, status: newStatus })
         .then(res => {
             if (res.success) {
@@ -2017,6 +2109,15 @@ function quickMoveTask(taskId, newStatus) {
                 setTimeout(() => location.reload(), 300);
             } else {
                 showToast(res.message || 'Update failed', 'error');
+                if (selectElement && selectElement.getAttribute('data-prev')) {
+                    selectElement.value = selectElement.getAttribute('data-prev');
+                }
+            }
+        })
+        .catch(() => {
+            showToast('Network error while updating status', 'error');
+            if (selectElement && selectElement.getAttribute('data-prev')) {
+                selectElement.value = selectElement.getAttribute('data-prev');
             }
         });
 }
@@ -2063,6 +2164,10 @@ function getModalInstance() {
 }
 
 function openAddTaskModal(preselectedStatus = 'Pending') {
+    if (!window.CAN_CREATE_TASK) {
+        showToast('Restricted: Only Super Admins, Admins, and Project Managers can create tasks.', 'error');
+        return;
+    }
     document.getElementById('taskForm').reset();
     document.getElementById('modalTaskId').value = '0';
     document.getElementById('modalAjaxAction').value = 'create_task';

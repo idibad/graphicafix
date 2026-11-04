@@ -38,6 +38,11 @@ if ($task_id > 0) {
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 if ($action === 'create_task') {
+    if (!canUserCreateTask($user_role)) {
+        echo json_encode(['success' => false, 'message' => 'Restricted: Only Super Admins, Admins, and Project Managers can create tasks.']);
+        exit;
+    }
+
     $title           = trim($_POST['title'] ?? '');
     $description     = trim($_POST['description'] ?? '');
     $priority        = $_POST['priority'] ?? 'Medium';
