@@ -716,6 +716,31 @@ td { vertical-align: top; }
             <div class="terms-text" style="background:#f9fafb; border:1px solid #e5e7eb; padding:12px; border-radius:6px; margin-bottom:15px;">
                 <?php echo nl2br(htmlspecialchars($termsText)); ?>
             </div>
+
+            <!-- Signatures block (At the end of Terms & Conditions) -->
+            <div style="margin-top: 25px; page-break-inside: avoid;">
+                <table class="signatures-table">
+                    <tr>
+                        <td width="50%">
+                            <div class="sig-box">
+                                <div class="section-title" style="border:none; margin:0; padding-bottom:5px; font-size:10pt;">Graphica Fix</div>
+                                <div class="sig-line"></div>
+                                <div class="sig-title">Authorized Signature & Seal</div>
+                                <div class="sig-title">Date: ________________________</div>
+                            </div>
+                        </td>
+                        <td width="50%" align="right">
+                            <div class="sig-box" style="text-align: left; margin-left: auto;">
+                                <div class="section-title" style="border:none; margin:0; padding-bottom:5px; font-size:10pt;">Client Acceptance</div>
+                                <div class="sig-line"></div>
+                                <div class="sig-name"><?php echo htmlspecialchars($q['client_name']); ?></div>
+                                <div class="sig-title">Authorized Signature & Seal</div>
+                                <div class="sig-title">Date: ________________________</div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
         </div>
         <?php endif; ?>
 
