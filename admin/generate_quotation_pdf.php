@@ -344,6 +344,27 @@ td { vertical-align: top; }
     border-radius: 6px;
 }
 
+/* Remittance Block */
+.remittance-box {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 15px;
+    margin-bottom: 20px;
+}
+.remittance-title {
+    font-weight: bold;
+    font-size: 9.5pt;
+    color: #024442;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+.remittance-table td {
+    padding: 3px 6px;
+    font-size: 9pt;
+}
+
 /* Terms & Legal page */
 .terms-page {
     page-break-before: always;
@@ -631,6 +652,33 @@ td { vertical-align: top; }
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
+                </table>
+            </div>
+            <?php endif; ?>
+
+            <!-- Remittance Bank Details -->
+            <?php if (!empty($q['bank_name'])): ?>
+            <div class="remittance-box" style="margin-top:15px; page-break-inside: avoid;">
+                <div class="remittance-title">Remittance / Bank Details</div>
+                <table class="remittance-table" width="100%">
+                    <tr>
+                        <td width="22%" class="font-bold">Bank Name:</td>
+                        <td width="38%"><?php echo htmlspecialchars($q['bank_name']); ?></td>
+                        <td width="18%" class="font-bold">Account Name:</td>
+                        <td width="22%"><?php echo htmlspecialchars($q['account_name'] ?? 'Graphica Fix'); ?></td>
+                    </tr>
+                    <tr>
+                        <td class="font-bold">Branch/Location:</td>
+                        <td><?php echo htmlspecialchars($q['bank_branch'] ?? ''); ?></td>
+                        <td class="font-bold">Account / IBAN:</td>
+                        <td><?php echo htmlspecialchars($q['account_number'] ?? ''); ?></td>
+                    </tr>
+                    <tr>
+                        <td class="font-bold">SWIFT / BIC Code:</td>
+                        <td><?php echo htmlspecialchars($q['swift_code'] ?? '—'); ?></td>
+                        <td class="font-bold">Payment Methods:</td>
+                        <td><?php echo htmlspecialchars($q['payment_methods'] ?? 'Bank Transfer'); ?></td>
+                    </tr>
                 </table>
             </div>
             <?php endif; ?>

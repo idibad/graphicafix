@@ -273,6 +273,41 @@ function quotStatusColor($s) {
             </div>
         </div>
 
+        <!-- Remittance Bank Details -->
+        <?php if (!empty($q['bank_name'])): ?>
+        <div class="card" style="margin-bottom:20px;">
+            <div class="qd-section-label" style="margin-bottom:12px;"><i class="fas fa-university"></i> Remittance / Bank Details</div>
+            <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:15px;">
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
+                    <div>
+                        <div style="font-size:12px; color:#6b7280; font-weight:600;">Bank Name</div>
+                        <div style="font-size:14px; color:#1f2937; font-weight:700; margin-top:2px;"><?= htmlspecialchars($q['bank_name']) ?></div>
+                    </div>
+                    <div>
+                        <div style="font-size:12px; color:#6b7280; font-weight:600;">Branch / Location</div>
+                        <div style="font-size:14px; color:#1f2937; margin-top:2px;"><?= htmlspecialchars($q['bank_branch'] ?? '—') ?></div>
+                    </div>
+                    <div>
+                        <div style="font-size:12px; color:#6b7280; font-weight:600;">Account Title</div>
+                        <div style="font-size:14px; color:#1f2937; font-weight:700; margin-top:2px;"><?= htmlspecialchars($q['account_name'] ?? '—') ?></div>
+                    </div>
+                    <div>
+                        <div style="font-size:12px; color:#6b7280; font-weight:600;">Account Number / IBAN</div>
+                        <div style="font-size:14px; color:#024442; font-family:monospace; font-weight:700; margin-top:2px;"><?= htmlspecialchars($q['account_number'] ?? '—') ?></div>
+                    </div>
+                    <div>
+                        <div style="font-size:12px; color:#6b7280; font-weight:600;">SWIFT / BIC Code</div>
+                        <div style="font-size:14px; color:#1f2937; margin-top:2px;"><?= htmlspecialchars($q['swift_code'] ?? '—') ?></div>
+                    </div>
+                    <div>
+                        <div style="font-size:12px; color:#6b7280; font-weight:600;">Payment Methods</div>
+                        <div style="font-size:14px; color:#1f2937; margin-top:2px;"><?= htmlspecialchars($q['payment_methods'] ?? 'Bank Transfer') ?></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Terms -->
         <?php if (!empty($q['terms'])): ?>
         <div class="card" style="margin-bottom:20px;">

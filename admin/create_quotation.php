@@ -72,6 +72,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $delivery_time      = trim($_POST['delivery_time'] ?? '');
     $amount_in_words    = trim($_POST['amount_in_words'] ?? '');
 
+    // Bank Remittance Details
+    $bank_name          = trim($_POST['bank_name'] ?? '');
+    $bank_branch        = trim($_POST['bank_branch'] ?? '');
+    $account_name       = trim($_POST['account_name'] ?? '');
+    $account_number     = trim($_POST['account_number'] ?? '');
+    $swift_code         = trim($_POST['swift_code'] ?? '');
+    $payment_methods    = trim($_POST['payment_methods'] ?? '');
+
     // Repeatable bullets imploded to newline-separated strings
     $scope_included = implode("\n", array_filter(array_map('trim', $_POST['scope_included'] ?? [])));
     $scope_excluded = implode("\n", array_filter(array_map('trim', $_POST['scope_excluded'] ?? [])));
@@ -132,15 +140,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
          issue_date,valid_until,status,subtotal,tax_percent,tax_amount,discount_amount,total_amount,
          currency,notes,terms,signature_name,signature_title,signature_date,
          client_ref_rfq,client_tax_id,scope_project_name,scope_deliverables,scope_duration,
-         scope_included,scope_excluded,payment_terms,delivery_time,amount_in_words,scope_notes,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())");
+         scope_included,scope_excluded,payment_terms,delivery_time,amount_in_words,scope_notes,
+         bank_name,bank_branch,account_name,account_number,swift_code,payment_methods,
+         created_at,updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())");
     
-    $stmt->bind_param("sissssssssdddddsssssssssssssssss",
+    $stmt->bind_param("sissssssssdddddsssssssssssssssssssssss",
         $quot_number,$client_id,$client_name,$client_email,$client_phone,$client_company,$client_address,
         $issue_date,$valid_until,$status,$subtotal,$tax_percent,$tax_amount,$discount_amount,$total_amount,
         $currency,$notes,$terms,$sig_name,$sig_title,$sig_date,
         $client_ref_rfq,$client_tax_id,$scope_project_name,$scope_deliverables,$scope_duration,
-        $scope_included,$scope_excluded,$payment_terms,$delivery_time,$amount_in_words,$scope_notes
+        $scope_included,$scope_excluded,$payment_terms,$delivery_time,$amount_in_words,$scope_notes,
+        $bank_name,$bank_branch,$account_name,$account_number,$swift_code,$payment_methods
     );
     $stmt->execute();
     $qid = $conn->insert_id;
@@ -160,6 +171,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 $clients = $conn->query("SELECT id,client_name,company,email,phone,address FROM clients ORDER BY client_name");
 $cData   = [];
 while ($c = $clients->fetch_assoc()) $cData[$c['id']] = $c;
+
+// ── Load saved bank accounts ──────────────────────────────────────────────────
+$savedBankAccounts = [];
+$bRes = $conn->query("SELECT id, bank_name, account_title, account_number, status FROM bank_accounts WHERE status = 'active' ORDER BY id ASC");
+if ($bRes) {
+    while ($ba = $bRes->fetch_assoc()) {
+        $savedBankAccounts[] = $ba;
+    }
+}
 
 // ── Next quotation number ─────────────────────────────────────────────────────
 $lastRow = $conn->query("SELECT quotation_number FROM quotations ORDER BY id DESC LIMIT 1")->fetch_assoc();
@@ -420,6 +440,53 @@ include 'dashboard_header.php';
                     <tbody id="paymentBody"></tbody>
                 </table>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="addPaymentRow()" style="margin-top: 8px;"><i class="fas fa-plus"></i> Add Milestone</button>
+            </div>
+
+            <!-- Remittance Bank Details -->
+            <hr style="border:none; border-top:1px solid #f0f0f0; margin: 25px 0;">
+            <h3 style="margin-bottom:16px; font-size:15px; font-weight:700; color:#024442;"><i class="fas fa-university" style="margin-right:6px;"></i> Remittance Bank Details</h3>
+            
+            <?php if (!empty($savedBankAccounts)): ?>
+            <div class="form-group" style="margin-bottom:15px;">
+                <label>Select Saved Bank Account <span style="font-weight:normal; color:#64748b; font-size:13px;">(Optional — autofills bank fields below)</span></label>
+                <select id="savedBankSelect" onchange="fillBankDetails(this.value)" style="width:100%; padding:10px; border-radius:6px; border:1px solid #cbd5e1; font-size:14px;">
+                    <option value="">— Choose a saved bank account —</option>
+                    <?php foreach ($savedBankAccounts as $bIdx => $bAcc): ?>
+                        <option value="<?= $bIdx ?>"><?= htmlspecialchars($bAcc['bank_name']) ?> — <?= htmlspecialchars($bAcc['account_title']) ?> (<?= htmlspecialchars($bAcc['account_number']) ?>)</option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php endif; ?>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Bank Name</label>
+                    <input type="text" name="bank_name" id="fBankName" value="Meezan Bank Ltd">
+                </div>
+                <div class="form-group">
+                    <label>Branch</label>
+                    <input type="text" name="bank_branch" id="fBankBranch" value="Sector F-11 Branch, Islamabad">
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Account Name / Title</label>
+                    <input type="text" name="account_name" id="fAccountName" value="Graphica Fix">
+                </div>
+                <div class="form-group">
+                    <label>Account Number / IBAN</label>
+                    <input type="text" name="account_number" id="fAccountNumber" value="PK09MEZN000810011299029">
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>SWIFT / BIC Code</label>
+                    <input type="text" name="swift_code" id="fSwiftCode" value="MEZNPKKA">
+                </div>
+                <div class="form-group">
+                    <label>Accepted Payment Methods</label>
+                    <input type="text" name="payment_methods" id="fPaymentMethods" value="Bank Transfer, JazzCash, Safepay">
+                </div>
             </div>
 
             <!-- Terms & Conditions -->
@@ -794,6 +861,15 @@ if (calcPrefillRaw) {
 
 recalc();
 showTab('cli');
+
+const savedBanks = <?php echo json_encode($savedBankAccounts); ?>;
+function fillBankDetails(idx) {
+    if (idx === '' || !savedBanks[idx]) return;
+    const b = savedBanks[idx];
+    if (b.bank_name) document.getElementById('fBankName').value = b.bank_name;
+    if (b.account_title) document.getElementById('fAccountName').value = b.account_title;
+    if (b.account_number) document.getElementById('fAccountNumber').value = b.account_number;
+}
 
 document.getElementById('fCurrency')?.addEventListener('change', recalc);
 
