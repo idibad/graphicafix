@@ -13,7 +13,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 // Fetch current user role
-$username = $_SESSION['username'];
+$username = $_SESSION['username'] ?? '';
 $user_stmt = $conn->prepare("SELECT role FROM users WHERE username = ?");
 $user_stmt->bind_param("s", $username);
 $user_stmt->execute();
@@ -32,7 +32,7 @@ if (!$id) {
 }
 
 // ── Handle POST ───────────────────────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $client_id       = intval($_POST['client_id']      ?? 0) ?: null;
     $client_name     = trim($_POST['client_name'] ?? '');
 

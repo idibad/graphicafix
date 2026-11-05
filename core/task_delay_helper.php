@@ -570,9 +570,11 @@ function exemptTaskDelayPenalty($conn, $task_id, $admin_id, $admin_notes = '') {
  * Checks whether the user role has administrative/managerial permission to complete tasks.
  * Strictly restricted to Super Admins, Admins, Project Managers (PM), and Managers.
  */
-function canUserCompleteTask($role) {
-    $clean_role = strtolower(trim($role ?? ''));
-    return in_array($clean_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager']);
+if (!function_exists('canUserCompleteTask')) {
+    function canUserCompleteTask($role) {
+        $clean_role = strtolower(trim($role ?? ''));
+        return in_array($clean_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager']);
+    }
 }
 
 /**
@@ -580,9 +582,11 @@ function canUserCompleteTask($role) {
  * Strictly restricted to Super Admins, Admins, Project Managers (PM), and Managers.
  * Regular users/staff are NOT allowed to create their own tasks.
  */
-function canUserCreateTask($role) {
-    $clean_role = strtolower(trim($role ?? ''));
-    return in_array($clean_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager']);
+if (!function_exists('canUserCreateTask')) {
+    function canUserCreateTask($role) {
+        $clean_role = strtolower(trim($role ?? ''));
+        return in_array($clean_role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager']);
+    }
 }
 
 /**
