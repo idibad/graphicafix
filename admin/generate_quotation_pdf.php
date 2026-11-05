@@ -365,37 +365,50 @@ td { vertical-align: top; }
     font-size: 9pt;
 }
 
-/* Terms & Legal page */
-.terms-page {
-    page-break-before: always;
+/* Terms & Legal Block */
+.terms-section {
+    margin-top: 15px;
+    page-break-inside: avoid;
+}
+.terms-box {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 10px;
 }
 .terms-text {
-    font-size: 8pt;
+    font-size: 7.5pt;
     color: #444444;
-    line-height: 1.5;
+    line-height: 1.35;
 }
 
-/* Signatures Table */
+/* Signatures Table - Compact & Predictable */
+.signatures-block {
+    margin-top: 14px;
+    page-break-inside: avoid;
+}
 .signatures-table {
     width: 100%;
-    margin-top: 25px;
+    margin-top: 0;
 }
 .sig-box {
-    width: 250px;
+    width: 240px;
 }
 .sig-line {
     border-bottom: 1px solid #333333;
-    height: 40px;
-    margin-bottom: 5px;
+    height: 25px;
+    margin-bottom: 4px;
 }
 .sig-name {
     font-weight: bold;
     color: #024442;
-    font-size: 9.5pt;
+    font-size: 9pt;
 }
 .sig-title {
     color: #666666;
-    font-size: 8pt;
+    font-size: 7.5pt;
+    line-height: 1.3;
 }
 </style>
 </head>
@@ -683,13 +696,14 @@ td { vertical-align: top; }
             </div>
             <?php endif; ?>
 
-            <!-- Signatures block (After pricing & schedule) -->
-            <div style="margin-top: 25px; page-break-inside: avoid;">
+            <?php if (empty($termsText)): ?>
+            <!-- Signatures block (After pricing & schedule ONLY when no terms exist) -->
+            <div class="signatures-block">
                 <table class="signatures-table">
                     <tr>
                         <td width="50%">
                             <div class="sig-box">
-                                <div class="section-title" style="border:none; margin:0; padding-bottom:5px; font-size:10pt;">Graphica Fix</div>
+                                <div style="font-weight:bold; font-size:9.5pt; color:#024442; margin-bottom:4px;">Graphica Fix</div>
                                 <div class="sig-line"></div>
                                 <div class="sig-title">Authorized Signature & Seal</div>
                                 <div class="sig-title">Date: ________________________</div>
@@ -697,7 +711,7 @@ td { vertical-align: top; }
                         </td>
                         <td width="50%" align="right">
                             <div class="sig-box" style="text-align: left; margin-left: auto;">
-                                <div class="section-title" style="border:none; margin:0; padding-bottom:5px; font-size:10pt;">Client</div>
+                                <div style="font-weight:bold; font-size:9.5pt; color:#024442; margin-bottom:4px;">Client</div>
                                 <div class="sig-line"></div>
                                 <div class="sig-name"><?php echo htmlspecialchars($q['client_name']); ?></div>
                                 <div class="sig-title">Authorized Signature & Seal</div>
@@ -707,42 +721,45 @@ td { vertical-align: top; }
                     </tr>
                 </table>
             </div>
-        </div>
+            <?php endif; ?>
 
-        <!-- Trailing Terms & Conditions (if exist) -->
-        <?php if (!empty($termsText)): ?>
-        <div class="terms-page">
-            <div class="section-title">Terms & Conditions</div>
-            <div class="terms-text" style="background:#f9fafb; border:1px solid #e5e7eb; padding:12px; border-radius:6px; margin-bottom:15px;">
-                <?php echo nl2br(htmlspecialchars($termsText)); ?>
-            </div>
+            <?php if (!empty($termsText)): ?>
+            <!-- Terms & Conditions Section with Signatures kept together -->
+            <div class="terms-section">
+                <div class="section-title">Terms & Conditions</div>
+                <div class="terms-box">
+                    <div class="terms-text">
+                        <?php echo nl2br(htmlspecialchars($termsText)); ?>
+                    </div>
+                </div>
 
-            <!-- Signatures block (At the end of Terms & Conditions) -->
-            <div style="margin-top: 25px; page-break-inside: avoid;">
-                <table class="signatures-table">
-                    <tr>
-                        <td width="50%">
-                            <div class="sig-box">
-                                <div class="section-title" style="border:none; margin:0; padding-bottom:5px; font-size:10pt;">Graphica Fix</div>
-                                <div class="sig-line"></div>
-                                <div class="sig-title">Authorized Signature & Seal</div>
-                                <div class="sig-title">Date: ________________________</div>
-                            </div>
-                        </td>
-                        <td width="50%" align="right">
-                            <div class="sig-box" style="text-align: left; margin-left: auto;">
-                                <div class="section-title" style="border:none; margin:0; padding-bottom:5px; font-size:10pt;">Client Acceptance</div>
-                                <div class="sig-line"></div>
-                                <div class="sig-name"><?php echo htmlspecialchars($q['client_name']); ?></div>
-                                <div class="sig-title">Authorized Signature & Seal</div>
-                                <div class="sig-title">Date: ________________________</div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
+                <!-- Signatures block (Concludes the quotation at the end of terms) -->
+                <div class="signatures-block">
+                    <table class="signatures-table">
+                        <tr>
+                            <td width="50%">
+                                <div class="sig-box">
+                                    <div style="font-weight:bold; font-size:9.5pt; color:#024442; margin-bottom:4px;">Graphica Fix</div>
+                                    <div class="sig-line"></div>
+                                    <div class="sig-title">Authorized Signature & Seal</div>
+                                    <div class="sig-title">Date: ________________________</div>
+                                </div>
+                            </td>
+                            <td width="50%" align="right">
+                                <div class="sig-box" style="text-align: left; margin-left: auto;">
+                                    <div style="font-weight:bold; font-size:9.5pt; color:#024442; margin-bottom:4px;">Client Acceptance</div>
+                                    <div class="sig-line"></div>
+                                    <div class="sig-name"><?php echo htmlspecialchars($q['client_name']); ?></div>
+                                    <div class="sig-title">Authorized Signature & Seal</div>
+                                    <div class="sig-title">Date: ________________________</div>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
             </div>
+            <?php endif; ?>
         </div>
-        <?php endif; ?>
 
     </div>
 
