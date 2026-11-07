@@ -65,59 +65,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (strlen($in_time) === 5) $in_time .= ':00';
             if (strlen($out_time) === 5) $out_time .= ':00';
 
-            // Timing Deductions Logic
-            $daily_wage  = round($base_salary / 30, 2);
-            $hourly_wage = round($daily_wage / 8, 2);
-
-            $grace_limit = ($gender === 'Female') ? '09:30:00' : '09:10:00';
-            $late_deduction = 0.00;
-            $late_desc = null;
-
-            if ($in_time > $grace_limit) {
-                $late_seconds = max(0, strtotime("2000-01-01 $in_time") - strtotime("2000-01-01 09:00:00"));
-                $late_mins = round($late_seconds / 60);
-                $late_deduction = max(100.00, round(($late_mins / 60) * $hourly_wage, 2));
-                $late_desc = "Late arrival penalty: Checked in at " . date('h:i A', strtotime($in_time)) . " ({$late_mins} mins late)";
-            }
-
-            $shortfall_deduction = 0.00;
-            $shortfall_desc = null;
-            $worked_seconds = strtotime("2000-01-01 $out_time") - strtotime("2000-01-01 $in_time");
-            $hours_worked = max(0, round($worked_seconds / 3600, 2));
-
-            if ($hours_worked < 4.0) {
-                $shortfall_deduction = round($daily_wage * 0.5, 2);
-                $shortfall_desc = "Half-day attendance deduction: Worked {$hours_worked} hrs (< 4 hrs standard)";
-            } elseif ($hours_worked < 8.0) {
-                $shortfall_hrs = round(8.0 - $hours_worked, 2);
-                $shortfall_deduction = round($shortfall_hrs * $hourly_wage, 2);
-                $shortfall_desc = "Short hours deduction: Worked {$hours_worked} hrs ({$shortfall_hrs} hrs shortfall)";
-            }
-
+            // Remove previous auto timing deductions for this user & month if incurred on day 1 to avoid bogus penalties
             $date_record = $filter_month . '-01';
+            $conn->query("DELETE FROM salary_deductions WHERE user_id = {$user_id} AND salary_month = '{$filter_month}' AND (deduction_type LIKE 'Late Arrival Penalty%' OR deduction_type LIKE 'Short Hours%' OR deduction_type LIKE 'Half-day%') AND date_incurred = '{$date_record}'");
 
-            // Clear previous automatic timing deductions for this user & month to avoid duplication
-            $conn->query("DELETE FROM salary_deductions WHERE user_id = {$user_id} AND salary_month = '{$filter_month}' AND (deduction_type LIKE 'Late Arrival Penalty%' OR deduction_type LIKE 'Short Hours%' OR deduction_type LIKE 'Half-day%')");
-
-            if ($late_deduction > 0 && $late_desc) {
-                $ins_late = $conn->prepare("INSERT INTO salary_deductions (user_id, salary_month, deduction_type, amount, description, date_incurred, status) VALUES (?, ?, 'Late Arrival Penalty', ?, ?, ?, 'applied')");
-                if ($ins_late) {
-                    $ins_late->bind_param("isdss", $user_id, $filter_month, $late_deduction, $late_desc, $date_record);
-                    $ins_late->execute();
-                    $ins_late->close();
-                }
-            }
-
-            if ($shortfall_deduction > 0 && $shortfall_desc) {
-                $ins_short = $conn->prepare("INSERT INTO salary_deductions (user_id, salary_month, deduction_type, amount, description, date_incurred, status) VALUES (?, ?, 'Short Hours / Early Exit', ?, ?, ?, 'applied')");
-                if ($ins_short) {
-                    $ins_short->bind_param("isdss", $user_id, $filter_month, $shortfall_deduction, $shortfall_desc, $date_record);
-                    $ins_short->execute();
-                    $ins_short->close();
-                }
-            }
-
-            // Sum all itemized deductions for this user & month
+            // Sum all genuine itemized deductions for this user & month (attendance infractions & manual deductions)
             $stmt_ded = $conn->prepare("SELECT IFNULL(SUM(amount), 0) as total_ded FROM salary_deductions WHERE user_id = ? AND salary_month = ? AND status IN ('applied', 'disputed')");
             $total_deductions = 0.00;
             if ($stmt_ded) {
@@ -138,10 +90,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $amount_paid = max(0.00, min($net_salary, $amount_paid));
             }
 
-            // Update user profile fields in users table
-            $stmt_u = $conn->prepare("UPDATE users SET base_salary = ?, allowances = ?, department = ?, job_title = ?, employee_id = ? WHERE user_id = ?");
+            // Update user profile fields in users table (including shift timings)
+            $stmt_u = $conn->prepare("UPDATE users SET base_salary = ?, allowances = ?, department = ?, job_title = ?, employee_id = ?, in_time = ?, out_time = ? WHERE user_id = ?");
             if ($stmt_u) {
-                $stmt_u->bind_param("ddsssi", $base_salary, $allowances, $department, $job_title, $employee_id, $user_id);
+                $stmt_u->bind_param("ddsssssi", $base_salary, $allowances, $department, $job_title, $employee_id, $in_time, $out_time, $user_id);
                 $stmt_u->execute();
                 $stmt_u->close();
             }
@@ -229,58 +181,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (strlen($in_time) === 5) $in_time .= ':00';
             if (strlen($out_time) === 5) $out_time .= ':00';
 
-            $daily_wage  = round($base_salary / 30, 2);
-            $hourly_wage = round($daily_wage / 8, 2);
-
-            $grace_limit = ($gender === 'Female') ? '09:30:00' : '09:10:00';
-            $late_deduction = 0.00;
-            $late_desc = null;
-
-            if ($in_time > $grace_limit) {
-                $late_seconds = max(0, strtotime("2000-01-01 $in_time") - strtotime("2000-01-01 09:00:00"));
-                $late_mins = round($late_seconds / 60);
-                $late_deduction = max(100.00, round(($late_mins / 60) * $hourly_wage, 2));
-                $late_desc = "Late arrival penalty: Checked in at " . date('h:i A', strtotime($in_time)) . " ({$late_mins} mins late)";
-            }
-
-            $shortfall_deduction = 0.00;
-            $shortfall_desc = null;
-            $worked_seconds = strtotime("2000-01-01 $out_time") - strtotime("2000-01-01 $in_time");
-            $hours_worked = max(0, round($worked_seconds / 3600, 2));
-
-            if ($hours_worked < 4.0) {
-                $shortfall_deduction = round($daily_wage * 0.5, 2);
-                $shortfall_desc = "Half-day attendance deduction: Worked {$hours_worked} hrs (< 4 hrs standard)";
-            } elseif ($hours_worked < 8.0) {
-                $shortfall_hrs = round(8.0 - $hours_worked, 2);
-                $shortfall_deduction = round($shortfall_hrs * $hourly_wage, 2);
-                $shortfall_desc = "Short hours deduction: Worked {$hours_worked} hrs ({$shortfall_hrs} hrs shortfall)";
-            }
-
-            // Remove previous auto timing deductions for this month so they don't duplicate
-            $conn->query("DELETE FROM salary_deductions WHERE user_id = {$user_id} AND salary_month = '{$filter_month}' AND (deduction_type LIKE 'Late Arrival Penalty%' OR deduction_type LIKE 'Short Hours%' OR deduction_type LIKE 'Half-day%')");
-
+            // Remove previous auto timing deductions for this user & month if incurred on day 1 to avoid bogus penalties
             $date_record = $filter_month . '-01';
-            if ($late_deduction > 0 && $late_desc) {
-                $ins_late = $conn->prepare("INSERT INTO salary_deductions (user_id, salary_month, deduction_type, amount, description, date_incurred, status) VALUES (?, ?, 'Late Arrival Penalty', ?, ?, ?, 'applied')");
-                if ($ins_late) {
-                    $ins_late->bind_param("isdss", $user_id, $filter_month, $late_deduction, $late_desc, $date_record);
-                    $ins_late->execute();
-                    $ins_late->close();
-                }
-            }
-            if ($shortfall_deduction > 0 && $shortfall_desc) {
-                $ins_short = $conn->prepare("INSERT INTO salary_deductions (user_id, salary_month, deduction_type, amount, description, date_incurred, status) VALUES (?, ?, 'Short Hours / Early Exit', ?, ?, ?, 'applied')");
-                if ($ins_short) {
-                    $ins_short->bind_param("isdss", $user_id, $filter_month, $shortfall_deduction, $shortfall_desc, $date_record);
-                    $ins_short->execute();
-                    $ins_short->close();
-                }
-            }
+            $conn->query("DELETE FROM salary_deductions WHERE user_id = {$user_id} AND salary_month = '{$filter_month}' AND (deduction_type LIKE 'Late Arrival Penalty%' OR deduction_type LIKE 'Short Hours%' OR deduction_type LIKE 'Half-day%') AND date_incurred = '{$date_record}'");
 
-            $stmt_u = $conn->prepare("UPDATE users SET base_salary = ?, allowances = ?, department = ?, job_title = ?, employee_id = ? WHERE user_id = ?");
+            $stmt_u = $conn->prepare("UPDATE users SET base_salary = ?, allowances = ?, department = ?, job_title = ?, employee_id = ?, in_time = ?, out_time = ? WHERE user_id = ?");
             if ($stmt_u) {
-                $stmt_u->bind_param("ddsssi", $base_salary, $allowances, $department, $job_title, $employee_id, $user_id);
+                $stmt_u->bind_param("ddsssssi", $base_salary, $allowances, $department, $job_title, $employee_id, $in_time, $out_time, $user_id);
                 $stmt_u->execute();
                 $stmt_u->close();
             }
@@ -443,7 +350,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ── Fetch Active Staff Users list (strictly active staff, excluding student & client roles) ─────
 $active_staff_users = [];
 $u_all = $conn->query("
-    SELECT user_id, name, username, employee_id, department, job_title, role, gender, base_salary, allowances 
+    SELECT user_id, name, username, employee_id, department, job_title, role, gender, base_salary, allowances, work_mode, in_time, out_time 
     FROM users 
     WHERE status = 'active' AND role NOT IN ('client', 'client_sub', 'student') 
     ORDER BY name ASC
@@ -451,6 +358,9 @@ $u_all = $conn->query("
 if ($u_all) {
     while ($urow = $u_all->fetch_assoc()) {
         $urow['gender']      = !empty($urow['gender']) ? ucfirst(strtolower(trim($urow['gender']))) : 'Male';
+        $urow['work_mode']   = (!empty($urow['work_mode']) && strtolower(trim($urow['work_mode'])) === 'onsite') ? 'onsite' : 'remote';
+        $urow['in_time']     = !empty($urow['in_time']) ? substr($urow['in_time'], 0, 5) : '09:00';
+        $urow['out_time']    = !empty($urow['out_time']) ? substr($urow['out_time'], 0, 5) : '18:00';
         $urow['base_salary'] = floatval($urow['base_salary'] ?: 50000);
         $urow['allowances']  = floatval($urow['allowances'] ?: 0);
         $active_staff_users[] = $urow;
@@ -460,7 +370,7 @@ $users_for_deduction = $active_staff_users;
 
 // ── Fetch Salaries for Filter Month ───────────────────────────────────────────
 $stmt_list = $conn->prepare("
-    SELECT s.*, u.name as user_name, u.username, u.email, u.gender, u.role
+    SELECT s.*, u.name as user_name, u.username, u.email, u.gender, u.role, COALESCE(u.work_mode, 'remote') as work_mode
     FROM salaries s
     INNER JOIN users u ON s.user_id = u.user_id
     WHERE s.salary_month = ?
@@ -1668,6 +1578,7 @@ html, body {
             <input type="hidden" name="department" id="add_department">
             <input type="hidden" name="job_title" id="add_job_title">
             <input type="hidden" name="gender" id="add_gender" value="Male">
+            <input type="hidden" name="work_mode" id="add_work_mode" value="remote">
 
             <div class="modal-body">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
@@ -1695,7 +1606,10 @@ html, body {
                                         data-title="<?= htmlspecialchars($u['job_title'] ?: 'Staff') ?>"
                                         data-base="<?= floatval($u['base_salary'] ?: 50000) ?>"
                                         data-allow="<?= floatval($u['allowances'] ?: 0) ?>"
-                                        data-gender="<?= htmlspecialchars($u['gender'] ?: 'Male') ?>">
+                                        data-gender="<?= htmlspecialchars($u['gender'] ?: 'Male') ?>"
+                                        data-work-mode="<?= htmlspecialchars($u['work_mode'] ?: 'remote') ?>"
+                                        data-in-time="<?= htmlspecialchars($u['in_time'] ?: '09:00') ?>"
+                                        data-out-time="<?= htmlspecialchars($u['out_time'] ?: '18:00') ?>">
                                         <?= htmlspecialchars($u['name']) ?> (<?= htmlspecialchars($u['employee_id'] ?: 'EMP-' . str_pad($u['user_id'], 3, '0', STR_PAD_LEFT)) ?> · <?= htmlspecialchars($u['job_title'] ?: 'Staff') ?>)
                                     </option>
                                 <?php endforeach; ?>
@@ -1713,6 +1627,9 @@ html, body {
                                         data-base="<?= floatval($u['base_salary'] ?: 50000) ?>"
                                         data-allow="<?= floatval($u['allowances'] ?: 0) ?>"
                                         data-gender="<?= htmlspecialchars($u['gender'] ?: 'Male') ?>"
+                                        data-work-mode="<?= htmlspecialchars($u['work_mode'] ?: 'remote') ?>"
+                                        data-in-time="<?= htmlspecialchars($u['in_time'] ?: '09:00') ?>"
+                                        data-out-time="<?= htmlspecialchars($u['out_time'] ?: '18:00') ?>"
                                         data-registered="1">
                                         <?= htmlspecialchars($u['name']) ?> (<?= htmlspecialchars($u['employee_id'] ?: 'EMP-' . str_pad($u['user_id'], 3, '0', STR_PAD_LEFT)) ?>) [Already in Register]
                                     </option>
@@ -1739,7 +1656,7 @@ html, body {
                             <label>In Time (Check-In) <span style="color:#ef4444;">*</span></label>
                             <input type="time" name="in_time" id="add_in_time" value="09:00" required onchange="recalculateAddSalary()">
                             <small id="add_in_time_hint" style="font-size: 10px; color: #64748b; display: block; margin-top: 3px;">
-                                Official Start: 09:00 AM (Male Grace: 10m, Female Grace: 30m)
+                                Remote: 10m grace · On-site Female: 30m grace · On-site Male: 10m grace
                             </small>
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
@@ -2049,8 +1966,28 @@ function timeToSeconds(t) {
     return (Number(parts[0]) || 0) * 3600 + (Number(parts[1]) || 0) * 60 + (Number(parts[2]) || 0);
 }
 
+function formatTimeAmPm(t) {
+    if (!t) return '--:--';
+    const parts = t.split(':');
+    let h = parseInt(parts[0], 10);
+    const m = parts[1] || '00';
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
+    return (h < 10 ? '0' + h : h) + ':' + m + ' ' + ampm;
+}
+
+function addMinutesToTime(timeStr, mins) {
+    const parts = (timeStr || '09:00:00').split(':');
+    let totalMins = (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0) + mins;
+    totalMins = (totalMins % 1440 + 1440) % 1440;
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    return (h < 10 ? '0' + h : h) + ':' + (m < 10 ? '0' + m : m) + ':00';
+}
+
 // ── Unified Attendance, Shift & Deduction Calculator ─────────────────────────
-function calculateAttendanceAndDeduction(baseSalary, allowances, inTimeStr, outTimeStr, gender, existingDeductions, tax, advance, arrears) {
+function calculateAttendanceAndDeduction(baseSalary, allowances, inTimeStr, outTimeStr, gender, workMode, existingDeductions, tax, advance, arrears) {
     baseSalary = Number(baseSalary) || 0;
     allowances = Number(allowances) || 0;
     existingDeductions = Number(existingDeductions) || 0;
@@ -2062,54 +1999,21 @@ function calculateAttendanceAndDeduction(baseSalary, allowances, inTimeStr, outT
     const hourlyWage = Math.round((dailyWage / 8) * 100) / 100;
 
     const isFemale = (String(gender).toLowerCase() === 'female');
-    const graceLimit = isFemale ? '09:30:00' : '09:10:00';
+    const isRemote = (String(workMode).toLowerCase() !== 'onsite');
+    const graceMins = isRemote ? 10 : (isFemale ? 30 : 10);
+    const modeDesc = isRemote ? 'Remote' : (isFemale ? 'On-site Female' : 'On-site Male');
 
     let inTimeFull  = inTimeStr ? (inTimeStr.length === 5 ? inTimeStr + ':00' : inTimeStr) : '09:00:00';
     let outTimeFull = outTimeStr ? (outTimeStr.length === 5 ? outTimeStr + ':00' : outTimeStr) : '18:00:00';
 
-    let lateDeduction = 0;
-    let lateStatus = 'On Time';
-    let isLate = false;
-    let lateMins = 0;
-
-    if (inTimeFull <= '09:00:00') {
-        lateStatus = 'On Time (Check-in before 09:00 AM)';
-        isLate = false;
-    } else if (inTimeFull <= graceLimit) {
-        lateStatus = `Within Grace Period (Cutoff: ${isFemale ? '09:30' : '09:10'} AM for ${isFemale ? 'Female' : 'Male'})`;
-        isLate = false;
-    } else {
-        isLate = true;
-        const inSecs = timeToSeconds(inTimeFull);
-        const baseSecs = timeToSeconds('09:00:00');
-        lateMins = Math.max(0, Math.round((inSecs - baseSecs) / 60));
-        lateDeduction = Math.max(100, Math.round((lateMins / 60) * hourlyWage));
-        lateStatus = `Late Arrival: ${lateMins} mins late (Past ${isFemale ? '09:30' : '09:10'} AM) → Penalty: -PKR ${lateDeduction.toLocaleString()}`;
-    }
+    const graceCutoffFull = addMinutesToTime(inTimeFull, graceMins);
 
     const inSec = timeToSeconds(inTimeFull);
     const outSec = timeToSeconds(outTimeFull);
     let workedHours = Math.max(0, Math.round(((outSec - inSec) / 3600) * 100) / 100);
 
-    let shortfallDeduction = 0;
-    let hoursStatus = 'Full Shift Completed (≥ 8 hrs)';
-    let isShortfall = false;
-
-    if (workedHours < 4.0) {
-        isShortfall = true;
-        shortfallDeduction = Math.round(dailyWage * 0.5);
-        hoursStatus = `Half-Day Attendance (< 4 hrs worked: ${workedHours} hrs) → -PKR ${shortfallDeduction.toLocaleString()}`;
-    } else if (workedHours < 8.0) {
-        isShortfall = true;
-        const shortHrs = Math.round((8.0 - workedHours) * 100) / 100;
-        shortfallDeduction = Math.round(shortHrs * hourlyWage);
-        hoursStatus = `Short Hours (${workedHours} hrs worked, shortfall ${shortHrs} hrs) → -PKR ${shortfallDeduction.toLocaleString()}`;
-    } else {
-        hoursStatus = `Full Shift Completed (${workedHours} hrs worked)`;
-    }
-
-    const timingDeductions = lateDeduction + shortfallDeduction;
-    const totalDeductions  = existingDeductions + timingDeductions;
+    const timingDeductions = 0;
+    const totalDeductions  = existingDeductions;
     const grossPay         = baseSalary + allowances;
     const netSalary        = Math.max(0, grossPay - tax - advance - totalDeductions + arrears);
 
@@ -2117,12 +2021,11 @@ function calculateAttendanceAndDeduction(baseSalary, allowances, inTimeStr, outT
         dailyWage,
         hourlyWage,
         workedHours,
-        isLate,
-        lateStatus,
-        lateDeduction,
-        isShortfall,
-        hoursStatus,
-        shortfallDeduction,
+        inTimeFormatted: formatTimeAmPm(inTimeFull),
+        outTimeFormatted: formatTimeAmPm(outTimeFull),
+        graceCutoffFormatted: formatTimeAmPm(graceCutoffFull),
+        graceMins,
+        modeDesc,
         timingDeductions,
         existingDeductions,
         totalDeductions,
@@ -2138,6 +2041,7 @@ function openAddSalaryModal() {
 
     document.getElementById('add_user_id').value = '';
     document.getElementById('add_user_meta_badge').style.display = 'none';
+    document.getElementById('add_work_mode').value = 'remote';
     document.getElementById('add_in_time').value = '09:00';
     document.getElementById('add_out_time').value = '18:00';
     document.getElementById('add_base_salary').value = '50000';
@@ -2164,25 +2068,34 @@ function onSelectUserForSalary() {
         return;
     }
 
-    const name   = opt.dataset.name || '';
-    const empId  = opt.dataset.empId || '';
-    const dept   = opt.dataset.dept || 'General';
-    const title  = opt.dataset.title || 'Staff';
-    const base   = Number(opt.dataset.base) || 50000;
-    const allow  = Number(opt.dataset.allow) || 0;
-    const gender = opt.dataset.gender || 'Male';
-    const isReg  = opt.dataset.registered === '1';
+    const name     = opt.dataset.name || '';
+    const empId    = opt.dataset.empId || '';
+    const dept     = opt.dataset.dept || 'General';
+    const title    = opt.dataset.title || 'Staff';
+    const base     = Number(opt.dataset.base) || 50000;
+    const allow    = Number(opt.dataset.allow) || 0;
+    const gender   = opt.dataset.gender || 'Male';
+    const workMode = opt.dataset.workMode || 'remote';
+    const inTime   = opt.dataset.inTime || '09:00';
+    const outTime  = opt.dataset.outTime || '18:00';
+    const isReg    = opt.dataset.registered === '1';
 
     document.getElementById('add_employee_id').value = empId;
     document.getElementById('add_department').value  = dept;
     document.getElementById('add_job_title').value   = title;
     document.getElementById('add_gender').value      = gender;
+    document.getElementById('add_work_mode').value   = workMode;
+    document.getElementById('add_in_time').value     = inTime;
+    document.getElementById('add_out_time').value    = outTime;
     document.getElementById('add_base_salary').value = base;
     document.getElementById('add_allowances').value  = allow;
 
+    const graceMins = (workMode === 'remote') ? 10 : (gender === 'Female' ? 30 : 10);
+    const modeDesc  = (workMode === 'remote') ? 'Remote' : (gender === 'Female' ? 'On-site Female' : 'On-site Male');
+
     const badge = document.getElementById('add_user_meta_badge');
     const badgeText = document.getElementById('add_meta_text');
-    badgeText.innerHTML = `<strong>${escapeHtml(name)}</strong> (${empId}) · ${escapeHtml(title)} · ${escapeHtml(dept)} · <span style="text-decoration:underline;">${gender} (${gender === 'Female' ? '30m' : '10m'} grace)</span>` + (isReg ? ` <span style="color:#b45309; font-weight:700;">[Already in this month's register - will update]</span>` : '');
+    badgeText.innerHTML = `<strong>${escapeHtml(name)}</strong> (${empId}) · ${escapeHtml(title)} · ${escapeHtml(dept)} · <span style="text-decoration:underline;">${modeDesc} (${graceMins}m grace)</span>` + (isReg ? ` <span style="color:#b45309; font-weight:700;">[Already in this month's register - will update]</span>` : '');
     badge.style.display = 'block';
 
     recalculateAddSalary();
@@ -2196,12 +2109,13 @@ function recalculateAddSalary() {
     const inTime = document.getElementById('add_in_time').value || '09:00';
     const outTime = document.getElementById('add_out_time').value || '18:00';
     const gender = document.getElementById('add_gender').value || 'Male';
+    const workMode = document.getElementById('add_work_mode').value || 'remote';
     const tax = Number(document.getElementById('add_tax').value) || 0;
     const advance = Number(document.getElementById('add_advance').value) || 0;
     const arrears = Number(document.getElementById('add_previous_pending').value) || 0;
     const existingDeds = existingDeductionsMap[userId] || 0;
 
-    const calc = calculateAttendanceAndDeduction(base, allow, inTime, outTime, gender, existingDeds, tax, advance, arrears);
+    const calc = calculateAttendanceAndDeduction(base, allow, inTime, outTime, gender, workMode, existingDeds, tax, advance, arrears);
 
     // Update Shift Duration Pill
     const pill = document.getElementById('add_shift_duration_pill');
@@ -2211,27 +2125,23 @@ function recalculateAddSalary() {
         pill.style.color = (calc.workedHours >= 8.0) ? '#0369a1' : (calc.workedHours < 4.0 ? '#991b1b' : '#92400e');
     }
 
-    // Update Alert Box
+    // Update Alert Box with shift timing and grace period rules
     const alertBox = document.getElementById('add_timing_calc_alert');
     if (alertBox) {
-        if (calc.isLate || calc.isShortfall) {
-            alertBox.style.display = 'block';
-            alertBox.style.background = '#fef2f2';
-            alertBox.style.border = '1px solid #fee2e2';
-            alertBox.style.color = '#991b1b';
-            alertBox.innerHTML = `
-                <div><i class="fas fa-exclamation-triangle" style="color:#dc2626;"></i> <strong>Attendance Impact:</strong></div>
-                ${calc.isLate ? `<div style="margin-top:2px; font-weight:600;">• ${escapeHtml(calc.lateStatus)}</div>` : ''}
-                ${calc.isShortfall ? `<div style="margin-top:2px; font-weight:600;">• ${escapeHtml(calc.hoursStatus)}</div>` : ''}
-                <div style="margin-top:4px; font-weight:700; color:#dc2626;">Total Timing Deductions: -PKR ${calc.timingDeductions.toLocaleString()}</div>
-            `;
-        } else {
-            alertBox.style.display = 'block';
-            alertBox.style.background = '#f0fdf4';
-            alertBox.style.border = '1px solid #bbf7d0';
-            alertBox.style.color = '#166534';
-            alertBox.innerHTML = `<i class="fas fa-check-circle" style="color:#16a34a;"></i> <strong>Perfect Attendance:</strong> ${escapeHtml(calc.lateStatus)} · ${escapeHtml(calc.hoursStatus)} (0 timing deductions).`;
-        }
+        alertBox.style.display = 'block';
+        alertBox.style.background = '#f0fdf4';
+        alertBox.style.border = '1px solid #bbf7d0';
+        alertBox.style.color = '#166534';
+        alertBox.innerHTML = `
+            <div style="display:flex; align-items:center; gap:6px;">
+                <i class="fas fa-check-circle" style="color:#16a34a; font-size:13px;"></i>
+                <div>
+                    <strong>Shift Configured:</strong> ${calc.inTimeFormatted} – ${calc.outTimeFormatted} (${calc.workedHours} hrs) · 
+                    <strong>Grace Cutoff:</strong> ${calc.graceCutoffFormatted} (${calc.graceMins}m grace for ${calc.modeDesc})<br>
+                    <span style="font-size:10.5px; color:#475569;">Policy: Flat PKR 100/late arrival past cutoff & Flat PKR 100/absence (No hourly wage deductions).</span>
+                </div>
+            </div>
+        `;
     }
 
     // Update Summary Card
@@ -2251,8 +2161,7 @@ function recalculateAddSalary() {
     if (detailNotes) {
         detailNotes.innerHTML = `
             Shift: <strong>${calc.workedHours} hrs</strong> · 
-            Timing Deductions: <strong>-PKR ${calc.timingDeductions.toLocaleString()}</strong> · 
-            Itemized Month Penalties: <strong>-PKR ${calc.existingDeductions.toLocaleString()}</strong>
+            Month Penalties/Deductions: <strong>-PKR ${calc.existingDeductions.toLocaleString()}</strong>
             ${tax > 0 ? ` · Tax: -PKR ${tax.toLocaleString()}` : ''}
             ${advance > 0 ? ` · Advance: -PKR ${advance.toLocaleString()}` : ''}
             ${arrears > 0 ? ` · Arrears: +PKR ${arrears.toLocaleString()}` : ''}
@@ -2298,6 +2207,7 @@ function openEditSalaryModal(s) {
     document.getElementById('edit_amount_paid').value = s.amount_paid || 0;
 
     window.currentEditingGender = s.gender || 'Male';
+    window.currentEditingWorkMode = s.work_mode || 'remote';
     window.currentEditingExistingDeductions = existingDeductionsMap[s.user_id] || 0;
 
     recalculateEditSalary();
@@ -2311,12 +2221,13 @@ function recalculateEditSalary() {
     const inTime = document.getElementById('edit_in_time').value || '09:00';
     const outTime = document.getElementById('edit_out_time').value || '18:00';
     const gender = window.currentEditingGender || 'Male';
+    const workMode = window.currentEditingWorkMode || 'remote';
     const tax = Number(document.getElementById('edit_tax').value) || 0;
     const advance = Number(document.getElementById('edit_advance').value) || 0;
     const arrears = Number(document.getElementById('edit_previous_pending').value) || 0;
     const existingDeds = window.currentEditingExistingDeductions || 0;
 
-    const calc = calculateAttendanceAndDeduction(base, allow, inTime, outTime, gender, existingDeds, tax, advance, arrears);
+    const calc = calculateAttendanceAndDeduction(base, allow, inTime, outTime, gender, workMode, existingDeds, tax, advance, arrears);
 
     window.currentEditingNetSalary = calc.netSalary;
 
@@ -2329,24 +2240,20 @@ function recalculateEditSalary() {
 
     const alertBox = document.getElementById('edit_timing_calc_alert');
     if (alertBox) {
-        if (calc.isLate || calc.isShortfall) {
-            alertBox.style.display = 'block';
-            alertBox.style.background = '#fef2f2';
-            alertBox.style.border = '1px solid #fee2e2';
-            alertBox.style.color = '#991b1b';
-            alertBox.innerHTML = `
-                <div><i class="fas fa-exclamation-triangle" style="color:#dc2626;"></i> <strong>Attendance Impact:</strong></div>
-                ${calc.isLate ? `<div>• ${escapeHtml(calc.lateStatus)}</div>` : ''}
-                ${calc.isShortfall ? `<div>• ${escapeHtml(calc.hoursStatus)}</div>` : ''}
-                <div style="margin-top:2px; font-weight:700; color:#dc2626;">Timing Deductions: -PKR ${calc.timingDeductions.toLocaleString()} (Total Deductions: -PKR ${calc.totalDeductions.toLocaleString()})</div>
-            `;
-        } else {
-            alertBox.style.display = 'block';
-            alertBox.style.background = '#f0fdf4';
-            alertBox.style.border = '1px solid #bbf7d0';
-            alertBox.style.color = '#166534';
-            alertBox.innerHTML = `<i class="fas fa-check-circle" style="color:#16a34a;"></i> <strong>Perfect Attendance:</strong> ${escapeHtml(calc.lateStatus)} · ${escapeHtml(calc.hoursStatus)} (0 timing deductions).`;
-        }
+        alertBox.style.display = 'block';
+        alertBox.style.background = '#f0fdf4';
+        alertBox.style.border = '1px solid #bbf7d0';
+        alertBox.style.color = '#166534';
+        alertBox.innerHTML = `
+            <div style="display:flex; align-items:center; gap:6px;">
+                <i class="fas fa-check-circle" style="color:#16a34a; font-size:13px;"></i>
+                <div>
+                    <strong>Shift Configured:</strong> ${calc.inTimeFormatted} – ${calc.outTimeFormatted} (${calc.workedHours} hrs) · 
+                    <strong>Grace Cutoff:</strong> ${calc.graceCutoffFormatted} (${calc.graceMins}m grace for ${calc.modeDesc})<br>
+                    <span style="font-size:10.5px; color:#475569;">Policy: Flat PKR 100/late arrival past cutoff & Flat PKR 100/absence (No hourly wage deductions).</span>
+                </div>
+            </div>
+        `;
     }
 
     calculateBalanceHint();

@@ -100,6 +100,9 @@ function getUserAttendanceMeta($conn, $user_id) {
         'employee_id' => 'EMP-' . str_pad($user_id, 3, '0', STR_PAD_LEFT),
         'department'  => 'General',
         'job_title'   => 'Staff',
+        'work_mode'   => 'remote',
+        'in_time'     => '09:00:00',
+        'out_time'    => '18:00:00',
         'base_salary' => 50000.00,
         'allowances'  => 0.00
     ];
@@ -107,7 +110,7 @@ function getUserAttendanceMeta($conn, $user_id) {
     if (!$conn || empty($user_id)) return $meta;
 
     try {
-        $stmt = $conn->prepare("SELECT user_id, name, username, role, gender, work_mode, employee_id, department, job_title, base_salary, allowances FROM users WHERE user_id = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT user_id, name, username, role, gender, work_mode, in_time, out_time, employee_id, department, job_title, base_salary, allowances FROM users WHERE user_id = ? LIMIT 1");
         if ($stmt) {
             $stmt->bind_param("i", $user_id);
             $stmt->execute();
@@ -118,6 +121,8 @@ function getUserAttendanceMeta($conn, $user_id) {
                 $meta['role']        = $row['role'] ?? 'user';
                 $meta['gender']      = !empty($row['gender']) ? ucfirst(strtolower(trim($row['gender']))) : 'Male';
                 $meta['work_mode']   = (!empty($row['work_mode']) && strtolower(trim($row['work_mode'])) === 'onsite') ? 'onsite' : 'remote';
+                $meta['in_time']     = !empty($row['in_time']) ? $row['in_time'] : '09:00:00';
+                $meta['out_time']    = !empty($row['out_time']) ? $row['out_time'] : '18:00:00';
                 $meta['employee_id'] = !empty($row['employee_id']) ? $row['employee_id'] : $meta['employee_id'];
                 $meta['department']  = !empty($row['department']) ? $row['department'] : 'General';
                 $meta['job_title']   = !empty($row['job_title']) ? $row['job_title'] : 'Staff';
@@ -377,10 +382,15 @@ function recordDailyCheckIn($conn, $user_id, $lat = null, $lng = null, $accuracy
         // Base official time: 09:00:00 AM
         // Male grace: 10 minutes -> 09:10:00
         // Female grace: 30 minutes -> 09:30:00
-        $base_time = defined('OFFICE_START_TIME') ? OFFICE_START_TIME : ($_ENV['OFFICE_START_TIME'] ?? '09:00:00');
+        $base_time = !empty($user_meta['in_time']) ? $user_meta['in_time'] : (defined('OFFICE_START_TIME') ? OFFICE_START_TIME : ($_ENV['OFFICE_START_TIME'] ?? '09:00:00'));
+        if (strlen($base_time) === 5) $base_time .= ':00';
         $male_grace_mins = intval($_ENV['MALE_GRACE_MINUTES'] ?? 10);
         $female_grace_mins = intval($_ENV['FEMALE_GRACE_MINUTES'] ?? 30);
-        $grace_mins = ($gender === 'Female') ? $female_grace_mins : $male_grace_mins;
+        if ($work_mode === 'remote') {
+            $grace_mins = 10;
+        } else {
+            $grace_mins = ($gender === 'Female') ? 30 : 10;
+        }
         $grace_cutoff = date('H:i:s', strtotime($base_time) + ($grace_mins * 60));
 
         $is_late             = 0;
@@ -425,7 +435,7 @@ function recordDailyCheckIn($conn, $user_id, $lat = null, $lng = null, $accuracy
             $status              = 'late';
             $is_late             = 1;
             $late_penalty        = 100.00;
-            $late_penalty_reason = "Late arrival: Signed in at " . date('h:i A', $seconds_now);
+            $late_penalty_reason = "Late arrival: Signed in at " . date('h:i A', $seconds_now) . " (Grace cutoff was " . date('h:i A', $seconds_cutoff) . ")";
             $late_minutes        = max(0, round(($seconds_now - $seconds_base) / 60));
         }
 
@@ -797,7 +807,7 @@ function grantLeaveOrOverride($conn, $target_user_id, $start_date, $end_date, $a
 
             // Handle Unpaid Leave Deduction
             if (empty($is_paid)) {
-                $ded_amount = ($leave_duration === 'full_day') ? $daily_wage : round($daily_wage / 2, 2);
+                $ded_amount = 100.00; // Flat PKR 100 per absence / unpaid leave
                 $ded_type = 'Unpaid Leave';
                 $ded_desc = "Unpaid {$leave_category} leave on {$cur_date}" . (!empty($reason) ? " ({$reason})" : "");
                 

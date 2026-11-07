@@ -214,7 +214,7 @@ try {
     $stmt_att = false;
     if ($is_admin) {
         $stmt_att = $conn->prepare("
-            SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, COALESCE(u.gender, 'Male') as gender, COALESCE(u.role, 'user') as role, COALESCE(u.work_mode, 'remote') as work_mode
+            SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, COALESCE(u.gender, 'Male') as gender, COALESCE(u.role, 'user') as role, COALESCE(u.work_mode, 'remote') as work_mode, COALESCE(u.in_time, '09:00:00') as in_time
             FROM attendance_records a
             LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
             WHERE a.attendance_date BETWEEN ? AND ?
@@ -223,7 +223,7 @@ try {
         if ($stmt_att) $stmt_att->bind_param("ss", $month_start, $month_end);
     } else {
         $stmt_att = $conn->prepare("
-            SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, COALESCE(u.gender, 'Male') as gender, COALESCE(u.role, 'user') as role, COALESCE(u.work_mode, 'remote') as work_mode
+            SELECT a.*, COALESCE(u.name, '') as name, COALESCE(u.username, '') as username, COALESCE(u.gender, 'Male') as gender, COALESCE(u.role, 'user') as role, COALESCE(u.work_mode, 'remote') as work_mode, COALESCE(u.in_time, '09:00:00') as in_time
             FROM attendance_records a
             LEFT JOIN users u ON CAST(a.user_id AS UNSIGNED) = CAST(u.user_id AS UNSIGNED)
             WHERE a.user_id = ? AND a.attendance_date BETWEEN ? AND ?
@@ -508,7 +508,12 @@ foreach ($final_records as $row) {
         } else {
             // Robust check: Is check_in_time past the grace deadline?
             $user_gender = !empty($row['gender']) ? ucfirst(strtolower(trim($row['gender']))) : 'Male';
-            $grace_limit = ($user_gender === 'Female') ? '09:30:00' : '09:10:00';
+            $user_wm = strtolower(trim($row['work_mode'] ?? 'remote'));
+            $user_in_time = !empty($row['in_time']) ? $row['in_time'] : '09:00:00';
+            if (strlen($user_in_time) === 5) $user_in_time .= ':00';
+
+            $grace_mins = ($user_wm === 'remote') ? 10 : (($user_gender === 'Female') ? 30 : 10);
+            $grace_limit = date('H:i:s', strtotime($user_in_time) + ($grace_mins * 60));
             $is_actually_late = (!empty($row['check_in_time']) && empty($row['is_override']) && $row['check_in_time'] > $grace_limit);
 
             if ($is_actually_late) {
@@ -528,7 +533,7 @@ foreach ($final_records as $row) {
                 $row['filter_cat'] = 'penalized';
                 $stat_penalties += floatval($row['penalty_amount']);
                 $stat_present++;
-            } elseif (!empty($row['is_grace_period']) || (!empty($row['check_in_time']) && empty($row['is_override']) && $row['check_in_time'] > '09:00:00')) {
+            } elseif (!empty($row['is_grace_period']) || (!empty($row['check_in_time']) && empty($row['is_override']) && $row['check_in_time'] > $user_in_time && $row['check_in_time'] <= $grace_limit)) {
                 $row['att_status'] = 'Grace Period';
                 $row['att_class']  = 'grace';
                 $row['filter_cat'] = 'grace';

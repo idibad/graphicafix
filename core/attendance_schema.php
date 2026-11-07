@@ -289,6 +289,8 @@ if (!function_exists('ensure_attendance_schema')) {
                 'department'   => "VARCHAR(100) DEFAULT 'General' AFTER `role`",
                 'job_title'    => "VARCHAR(100) NULL AFTER `department`",
                 'work_mode'    => "VARCHAR(20) NOT NULL DEFAULT 'remote' AFTER `job_title`",
+                'in_time'      => "TIME NULL DEFAULT '09:00:00' AFTER `work_mode`",
+                'out_time'     => "TIME NULL DEFAULT '18:00:00' AFTER `in_time`",
                 'base_salary'  => "DECIMAL(12,2) DEFAULT 50000.00 AFTER `job_title`",
                 'allowances'   => "DECIMAL(12,2) DEFAULT 0.00 AFTER `base_salary`"
             ];
@@ -307,6 +309,7 @@ if (!function_exists('ensure_attendance_schema')) {
                 }
             }
         } catch (Throwable $e) {
+
             error_log("users columns sync: " . $e->getMessage());
         }
     }
