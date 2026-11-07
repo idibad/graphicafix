@@ -803,15 +803,15 @@ $inp = "width:100%;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:10
                     <div>
                         <h5 style="margin-top:0; color:var(--primary); border-bottom:1px solid #eee; padding-bottom:8px;">Lead Details</h5>
                         <label class="form-label mt-2">Full Name <span style="color:#ef4444;">*</span></label>
-                        <input type="text" name="l_name" id="lName" class="form-control mb-2" placeholder="John Doe" required>
+                        <input type="text" name="l_name" id="lName" class="form-control mb-2" placeholder="Full Name" required>
                         
                         <label class="form-label">Company</label>
-                        <input type="text" name="l_company" id="lCompany" class="form-control mb-2" placeholder="Acme Corp">
+                        <input type="text" name="l_company" id="lCompany" class="form-control mb-2" placeholder="Company Name">
                         
                         <label class="form-label">Phone & Email</label>
                         <div style="display:flex; gap:10px; margin-bottom: 8px;">
-                            <input type="tel" name="l_phone" id="lPhone" class="form-control" placeholder="+92 300 1234567">
-                            <input type="email" name="l_email" id="lEmail" class="form-control" placeholder="email@example.com">
+                            <input type="tel" name="l_phone" id="lPhone" class="form-control" placeholder="Phone Number">
+                            <input type="email" name="l_email" id="lEmail" class="form-control" placeholder="Email Address">
                         </div>
 
                         <label class="form-label">Source & Budget</label>
@@ -819,7 +819,7 @@ $inp = "width:100%;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:10
                             <select name="l_source" id="lSource" class="form-control">
                                 <?php foreach ($source_labels as $v=>$lbl): ?><option value="<?php echo $v; ?>"><?php echo $lbl; ?></option><?php endforeach; ?>
                             </select>
-                            <input type="text" name="l_budget" id="lBudget" class="form-control" placeholder="e.g. 50k-100k">
+                            <input type="text" name="l_budget" id="lBudget" class="form-control" placeholder="Budget Range">
                         </div>
 
                         <label class="form-label">Service Interest</label>

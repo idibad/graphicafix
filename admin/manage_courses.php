@@ -848,13 +848,13 @@ function resolvePayment($e) {
                 <div class="info-grid">
                     <div class="form-group">
                         <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:6px;">Course Title <span style="color:#ef4444;">*</span></label>
-                        <input type="text" name="c_title" id="cFTitle" required placeholder="e.g. Complete Brand Design Masterclass"
+                        <input type="text" name="c_title" id="cFTitle" required placeholder="Course Title"
                                style="width:100%;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;background:#f9fbfc;outline:none;box-sizing:border-box;font-family:inherit;">
                     </div>
                     
                     <div class="form-group">
                         <label style="display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:6px;">Thumbnail Image URL</label>
-                        <input type="url" name="c_thumbnail" id="cFThumb" placeholder="https://example.com/image.jpg"
+                        <input type="url" name="c_thumbnail" id="cFThumb" placeholder="Thumbnail Image URL"
                                style="width:100%;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;background:#f9fbfc;outline:none;box-sizing:border-box;font-family:inherit;">
                         
                         <div id="thumbPreview" style="display:none; margin-top:10px;">

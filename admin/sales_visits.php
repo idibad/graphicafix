@@ -167,11 +167,11 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
                     <div class="form-group">
                         <label>Client Name <span style="color:#ef4444;">*</span></label>
-                        <input type="text" name="client_name" id="f_client_name" required placeholder="e.g. John Doe / Muhammad Ali" class="form-control">
+                        <input type="text" name="client_name" id="f_client_name" required placeholder="Client Name" class="form-control">
                     </div>
                     <div class="form-group">
                         <label>Company / Business <span style="color:#ef4444;">*</span></label>
-                        <input type="text" name="company_name" id="f_company_name" required placeholder="e.g. Apex Traders" class="form-control">
+                        <input type="text" name="company_name" id="f_company_name" required placeholder="Company Name" class="form-control">
                     </div>
                 </div>
 
@@ -179,7 +179,7 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
                     <div class="form-group">
                         <label>Phone Number <span style="color:#ef4444;">*</span></label>
-                        <input type="tel" name="phone" id="f_phone" required placeholder="e.g. 03001234567" class="form-control">
+                        <input type="tel" name="phone" id="f_phone" required placeholder="Phone Number" class="form-control">
                     </div>
                     <div class="form-group">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
@@ -188,7 +188,7 @@ $is_admin_user = in_array($role, ['super_admin', 'superadmin', 'admin']);
                                 <i class="fab fa-whatsapp"></i> Same as Phone
                             </button>
                         </div>
-                        <input type="tel" name="whatsapp" id="f_whatsapp" placeholder="e.g. 03001234567" class="form-control">
+                        <input type="tel" name="whatsapp" id="f_whatsapp" placeholder="WhatsApp Number" class="form-control">
                     </div>
                 </div>
 

@@ -298,19 +298,19 @@ include 'dashboard_header.php';
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" style="font-weight:700; font-size:12px; color:#555;">Contact Person <span class="text-danger">*</span></label>
-                            <input type="text" name="contact_person" id="modalContact" class="form-control form-control-sm" required placeholder="e.g. Tariq Mehmood">
+                            <input type="text" name="contact_person" id="modalContact" class="form-control form-control-sm" required placeholder="Contact Person Name">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" style="font-weight:700; font-size:12px; color:#555;">Phone Number <span class="text-danger">*</span></label>
-                            <input type="text" name="phone" id="modalPhone" class="form-control form-control-sm" required placeholder="e.g. 03001234567">
+                            <input type="text" name="phone" id="modalPhone" class="form-control form-control-sm" required placeholder="Phone Number">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" style="font-weight:700; font-size:12px; color:#555;">WhatsApp Number (for POs)</label>
-                            <input type="text" name="whatsapp" id="modalWhatsapp" class="form-control form-control-sm" placeholder="e.g. 923001234567">
+                            <input type="text" name="whatsapp" id="modalWhatsapp" class="form-control form-control-sm" placeholder="WhatsApp Number">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" style="font-weight:700; font-size:12px; color:#555;">Email Address</label>
-                            <input type="email" name="email" id="modalEmail" class="form-control form-control-sm" placeholder="vendor@example.com">
+                            <input type="email" name="email" id="modalEmail" class="form-control form-control-sm" placeholder="Email Address">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" style="font-weight:700; font-size:12px; color:#555;">City</label>

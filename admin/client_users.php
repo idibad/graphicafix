@@ -174,7 +174,7 @@ $sub_users = $stmt_users->get_result();
             <input type="hidden" name="add_user" value="1">
             <div class="form-group" style="margin-bottom: 16px;">
                 <label style="font-weight: 700; display: block; margin-bottom: 6px; font-size: 13px;">Full Name <span style="color:#ef4444;">*</span></label>
-                <input type="text" name="name" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;" required placeholder="e.g. John Doe">
+                <input type="text" name="name" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;" required placeholder="Full Name">
             </div>
             <div class="form-group" style="margin-bottom: 16px;">
                 <label style="font-weight: 700; display: block; margin-bottom: 6px; font-size: 13px;">Gender <span style="color:#ef4444;">*</span></label>
@@ -185,15 +185,15 @@ $sub_users = $stmt_users->get_result();
             </div>
             <div class="form-group" style="margin-bottom: 16px;">
                 <label style="font-weight: 700; display: block; margin-bottom: 6px; font-size: 13px;">Username <span style="color:#ef4444;">*</span></label>
-                <input type="text" name="username" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;" required placeholder="e.g. johndoe123">
+                <input type="text" name="username" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;" required placeholder="Username">
             </div>
             <div class="form-group" style="margin-bottom: 16px;">
                 <label style="font-weight: 700; display: block; margin-bottom: 6px; font-size: 13px;">Email Address</label>
-                <input type="email" name="email" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;" placeholder="e.g. john@yourcompany.com">
+                <input type="email" name="email" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;" placeholder="Email Address">
             </div>
             <div class="form-group" style="margin-bottom: 16px;">
                 <label style="font-weight: 700; display: block; margin-bottom: 6px; font-size: 13px;">Phone Number</label>
-                <input type="text" name="phone" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;" placeholder="e.g. +923001234567">
+                <input type="text" name="phone" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;" placeholder="Phone Number">
             </div>
             <div class="form-group" style="margin-bottom: 24px;">
                 <label style="font-weight: 700; display: block; margin-bottom: 6px; font-size: 13px;">Password <span style="color:#ef4444;">*</span></label>

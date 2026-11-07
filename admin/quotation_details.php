@@ -48,6 +48,17 @@ if ($q['converted_invoice_id']) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+// Decode Scope of Work
+$qdScopeDeliverables = [];
+if (!empty($q['scope_deliverables'])) {
+    $dec = json_decode($q['scope_deliverables'], true);
+    if (is_array($dec)) $qdScopeDeliverables = $dec;
+}
+$qdScopeIncluded = !empty($q['scope_included']) ? array_filter(array_map('trim', explode("\n", $q['scope_included']))) : [];
+$qdScopeExcluded = !empty($q['scope_excluded']) ? array_filter(array_map('trim', explode("\n", $q['scope_excluded']))) : [];
+$qdScopeNotes    = !empty($q['scope_notes']) ? array_filter(array_map('trim', explode("\n", $q['scope_notes']))) : [];
+$hasScopeSection = !empty($q['scope_project_name']) || !empty($q['notes']) || !empty($qdScopeDeliverables) || !empty($qdScopeIncluded) || !empty($qdScopeExcluded) || !empty($qdScopeNotes);
+
 $cur = htmlspecialchars($q['currency']);
 $daysLeft    = ceil((strtotime($q['valid_until']) - time()) / 86400);
 $isExpired   = strtotime($q['valid_until']) < time() && !in_array($q['status'], ['accepted','rejected']);
@@ -204,14 +215,96 @@ function quotStatusColor($s) {
             </div>
         </div>
 
-        <!-- Notes / Scope -->
-        <?php if (!empty($q['notes'])): ?>
-        <div class="card" style="margin-bottom:20px;">
-            <div class="qd-section-label" style="margin-bottom:10px;"><i class="fas fa-clipboard"></i> Scope & Description</div>
-            <p style="font-size:14px;color:#444;line-height:1.75;margin:0;white-space:pre-line;"><?= $q['notes'] ?></p>
+        <!-- Notes / Scope of Work -->
+        <?php if ($hasScopeSection): ?>
+        <div class="card" style="margin-bottom:20px; padding:22px; border-radius:12px; border:1px solid #e2e8f0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid #f1f5f9;">
+                <div class="qd-section-label" style="margin:0; font-size:15px; font-weight:700; color:#0f172a;">
+                    <i class="fas fa-clipboard-list" style="color:#024442; margin-right:6px;"></i> Scope of Work
+                    <?php if (!empty($q['scope_project_name'])): ?>
+                        <span style="font-weight:600; color:#475569; font-size:14px;">— <?= htmlspecialchars($q['scope_project_name']) ?></span>
+                    <?php endif; ?>
+                </div>
+                <?php if (!empty($qdScopeDeliverables)): ?>
+                    <span style="background:#e6f4f1; color:#024442; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;"><?= count($qdScopeDeliverables) ?> Deliverables</span>
+                <?php endif; ?>
+            </div>
+
+            <?php if (!empty($q['notes'])): ?>
+            <div style="margin-bottom:16px;">
+                <div style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Project Overview</div>
+                <p style="font-size:13.5px; color:#334155; line-height:1.75; margin:0; white-space:pre-line;"><?= htmlspecialchars($q['notes']) ?></p>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($qdScopeDeliverables)): ?>
+            <div style="margin-bottom:18px;">
+                <div style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Deliverables & Specifications</div>
+                <div style="border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
+                    <table style="width:100%; border-collapse:collapse; margin:0; font-size:13px;">
+                        <thead>
+                            <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                                <th style="width:5%; padding:9px 12px; text-align:center; color:#64748b; font-size:11.5px; text-transform:uppercase;">#</th>
+                                <th style="width:40%; padding:9px 12px; text-align:left; color:#64748b; font-size:11.5px; text-transform:uppercase;">Phase / Deliverable</th>
+                                <th style="width:55%; padding:9px 12px; text-align:left; color:#64748b; font-size:11.5px; text-transform:uppercase;">Specifications & Milestones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($qdScopeDeliverables as $sIdx => $sItem): ?>
+                            <tr style="border-bottom:1px solid #f1f5f9; <?= $sIdx % 2 === 1 ? 'background:#fafbfc;' : '' ?>">
+                                <td style="padding:10px 12px; text-align:center; font-weight:700; color:#94a3b8;"><?= $sIdx + 1 ?></td>
+                                <td style="padding:10px 12px; font-weight:600; color:#0f172a; vertical-align:top;"><?= htmlspecialchars($sItem['description'] ?? '') ?></td>
+                                <td style="padding:10px 12px; color:#475569; vertical-align:top; line-height:1.5;"><?= htmlspecialchars($sItem['details'] ?? '') ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($qdScopeIncluded) || !empty($qdScopeExcluded)): ?>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin-bottom:12px;">
+                <?php if (!empty($qdScopeIncluded)): ?>
+                <div style="background:#fcfdfa; border:1px solid #bbf7d0; border-radius:8px; padding:14px;">
+                    <div style="font-size:12.5px; font-weight:700; color:#166534; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                        <i class="fas fa-check-circle" style="color:#16a34a;"></i> What's Included
+                    </div>
+                    <ul style="margin:0; padding-left:18px; font-size:12.5px; color:#166534; line-height:1.7;">
+                        <?php foreach ($qdScopeIncluded as $inc): ?>
+                        <li><?= htmlspecialchars($inc) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($qdScopeExcluded)): ?>
+                <div style="background:#fffbfa; border:1px solid #fecaca; border-radius:8px; padding:14px;">
+                    <div style="font-size:12.5px; font-weight:700; color:#991b1b; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                        <i class="fas fa-times-circle" style="color:#dc2626;"></i> What's Excluded
+                    </div>
+                    <ul style="margin:0; padding-left:18px; font-size:12.5px; color:#991b1b; line-height:1.7;">
+                        <?php foreach ($qdScopeExcluded as $exc): ?>
+                        <li><?= htmlspecialchars($exc) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($qdScopeNotes)): ?>
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; margin-top:8px;">
+                <div style="font-size:12px; font-weight:700; color:#475569; margin-bottom:6px;"><i class="fas fa-info-circle" style="color:#64748b; margin-right:4px;"></i> Key Engagement Notes</div>
+                <ul style="margin:0; padding-left:18px; font-size:12.5px; color:#475569; line-height:1.65;">
+                    <?php foreach ($qdScopeNotes as $sn): ?>
+                    <li><?= htmlspecialchars($sn) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
-
         <!-- Pricing table -->
         <div class="card" style="padding:0;overflow:hidden;margin-bottom:20px;">
             <div style="padding:16px 20px;border-bottom:1px solid #f0f0f0;">

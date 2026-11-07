@@ -206,7 +206,7 @@ if (isset($conn) && $conn instanceof mysqli) {
             </label>
             <div class="input-group">
                 <span class="input-group-text" style="background:#f8fafc; border-radius:10px 0 0 10px;"><i class="fas fa-phone text-muted"></i></span>
-                <input type="text" id="loginInput" class="form-control" placeholder="e.g. 03001234567" required autofocus style="font-weight:600; border-radius:0 10px 10px 0;">
+                <input type="text" id="loginInput" class="form-control" placeholder="Phone Number / WhatsApp / Email" required autofocus style="font-weight:600; border-radius:0 10px 10px 0;">
             </div>
         </div>
 

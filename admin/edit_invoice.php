@@ -189,11 +189,11 @@ $projects = $conn->query("SELECT id,project_name FROM projects ORDER BY project_
     <div class="form-grid">
         <div class="form-group">
             <label>Client Tax ID / VAT Registration</label>
-            <input type="text" name="client_tax_id" id="fClientTaxId" value="<?= htmlspecialchars($inv['client_tax_id'] ?? '') ?>" placeholder="e.g. STRN-987654321">
+            <input type="text" name="client_tax_id" id="fClientTaxId" value="<?= htmlspecialchars($inv['client_tax_id'] ?? '') ?>" placeholder="Tax ID / STRN">
         </div>
         <div class="form-group">
             <label>Client PO / RFQ Reference Number</label>
-            <input type="text" name="client_ref_rfq" id="fClientRefRfq" value="<?= htmlspecialchars($inv['client_ref_rfq'] ?? '') ?>" placeholder="e.g. PO-2026-088">
+            <input type="text" name="client_ref_rfq" id="fClientRefRfq" value="<?= htmlspecialchars($inv['client_ref_rfq'] ?? '') ?>" placeholder="PO / Reference Number">
         </div>
     </div>
     <div class="form-group">

@@ -846,7 +846,7 @@ if (typeof QRCode === 'undefined') {
                         <!-- Phone -->
                         <div class="col-md-6">
                             <label class="form-label font-weight-bold" style="font-size:0.85rem;">Official Phone</label>
-                            <input type="text" name="phone" class="form-control" placeholder="e.g. 0345 4568986" style="border-radius:10px;">
+                            <input type="text" name="phone" class="form-control" placeholder="Official Phone Number" style="border-radius:10px;">
                         </div>
 
                         <!-- Profile Photo Upload -->

@@ -192,6 +192,211 @@ if ($lastRow) {
 include 'dashboard_header.php';
 ?>
 
+<style>
+/* Modern Scope Builder UI */
+.scope-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 22px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.scope-card:focus-within {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+.scope-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.scope-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+.scope-card-title i {
+    color: #024442;
+    font-size: 16px;
+}
+.scope-badge-count {
+    background: #e6f4f1;
+    color: #024442;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    letter-spacing: 0.3px;
+}
+.scope-input-modern {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: #1e293b;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.scope-input-modern:focus {
+    border-color: #024442;
+    box-shadow: 0 0 0 3px rgba(2, 68, 66, 0.12);
+}
+.scope-table-wrap {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.scope-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+}
+.scope-table thead th {
+    background: #f8fafc;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e2e8f0;
+}
+.scope-table tbody tr {
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s;
+}
+.scope-table tbody tr:hover {
+    background: #fcfdfe;
+}
+.scope-table tbody tr:last-child {
+    border-bottom: none;
+}
+.scope-table tbody td {
+    padding: 10px 12px;
+    vertical-align: middle;
+}
+.scope-row-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+}
+.scope-btn-del {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid #fecaca;
+    background: #fff;
+    color: #dc2626;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.scope-btn-del:hover {
+    background: #dc2626;
+    color: #fff;
+    border-color: #dc2626;
+    transform: scale(1.05);
+}
+.scope-item-bullet-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    background: #ffffff;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.scope-item-bullet-row:focus-within {
+    border-color: #024442;
+    box-shadow: 0 0 0 2px rgba(2, 68, 66, 0.08);
+}
+.scope-icon-pill {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.scope-icon-pill.inc {
+    background: #dcfce7;
+    color: #16a34a;
+}
+.scope-icon-pill.exc {
+    background: #fee2e2;
+    color: #dc2626;
+}
+.scope-icon-pill.note {
+    background: #f1f5f9;
+    color: #475569;
+}
+.scope-subcard {
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    padding: 16px;
+    background: #f8fafc;
+}
+.scope-subcard.inc {
+    background: #fcfdfa;
+    border-color: #bbf7d0;
+}
+.scope-subcard.exc {
+    background: #fffbfa;
+    border-color: #fecaca;
+}
+.scope-subcard-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.scope-subcard-sub {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 12px;
+}
+.scope-empty-state {
+    text-align: center;
+    padding: 24px 16px;
+    color: #94a3b8;
+    font-size: 13px;
+}
+@media (max-width: 768px) {
+    .scope-boundaries-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+</style>
 <div class="height-100">
 <div class="page-header">
     <div>
@@ -242,27 +447,27 @@ include 'dashboard_header.php';
             <div class="form-grid">
                 <div class="form-group">
                     <label>Email Address</label>
-                    <input type="email" name="client_email" id="fEmail" placeholder="client@example.com">
+                    <input type="email" name="client_email" id="fEmail" placeholder="Email Address">
                 </div>
                 <div class="form-group">
                     <label>Phone Number</label>
-                    <input type="text" name="client_phone" id="fPhone" placeholder="+92 300 0000000">
+                    <input type="text" name="client_phone" id="fPhone" placeholder="Phone Number">
                 </div>
             </div>
             <div class="form-group">
                 <label>Billing Address</label>
-                <textarea name="client_address" id="fAddress" placeholder="Client billing address..." style="min-height: 70px;"></textarea>
+                <textarea name="client_address" id="fAddress" placeholder="Billing Address" style="min-height: 70px;"></textarea>
             </div>
 
             <!-- Tax and Reference details -->
             <div class="form-grid">
                 <div class="form-group">
                     <label>Client Tax ID / VAT Number</label>
-                    <input type="text" name="client_tax_id" id="fClientTaxId" placeholder="e.g. STRN-987654321">
+                    <input type="text" name="client_tax_id" id="fClientTaxId" placeholder="Tax ID / STRN">
                 </div>
                 <div class="form-group">
                     <label>Client RFQ / Reference Number</label>
-                    <input type="text" name="client_ref_rfq" id="fClientRefRfq" placeholder="e.g. RFQ-2026-004">
+                    <input type="text" name="client_ref_rfq" id="fClientRefRfq" placeholder="Reference / RFQ Number">
                 </div>
             </div>
 
@@ -300,7 +505,7 @@ include 'dashboard_header.php';
             <div class="form-grid">
                 <div class="form-group">
                     <label>Lead Time / Project Duration</label>
-                    <input type="text" name="delivery_time" placeholder="e.g. 4-6 weeks from project kick-off" value="">
+                    <input type="text" name="delivery_time" placeholder="Delivery Time / Project Duration" value="">
                 </div>
                 <div class="form-group">
                     <label>Status</label>
@@ -312,53 +517,91 @@ include 'dashboard_header.php';
             </div>
     </div>
 
-    <!-- ==================== TAB 2: SCOPE OF WORK ==================== -->
+        <!-- ==================== TAB 2: SCOPE OF WORK ==================== -->
     <div id="sco" class="tab" style="display:none;">
-            <div class="form-group">
-                <label>Project / Engagement Name <span class="required">*</span></label>
-                <input type="text" name="scope_project_name" required placeholder="e.g. Brand Design and Website Development" value="">
+        <!-- Card 1: Project Overview & Background -->
+        <div class="scope-card">
+            <div class="scope-card-header">
+                <h3 class="scope-card-title"><i class="fas fa-project-diagram"></i> Project Overview & Scope Description</h3>
+                <span style="font-size:12px; color:#64748b;">Primary engagement details for the proposal</span>
             </div>
-
-            <div class="form-group">
-                <label>Project Overview (Boilerplate Description)</label>
-                <textarea name="notes" style="min-height: 100px;" placeholder="Enter project scope / description overview..."></textarea>
+            <div class="form-group" style="margin-bottom:16px;">
+                <label style="font-weight:700; color:#1e293b; margin-bottom:6px; display:block;">Project / Engagement Title <span class="required" style="color:#ef4444;">*</span></label>
+                <input type="text" name="scope_project_name" required placeholder="Project Title" class="scope-input-modern" style="font-weight:600; font-size:15px;" value="">
             </div>
-
-            <!-- Notes Repeatable Bullets -->
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label style="font-weight: bold; display: block; margin-bottom: 5px;">Notes (Repeatable Bullet List)</label>
+            <div class="form-group" style="margin-bottom:18px;">
+                <label style="font-weight:700; color:#1e293b; margin-bottom:6px; display:block;">Scope Overview & Objectives</label>
+                <textarea name="notes" placeholder="Detailed project scope overview, business objectives, and delivery expectations..." class="scope-input-modern" style="min-height:100px; resize:vertical; line-height:1.6;"></textarea>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <label style="font-weight:700; color:#1e293b; margin:0; font-size:13px;"><i class="fas fa-sticky-note" style="color:#64748b; margin-right:4px;"></i> Important Engagement Notes & Assumptions</label>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addNoteBullet()" style="padding:4px 12px; font-size:12px; font-weight:600;"><i class="fas fa-plus"></i> Add Note</button>
+                </div>
                 <div id="notesBulletsContainer"></div>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="addNoteBullet()" style="margin-top: 5px;"><i class="fas fa-plus"></i> Add Note</button>
             </div>
+        </div>
 
-            <!-- Scope of Work Table -->
-            <div style="margin-bottom: 25px;">
-                <label style="font-weight: bold; display: block; margin-bottom: 8px;">Scope of Work Table (JSON Encoded)</label>
-                <table class="items-table" style="width:100%;">
+        <!-- Card 2: Scope Deliverables & Milestones Table -->
+        <div class="scope-card">
+            <div class="scope-card-header">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <h3 class="scope-card-title"><i class="fas fa-layer-group"></i> Scope Deliverables & Specifications</h3>
+                    <span id="scopeCountBadge" class="scope-badge-count">0 Deliverables</span>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="addScopeRow()" style="padding:6px 14px; font-size:12px; font-weight:700; background:#024442; border-color:#024442;">
+                    <i class="fas fa-plus"></i> Add Deliverable
+                </button>
+            </div>
+            <div class="scope-table-wrap">
+                <table class="scope-table">
                     <thead>
                         <tr>
-                            <th style="width:40%;">Description</th>
-                            <th style="width:50%;">Details</th>
-                            <th style="width:10%; text-align:center;">Action</th>
+                            <th style="width:5%; text-align:center;">#</th>
+                            <th style="width:38%;">Deliverable / Phase Title</th>
+                            <th style="width:49%;">Detailed Specifications & Requirements</th>
+                            <th style="width:8%; text-align:center;">Action</th>
                         </tr>
                     </thead>
                     <tbody id="scopeBody"></tbody>
                 </table>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="addScopeRow()" style="margin-top: 8px;"><i class="fas fa-plus"></i> Add Scope Row</button>
+                <div id="scopeEmptyState" class="scope-empty-state" style="display:none;">
+                    <i class="fas fa-cubes" style="font-size:28px; color:#cbd5e1; margin-bottom:8px; display:block;"></i>
+                    No deliverables added yet. Click <strong>"+ Add Deliverable"</strong> above to specify key project milestones.
+                </div>
             </div>
+        </div>
 
-            <!-- Inclusions and Exclusions -->
-            <div class="form-grid">
-                <div class="form-group">
-                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Included Deliverables</label>
+        <!-- Card 3: Project Boundaries (Inclusions & Exclusions) -->
+        <div class="scope-card" style="margin-bottom:10px;">
+            <div class="scope-card-header">
+                <h3 class="scope-card-title"><i class="fas fa-shield-alt"></i> Project Boundaries: Inclusions & Exclusions</h3>
+                <span style="font-size:12px; color:#64748b;">Clarifies clear expectations and prevents scope creep</span>
+            </div>
+            <div class="scope-boundaries-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- Inclusions Card -->
+                <div class="scope-subcard inc">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <div class="scope-subcard-title" style="color:#166534;"><i class="fas fa-check-circle" style="color:#16a34a;"></i> What's Included</div>
+                        <button type="button" class="btn btn-sm btn-outline-success" onclick="addIncludedBullet()" style="padding:3px 10px; font-size:11.5px; font-weight:700; border-radius:6px; background:#fff; border-color:#16a34a; color:#16a34a;">
+                            <i class="fas fa-plus"></i> Add Item
+                        </button>
+                    </div>
+                    <div class="scope-subcard-sub">Guaranteed items & services covered under this quotation</div>
                     <div id="includedBulletsContainer"></div>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="addIncludedBullet()" style="margin-top: 5px;"><i class="fas fa-plus"></i> Add Bullet</button>
                 </div>
 
-                <div class="form-group">
-                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Explicit Exclusions</label>
+                <!-- Exclusions Card -->
+                <div class="scope-subcard exc">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <div class="scope-subcard-title" style="color:#991b1b;"><i class="fas fa-times-circle" style="color:#dc2626;"></i> What's Excluded</div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="addExcludedBullet()" style="padding:3px 10px; font-size:11.5px; font-weight:700; border-radius:6px; background:#fff; border-color:#dc2626; color:#dc2626;">
+                            <i class="fas fa-plus"></i> Add Item
+                        </button>
+                    </div>
+                    <div class="scope-subcard-sub">Out-of-scope tasks, additional iterations, or third-party licenses</div>
                     <div id="excludedBulletsContainer"></div>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="addExcludedBullet()" style="margin-top: 5px;"><i class="fas fa-plus"></i> Add Bullet</button>
+                </div>
             </div>
         </div>
     </div>
@@ -665,7 +908,7 @@ function addRow(desc = '', qty = 1, unit = 'pcs', price = '') {
     const tr = document.createElement('tr');
     tr.id = 'r' + i;
     tr.innerHTML = `
-        <td><input type="text"   name="items[${i}][description]" value="${(desc || '').replace(/"/g, '&quot;')}" placeholder="Service description" required style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
+        <td><input type="text"   name="items[${i}][description]" value="${(desc || '').replace(/"/g, '&quot;')}" placeholder="Service / Item Description" required style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
         <td><input type="number" name="items[${i}][quantity]"    value="${qty || 1}"  step="0.01" min="0" oninput="calcRow(${i})" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
         <td><input type="text"   name="items[${i}][unit]"        value="${unit || 'pcs'}" list="unitList" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
         <td><input type="number" name="items[${i}][unit_price]"  value="${price !== '' ? price : ''}"   step="0.01" min="0" placeholder="0.00" oninput="calcRow(${i})" required style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
@@ -732,19 +975,47 @@ function fmt(v) {
 
 // Scope Dynamic Rows
 let scopeCnt = 0;
+function updateScopeCountBadge() {
+    const rows = document.querySelectorAll('#scopeBody tr');
+    const badge = document.getElementById('scopeCountBadge');
+    const emptyState = document.getElementById('scopeEmptyState');
+    if (badge) {
+        badge.textContent = rows.length + (rows.length === 1 ? ' Deliverable' : ' Deliverables');
+    }
+    if (emptyState) {
+        emptyState.style.display = (rows.length === 0) ? 'block' : 'none';
+    }
+    rows.forEach((tr, idx) => {
+        const numSpan = tr.querySelector('.scope-row-num');
+        if (numSpan) numSpan.textContent = idx + 1;
+    });
+}
+
 function addScopeRow(desc = '', details = '') {
     const i = scopeCnt++;
     const tr = document.createElement('tr');
     tr.id = 'scope_r' + i;
     tr.innerHTML = `
-        <td><input type="text" name="scope_desc[]" value="${desc.replace(/"/g, '&quot;')}" placeholder="e.g. UX/UI Design" required style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
-        <td><input type="text" name="scope_details[]" value="${details.replace(/"/g, '&quot;')}" placeholder="e.g. Wireframes and prototype" required style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
-        <td style="text-align:center;"><button type="button" class="remove-row-btn" onclick="removeScopeRow(${i})"><i class="fas fa-times"></i></button></td>
+        <td style="text-align:center;"><span class="scope-row-num">1</span></td>
+        <td>
+            <input type="text" name="scope_desc[]" value="${desc.replace(/"/g, '&quot;')}" placeholder="Deliverable / Phase Title" required class="scope-input-modern" style="padding:8px 12px; font-size:13.5px; font-weight:600;">
+        </td>
+        <td>
+            <input type="text" name="scope_details[]" value="${details.replace(/"/g, '&quot;')}" placeholder="Detailed specifications, milestones & requirements" required class="scope-input-modern" style="padding:8px 12px; font-size:13.5px;">
+        </td>
+        <td style="text-align:center;">
+            <button type="button" class="scope-btn-del" onclick="removeScopeRow(${i})" title="Remove Deliverable">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+        </td>
     `;
     document.getElementById('scopeBody').appendChild(tr);
+    updateScopeCountBadge();
 }
+
 function removeScopeRow(i) {
     document.getElementById('scope_r' + i)?.remove();
+    updateScopeCountBadge();
 }
 
 // Payment Dynamic Rows
@@ -754,9 +1025,9 @@ function addPaymentRow(milestone = '', amount = '') {
     const tr = document.createElement('tr');
     tr.id = 'payment_r' + i;
     tr.innerHTML = `
-        <td><input type="text" name="payment_milestone[]" value="${milestone.replace(/"/g, '&quot;')}" placeholder="e.g. Advance Booking" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
-        <td><input type="text" name="payment_amount[]" value="${amount.replace(/"/g, '&quot;')}" placeholder="e.g. 50%" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
-        <td style="text-align:center;"><button type="button" class="remove-row-btn" onclick="removePaymentRow(${i})"><i class="fas fa-times"></i></button></td>
+        <td><input type="text" name="payment_milestone[]" value="${milestone.replace(/"/g, '&quot;')}" placeholder="Payment Milestone" style="width:100%; border:1px solid #cbd5e1; padding:8px 10px; border-radius:6px; font-size:13.5px; font-weight:600;"></td>
+        <td><input type="text" name="payment_amount[]" value="${amount.replace(/"/g, '&quot;')}" placeholder="Amount / %" style="width:100%; border:1px solid #cbd5e1; padding:8px 10px; border-radius:6px; font-size:13.5px;"></td>
+        <td style="text-align:center;"><button type="button" class="scope-btn-del" onclick="removePaymentRow(${i})" title="Remove Milestone"><i class="fas fa-trash-alt"></i></button></td>
     `;
     document.getElementById('paymentBody').appendChild(tr);
 }
@@ -768,11 +1039,11 @@ function removePaymentRow(i) {
 function addIncludedBullet(val = '') {
     const container = document.getElementById('includedBulletsContainer');
     const div = document.createElement('div');
-    div.style = "display:flex; align-items:center; gap:8px; margin-bottom:6px;";
+    div.className = "scope-item-bullet-row";
     div.innerHTML = `
-        <span style="color:#16a34a; font-weight:bold;">✔</span>
-        <input type="text" name="scope_included[]" value="${val.replace(/"/g, '&quot;')}" placeholder="Included deliverable" style="flex:1; border:1px solid #ccc; padding:6px; border-radius:4px;">
-        <button type="button" class="remove-row-btn" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+        <span class="scope-icon-pill inc"><i class="fas fa-check"></i></span>
+        <input type="text" name="scope_included[]" value="${val.replace(/"/g, '&quot;')}" placeholder="Included deliverable item" class="scope-input-modern" style="border:none; padding:4px 6px; background:transparent; font-size:13px; font-weight:500;">
+        <button type="button" class="scope-btn-del" style="width:26px; height:26px; font-size:11px;" onclick="this.closest('.scope-item-bullet-row').remove()" title="Remove item"><i class="fas fa-times"></i></button>
     `;
     container.appendChild(div);
 }
@@ -780,11 +1051,11 @@ function addIncludedBullet(val = '') {
 function addExcludedBullet(val = '') {
     const container = document.getElementById('excludedBulletsContainer');
     const div = document.createElement('div');
-    div.style = "display:flex; align-items:center; gap:8px; margin-bottom:6px;";
+    div.className = "scope-item-bullet-row";
     div.innerHTML = `
-        <span style="color:#b91c1c; font-weight:bold;">✖</span>
-        <input type="text" name="scope_excluded[]" value="${val.replace(/"/g, '&quot;')}" placeholder="Excluded items" style="flex:1; border:1px solid #ccc; padding:6px; border-radius:4px;">
-        <button type="button" class="remove-row-btn" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+        <span class="scope-icon-pill exc"><i class="fas fa-times"></i></span>
+        <input type="text" name="scope_excluded[]" value="${val.replace(/"/g, '&quot;')}" placeholder="Excluded item / service" class="scope-input-modern" style="border:none; padding:4px 6px; background:transparent; font-size:13px; font-weight:500;">
+        <button type="button" class="scope-btn-del" style="width:26px; height:26px; font-size:11px;" onclick="this.closest('.scope-item-bullet-row').remove()" title="Remove item"><i class="fas fa-times"></i></button>
     `;
     container.appendChild(div);
 }
@@ -792,11 +1063,11 @@ function addExcludedBullet(val = '') {
 function addNoteBullet(val = '') {
     const container = document.getElementById('notesBulletsContainer');
     const div = document.createElement('div');
-    div.style = "display:flex; align-items:center; gap:8px; margin-bottom:6px;";
+    div.className = "scope-item-bullet-row";
     div.innerHTML = `
-        <span style="color:#888; font-weight:bold; font-size:12px;">•</span>
-        <input type="text" name="scope_notes[]" value="${val.replace(/"/g, '&quot;')}" placeholder="Standard note" style="flex:1; border:1px solid #ccc; padding:6px; border-radius:4px;">
-        <button type="button" class="remove-row-btn" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+        <span class="scope-icon-pill note"><i class="fas fa-circle" style="font-size:7px;"></i></span>
+        <input type="text" name="scope_notes[]" value="${val.replace(/"/g, '&quot;')}" placeholder="Project note / condition" class="scope-input-modern" style="border:none; padding:4px 6px; background:transparent; font-size:13px; font-weight:500;">
+        <button type="button" class="scope-btn-del" style="width:26px; height:26px; font-size:11px;" onclick="this.closest('.scope-item-bullet-row').remove()" title="Remove note"><i class="fas fa-times"></i></button>
     `;
     container.appendChild(div);
 }
@@ -860,7 +1131,7 @@ if (calcPrefillRaw) {
 }
 
 recalc();
-showTab('cli');
+updateScopeCountBadge(); showTab('cli');
 
 const savedBanks = <?php echo json_encode($savedBankAccounts); ?>;
 function fillBankDetails(idx) {
@@ -877,7 +1148,7 @@ document.getElementById('quotForm').addEventListener('submit', function(e) {
     if (!document.getElementById('fName').value.trim()) {
         e.preventDefault();
         alert('Client name is required.');
-        showTab('cli');
+        updateScopeCountBadge(); showTab('cli');
     }
 });
 </script>

@@ -235,11 +235,11 @@ include 'dashboard_header.php';
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" style="font-size:12px; font-weight:700; color:#555;">Client Phone / WhatsApp</label>
-                            <input type="text" id="qClientPhone" class="form-control form-control-sm" placeholder="e.g. 03001234567">
+                            <input type="text" id="qClientPhone" class="form-control form-control-sm" placeholder="Phone Number / WhatsApp">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" style="font-size:12px; font-weight:700; color:#555;">Client Email</label>
-                            <input type="email" id="qClientEmail" class="form-control form-control-sm" placeholder="e.g. client@example.com">
+                            <input type="email" id="qClientEmail" class="form-control form-control-sm" placeholder="Email Address">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" style="font-size:12px; font-weight:700; color:#555;">Markup Percentage (%)</label>

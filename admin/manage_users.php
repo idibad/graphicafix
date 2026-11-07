@@ -1112,7 +1112,7 @@ $role_titles = [
                     <!-- Full Name -->
                     <div class="form-group" style="margin: 0;">
                         <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Full Name <span style="color:#ef4444;">*</span></label>
-                        <input type="text" name="name" id="f_name" placeholder="e.g. John Doe" required
+                        <input type="text" name="name" id="f_name" placeholder="Full Name" required
                             style="width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px; font-size:14px; background:#f8fafc; outline:none; box-sizing:border-box; font-family:inherit;">
                     </div>
                     
@@ -1129,7 +1129,7 @@ $role_titles = [
                     <!-- Username -->
                     <div class="form-group" style="margin: 0;">
                         <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Username <span style="color:#ef4444;">*</span></label>
-                        <input type="text" name="username" id="f_username" placeholder="e.g. johndoe" required
+                        <input type="text" name="username" id="f_username" placeholder="Username" required
                             style="width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px; font-size:14px; background:#f8fafc; outline:none; box-sizing:border-box; font-family:inherit;">
                         <div style="font-size:11.5px; color:#94a3b8; margin-top:4px;"><i class="fas fa-info-circle"></i> Permanent login handle</div>
                     </div>
@@ -1137,7 +1137,7 @@ $role_titles = [
                     <!-- Email Address -->
                     <div class="form-group" style="margin: 0;">
                         <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Email Address <span style="color:#ef4444;">*</span></label>
-                        <input type="email" name="email" id="f_email" placeholder="e.g. john@example.com" required
+                        <input type="email" name="email" id="f_email" placeholder="Email Address" required
                             style="width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px; font-size:14px; background:#f8fafc; outline:none; box-sizing:border-box; font-family:inherit;">
                     </div>
 
