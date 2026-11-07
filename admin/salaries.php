@@ -991,6 +991,27 @@ html, body {
     align-items: center;
     gap: 4px;
 }
+/* Action Slip Button */
+.btn-table-slip {
+    background: #f0fdf4 !important;
+    border: 1px solid #bbf7d0 !important;
+    color: #166534 !important;
+    padding: 4px 8px !important;
+    border-radius: 5px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-decoration: none !important;
+}
+.btn-table-slip:hover {
+    background: #166534 !important;
+    color: #ffffff !important;
+    border-color: #166534 !important;
+}
 .btn-table-remove:hover {
     background: #fef2f2 !important;
     border-color: #dc2626 !important;
@@ -1133,10 +1154,10 @@ html, body {
                     <i class="fas fa-minus-circle"></i> Add Deduction
                 </button>
 
-                <!-- Print Button -->
-                <button type="button" class="btn-clean-secondary" onclick="window.print()" title="Print Payroll">
-                    <i class="fas fa-print"></i>
-                </button>
+                <!-- Print Payroll PDF (mPDF) -->
+                <a href="generate_salary_pdf.php?month=<?= urlencode($filter_month) ?>" target="_blank" class="btn-clean-secondary" title="Export / Print Payroll PDF (mPDF)" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fas fa-file-pdf" style="color:#ef4444;"></i> Print PDF
+                </a>
             </div>
         </div>
 
@@ -1256,6 +1277,9 @@ html, body {
                                 <button type="button" class="btn-table-penalty" onclick="openAddDeductionModal(<?= $sal['user_id'] ?>, '<?= htmlspecialchars(addslashes($sal['user_name'])) ?>')" title="Add Penalty or Deduction">
                                     <i class="fas fa-minus-circle"></i> Penalty
                                 </button>
+                                <a href="generate_salary_pdf.php?salary_id=<?= $sal['id'] ?>" target="_blank" class="btn-table-slip" title="Print Salary Slip (mPDF)">
+                                    <i class="fas fa-file-invoice"></i> Slip
+                                </a>
                                 <button type="button" class="btn-table-remove" onclick="confirmRemoveSalary(<?= $sal['id'] ?>, <?= $sal['user_id'] ?>, '<?= htmlspecialchars(addslashes($sal['user_name'])) ?>')" title="Remove from Salary Register">
                                     <i class="fas fa-trash-alt"></i> Remove
                                 </button>
@@ -1404,6 +1428,9 @@ html, body {
                                 <button type="button" class="btn-table-penalty" onclick="openAddDeductionModal(<?= $sal['user_id'] ?>, '<?= htmlspecialchars(addslashes($sal['user_name'])) ?>')" title="Add Penalty / Deduction">
                                     <i class="fas fa-minus-circle"></i> Penalty
                                 </button>
+                                <a href="generate_salary_pdf.php?salary_id=<?= $sal['id'] ?>" target="_blank" class="btn-table-slip" title="Print Salary Slip (mPDF)">
+                                    <i class="fas fa-file-invoice"></i> Slip
+                                </a>
                                 <button type="button" class="btn-table-remove" onclick="confirmRemoveSalary(<?= $sal['id'] ?>, <?= $sal['user_id'] ?>, '<?= htmlspecialchars(addslashes($sal['user_name'])) ?>')" title="Remove from Salary Register">
                                     <i class="fas fa-trash-alt"></i> Remove
                                 </button>
@@ -1486,6 +1513,9 @@ html, body {
                         <button type="button" class="btn-table-penalty" onclick="openAddDeductionModal(<?= $sal['user_id'] ?>, '<?= htmlspecialchars(addslashes($sal['user_name'])) ?>')">
                             <i class="fas fa-minus-circle"></i> Penalty
                         </button>
+                        <a href="generate_salary_pdf.php?salary_id=<?= $sal['id'] ?>" target="_blank" class="btn-table-slip" title="Print Salary Slip (mPDF)">
+                            <i class="fas fa-file-invoice"></i> Slip
+                        </a>
                         <button type="button" class="btn-table-remove" onclick="confirmRemoveSalary(<?= $sal['id'] ?>, <?= $sal['user_id'] ?>, '<?= htmlspecialchars(addslashes($sal['user_name'])) ?>')">
                             <i class="fas fa-trash-alt"></i> Remove
                         </button>

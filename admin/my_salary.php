@@ -180,9 +180,9 @@ $stmt_ded->close();
                 <form method="GET" style="display:flex; gap:8px; align-items:center; margin:0;">
                     <input type="month" name="month" value="<?= htmlspecialchars($filter_month) ?>" onchange="this.form.submit()" style="padding:8px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13.5px; outline:none; background:#f8fafc;">
                 </form>
-                <button type="button" class="btn btn-secondary-custom" onclick="window.print()" style="padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600;">
-                    <i class="fas fa-print"></i> Print Slip
-                </button>
+                <a href="generate_salary_pdf.php?user_id=<?= $my_salary['user_id'] ?>&month=<?= urlencode($filter_month) ?>" target="_blank" class="btn btn-secondary-custom" style="padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fas fa-file-pdf" style="color:#ef4444;"></i> Print Slip (PDF)
+                </a>
             </div>
         </div>
 
