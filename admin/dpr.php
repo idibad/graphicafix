@@ -9,7 +9,7 @@ ensure_dpr_schema($conn);
 
 // Fetch internal team members for filter dropdown (exclude students and clients)
 $users = [];
-$users_result = $conn->query("SELECT user_id, name, role, email FROM users WHERE role NOT IN ('student', 'client') ORDER BY name ASC");
+$users_result = $conn->query("SELECT user_id, name, role, email FROM users WHERE role NOT IN ('student', 'client', 'client_sub') AND (status = 'active' OR status IS NULL) ORDER BY name ASC");
 if ($users_result) {
     while ($u = $users_result->fetch_assoc()) {
         $users[] = $u;
@@ -124,7 +124,7 @@ if ($is_manager) {
     $today_sub_res = $conn->query("SELECT COUNT(DISTINCT user_id) as count FROM daily_progress_reports WHERE report_date = '$today_str'");
     $today_submitted_count = $today_sub_res ? intval($today_sub_res->fetch_assoc()['count']) : 0;
     
-    $total_team_res = $conn->query("SELECT COUNT(*) as count FROM users WHERE role NOT IN ('student', 'client')");
+    $total_team_res = $conn->query("SELECT COUNT(*) as count FROM users WHERE role NOT IN ('student', 'client', 'client_sub') AND (status = 'active' OR status IS NULL)");
     $total_team_count = $total_team_res ? intval($total_team_res->fetch_assoc()['count']) : count($users);
     $today_pending_count = max(0, $total_team_count - $today_submitted_count);
 } else {

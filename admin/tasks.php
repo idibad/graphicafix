@@ -261,7 +261,7 @@ while ($task = $tasks_result->fetch_assoc()) {
 }
 
 // â”€â”€ Users list for assignment and filtering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-$users_result = $conn->query("SELECT user_id AS id, name, role FROM users WHERE status='active' OR status IS NULL ORDER BY name");
+$users_result = $conn->query("SELECT user_id AS id, name, role FROM users WHERE (status='active' OR status IS NULL) AND role != 'student' AND role NOT IN ('client', 'client_sub') ORDER BY name");
 $users_list = [];
 while ($u = $users_result->fetch_assoc()) {
     $users_list[] = $u;

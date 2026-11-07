@@ -332,7 +332,7 @@ $gallery = $stmt->get_result();
 
                 <div class="team-grid">
                     <?php
-                    $users = $conn->query("SELECT user_id, name FROM users");
+                    $users = $conn->query("SELECT user_id, name FROM users WHERE role != 'student' AND role NOT IN ('client', 'client_sub') AND (status = 'active' OR status IS NULL) ORDER BY name ASC");
                     while($u=$users->fetch_assoc()){
                         $initial = strtoupper(substr($u['name'], 0, 1));
                         $checked = in_array($u['user_id'], $assigned_members) ? 'checked' : '';

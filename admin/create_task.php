@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ── Users for assignment ──────────────────────────────────────────────────────
-$users_result = $conn->query("SELECT user_id AS id, name FROM users WHERE role != 'student' ORDER BY name");
+$users_result = $conn->query("SELECT user_id AS id, name FROM users WHERE (status = 'active' OR status IS NULL) AND role != 'student' AND role NOT IN ('client', 'client_sub') ORDER BY name");
 $users = [];
 while ($u = $users_result->fetch_assoc()) $users[] = $u;
 

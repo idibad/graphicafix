@@ -28,7 +28,7 @@ require_once __DIR__ . '/../core/config.php';
 $sql = "SELECT u.user_id, u.name, u.email, t.title, t.priority, t.status, t.due_date 
         FROM users u
         JOIN tasks t ON u.user_id = t.assigned_to
-        WHERE u.role IN ('admin', 'user', 'hrm') 
+        WHERE u.role != 'student' AND u.role NOT IN ('client', 'client_sub') 
         AND (u.status = 'active' OR u.status IS NULL)
         AND t.status IN ('Pending', 'In Progress')
         AND u.email IS NOT NULL AND u.email != ''

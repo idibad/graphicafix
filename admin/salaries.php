@@ -41,23 +41,175 @@ if (isset($_SESSION['toast_msg'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    if ($action === 'sync_all_payroll') {
-        $u_res = $conn->query("SELECT user_id FROM users WHERE status = 'active' AND role NOT IN ('client', 'client_sub', 'student')");
-        $synced_count = 0;
-        if ($u_res) {
-            while ($u_row = $u_res->fetch_assoc()) {
-                syncUserMonthlySalary($conn, $u_row['user_id'], $filter_month);
-                $synced_count++;
+    // ── 1. ADD SALARY TO REGISTER (WITH IN/OUT TIME DEDUCTIONS) ───────────────
+    if ($action === 'add_salary') {
+        $user_id          = intval($_POST['user_id'] ?? 0);
+        $in_time          = trim($_POST['in_time'] ?? '09:00:00');
+        $out_time         = trim($_POST['out_time'] ?? '18:00:00');
+        $base_salary      = floatval($_POST['base_salary'] ?? 0);
+        $allowances       = floatval($_POST['allowances'] ?? 0);
+        $tax              = floatval($_POST['tax'] ?? 0);
+        $advance          = floatval($_POST['advance'] ?? 0);
+        $previous_pending = floatval($_POST['previous_pending'] ?? 0);
+        $payment_status   = $_POST['payment_status'] ?? 'Pending';
+        $department       = trim($_POST['department'] ?? 'General');
+        $job_title        = trim($_POST['job_title'] ?? 'Staff');
+        $employee_id      = trim($_POST['employee_id'] ?? '');
+        $amount_paid      = floatval($_POST['amount_paid'] ?? 0);
+
+        if ($user_id > 0 && $base_salary > 0) {
+            $user_meta = getUserAttendanceMeta($conn, $user_id);
+            $user_name = $user_meta['name'] ?: 'Staff';
+            $gender    = !empty($user_meta['gender']) ? ucfirst(strtolower(trim($user_meta['gender']))) : 'Male';
+
+            if (strlen($in_time) === 5) $in_time .= ':00';
+            if (strlen($out_time) === 5) $out_time .= ':00';
+
+            // Timing Deductions Logic
+            $daily_wage  = round($base_salary / 30, 2);
+            $hourly_wage = round($daily_wage / 8, 2);
+
+            $grace_limit = ($gender === 'Female') ? '09:30:00' : '09:10:00';
+            $late_deduction = 0.00;
+            $late_desc = null;
+
+            if ($in_time > $grace_limit) {
+                $late_seconds = max(0, strtotime("2000-01-01 $in_time") - strtotime("2000-01-01 09:00:00"));
+                $late_mins = round($late_seconds / 60);
+                $late_deduction = max(100.00, round(($late_mins / 60) * $hourly_wage, 2));
+                $late_desc = "Late arrival penalty: Checked in at " . date('h:i A', strtotime($in_time)) . " ({$late_mins} mins late)";
             }
+
+            $shortfall_deduction = 0.00;
+            $shortfall_desc = null;
+            $worked_seconds = strtotime("2000-01-01 $out_time") - strtotime("2000-01-01 $in_time");
+            $hours_worked = max(0, round($worked_seconds / 3600, 2));
+
+            if ($hours_worked < 4.0) {
+                $shortfall_deduction = round($daily_wage * 0.5, 2);
+                $shortfall_desc = "Half-day attendance deduction: Worked {$hours_worked} hrs (< 4 hrs standard)";
+            } elseif ($hours_worked < 8.0) {
+                $shortfall_hrs = round(8.0 - $hours_worked, 2);
+                $shortfall_deduction = round($shortfall_hrs * $hourly_wage, 2);
+                $shortfall_desc = "Short hours deduction: Worked {$hours_worked} hrs ({$shortfall_hrs} hrs shortfall)";
+            }
+
+            $date_record = $filter_month . '-01';
+
+            // Clear previous automatic timing deductions for this user & month to avoid duplication
+            $conn->query("DELETE FROM salary_deductions WHERE user_id = {$user_id} AND salary_month = '{$filter_month}' AND (deduction_type LIKE 'Late Arrival Penalty%' OR deduction_type LIKE 'Short Hours%' OR deduction_type LIKE 'Half-day%')");
+
+            if ($late_deduction > 0 && $late_desc) {
+                $ins_late = $conn->prepare("INSERT INTO salary_deductions (user_id, salary_month, deduction_type, amount, description, date_incurred, status) VALUES (?, ?, 'Late Arrival Penalty', ?, ?, ?, 'applied')");
+                if ($ins_late) {
+                    $ins_late->bind_param("isdss", $user_id, $filter_month, $late_deduction, $late_desc, $date_record);
+                    $ins_late->execute();
+                    $ins_late->close();
+                }
+            }
+
+            if ($shortfall_deduction > 0 && $shortfall_desc) {
+                $ins_short = $conn->prepare("INSERT INTO salary_deductions (user_id, salary_month, deduction_type, amount, description, date_incurred, status) VALUES (?, ?, 'Short Hours / Early Exit', ?, ?, ?, 'applied')");
+                if ($ins_short) {
+                    $ins_short->bind_param("isdss", $user_id, $filter_month, $shortfall_deduction, $shortfall_desc, $date_record);
+                    $ins_short->execute();
+                    $ins_short->close();
+                }
+            }
+
+            // Sum all itemized deductions for this user & month
+            $stmt_ded = $conn->prepare("SELECT IFNULL(SUM(amount), 0) as total_ded FROM salary_deductions WHERE user_id = ? AND salary_month = ? AND status IN ('applied', 'disputed')");
+            $total_deductions = 0.00;
+            if ($stmt_ded) {
+                $stmt_ded->bind_param("is", $user_id, $filter_month);
+                $stmt_ded->execute();
+                $total_deductions = floatval($stmt_ded->get_result()->fetch_assoc()['total_ded'] ?? 0);
+                $stmt_ded->close();
+            }
+
+            $gross_pay = $base_salary + $allowances;
+            $net_salary = max(0, $gross_pay - $tax - $advance - $total_deductions + $previous_pending);
+
+            if ($payment_status === 'Paid') {
+                $amount_paid = $net_salary;
+            } elseif ($payment_status === 'Pending') {
+                $amount_paid = 0.00;
+            } else {
+                $amount_paid = max(0.00, min($net_salary, $amount_paid));
+            }
+
+            // Update user profile fields in users table
+            $stmt_u = $conn->prepare("UPDATE users SET base_salary = ?, allowances = ?, department = ?, job_title = ?, employee_id = ? WHERE user_id = ?");
+            if ($stmt_u) {
+                $stmt_u->bind_param("ddsssi", $base_salary, $allowances, $department, $job_title, $employee_id, $user_id);
+                $stmt_u->execute();
+                $stmt_u->close();
+            }
+
+            // Insert or Update into salaries table
+            $stmt_sal = $conn->prepare("INSERT INTO salaries 
+                (user_id, salary_month, employee_id, name, department, job_title, in_time, out_time, base_salary, allowances, gross_pay, tax, advance, deductions, previous_pending, net_salary, payment_status, amount_paid, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE
+                    employee_id = VALUES(employee_id),
+                    name = VALUES(name),
+                    department = VALUES(department),
+                    job_title = VALUES(job_title),
+                    in_time = VALUES(in_time),
+                    out_time = VALUES(out_time),
+                    base_salary = VALUES(base_salary),
+                    allowances = VALUES(allowances),
+                    gross_pay = VALUES(gross_pay),
+                    tax = VALUES(tax),
+                    advance = VALUES(advance),
+                    deductions = VALUES(deductions),
+                    previous_pending = VALUES(previous_pending),
+                    net_salary = VALUES(net_salary),
+                    payment_status = VALUES(payment_status),
+                    amount_paid = VALUES(amount_paid),
+                    updated_at = NOW()");
+
+            if ($stmt_sal) {
+                $stmt_sal->bind_param(
+                    "isssssssddddddddsd",
+                    $user_id,
+                    $filter_month,
+                    $employee_id,
+                    $user_name,
+                    $department,
+                    $job_title,
+                    $in_time,
+                    $out_time,
+                    $base_salary,
+                    $allowances,
+                    $gross_pay,
+                    $tax,
+                    $advance,
+                    $total_deductions,
+                    $previous_pending,
+                    $net_salary,
+                    $payment_status,
+                    $amount_paid
+                );
+                $stmt_sal->execute();
+                $stmt_sal->close();
+            }
+
+            $_SESSION['toast_msg'] = "{$user_name} added to salary register!";
+            $_SESSION['toast_type'] = "success";
+        } else {
+            $_SESSION['toast_msg'] = "Please select a valid staff member and specify base salary.";
+            $_SESSION['toast_type'] = "error";
         }
-        $_SESSION['toast_msg'] = "Synchronized payroll for {$synced_count} staff members for " . date('F Y', strtotime($filter_month . '-01'));
-        $_SESSION['toast_type'] = "success";
         header("Location: salaries.php?month={$filter_month}");
         exit;
     }
 
+    // ── 2. EDIT SALARY & SHIFT TIMING ─────────────────────────────────────────
     if ($action === 'edit_salary') {
         $user_id          = intval($_POST['user_id'] ?? 0);
+        $in_time          = trim($_POST['in_time'] ?? '09:00:00');
+        $out_time         = trim($_POST['out_time'] ?? '18:00:00');
         $base_salary      = floatval($_POST['base_salary'] ?? 0);
         $allowances       = floatval($_POST['allowances'] ?? 0);
         $tax              = floatval($_POST['tax'] ?? 0);
@@ -70,6 +222,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $amount_paid      = floatval($_POST['amount_paid'] ?? 0);
 
         if ($user_id > 0) {
+            $user_meta = getUserAttendanceMeta($conn, $user_id);
+            $user_name = $user_meta['name'] ?: 'Staff';
+            $gender    = !empty($user_meta['gender']) ? ucfirst(strtolower(trim($user_meta['gender']))) : 'Male';
+
+            if (strlen($in_time) === 5) $in_time .= ':00';
+            if (strlen($out_time) === 5) $out_time .= ':00';
+
+            $daily_wage  = round($base_salary / 30, 2);
+            $hourly_wage = round($daily_wage / 8, 2);
+
+            $grace_limit = ($gender === 'Female') ? '09:30:00' : '09:10:00';
+            $late_deduction = 0.00;
+            $late_desc = null;
+
+            if ($in_time > $grace_limit) {
+                $late_seconds = max(0, strtotime("2000-01-01 $in_time") - strtotime("2000-01-01 09:00:00"));
+                $late_mins = round($late_seconds / 60);
+                $late_deduction = max(100.00, round(($late_mins / 60) * $hourly_wage, 2));
+                $late_desc = "Late arrival penalty: Checked in at " . date('h:i A', strtotime($in_time)) . " ({$late_mins} mins late)";
+            }
+
+            $shortfall_deduction = 0.00;
+            $shortfall_desc = null;
+            $worked_seconds = strtotime("2000-01-01 $out_time") - strtotime("2000-01-01 $in_time");
+            $hours_worked = max(0, round($worked_seconds / 3600, 2));
+
+            if ($hours_worked < 4.0) {
+                $shortfall_deduction = round($daily_wage * 0.5, 2);
+                $shortfall_desc = "Half-day attendance deduction: Worked {$hours_worked} hrs (< 4 hrs standard)";
+            } elseif ($hours_worked < 8.0) {
+                $shortfall_hrs = round(8.0 - $hours_worked, 2);
+                $shortfall_deduction = round($shortfall_hrs * $hourly_wage, 2);
+                $shortfall_desc = "Short hours deduction: Worked {$hours_worked} hrs ({$shortfall_hrs} hrs shortfall)";
+            }
+
+            // Remove previous auto timing deductions for this month so they don't duplicate
+            $conn->query("DELETE FROM salary_deductions WHERE user_id = {$user_id} AND salary_month = '{$filter_month}' AND (deduction_type LIKE 'Late Arrival Penalty%' OR deduction_type LIKE 'Short Hours%' OR deduction_type LIKE 'Half-day%')");
+
+            $date_record = $filter_month . '-01';
+            if ($late_deduction > 0 && $late_desc) {
+                $ins_late = $conn->prepare("INSERT INTO salary_deductions (user_id, salary_month, deduction_type, amount, description, date_incurred, status) VALUES (?, ?, 'Late Arrival Penalty', ?, ?, ?, 'applied')");
+                if ($ins_late) {
+                    $ins_late->bind_param("isdss", $user_id, $filter_month, $late_deduction, $late_desc, $date_record);
+                    $ins_late->execute();
+                    $ins_late->close();
+                }
+            }
+            if ($shortfall_deduction > 0 && $shortfall_desc) {
+                $ins_short = $conn->prepare("INSERT INTO salary_deductions (user_id, salary_month, deduction_type, amount, description, date_incurred, status) VALUES (?, ?, 'Short Hours / Early Exit', ?, ?, ?, 'applied')");
+                if ($ins_short) {
+                    $ins_short->bind_param("isdss", $user_id, $filter_month, $shortfall_deduction, $shortfall_desc, $date_record);
+                    $ins_short->execute();
+                    $ins_short->close();
+                }
+            }
+
             $stmt_u = $conn->prepare("UPDATE users SET base_salary = ?, allowances = ?, department = ?, job_title = ?, employee_id = ? WHERE user_id = ?");
             if ($stmt_u) {
                 $stmt_u->bind_param("ddsssi", $base_salary, $allowances, $department, $job_title, $employee_id, $user_id);
@@ -93,19 +301,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $amount_paid = $net_salary;
             } elseif ($payment_status === 'Pending') {
                 $amount_paid = 0.00;
-            } elseif ($payment_status === 'Partially Paid') {
-                $amount_paid = max(0.00, min($net_salary, $amount_paid));
             } else {
                 $amount_paid = max(0.00, min($net_salary, $amount_paid));
             }
 
             $stmt_sal = $conn->prepare("INSERT INTO salaries 
-                (user_id, salary_month, employee_id, department, job_title, base_salary, allowances, gross_pay, tax, advance, deductions, previous_pending, net_salary, payment_status, amount_paid, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                (user_id, salary_month, employee_id, name, department, job_title, in_time, out_time, base_salary, allowances, gross_pay, tax, advance, deductions, previous_pending, net_salary, payment_status, amount_paid, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE
                     employee_id = VALUES(employee_id),
+                    name = VALUES(name),
                     department = VALUES(department),
                     job_title = VALUES(job_title),
+                    in_time = VALUES(in_time),
+                    out_time = VALUES(out_time),
                     base_salary = VALUES(base_salary),
                     allowances = VALUES(allowances),
                     gross_pay = VALUES(gross_pay),
@@ -115,16 +324,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     previous_pending = VALUES(previous_pending),
                     net_salary = VALUES(net_salary),
                     payment_status = VALUES(payment_status),
-                    amount_paid = VALUES(amount_paid)");
+                    amount_paid = VALUES(amount_paid),
+                    updated_at = NOW()");
 
             if ($stmt_sal) {
                 $stmt_sal->bind_param(
-                    "issssddddddddsd",
+                    "isssssssddddddddsd",
                     $user_id,
                     $filter_month,
                     $employee_id,
+                    $user_name,
                     $department,
                     $job_title,
+                    $in_time,
+                    $out_time,
                     $base_salary,
                     $allowances,
                     $gross_pay,
@@ -147,6 +360,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // ── 3. REMOVE SALARY RECORD DIRECTLY FROM REGISTER ────────────────────────
+    if ($action === 'remove_salary') {
+        $salary_id = intval($_POST['salary_id'] ?? 0);
+        $del_user_id = intval($_POST['user_id'] ?? 0);
+
+        if ($salary_id > 0) {
+            $stmt_del = $conn->prepare("DELETE FROM salaries WHERE id = ? AND salary_month = ?");
+            if ($stmt_del) {
+                $stmt_del->bind_param("is", $salary_id, $filter_month);
+                $stmt_del->execute();
+                $stmt_del->close();
+            }
+        } elseif ($del_user_id > 0) {
+            $stmt_del = $conn->prepare("DELETE FROM salaries WHERE user_id = ? AND salary_month = ?");
+            if ($stmt_del) {
+                $stmt_del->bind_param("is", $del_user_id, $filter_month);
+                $stmt_del->execute();
+                $stmt_del->close();
+            }
+        }
+
+        $_SESSION['toast_msg'] = "Employee removed from salary register for " . date('F Y', strtotime($filter_month . '-01'));
+        $_SESSION['toast_type'] = "success";
+        header("Location: salaries.php?month={$filter_month}");
+        exit;
+    }
+
+    // ── 4. ADD CUSTOM DEDUCTION / PENALTY ──────────────────────────────────────
     if ($action === 'add_custom_deduction') {
         $user_id        = intval($_POST['user_id'] ?? 0);
         $deduction_type = trim($_POST['deduction_type'] ?? 'Penalty');
@@ -160,7 +401,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param("issdss", $user_id, $filter_month, $deduction_type, $amount, $description, $date_incurred);
                 $stmt->execute();
                 $stmt->close();
-                syncUserMonthlySalary($conn, $user_id, $filter_month);
+
+                // If user is registered in this month's salaries, update their deductions & net salary
+                $chk_sal = $conn->prepare("SELECT id, base_salary, allowances, tax, advance, previous_pending FROM salaries WHERE user_id = ? AND salary_month = ? LIMIT 1");
+                if ($chk_sal) {
+                    $chk_sal->bind_param("is", $user_id, $filter_month);
+                    $chk_sal->execute();
+                    $s_row = $chk_sal->get_result()->fetch_assoc();
+                    $chk_sal->close();
+                    if ($s_row) {
+                        $stmt_dsum = $conn->prepare("SELECT IFNULL(SUM(amount), 0) as tot FROM salary_deductions WHERE user_id = ? AND salary_month = ? AND status IN ('applied', 'disputed')");
+                        $stmt_dsum->bind_param("is", $user_id, $filter_month);
+                        $stmt_dsum->execute();
+                        $tot_ded = floatval($stmt_dsum->get_result()->fetch_assoc()['tot'] ?? 0);
+                        $stmt_dsum->close();
+
+                        $gross = floatval($s_row['base_salary']) + floatval($s_row['allowances']);
+                        $net = max(0, $gross - floatval($s_row['tax']) - floatval($s_row['advance']) - $tot_ded + floatval($s_row['previous_pending']));
+
+                        $upd_s = $conn->prepare("UPDATE salaries SET deductions = ?, net_salary = ? WHERE id = ?");
+                        if ($upd_s) {
+                            $upd_s->bind_param("ddi", $tot_ded, $net, $s_row['id']);
+                            $upd_s->execute();
+                            $upd_s->close();
+                        }
+                    }
+                }
+
                 $_SESSION['toast_msg'] = "Deduction of PKR " . number_format($amount) . " applied successfully!";
                 $_SESSION['toast_type'] = "success";
             }
@@ -173,27 +440,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// ── Auto-sync any active staff missing or with updated profile data ────────────
-$u_check = $conn->query("SELECT u.user_id, u.name, u.employee_id, u.department, u.job_title, u.base_salary, u.allowances, s.id as sal_id, s.name as sal_name, s.base_salary as sal_base
-    FROM users u 
-    LEFT JOIN salaries s ON u.user_id = s.user_id AND s.salary_month = '{$filter_month}'
-    WHERE u.status = 'active' AND u.role NOT IN ('client', 'client_sub', 'student')");
-if ($u_check) {
-    while ($r = $u_check->fetch_assoc()) {
-        if (empty($r['sal_id']) || $r['name'] !== $r['sal_name'] || floatval($r['base_salary']) !== floatval($r['sal_base'])) {
-            syncUserMonthlySalary($conn, $r['user_id'], $filter_month);
-        }
-    }
-}
-
-// ── Fetch Active Users list for Manual Deduction Modal ─────────────────────────
-$users_for_deduction = [];
-$u_all = $conn->query("SELECT user_id, name, username, employee_id, department, job_title, role FROM users WHERE status = 'active' AND role NOT IN ('client', 'client_sub', 'student') ORDER BY name ASC");
+// ── Fetch Active Staff Users list (strictly active staff, excluding student & client roles) ─────
+$active_staff_users = [];
+$u_all = $conn->query("
+    SELECT user_id, name, username, employee_id, department, job_title, role, gender, base_salary, allowances 
+    FROM users 
+    WHERE status = 'active' AND role NOT IN ('client', 'client_sub', 'student') 
+    ORDER BY name ASC
+");
 if ($u_all) {
     while ($urow = $u_all->fetch_assoc()) {
-        $users_for_deduction[] = $urow;
+        $urow['gender']      = !empty($urow['gender']) ? ucfirst(strtolower(trim($urow['gender']))) : 'Male';
+        $urow['base_salary'] = floatval($urow['base_salary'] ?: 50000);
+        $urow['allowances']  = floatval($urow['allowances'] ?: 0);
+        $active_staff_users[] = $urow;
     }
 }
+$users_for_deduction = $active_staff_users;
 
 // ── Fetch Salaries for Filter Month ───────────────────────────────────────────
 $stmt_list = $conn->prepare("
@@ -244,6 +507,7 @@ $stmt_list->close();
 
 // Fetch deductions detail map for modal previews
 $deductions_map = [];
+$existing_deductions_sums = [];
 $ded_res = $conn->query("
     SELECT d.*, u.name as user_name, t.status as ticket_status, t.ticket_number 
     FROM salary_deductions d
@@ -255,8 +519,12 @@ $ded_res = $conn->query("
 if ($ded_res) {
     while ($d = $ded_res->fetch_assoc()) {
         $deductions_map[$d['user_id']][] = $d;
+        if (in_array($d['status'], ['applied', 'disputed'])) {
+            $existing_deductions_sums[$d['user_id']] = ($existing_deductions_sums[$d['user_id']] ?? 0.00) + floatval($d['amount']);
+        }
     }
 }
+$registered_user_ids = !empty($salaries) ? array_map('intval', array_column($salaries, 'user_id')) : [];
 
 // Count open dispute tickets
 $open_tickets_count = 0;
@@ -708,6 +976,49 @@ html, body {
     border-color: #94a3b8;
 }
 
+/* Action Remove Button */
+.btn-table-remove {
+    background: #ffffff !important;
+    border: 1px solid #fecaca !important;
+    color: #dc2626 !important;
+    padding: 4px 8px !important;
+    border-radius: 5px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.btn-table-remove:hover {
+    background: #fef2f2 !important;
+    border-color: #dc2626 !important;
+    color: #b91c1c !important;
+}
+
+/* Add Salary Button */
+.btn-add-salary {
+    background: #024442 !important;
+    color: #ffffff !important;
+    border: 1px solid #01302e !important;
+    font-weight: 700 !important;
+    padding: 6px 14px !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(2, 68, 66, 0.25);
+    transition: all 0.15s ease;
+}
+.btn-add-salary:hover {
+    background: #035c59 !important;
+    color: #ffffff !important;
+    box-shadow: 0 3px 8px rgba(2, 68, 66, 0.35);
+}
+
 /* Modals */
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -812,18 +1123,15 @@ html, body {
                     <input type="month" name="month" class="month-picker-input" value="<?= htmlspecialchars($filter_month) ?>" onchange="this.form.submit()">
                 </form>
 
-                <!-- PROMINENT RED DEDUCTION / PENALTY BUTTON -->
-                <button type="button" class="btn-red-deduction" onclick="openAddDeductionModal()">
-                    <i class="fas fa-minus-circle"></i> Add Deduction
+                <!-- ADD SALARY BUTTON -->
+                <button type="button" class="btn-add-salary" onclick="openAddSalaryModal()" title="Add an employee to this month's register">
+                    <i class="fas fa-user-plus"></i> Add Salary
                 </button>
 
-                <!-- Sync Button -->
-                <form method="POST" style="margin:0;">
-                    <input type="hidden" name="action" value="sync_all_payroll">
-                    <button type="submit" class="btn-clean-secondary" title="Re-sync payroll from roster">
-                        <i class="fas fa-sync-alt"></i> Sync
-                    </button>
-                </form>
+                <!-- PROMINENT RED DEDUCTION / PENALTY BUTTON -->
+                <button type="button" class="btn-red-deduction" onclick="openAddDeductionModal()" title="Add itemized deduction or penalty">
+                    <i class="fas fa-minus-circle"></i> Add Deduction
+                </button>
 
                 <!-- Print Button -->
                 <button type="button" class="btn-clean-secondary" onclick="window.print()" title="Print Payroll">
@@ -844,15 +1152,19 @@ html, body {
                         <th style="text-align: right; width: 20%;">Deductions & Arrears</th>
                         <th style="text-align: right; width: 18%;">Net & Paid</th>
                         <th style="text-align: center; width: 8%;">Status</th>
-                        <th style="text-align: center; width: 8%;">Actions</th>
+                        <th style="text-align: center; width: 12%;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="fitTableBody">
                     <?php if (empty($salaries)): ?>
                     <tr>
-                        <td colspan="6" style="text-align:center; padding: 40px 20px; color:#94a3b8;">
-                            <strong>No payroll records found for <?= date('F Y', strtotime($filter_month . '-01')) ?>.</strong>
-                            <p style="margin: 4px 0 0; font-size: 11px;">Click "Sync" above to generate records for this month.</p>
+                        <td colspan="6" style="text-align:center; padding: 40px 20px; color:#64748b;">
+                            <i class="fas fa-file-invoice-dollar" style="font-size: 32px; color: #cbd5e1; margin-bottom: 8px; display: block;"></i>
+                            <strong style="color: #0f172a; font-size: 13px;">No payroll records found for <?= date('F Y', strtotime($filter_month . '-01')) ?>.</strong>
+                            <p style="margin: 6px 0 12px; font-size: 11.5px; color: #64748b;">This month's register is currently empty. Add staff members directly using the button below.</p>
+                            <button type="button" class="btn-add-salary" onclick="openAddSalaryModal()">
+                                <i class="fas fa-user-plus"></i> Add Employee to Register
+                            </button>
                         </td>
                     </tr>
                     <?php else: ?>
@@ -861,7 +1173,7 @@ html, body {
                         $clean_status = str_replace(' ', '_', $sal['payment_status']);
                     ?>
                     <tr class="payroll-row-fit">
-                        <!-- 1. Employee, ID, Department, Job Title -->
+                        <!-- 1. Employee, ID, Department, Job Title & Shift -->
                         <td>
                             <div style="font-weight: 700; color: #0f172a; font-size: 13px;">
                                 <?= htmlspecialchars($sal['user_name']) ?>
@@ -872,6 +1184,9 @@ html, body {
                                 </span>
                                 · <span><?= htmlspecialchars($sal['job_title'] ?: 'Staff') ?></span>
                                 <span style="color: #94a3b8;">(<?= htmlspecialchars($sal['department'] ?: 'General') ?>)</span>
+                            </div>
+                            <div style="font-size: 10.5px; color: #475569; margin-top: 3px; display: inline-flex; align-items: center; gap: 4px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 1px 6px; border-radius: 4px;">
+                                <i class="far fa-clock" style="color:#024442;"></i> Shift: <?= date('h:i A', strtotime($sal['in_time'] ?: '09:00:00')) ?> - <?= date('h:i A', strtotime($sal['out_time'] ?: '18:00:00')) ?>
                             </div>
                         </td>
 
@@ -932,7 +1247,7 @@ html, body {
                             <?php endif; ?>
                         </td>
 
-                        <!-- 6. Actions (Edit & RED Penalty Button) -->
+                        <!-- 6. Actions (Edit, Penalty, Remove) -->
                         <td style="text-align: center;">
                             <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: center;">
                                 <button type="button" class="btn-table-edit" onclick="openEditSalaryModal(<?= htmlspecialchars(json_encode($sal)) ?>)" title="Edit Salary Parameters">
@@ -940,6 +1255,9 @@ html, body {
                                 </button>
                                 <button type="button" class="btn-table-penalty" onclick="openAddDeductionModal(<?= $sal['user_id'] ?>, '<?= htmlspecialchars(addslashes($sal['user_name'])) ?>')" title="Add Penalty or Deduction">
                                     <i class="fas fa-minus-circle"></i> Penalty
+                                </button>
+                                <button type="button" class="btn-table-remove" onclick="confirmRemoveSalary(<?= $sal['id'] ?>, <?= $sal['user_id'] ?>, '<?= htmlspecialchars(addslashes($sal['user_name'])) ?>')" title="Remove from Salary Register">
+                                    <i class="fas fa-trash-alt"></i> Remove
                                 </button>
                             </div>
                         </td>
@@ -958,6 +1276,7 @@ html, body {
                 <thead>
                     <tr>
                         <th class="sticky-col" style="min-width: 180px; text-align: left;">Employee</th>
+                        <th style="text-align: center; white-space: nowrap;">Shift (In - Out)</th>
                         <th style="text-align: left;">Department</th>
                         <th style="text-align: left;">Job Title</th>
                         <th style="text-align: right;">Base Salary</th>
@@ -977,7 +1296,7 @@ html, body {
                 <tbody id="allColsTableBody">
                     <?php if (empty($salaries)): ?>
                     <tr>
-                        <td colspan="15" style="text-align:center; padding: 40px 20px; color:#94a3b8;">
+                        <td colspan="16" style="text-align:center; padding: 40px 20px; color:#94a3b8;">
                             <strong>No payroll records found for <?= date('F Y', strtotime($filter_month . '-01')) ?>.</strong>
                         </td>
                     </tr>
@@ -996,6 +1315,13 @@ html, body {
                                 <?= htmlspecialchars($sal['employee_id'] ?: 'EMP-' . str_pad($sal['user_id'], 3, '0', STR_PAD_LEFT)) ?>
                                 <span style="font-family: sans-serif; color: #94a3b8;">· @<?= htmlspecialchars($sal['username']) ?></span>
                             </div>
+                        </td>
+
+                        <!-- 2. Shift Timing (In - Out) -->
+                        <td style="text-align: center;">
+                            <span style="font-family: monospace; font-size: 11px; background: #f8fafc; padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e8f0; color: #334155; white-space: nowrap;">
+                                <?= date('h:i A', strtotime($sal['in_time'] ?: '09:00:00')) ?> - <?= date('h:i A', strtotime($sal['out_time'] ?: '18:00:00')) ?>
+                            </span>
                         </td>
 
                         <!-- 2. Department -->
@@ -1069,7 +1395,7 @@ html, body {
                             <span class="status-clean <?= $clean_status ?>"><?= htmlspecialchars($sal['payment_status']) ?></span>
                         </td>
 
-                        <!-- 15. Actions (Edit & RED Penalty Button) -->
+                        <!-- 15. Actions (Edit, Penalty, Remove) -->
                         <td style="text-align: center;">
                             <div style="display: inline-flex; gap: 4px; align-items: center;">
                                 <button type="button" class="btn-table-edit" onclick="openEditSalaryModal(<?= htmlspecialchars(json_encode($sal)) ?>)" title="Edit Salary">
@@ -1077,6 +1403,9 @@ html, body {
                                 </button>
                                 <button type="button" class="btn-table-penalty" onclick="openAddDeductionModal(<?= $sal['user_id'] ?>, '<?= htmlspecialchars(addslashes($sal['user_name'])) ?>')" title="Add Penalty / Deduction">
                                     <i class="fas fa-minus-circle"></i> Penalty
+                                </button>
+                                <button type="button" class="btn-table-remove" onclick="confirmRemoveSalary(<?= $sal['id'] ?>, <?= $sal['user_id'] ?>, '<?= htmlspecialchars(addslashes($sal['user_name'])) ?>')" title="Remove from Salary Register">
+                                    <i class="fas fa-trash-alt"></i> Remove
                                 </button>
                             </div>
                         </td>
@@ -1131,6 +1460,12 @@ html, body {
                             <div style="font-size: 10px; color: #64748b;">Tax: <?= number_format($sal['tax']) ?> · Adv: <?= number_format($sal['advance']) ?></div>
                         <?php endif; ?>
                     </div>
+                    <div class="card-data-item">
+                        <div class="card-lbl">Shift Timing</div>
+                        <div class="card-val" style="font-size: 11px; font-weight: 600; color: #334155;">
+                            <i class="far fa-clock" style="color:#024442;"></i> <?= date('h:i A', strtotime($sal['in_time'] ?: '09:00:00')) ?> - <?= date('h:i A', strtotime($sal['out_time'] ?: '18:00:00')) ?>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="payroll-emp-card-footer">
@@ -1144,12 +1479,15 @@ html, body {
                         <?php endif; ?>
                     </div>
 
-                    <div style="display: flex; gap: 6px;">
+                    <div style="display: flex; gap: 4px;">
                         <button type="button" class="btn-table-edit" onclick="openEditSalaryModal(<?= htmlspecialchars(json_encode($sal)) ?>)">
                             <i class="fas fa-edit"></i> Edit
                         </button>
                         <button type="button" class="btn-table-penalty" onclick="openAddDeductionModal(<?= $sal['user_id'] ?>, '<?= htmlspecialchars(addslashes($sal['user_name'])) ?>')">
                             <i class="fas fa-minus-circle"></i> Penalty
+                        </button>
+                        <button type="button" class="btn-table-remove" onclick="confirmRemoveSalary(<?= $sal['id'] ?>, <?= $sal['user_id'] ?>, '<?= htmlspecialchars(addslashes($sal['user_name'])) ?>')">
+                            <i class="fas fa-trash-alt"></i> Remove
                         </button>
                     </div>
                 </div>
@@ -1191,6 +1529,25 @@ html, body {
                 <div style="margin-bottom:12px;">
                     <strong id="edit_employee_name" style="font-size:13px; color:#0f172a;"></strong>
                     <div style="font-size:11px; color:#64748b;">Month: <?= date('F Y', strtotime($filter_month . '-01')) ?></div>
+                </div>
+
+                <!-- Shift In/Out Time Section for Edit Modal -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
+                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #024442; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                        <span><i class="far fa-clock"></i> Shift & Attendance Timing</span>
+                        <span id="edit_shift_duration_pill" style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: #e0f2fe; color: #0369a1;">Standard: 9.0 hrs</span>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>In Time (Check-In) <span style="color:#ef4444;">*</span></label>
+                            <input type="time" name="in_time" id="edit_in_time" value="09:00" required onchange="recalculateEditSalary()">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Out Time (Check-Out) <span style="color:#ef4444;">*</span></label>
+                            <input type="time" name="out_time" id="edit_out_time" value="18:00" required onchange="recalculateEditSalary()">
+                        </div>
+                    </div>
+                    <div id="edit_timing_calc_alert" style="margin-top: 8px; padding: 6px 10px; border-radius: 6px; font-size: 11px; display: none;"></div>
                 </div>
 
                 <div class="form-grid">
@@ -1263,6 +1620,214 @@ html, body {
             <div class="modal-footer">
                 <button type="button" class="btn-clean-secondary" onclick="closeModal('editSalaryModal')">Cancel</button>
                 <button type="submit" class="btn-clean-secondary" style="background:#024442; color:#fff; border-color:#024442;"><i class="fas fa-save"></i> Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal 4: Add Employee to Salary Register -->
+<div id="addSalaryModal" class="modal-overlay" onclick="if(event.target===this)closeModal('addSalaryModal')">
+    <div class="modal-content" style="max-width:620px;">
+        <div class="modal-header" style="background: #024442; color: #ffffff;">
+            <h4 style="color:#fff;"><i class="fas fa-user-plus"></i> Add Employee to Salary Register</h4>
+            <button type="button" onclick="closeModal('addSalaryModal')" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">&times;</button>
+        </div>
+        <form method="POST" id="addSalaryForm">
+            <input type="hidden" name="action" value="add_salary">
+            <input type="hidden" name="employee_id" id="add_employee_id">
+            <input type="hidden" name="department" id="add_department">
+            <input type="hidden" name="job_title" id="add_job_title">
+            <input type="hidden" name="gender" id="add_gender" value="Male">
+
+            <div class="modal-body">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+                    <span style="font-size: 12px; font-weight: 600; color: #334155;">
+                        <i class="far fa-calendar-alt" style="color:#024442;"></i> Register Month:
+                    </span>
+                    <strong style="color: #024442; font-size: 13px;"><?= date('F Y', strtotime($filter_month . '-01')) ?></strong>
+                </div>
+
+                <!-- 1. Active User Selection Dropdown (Active users only, strictly excluding students) -->
+                <div class="form-group">
+                    <label style="font-weight: 700; color: #0f172a;">Select Staff Member (Active Employees Only) <span style="color:#ef4444;">*</span></label>
+                    <select name="user_id" id="add_user_id" onchange="onSelectUserForSalary()" required>
+                        <option value="">— Choose an Employee —</option>
+                        <?php if (!empty($active_staff_users)): ?>
+                            <optgroup label="Available to Add">
+                                <?php foreach ($active_staff_users as $u): 
+                                    if (in_array(intval($u['user_id']), $registered_user_ids)) continue;
+                                ?>
+                                    <option value="<?= $u['user_id'] ?>" 
+                                        data-name="<?= htmlspecialchars($u['name']) ?>"
+                                        data-username="<?= htmlspecialchars($u['username']) ?>"
+                                        data-emp-id="<?= htmlspecialchars($u['employee_id'] ?: 'EMP-' . str_pad($u['user_id'], 3, '0', STR_PAD_LEFT)) ?>"
+                                        data-dept="<?= htmlspecialchars($u['department'] ?: 'General') ?>"
+                                        data-title="<?= htmlspecialchars($u['job_title'] ?: 'Staff') ?>"
+                                        data-base="<?= floatval($u['base_salary'] ?: 50000) ?>"
+                                        data-allow="<?= floatval($u['allowances'] ?: 0) ?>"
+                                        data-gender="<?= htmlspecialchars($u['gender'] ?: 'Male') ?>">
+                                        <?= htmlspecialchars($u['name']) ?> (<?= htmlspecialchars($u['employee_id'] ?: 'EMP-' . str_pad($u['user_id'], 3, '0', STR_PAD_LEFT)) ?> · <?= htmlspecialchars($u['job_title'] ?: 'Staff') ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </optgroup>
+                            <optgroup label="Already in Register">
+                                <?php foreach ($active_staff_users as $u): 
+                                    if (!in_array(intval($u['user_id']), $registered_user_ids)) continue;
+                                ?>
+                                    <option value="<?= $u['user_id'] ?>" 
+                                        data-name="<?= htmlspecialchars($u['name']) ?>"
+                                        data-username="<?= htmlspecialchars($u['username']) ?>"
+                                        data-emp-id="<?= htmlspecialchars($u['employee_id'] ?: 'EMP-' . str_pad($u['user_id'], 3, '0', STR_PAD_LEFT)) ?>"
+                                        data-dept="<?= htmlspecialchars($u['department'] ?: 'General') ?>"
+                                        data-title="<?= htmlspecialchars($u['job_title'] ?: 'Staff') ?>"
+                                        data-base="<?= floatval($u['base_salary'] ?: 50000) ?>"
+                                        data-allow="<?= floatval($u['allowances'] ?: 0) ?>"
+                                        data-gender="<?= htmlspecialchars($u['gender'] ?: 'Male') ?>"
+                                        data-registered="1">
+                                        <?= htmlspecialchars($u['name']) ?> (<?= htmlspecialchars($u['employee_id'] ?: 'EMP-' . str_pad($u['user_id'], 3, '0', STR_PAD_LEFT)) ?>) [Already in Register]
+                                    </option>
+                                <?php endforeach; ?>
+                            </optgroup>
+                        <?php endif; ?>
+                    </select>
+                </div>
+
+                <!-- User Meta preview pill -->
+                <div id="add_user_meta_badge" style="display: none; margin-bottom: 12px; padding: 8px 12px; border-radius: 6px; background: #f0fdf4; border: 1px solid #bbf7d0; font-size: 11.5px; color: #166534;">
+                    <i class="fas fa-id-badge"></i> <span id="add_meta_text"></span>
+                </div>
+
+                <!-- 2. Shift In & Out Time -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #024442; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                        <span><i class="far fa-clock"></i> Shift & Attendance Timing</span>
+                        <span id="add_shift_duration_pill" style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: #e0f2fe; color: #0369a1;">Standard: 9.0 hrs</span>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>In Time (Check-In) <span style="color:#ef4444;">*</span></label>
+                            <input type="time" name="in_time" id="add_in_time" value="09:00" required onchange="recalculateAddSalary()">
+                            <small id="add_in_time_hint" style="font-size: 10px; color: #64748b; display: block; margin-top: 3px;">
+                                Official Start: 09:00 AM (Male Grace: 10m, Female Grace: 30m)
+                            </small>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Out Time (Check-Out) <span style="color:#ef4444;">*</span></label>
+                            <input type="time" name="out_time" id="add_out_time" value="18:00" required onchange="recalculateAddSalary()">
+                            <small style="font-size: 10px; color: #64748b; display: block; margin-top: 3px;">
+                                Standard Exit: 05:00 PM / 06:00 PM (8-9 hrs shift)
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Live Timing Status Alert Box -->
+                    <div id="add_timing_calc_alert" style="margin-top: 10px; padding: 8px 12px; border-radius: 6px; font-size: 11.5px; display: none;"></div>
+                </div>
+
+                <!-- 3. Base Salary & Allowances -->
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Base Salary (PKR) <span style="color:#ef4444;">*</span></label>
+                        <input type="number" step="0.01" name="base_salary" id="add_base_salary" placeholder="50000" required oninput="recalculateAddSalary()">
+                    </div>
+                    <div class="form-group">
+                        <label>Allowances (PKR)</label>
+                        <input type="number" step="0.01" name="allowances" id="add_allowances" value="0" oninput="recalculateAddSalary()">
+                    </div>
+                </div>
+
+                <!-- 4. Tax, Advance & Arrears -->
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Income Tax (PKR)</label>
+                        <input type="number" step="0.01" name="tax" id="add_tax" value="0" oninput="recalculateAddSalary()">
+                    </div>
+                    <div class="form-group">
+                        <label>Salary Advance (PKR)</label>
+                        <input type="number" step="0.01" name="advance" id="add_advance" value="0" oninput="recalculateAddSalary()">
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Previous Pending Arrears (PKR)</label>
+                        <input type="number" step="0.01" name="previous_pending" id="add_previous_pending" value="0" oninput="recalculateAddSalary()">
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Status</label>
+                        <select name="payment_status" id="add_payment_status" onchange="handleAddPaymentStatusChange()">
+                            <option value="Pending" selected>Pending</option>
+                            <option value="Paid">Paid</option>
+                            <option value="Partially Paid">Partially Paid</option>
+                            <option value="On Hold">On Hold</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" id="add_group_amount_paid" style="display: none; background: #fff7ed; padding: 10px 12px; border-radius: 6px; border: 1px solid #fed7aa;">
+                    <label style="font-weight: 700; color: #9a3412; font-size: 11.5px; margin: 0 0 3px 0;">
+                        <i class="fas fa-coins"></i> Amount Paid so far (PKR)
+                    </label>
+                    <input type="number" step="0.01" name="amount_paid" id="add_amount_paid" placeholder="Enter partial amount paid">
+                </div>
+
+                <!-- 5. Dynamic Live Calculation Card -->
+                <div id="add_live_summary_box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-top: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 8px;">
+                        <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569;">Calculated Payroll Breakdown</span>
+                        <span style="font-size: 10.5px; color: #64748b;" id="add_summary_wage_rate">Daily: PKR 0 · Hourly: PKR 0</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; font-size: 11.5px;">
+                        <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:6px 4px;">
+                            <div style="font-size:10px; color:#64748b; text-transform:uppercase;">Gross Earnings</div>
+                            <strong style="color:#0f172a; font-size:13px;" id="add_calc_gross">PKR 0</strong>
+                        </div>
+                        <div style="background:#fff; border:1px solid #fecaca; border-radius:6px; padding:6px 4px;">
+                            <div style="font-size:10px; color:#dc2626; text-transform:uppercase;">Total Deductions</div>
+                            <strong style="color:#dc2626; font-size:13px;" id="add_calc_deductions">-PKR 0</strong>
+                        </div>
+                        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:6px 4px;">
+                            <div style="font-size:10px; color:#166534; text-transform:uppercase;">Net Salary</div>
+                            <strong style="color:#166534; font-size:14px;" id="add_calc_net">PKR 0</strong>
+                        </div>
+                    </div>
+
+                    <div id="add_calc_detail_notes" style="font-size: 10.5px; color: #64748b; margin-top: 8px; line-height: 1.4;"></div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-clean-secondary" onclick="closeModal('addSalaryModal')">Cancel</button>
+                <button type="submit" class="btn-add-salary" style="border:none;"><i class="fas fa-check"></i> Add to Salary Register</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal 5: Confirm Remove Salary -->
+<div id="removeSalaryModal" class="modal-overlay" onclick="if(event.target===this)closeModal('removeSalaryModal')">
+    <div class="modal-content" style="max-width: 440px;">
+        <div class="modal-header modal-header-red">
+            <h4 style="color:#fff;"><i class="fas fa-trash-alt"></i> Remove from Salary Register</h4>
+            <button type="button" onclick="closeModal('removeSalaryModal')" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">&times;</button>
+        </div>
+        <form method="POST">
+            <input type="hidden" name="action" value="remove_salary">
+            <input type="hidden" name="salary_id" id="remove_salary_id">
+            <input type="hidden" name="user_id" id="remove_user_id">
+            <div class="modal-body">
+                <div style="font-size: 13px; color: #1e293b; line-height: 1.5;">
+                    Are you sure you want to remove <strong id="remove_employee_name"></strong> from the salary register for <strong><?= date('F Y', strtotime($filter_month . '-01')) ?></strong>?
+                </div>
+                <div style="margin-top: 10px; font-size: 11.5px; color: #64748b; background: #fef2f2; border: 1px solid #fee2e2; padding: 8px 12px; border-radius: 6px;">
+                    <i class="fas fa-info-circle" style="color: #dc2626;"></i> This deletes this month's payroll entry from the register. You can re-add them at any time using "+ Add Salary".
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-clean-secondary" onclick="closeModal('removeSalaryModal')">Cancel</button>
+                <button type="submit" class="btn-red-deduction" style="border:none;"><i class="fas fa-trash-alt"></i> Remove Now</button>
             </div>
         </form>
     </div>
@@ -1443,12 +2008,257 @@ function viewDeductions(salary, deductions) {
     openModal('deductionsModal');
 }
 
+// Active Staff and Deduction Data Maps
+const activeStaffUsers = <?= json_encode($active_staff_users) ?>;
+const registeredUserIds = <?= json_encode($registered_user_ids) ?>;
+const existingDeductionsMap = <?= json_encode($existing_deductions_sums) ?>;
+
+function timeToSeconds(t) {
+    if (!t) return 0;
+    const parts = t.split(':');
+    return (Number(parts[0]) || 0) * 3600 + (Number(parts[1]) || 0) * 60 + (Number(parts[2]) || 0);
+}
+
+// ── Unified Attendance, Shift & Deduction Calculator ─────────────────────────
+function calculateAttendanceAndDeduction(baseSalary, allowances, inTimeStr, outTimeStr, gender, existingDeductions, tax, advance, arrears) {
+    baseSalary = Number(baseSalary) || 0;
+    allowances = Number(allowances) || 0;
+    existingDeductions = Number(existingDeductions) || 0;
+    tax = Number(tax) || 0;
+    advance = Number(advance) || 0;
+    arrears = Number(arrears) || 0;
+
+    const dailyWage  = Math.round((baseSalary / 30) * 100) / 100;
+    const hourlyWage = Math.round((dailyWage / 8) * 100) / 100;
+
+    const isFemale = (String(gender).toLowerCase() === 'female');
+    const graceLimit = isFemale ? '09:30:00' : '09:10:00';
+
+    let inTimeFull  = inTimeStr ? (inTimeStr.length === 5 ? inTimeStr + ':00' : inTimeStr) : '09:00:00';
+    let outTimeFull = outTimeStr ? (outTimeStr.length === 5 ? outTimeStr + ':00' : outTimeStr) : '18:00:00';
+
+    let lateDeduction = 0;
+    let lateStatus = 'On Time';
+    let isLate = false;
+    let lateMins = 0;
+
+    if (inTimeFull <= '09:00:00') {
+        lateStatus = 'On Time (Check-in before 09:00 AM)';
+        isLate = false;
+    } else if (inTimeFull <= graceLimit) {
+        lateStatus = `Within Grace Period (Cutoff: ${isFemale ? '09:30' : '09:10'} AM for ${isFemale ? 'Female' : 'Male'})`;
+        isLate = false;
+    } else {
+        isLate = true;
+        const inSecs = timeToSeconds(inTimeFull);
+        const baseSecs = timeToSeconds('09:00:00');
+        lateMins = Math.max(0, Math.round((inSecs - baseSecs) / 60));
+        lateDeduction = Math.max(100, Math.round((lateMins / 60) * hourlyWage));
+        lateStatus = `Late Arrival: ${lateMins} mins late (Past ${isFemale ? '09:30' : '09:10'} AM) → Penalty: -PKR ${lateDeduction.toLocaleString()}`;
+    }
+
+    const inSec = timeToSeconds(inTimeFull);
+    const outSec = timeToSeconds(outTimeFull);
+    let workedHours = Math.max(0, Math.round(((outSec - inSec) / 3600) * 100) / 100);
+
+    let shortfallDeduction = 0;
+    let hoursStatus = 'Full Shift Completed (≥ 8 hrs)';
+    let isShortfall = false;
+
+    if (workedHours < 4.0) {
+        isShortfall = true;
+        shortfallDeduction = Math.round(dailyWage * 0.5);
+        hoursStatus = `Half-Day Attendance (< 4 hrs worked: ${workedHours} hrs) → -PKR ${shortfallDeduction.toLocaleString()}`;
+    } else if (workedHours < 8.0) {
+        isShortfall = true;
+        const shortHrs = Math.round((8.0 - workedHours) * 100) / 100;
+        shortfallDeduction = Math.round(shortHrs * hourlyWage);
+        hoursStatus = `Short Hours (${workedHours} hrs worked, shortfall ${shortHrs} hrs) → -PKR ${shortfallDeduction.toLocaleString()}`;
+    } else {
+        hoursStatus = `Full Shift Completed (${workedHours} hrs worked)`;
+    }
+
+    const timingDeductions = lateDeduction + shortfallDeduction;
+    const totalDeductions  = existingDeductions + timingDeductions;
+    const grossPay         = baseSalary + allowances;
+    const netSalary        = Math.max(0, grossPay - tax - advance - totalDeductions + arrears);
+
+    return {
+        dailyWage,
+        hourlyWage,
+        workedHours,
+        isLate,
+        lateStatus,
+        lateDeduction,
+        isShortfall,
+        hoursStatus,
+        shortfallDeduction,
+        timingDeductions,
+        existingDeductions,
+        totalDeductions,
+        grossPay,
+        netSalary
+    };
+}
+
+// ── Open Add Salary Modal ────────────────────────────────────────────────────
+function openAddSalaryModal() {
+    const form = document.getElementById('addSalaryForm');
+    if (form) form.reset();
+
+    document.getElementById('add_user_id').value = '';
+    document.getElementById('add_user_meta_badge').style.display = 'none';
+    document.getElementById('add_in_time').value = '09:00';
+    document.getElementById('add_out_time').value = '18:00';
+    document.getElementById('add_base_salary').value = '50000';
+    document.getElementById('add_allowances').value = '0';
+    document.getElementById('add_tax').value = '0';
+    document.getElementById('add_advance').value = '0';
+    document.getElementById('add_previous_pending').value = '0';
+    document.getElementById('add_payment_status').value = 'Pending';
+    document.getElementById('add_amount_paid').value = '0';
+    document.getElementById('add_group_amount_paid').style.display = 'none';
+
+    recalculateAddSalary();
+    openModal('addSalaryModal');
+}
+
+// When employee is picked in Add Salary dropdown
+function onSelectUserForSalary() {
+    const sel = document.getElementById('add_user_id');
+    const opt = sel.options[sel.selectedIndex];
+
+    if (!opt || !opt.value) {
+        document.getElementById('add_user_meta_badge').style.display = 'none';
+        recalculateAddSalary();
+        return;
+    }
+
+    const name   = opt.dataset.name || '';
+    const empId  = opt.dataset.empId || '';
+    const dept   = opt.dataset.dept || 'General';
+    const title  = opt.dataset.title || 'Staff';
+    const base   = Number(opt.dataset.base) || 50000;
+    const allow  = Number(opt.dataset.allow) || 0;
+    const gender = opt.dataset.gender || 'Male';
+    const isReg  = opt.dataset.registered === '1';
+
+    document.getElementById('add_employee_id').value = empId;
+    document.getElementById('add_department').value  = dept;
+    document.getElementById('add_job_title').value   = title;
+    document.getElementById('add_gender').value      = gender;
+    document.getElementById('add_base_salary').value = base;
+    document.getElementById('add_allowances').value  = allow;
+
+    const badge = document.getElementById('add_user_meta_badge');
+    const badgeText = document.getElementById('add_meta_text');
+    badgeText.innerHTML = `<strong>${escapeHtml(name)}</strong> (${empId}) · ${escapeHtml(title)} · ${escapeHtml(dept)} · <span style="text-decoration:underline;">${gender} (${gender === 'Female' ? '30m' : '10m'} grace)</span>` + (isReg ? ` <span style="color:#b45309; font-weight:700;">[Already in this month's register - will update]</span>` : '');
+    badge.style.display = 'block';
+
+    recalculateAddSalary();
+}
+
+// Live calculation for Add Salary modal
+function recalculateAddSalary() {
+    const userId = Number(document.getElementById('add_user_id').value) || 0;
+    const base = Number(document.getElementById('add_base_salary').value) || 0;
+    const allow = Number(document.getElementById('add_allowances').value) || 0;
+    const inTime = document.getElementById('add_in_time').value || '09:00';
+    const outTime = document.getElementById('add_out_time').value || '18:00';
+    const gender = document.getElementById('add_gender').value || 'Male';
+    const tax = Number(document.getElementById('add_tax').value) || 0;
+    const advance = Number(document.getElementById('add_advance').value) || 0;
+    const arrears = Number(document.getElementById('add_previous_pending').value) || 0;
+    const existingDeds = existingDeductionsMap[userId] || 0;
+
+    const calc = calculateAttendanceAndDeduction(base, allow, inTime, outTime, gender, existingDeds, tax, advance, arrears);
+
+    // Update Shift Duration Pill
+    const pill = document.getElementById('add_shift_duration_pill');
+    if (pill) {
+        pill.textContent = calc.workedHours + ' hrs shift';
+        pill.style.background = (calc.workedHours >= 8.0) ? '#e0f2fe' : (calc.workedHours < 4.0 ? '#fee2e2' : '#fef3c7');
+        pill.style.color = (calc.workedHours >= 8.0) ? '#0369a1' : (calc.workedHours < 4.0 ? '#991b1b' : '#92400e');
+    }
+
+    // Update Alert Box
+    const alertBox = document.getElementById('add_timing_calc_alert');
+    if (alertBox) {
+        if (calc.isLate || calc.isShortfall) {
+            alertBox.style.display = 'block';
+            alertBox.style.background = '#fef2f2';
+            alertBox.style.border = '1px solid #fee2e2';
+            alertBox.style.color = '#991b1b';
+            alertBox.innerHTML = `
+                <div><i class="fas fa-exclamation-triangle" style="color:#dc2626;"></i> <strong>Attendance Impact:</strong></div>
+                ${calc.isLate ? `<div style="margin-top:2px; font-weight:600;">• ${escapeHtml(calc.lateStatus)}</div>` : ''}
+                ${calc.isShortfall ? `<div style="margin-top:2px; font-weight:600;">• ${escapeHtml(calc.hoursStatus)}</div>` : ''}
+                <div style="margin-top:4px; font-weight:700; color:#dc2626;">Total Timing Deductions: -PKR ${calc.timingDeductions.toLocaleString()}</div>
+            `;
+        } else {
+            alertBox.style.display = 'block';
+            alertBox.style.background = '#f0fdf4';
+            alertBox.style.border = '1px solid #bbf7d0';
+            alertBox.style.color = '#166534';
+            alertBox.innerHTML = `<i class="fas fa-check-circle" style="color:#16a34a;"></i> <strong>Perfect Attendance:</strong> ${escapeHtml(calc.lateStatus)} · ${escapeHtml(calc.hoursStatus)} (0 timing deductions).`;
+        }
+    }
+
+    // Update Summary Card
+    const wageRate = document.getElementById('add_summary_wage_rate');
+    if (wageRate) wageRate.textContent = `Daily: PKR ${calc.dailyWage.toLocaleString()} · Hourly: PKR ${calc.hourlyWage.toLocaleString()}`;
+
+    const grossEl = document.getElementById('add_calc_gross');
+    if (grossEl) grossEl.textContent = 'PKR ' + calc.grossPay.toLocaleString();
+
+    const dedEl = document.getElementById('add_calc_deductions');
+    if (dedEl) dedEl.textContent = '-PKR ' + calc.totalDeductions.toLocaleString();
+
+    const netEl = document.getElementById('add_calc_net');
+    if (netEl) netEl.textContent = 'PKR ' + calc.netSalary.toLocaleString();
+
+    const detailNotes = document.getElementById('add_calc_detail_notes');
+    if (detailNotes) {
+        detailNotes.innerHTML = `
+            Shift: <strong>${calc.workedHours} hrs</strong> · 
+            Timing Deductions: <strong>-PKR ${calc.timingDeductions.toLocaleString()}</strong> · 
+            Itemized Month Penalties: <strong>-PKR ${calc.existingDeductions.toLocaleString()}</strong>
+            ${tax > 0 ? ` · Tax: -PKR ${tax.toLocaleString()}` : ''}
+            ${advance > 0 ? ` · Advance: -PKR ${advance.toLocaleString()}` : ''}
+            ${arrears > 0 ? ` · Arrears: +PKR ${arrears.toLocaleString()}` : ''}
+        `;
+    }
+
+    window.currentAddNetSalary = calc.netSalary;
+    handleAddPaymentStatusChange();
+}
+
+function handleAddPaymentStatusChange() {
+    const status = document.getElementById('add_payment_status').value;
+    const group = document.getElementById('add_group_amount_paid');
+    const input = document.getElementById('add_amount_paid');
+    const net = window.currentAddNetSalary || 0;
+
+    if (status === 'Partially Paid') {
+        group.style.display = 'block';
+    } else if (status === 'Paid') {
+        group.style.display = 'none';
+        input.value = net;
+    } else {
+        group.style.display = 'none';
+        input.value = 0;
+    }
+}
+
+// ── Open Edit Salary Modal ───────────────────────────────────────────────────
 function openEditSalaryModal(s) {
     document.getElementById('edit_user_id').value = s.user_id;
     document.getElementById('edit_employee_name').textContent = s.user_name + ' (@' + s.username + ')';
     document.getElementById('edit_emp_id').value = s.employee_id || '';
     document.getElementById('edit_department').value = s.department || 'General';
     document.getElementById('edit_job_title').value = s.job_title || 'Staff';
+    document.getElementById('edit_in_time').value = s.in_time ? s.in_time.substring(0, 5) : '09:00';
+    document.getElementById('edit_out_time').value = s.out_time ? s.out_time.substring(0, 5) : '18:00';
     document.getElementById('edit_base_salary').value = s.base_salary;
     document.getElementById('edit_allowances').value = s.allowances;
     document.getElementById('edit_tax').value = s.tax;
@@ -1457,10 +2267,67 @@ function openEditSalaryModal(s) {
     document.getElementById('edit_payment_status').value = s.payment_status;
     document.getElementById('edit_amount_paid').value = s.amount_paid || 0;
 
-    window.currentEditingNetSalary = Number(s.net_salary || 0);
+    window.currentEditingGender = s.gender || 'Male';
+    window.currentEditingExistingDeductions = existingDeductionsMap[s.user_id] || 0;
 
+    recalculateEditSalary();
     handlePaymentStatusChange();
     openModal('editSalaryModal');
+}
+
+function recalculateEditSalary() {
+    const base = Number(document.getElementById('edit_base_salary').value) || 0;
+    const allow = Number(document.getElementById('edit_allowances').value) || 0;
+    const inTime = document.getElementById('edit_in_time').value || '09:00';
+    const outTime = document.getElementById('edit_out_time').value || '18:00';
+    const gender = window.currentEditingGender || 'Male';
+    const tax = Number(document.getElementById('edit_tax').value) || 0;
+    const advance = Number(document.getElementById('edit_advance').value) || 0;
+    const arrears = Number(document.getElementById('edit_previous_pending').value) || 0;
+    const existingDeds = window.currentEditingExistingDeductions || 0;
+
+    const calc = calculateAttendanceAndDeduction(base, allow, inTime, outTime, gender, existingDeds, tax, advance, arrears);
+
+    window.currentEditingNetSalary = calc.netSalary;
+
+    const pill = document.getElementById('edit_shift_duration_pill');
+    if (pill) {
+        pill.textContent = calc.workedHours + ' hrs shift';
+        pill.style.background = (calc.workedHours >= 8.0) ? '#e0f2fe' : (calc.workedHours < 4.0 ? '#fee2e2' : '#fef3c7');
+        pill.style.color = (calc.workedHours >= 8.0) ? '#0369a1' : (calc.workedHours < 4.0 ? '#991b1b' : '#92400e');
+    }
+
+    const alertBox = document.getElementById('edit_timing_calc_alert');
+    if (alertBox) {
+        if (calc.isLate || calc.isShortfall) {
+            alertBox.style.display = 'block';
+            alertBox.style.background = '#fef2f2';
+            alertBox.style.border = '1px solid #fee2e2';
+            alertBox.style.color = '#991b1b';
+            alertBox.innerHTML = `
+                <div><i class="fas fa-exclamation-triangle" style="color:#dc2626;"></i> <strong>Attendance Impact:</strong></div>
+                ${calc.isLate ? `<div>• ${escapeHtml(calc.lateStatus)}</div>` : ''}
+                ${calc.isShortfall ? `<div>• ${escapeHtml(calc.hoursStatus)}</div>` : ''}
+                <div style="margin-top:2px; font-weight:700; color:#dc2626;">Timing Deductions: -PKR ${calc.timingDeductions.toLocaleString()} (Total Deductions: -PKR ${calc.totalDeductions.toLocaleString()})</div>
+            `;
+        } else {
+            alertBox.style.display = 'block';
+            alertBox.style.background = '#f0fdf4';
+            alertBox.style.border = '1px solid #bbf7d0';
+            alertBox.style.color = '#166534';
+            alertBox.innerHTML = `<i class="fas fa-check-circle" style="color:#16a34a;"></i> <strong>Perfect Attendance:</strong> ${escapeHtml(calc.lateStatus)} · ${escapeHtml(calc.hoursStatus)} (0 timing deductions).`;
+        }
+    }
+
+    calculateBalanceHint();
+}
+
+// ── Open Remove Confirmation Modal ───────────────────────────────────────────
+function confirmRemoveSalary(salaryId, userId, userName) {
+    document.getElementById('remove_salary_id').value = salaryId;
+    document.getElementById('remove_user_id').value = userId;
+    document.getElementById('remove_employee_name').textContent = userName;
+    openModal('removeSalaryModal');
 }
 
 function handlePaymentStatusChange() {
