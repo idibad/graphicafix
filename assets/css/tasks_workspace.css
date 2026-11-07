@@ -260,6 +260,7 @@
     box-sizing: border-box;
 }
 
+/* Kanban Grid: Desktop 4 Columns */
 .kanban-grid-wrapper,
 .project-tasks-workspace .kanban-grid-wrapper {
     display: grid !important;
@@ -272,17 +273,53 @@
     box-sizing: border-box !important;
 }
 
-@media (max-width: 900px) {
+/* Tablet (769px - 991px) */
+@media (min-width: 769px) and (max-width: 991px) {
     .kanban-grid-wrapper,
     .project-tasks-workspace .kanban-grid-wrapper {
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 12px !important;
+    }
+    .kanban-column,
+    .project-tasks-workspace .kanban-column {
+        height: auto !important;
+        min-height: 440px !important;
+        max-height: 680px !important;
     }
 }
 
-@media (max-width: 576px) {
+/* Mobile & Small Screens (<= 768px): App-Style Swipeable Deck with Snap Scroll */
+@media (max-width: 768px) {
+    #view-board,
+    .project-tasks-workspace #proj-view-board {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding-bottom: 6px !important;
+    }
     .kanban-grid-wrapper,
     .project-tasks-workspace .kanban-grid-wrapper {
-        grid-template-columns: 1fr !important;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        scroll-snap-type: x mandatory !important;
+        -webkit-overflow-scrolling: touch !important;
+        gap: 12px !important;
+        padding: 4px 2px 14px 2px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .kanban-column,
+    .project-tasks-workspace .kanban-column {
+        flex: 0 0 85vw !important;
+        max-width: 330px !important;
+        min-width: 275px !important;
+        scroll-snap-align: center !important;
+        height: calc(100vh - 235px) !important;
+        min-height: 440px !important;
+        max-height: 720px !important;
+        border-radius: 12px !important;
+        padding: 10px 8px 12px 8px !important;
     }
 }
 
@@ -1033,4 +1070,315 @@
 @keyframes toastSlideIn {
     from { transform: translateY(12px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
+}
+
+/* ── 9. MOBILE & SMALL SCREEN OPTIMIZATIONS (<= 768px & <= 576px) ────────── */
+
+/* Mobile Column Navigation Bar */
+.mobile-kanban-nav,
+.project-tasks-workspace .mobile-kanban-nav {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-kanban-nav,
+    .project-tasks-workspace .mobile-kanban-nav {
+        display: flex !important;
+        align-items: center;
+        gap: 6px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 2px 2px 10px 2px;
+        margin-bottom: 6px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .mobile-kanban-nav::-webkit-scrollbar,
+    .project-tasks-workspace .mobile-kanban-nav::-webkit-scrollbar {
+        display: none;
+    }
+    .mobile-col-pill,
+    .project-tasks-workspace .mobile-col-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 6px 13px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #475569;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        flex-shrink: 0;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .mobile-col-pill .badge-count,
+    .project-tasks-workspace .mobile-col-pill .badge-count {
+        background: #e2e8f0;
+        color: #0f172a;
+        font-size: 11px;
+        padding: 1px 6px;
+        border-radius: 10px;
+        font-weight: 700;
+    }
+    .mobile-col-pill.active,
+    .project-tasks-workspace .mobile-col-pill.active {
+        background: #0f172a !important;
+        border-color: #0f172a !important;
+        color: #ffffff !important;
+        box-shadow: 0 2px 6px rgba(15,23,42,0.18);
+    }
+    .mobile-col-pill.active .badge-count,
+    .project-tasks-workspace .mobile-col-pill.active .badge-count {
+        background: rgba(255, 255, 255, 0.28) !important;
+        color: #ffffff !important;
+    }
+
+    /* Workspace Header */
+    .workspace-header,
+    .project-tasks-workspace .workspace-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+        margin-bottom: 14px !important;
+    }
+    .header-left-col,
+    .project-tasks-workspace .header-left-col {
+        width: 100% !important;
+        gap: 10px !important;
+    }
+    .workspace-title,
+    .project-tasks-workspace .workspace-title {
+        font-size: 22px !important;
+    }
+    .view-switcher-tabs,
+    .project-tasks-workspace .view-switcher-tabs {
+        display: flex !important;
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        padding: 3px !important;
+        gap: 3px !important;
+        box-sizing: border-box !important;
+    }
+    .view-switcher-tabs::-webkit-scrollbar,
+    .project-tasks-workspace .view-switcher-tabs::-webkit-scrollbar {
+        display: none !important;
+    }
+    .tab-btn,
+    .project-tasks-workspace .tab-btn {
+        flex: 1 1 auto !important;
+        padding: 8px 10px !important;
+        font-size: 12.5px !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+    }
+    .header-right-col,
+    .project-tasks-workspace .header-right-col {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+    .header-right-col .btn-ctrl-action,
+    .project-tasks-workspace .header-right-col .btn-ctrl-action {
+        flex: 1 1 calc(33.333% - 6px) !important;
+        min-width: 80px !important;
+        padding: 8px 10px !important;
+        font-size: 12px !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+    }
+    .header-right-col .dropdown,
+    .project-tasks-workspace .header-right-col .dropdown {
+        flex: 1 1 calc(33.333% - 6px) !important;
+    }
+    .header-right-col .dropdown .btn-ctrl-action,
+    .project-tasks-workspace .header-right-col .dropdown .btn-ctrl-action {
+        width: 100% !important;
+    }
+    .header-right-col .btn-primary-add,
+    .project-tasks-workspace .header-right-col .btn-primary-add {
+        flex: 1 1 100% !important;
+        justify-content: center !important;
+        padding: 10px 16px !important;
+        font-size: 13.5px !important;
+        order: 5;
+    }
+
+    /* Filter Bar */
+    .workspace-filter-bar,
+    .project-tasks-workspace .workspace-filter-bar {
+        padding: 12px !important;
+        margin-bottom: 14px !important;
+    }
+    .filter-form,
+    .project-tasks-workspace .filter-form {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+    .filter-input-wrap,
+    .project-tasks-workspace .filter-input-wrap {
+        width: 100% !important;
+        min-width: 100% !important;
+    }
+    .form-ctrl-compact,
+    .project-tasks-workspace .form-ctrl-compact {
+        width: 100% !important;
+        height: 38px !important;
+        font-size: 13px !important;
+    }
+    .btn-clear-filter,
+    .project-tasks-workspace .btn-clear-filter {
+        width: 100% !important;
+        text-align: center !important;
+        padding: 8px !important;
+    }
+
+    /* List & Table Views */
+    .modern-list-container,
+    .project-tasks-workspace .modern-list-container {
+        padding: 12px !important;
+        border-radius: 10px !important;
+    }
+    .list-table-responsive,
+    .project-tasks-workspace .list-table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        border-radius: 8px !important;
+    }
+    .modern-list-table th,
+    .modern-list-table td,
+    .project-tasks-workspace .modern-list-table th,
+    .project-tasks-workspace .modern-list-table td {
+        padding: 9px 10px !important;
+        font-size: 12.5px !important;
+    }
+
+    /* Calendar View */
+    .modern-calendar-container,
+    .project-tasks-workspace .modern-calendar-container {
+        padding: 12px !important;
+        border-radius: 10px !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    .calendar-week-headers,
+    .calendar-days-grid,
+    .project-tasks-workspace .calendar-week-headers,
+    .project-tasks-workspace .calendar-days-grid {
+        min-width: 520px !important;
+    }
+    .cal-day-cell,
+    .project-tasks-workspace .cal-day-cell {
+        min-height: 75px !important;
+        padding: 4px !important;
+    }
+    .cal-task-pill,
+    .project-tasks-workspace .cal-task-pill {
+        font-size: 10px !important;
+        padding: 1px 4px !important;
+    }
+}
+
+@media (max-width: 576px) {
+    /* Modal Dialogs */
+    .modal-dialog {
+        margin: 8px !important;
+        max-width: calc(100% - 16px) !important;
+    }
+    .modern-modal-card {
+        border-radius: 12px !important;
+    }
+    .modal-header {
+        padding: 14px 16px !important;
+    }
+    .modal-title {
+        font-size: 15px !important;
+    }
+    .modal-subtitle {
+        font-size: 11.5px !important;
+    }
+    .modal-body {
+        padding: 14px 16px !important;
+    }
+    .modal-footer {
+        padding: 10px 16px 14px !important;
+        flex-direction: column-reverse !important;
+        gap: 8px !important;
+    }
+    .modal-footer .btn-cancel-modal,
+    .modal-footer .btn-primary-add {
+        width: 100% !important;
+        justify-content: center !important;
+        text-align: center !important;
+    }
+
+    /* Task Card Compactness on Small Phones */
+    .kanban-task-card,
+    .project-tasks-workspace .kanban-task-card {
+        padding: 11px 12px !important;
+        margin-bottom: 9px !important;
+        border-radius: 10px !important;
+    }
+    .task-title-text,
+    .project-tasks-workspace .task-title-text {
+        font-size: 13.5px !important;
+        line-height: 1.35 !important;
+        margin-bottom: 5px !important;
+    }
+    .task-snippet-text,
+    .project-tasks-workspace .task-snippet-text {
+        font-size: 11px !important;
+        line-height: 1.35 !important;
+        margin-bottom: 6px !important;
+    }
+    .card-top-row,
+    .project-tasks-workspace .card-top-row {
+        margin-bottom: 7px !important;
+    }
+    .task-tag-chip,
+    .project-tasks-workspace .task-tag-chip {
+        font-size: 10px !important;
+        padding: 2px 6px !important;
+    }
+    .task-avatar-circle,
+    .project-tasks-workspace .task-avatar-circle {
+        width: 22px !important;
+        height: 22px !important;
+        font-size: 9.5px !important;
+    }
+    .card-schedule-row,
+    .project-tasks-workspace .card-schedule-row {
+        gap: 5px !important;
+        margin-bottom: 7px !important;
+    }
+    .schedule-pill, .duration-pill,
+    .project-tasks-workspace .schedule-pill,
+    .project-tasks-workspace .duration-pill {
+        font-size: 10.5px !important;
+        padding: 2px 6px !important;
+    }
+    .card-footer-row,
+    .project-tasks-workspace .card-footer-row {
+        padding-top: 5px !important;
+    }
+    .log-time-badge,
+    .project-tasks-workspace .log-time-badge {
+        font-size: 10.5px !important;
+        padding: 2px 5px !important;
+    }
+    .card-metrics-group,
+    .project-tasks-workspace .card-metrics-group {
+        gap: 6px !important;
+        font-size: 10.5px !important;
+    }
 }

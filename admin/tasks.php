@@ -344,11 +344,31 @@ function getUserInitials($name) {
 ?>
 
 <style>
-/* Critical Instant Render Guards - Fixed Width, Zero Horizontal Scroll */
+/* Critical Instant Render Guards */
 .view-panel:not(.active) { display: none !important; }
-#view-board { width: 100%; max-width: 100%; overflow-x: hidden !important; }
-.kanban-grid-wrapper { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 14px !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; }
-.kanban-column { height: calc(100vh - 210px); min-height: 480px; max-height: 820px; overflow: hidden; display: flex; flex-direction: column; width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; }
+#view-board { width: 100%; max-width: 100%; box-sizing: border-box !important; }
+
+/* Desktop Grid (>= 992px) */
+@media (min-width: 992px) {
+    #view-board { overflow-x: hidden !important; }
+    .kanban-grid-wrapper { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 14px !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; }
+    .kanban-column { height: calc(100vh - 210px); min-height: 480px; max-height: 820px; overflow: hidden; display: flex; flex-direction: column; width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; }
+}
+
+/* Tablet (769px to 991px) */
+@media (min-width: 769px) and (max-width: 991px) {
+    #view-board { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+    .kanban-grid-wrapper { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; width: 100% !important; box-sizing: border-box !important; }
+    .kanban-column { min-height: 440px; max-height: 680px; height: auto; display: flex; flex-direction: column; width: 100% !important; box-sizing: border-box !important; }
+}
+
+/* Mobile & Small Screens (<= 768px): App-Style Swipeable Deck with Snap Scroll */
+@media (max-width: 768px) {
+    #view-board { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; padding-bottom: 6px; }
+    .kanban-grid-wrapper { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; overflow-x: auto !important; scroll-snap-type: x mandatory !important; -webkit-overflow-scrolling: touch !important; gap: 12px !important; padding: 4px 2px 14px 2px !important; width: 100% !important; box-sizing: border-box !important; }
+    .kanban-column { flex: 0 0 85vw !important; max-width: 330px !important; min-width: 275px !important; scroll-snap-align: center !important; height: calc(100vh - 235px) !important; min-height: 440px !important; max-height: 720px !important; display: flex; flex-direction: column; box-sizing: border-box !important; border-radius: 12px !important; }
+}
+
 .kanban-cards-list { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden !important; width: 100% !important; box-sizing: border-box !important; }
 .kanban-task-card { width: 100% !important; max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; overflow: hidden; }
 </style>
@@ -466,6 +486,18 @@ function getUserInitials($name) {
 
         <!-- 1. BOARD VIEW (Default) -->
         <div class="view-panel active" id="view-board">
+            <!-- Mobile Column Navigation Bar -->
+            <div class="mobile-kanban-nav d-md-none">
+                <?php foreach ($columns as $status_key => $col_meta): 
+                    $col_tasks = $tasks_by_column[$status_key] ?? [];
+                    $task_count = count($col_tasks);
+                ?>
+                <button type="button" class="mobile-col-pill <?= $status_key === 'Pending' ? 'active' : '' ?>" data-col="<?= $status_key ?>" onclick="scrollToKanbanCol('<?= $status_key ?>')">
+                    <?= htmlspecialchars($col_meta['title']) ?> <span class="badge-count" id="mobile-badge-count-<?= $status_key ?>"><?= $task_count ?></span>
+                </button>
+                <?php endforeach; ?>
+            </div>
+
             <div class="kanban-grid-wrapper">
                 <?php foreach ($columns as $status_key => $col_meta): 
                     $col_tasks = $tasks_by_column[$status_key] ?? [];
@@ -1219,6 +1251,8 @@ function refreshColumnCounters() {
         // Update badge
         const badge = col.querySelector('.col-counter-badge');
         if (badge) badge.textContent = count;
+        const mobBadge = document.getElementById('mobile-badge-count-' + status);
+        if (mobBadge) mobBadge.textContent = count;
 
         // Toggle Empty state box
         let emptyBox = list.querySelector('.empty-column-box');
@@ -1408,7 +1442,42 @@ function switchGroupBy(criterion) {
 }
 
 // Initialize on DOM load
+function scrollToKanbanCol(statusKey) {
+    const col = document.querySelector(`.kanban-column[data-status="${statusKey}"]`);
+    if (col) {
+        col.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        document.querySelectorAll('.mobile-col-pill').forEach(p => p.classList.remove('active'));
+        const pill = document.querySelector(`.mobile-col-pill[data-col="${statusKey}"]`);
+        if (pill) pill.classList.add('active');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Sync mobile navigation pill active state on board horizontal scroll
+    const boardEl = document.getElementById('view-board');
+    if (boardEl) {
+        boardEl.addEventListener('scroll', function() {
+            const cols = document.querySelectorAll('.kanban-column');
+            let closestCol = null;
+            let minDiff = Infinity;
+            const boardCenter = boardEl.getBoundingClientRect().left + boardEl.offsetWidth / 2;
+            cols.forEach(c => {
+                const rect = c.getBoundingClientRect();
+                const colCenter = rect.left + rect.width / 2;
+                const diff = Math.abs(colCenter - boardCenter);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestCol = c;
+                }
+            });
+            if (closestCol) {
+                const status = closestCol.getAttribute('data-status');
+                document.querySelectorAll('.mobile-col-pill').forEach(p => {
+                    p.classList.toggle('active', p.getAttribute('data-col') === status);
+                });
+            }
+        }, { passive: true });
+    }
     bindDragAndDrop();
     refreshColumnCounters();
 

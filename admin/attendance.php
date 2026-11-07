@@ -741,6 +741,83 @@ $total_records = count($attendance_records);
 .form-group label { display: block; font-weight: 600; font-size: 13px; color: #334155; margin-bottom: 5px; }
 .form-group input, .form-group select, .form-group textarea {
     width: 100%; padding: 10px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-family: inherit; font-size: 13.5px; outline: none; background: #fff;
+
+}
+
+/* Mobile & Small Screen Optimizations */
+@media (max-width: 768px) {
+    .page-top-actions {
+        padding: 16px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+    }
+    .page-top-actions h2 {
+        font-size: 1.25rem !important;
+    }
+    .filter-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        gap: 8px !important;
+    }
+    .filter-bar form,
+    .filter-bar select,
+    .filter-bar button,
+    .filter-bar a {
+        width: 100% !important;
+        justify-content: center !important;
+        text-align: center !important;
+        box-sizing: border-box !important;
+    }
+    .filter-bar input[type="month"] {
+        width: 100% !important;
+    }
+    .stats-row {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        margin-bottom: 16px !important;
+    }
+    .stat-card {
+        padding: 12px 14px !important;
+        border-radius: 12px !important;
+        gap: 10px !important;
+    }
+    .stat-icon {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 15px !important;
+        border-radius: 9px !important;
+    }
+    .stat-number {
+        font-size: 18px !important;
+    }
+    .stat-label {
+        font-size: 11px !important;
+    }
+    .main-card {
+        border-radius: 12px !important;
+    }
+    .att-table th,
+    .att-table td {
+        padding: 10px 12px !important;
+        font-size: 12.5px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-row {
+        grid-template-columns: 1fr !important;
+    }
+    .modal-content {
+        max-width: calc(100% - 20px) !important;
+        margin: 10px !important;
+    }
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 14px 16px !important;
+    }
 }
 </style>
 
