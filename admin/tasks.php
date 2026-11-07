@@ -932,6 +932,7 @@ function getUserInitials($name) {
                                 <option value="Pending">To-do</option>
                                 <option value="In Progress">In Progress</option>
                                 <option value="In Review">Review Ready</option>
+                                <option value="Cancelled">Cancelled</option>
                                 <?php if ($can_complete_task): ?>
                                 <option value="Completed">Completed</option>
                                 <?php else: ?>

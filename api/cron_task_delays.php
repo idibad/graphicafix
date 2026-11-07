@@ -41,11 +41,17 @@ $summary = [
 ];
 
 // ── 1. SEND UPCOMING DUE WARNINGS (Tasks due Today or Tomorrow) ───────────────
-$warn_sql = "SELECT id, title, due_date, assigned_to 
-             FROM tasks 
-             WHERE status IN ('Pending', 'In Progress') 
-               AND due_date IN (?, ?)
-               AND assigned_to IS NOT NULL";
+$warn_sql = "SELECT t.id, t.title, t.due_date, t.assigned_to 
+             FROM tasks t
+             JOIN users u ON t.assigned_to = u.user_id
+             WHERE t.status IN ('Pending', 'In Progress') 
+               AND (t.stage IS NULL OR t.stage NOT IN ('Internal Review', 'Client Approval', 'Publication/Delivery', 'Reporting'))
+               AND (t.extension_status IS NULL OR t.extension_status != 'pending')
+               AND (t.delay_status IS NULL OR t.delay_status != 'exempted')
+               AND COALESCE(t.is_delay_exempt, 0) = 0
+               AND u.role NOT IN ('student', 'client', 'client_sub')
+               AND t.due_date IN (?, ?)
+             ORDER BY t.due_date ASC";
 $warn_stmt = $conn->prepare($warn_sql);
 if ($warn_stmt) {
     $warn_stmt->bind_param("ss", $today, $tomorrow);
@@ -63,10 +69,14 @@ if ($warn_stmt) {
 // ── 2. AUDIT DELAYED TASKS & APPLY PENALTIES ──────────────────────────────────
 $del_sql = "SELECT t.*, u.name as assignee_name, u.email as assignee_email 
             FROM tasks t
-            LEFT JOIN users u ON t.assigned_to = u.user_id
+            JOIN users u ON t.assigned_to = u.user_id
             WHERE t.due_date < ? 
-              AND t.status NOT IN ('Completed', 'In Review', 'Cancelled')
-              AND t.assigned_to IS NOT NULL
+              AND t.status NOT IN ('Completed', 'In Review', 'Cancelled', 'Archived')
+              AND (t.stage IS NULL OR t.stage NOT IN ('Internal Review', 'Client Approval', 'Publication/Delivery', 'Reporting'))
+              AND (t.delay_status IS NULL OR t.delay_status != 'exempted')
+              AND COALESCE(t.is_delay_exempt, 0) = 0
+              AND (t.extension_status IS NULL OR t.extension_status != 'pending')
+              AND u.role NOT IN ('student', 'client', 'client_sub')
             ORDER BY t.due_date ASC";
 
 $del_stmt = $conn->prepare($del_sql);

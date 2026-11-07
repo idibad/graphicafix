@@ -127,27 +127,75 @@ function calculateTaskDelayDeduction($conn, $task, $as_of_date = null) {
     $settings = getTaskDelaySettings($conn);
     $tier = $settings['tiers'][$priority] ?? ['daily' => 200.00, 'cap' => 1000.00, 'grace_hours' => 24];
 
-    // Check if task is explicitly marked as exempted or extended
-    if (($task['delay_status'] ?? '') === 'exempted') {
+    $task_status = $task['status'] ?? 'Pending';
+    $task_stage  = $task['stage'] ?? '';
+
+    // ── 1. Exemption & Cancellation Check ─────────────────────────────────────
+    // Cancelled, Archived, or officially exempted tasks never incur delay deductions
+    if (in_array($task_status, ['Cancelled', 'Archived']) || 
+        !empty($task['is_delay_exempt']) || 
+        ($task['delay_status'] ?? '') === 'exempted') {
         $result['status_category'] = 'exempted';
-        $result['reason'] = 'Task delay officially exempted by administration';
+        $result['penalty_amount']  = 0.00;
+        $result['is_delayed']      = false;
+        $result['delay_days']      = 0;
+        $result['reason']          = in_array($task_status, ['Cancelled', 'Archived']) 
+            ? "Task is {$task_status} - delay penalty does not apply" 
+            : 'Task delay officially exempted by administration';
         return $result;
     }
 
+    // ── 2. Pending Extension Request ──────────────────────────────────────────
+    // While an employee's deadline extension request is pending manager/admin review, hold penalties
+    if (($task['extension_status'] ?? '') === 'pending') {
+        $result['status_category'] = 'pending_extension';
+        $result['penalty_amount']  = 0.00;
+        $result['is_delayed']      = false;
+        $result['delay_days']      = 0;
+        $result['reason']          = 'Deadline extension request pending management review';
+        return $result;
+    }
+
+    // ── 3. Deadline / Due Date Resolution ─────────────────────────────────────
     $due_date_str = $task['due_date']; // YYYY-MM-DD
+    // If extension is approved and has an extension_requested_date that is later, use it
+    if (($task['extension_status'] ?? '') === 'approved' && !empty($task['extension_requested_date'])) {
+        if (strtotime($task['extension_requested_date']) > strtotime($due_date_str)) {
+            $due_date_str = $task['extension_requested_date'];
+        }
+    }
     $due_timestamp = strtotime($due_date_str . ' 23:59:59');
 
-    // ── Stop-clock rule ────────────────────────────────────────────────────────
-    // If status is In Review or Completed, delay stops at submission/completion time
-    $task_status = $task['status'] ?? 'Pending';
+    // ── 4. Fair Stop-Clock Rule (Prevents Unfair Penalties) ───────────────────
+    // The employee's responsibility ends when they submit their work for review or completion.
+    // Managerial review delays or client wait time must NEVER be penalized against the employee.
     $cutoff_timestamp = $as_of_date ? strtotime($as_of_date . ' 23:59:59') : time();
 
-    if ($task_status === 'In Review' && !empty($task['submitted_for_review_at'])) {
-        $cutoff_timestamp = strtotime($task['submitted_for_review_at']);
-    } elseif ($task_status === 'Completed' && !empty($task['completed_at'])) {
-        $cutoff_timestamp = strtotime($task['completed_at']);
-    } elseif (in_array($task_status, ['In Review', 'Completed']) && !empty($task['updated_at'])) {
-        $cutoff_timestamp = strtotime($task['updated_at']);
+    $is_review_stage   = in_array($task_stage, ['Internal Review', 'Client Approval']);
+    $is_complete_stage = in_array($task_stage, ['Publication/Delivery', 'Reporting']);
+
+    if ($task_status === 'In Review' || $is_review_stage) {
+        // Clock stops at time of submission for review
+        if (!empty($task['submitted_for_review_at'])) {
+            $cutoff_timestamp = strtotime($task['submitted_for_review_at']);
+        } elseif (!empty($task['updated_at'])) {
+            $cutoff_timestamp = strtotime($task['updated_at']);
+        }
+    } elseif ($task_status === 'Completed' || $is_complete_stage) {
+        // If submitted for review prior to completion, cutoff is the submission time
+        // so that days spent awaiting review/approval are NOT counted against the employee.
+        $sub_time  = !empty($task['submitted_for_review_at']) ? strtotime($task['submitted_for_review_at']) : null;
+        $comp_time = !empty($task['completed_at']) ? strtotime($task['completed_at']) : null;
+
+        if ($sub_time && $comp_time) {
+            $cutoff_timestamp = min($sub_time, $comp_time);
+        } elseif ($sub_time) {
+            $cutoff_timestamp = $sub_time;
+        } elseif ($comp_time) {
+            $cutoff_timestamp = $comp_time;
+        } elseif (!empty($task['updated_at'])) {
+            $cutoff_timestamp = strtotime($task['updated_at']);
+        }
     }
 
     // If delivered on or before due date
@@ -343,8 +391,8 @@ function applyTaskDelayPenalty($conn, $task_id, $as_of_date = null) {
             return true;
         }
 
-        // If on time or within grace, ensure no spurious active penalty remains
-        if ($calc['status_category'] === 'on_time') {
+        // If on time, exempted, pending extension, or grace, ensure no active penalty remains
+        if (in_array($calc['status_category'], ['on_time', 'exempted', 'pending_extension', 'grace_period'])) {
             $del_ded = $conn->prepare("DELETE FROM salary_deductions WHERE task_id = ? AND deduction_type = 'Task Delay Penalty' AND status = 'applied'");
             if ($del_ded) {
                 $del_ded->bind_param("i", $task_id);
@@ -518,6 +566,9 @@ function reviewTaskExtensionRequest($conn, $task_id, $admin_id, $decision, $admi
                 $upd_hist->close();
             }
 
+            // Re-evaluate task delay penalty now that extension request was rejected
+            applyTaskDelayPenalty($conn, $task_id);
+
             return ['success' => true, 'message' => 'Extension request rejected.'];
         }
     } catch (Throwable $e) {
@@ -639,17 +690,17 @@ function advanceTaskStage($conn, $task_id, $target_stage, $user_id, $user_role, 
         $new_status = $task['status'];
         if ($target_stage === 'Production') {
             $new_status = 'In Progress';
-        } elseif ($target_stage === 'Internal Review') {
+        } elseif (in_array($target_stage, ['Internal Review', 'Client Approval'])) {
             $new_status = 'In Review';
-        } elseif ($target_stage === 'Reporting') {
+        } elseif (in_array($target_stage, ['Publication/Delivery', 'Reporting'])) {
             $new_status = 'Completed';
         }
 
         // Update task record
         $upd_sql = "UPDATE tasks SET stage = ?, status = ?, updated_at = NOW()";
-        if ($target_stage === 'Internal Review') {
+        if (in_array($target_stage, ['Internal Review', 'Client Approval'])) {
             $upd_sql .= ", submitted_for_review_at = COALESCE(submitted_for_review_at, NOW())";
-        } elseif ($target_stage === 'Reporting' || $new_status === 'Completed') {
+        } elseif (in_array($target_stage, ['Publication/Delivery', 'Reporting']) || $new_status === 'Completed') {
             $upd_sql .= ", completed_at = COALESCE(completed_at, NOW())";
         }
         $upd_sql .= " WHERE id = ?";

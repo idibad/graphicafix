@@ -122,7 +122,9 @@ if ($action === 'create_task') {
     $stmt->bind_param("sssssiiisddi", $title, $description, $priority, $status, $due_date, $assigned_to, $project_id, $milestone_id, $task_type, $estimated_hours, $logged_hours, $task_id);
 
     if ($stmt->execute()) {
-        if (function_exists('applyTaskDelayPenalty')) {
+        if (function_exists('recordTaskStatusTimestamp')) {
+            recordTaskStatusTimestamp($conn, $task_id, $status);
+        } elseif (function_exists('applyTaskDelayPenalty')) {
             applyTaskDelayPenalty($conn, $task_id);
         }
         echo json_encode(['success' => true, 'message' => 'Task updated successfully']);
