@@ -166,133 +166,260 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 ?>
 
 <style>
-/* ── DPR Dashboard Specific Styles ── */
-.dpr-container {
-    max-width: 1400px;
+/* ── DPR Executive Design Tokens ── */
+.dpr-wrapper {
+    --dpr-primary: #024442;
+    --dpr-primary-light: #035c59;
+    --dpr-primary-dark: #012b2a;
+    --dpr-primary-subtle: #f0fdf9;
+    --dpr-accent: #B6F763;
+    --dpr-accent-hover: #a3e84e;
+    --dpr-accent-dark: #193b0b;
+    --dpr-text-dark: #0f172a;
+    --dpr-text-main: #334155;
+    --dpr-text-muted: #64748b;
+    --dpr-text-light: #94a3b8;
+    --dpr-border: #e2e8f0;
+    --dpr-border-light: #f1f5f9;
+    --dpr-card-bg: #ffffff;
+    --dpr-radius: 14px;
+    --dpr-radius-sm: 8px;
+    --dpr-radius-md: 10px;
+    --dpr-radius-lg: 18px;
+    --dpr-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+    --dpr-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.03);
+    --dpr-shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -1px rgba(15, 23, 42, 0.03);
+    --dpr-shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+    max-width: 1440px;
     margin: 0 auto;
+    padding-bottom: 40px;
+    font-family: inherit;
+    color: var(--dpr-text-main);
 }
 
-/* Page Header */
+/* ── Page Header ── */
 .dpr-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 16px;
+    gap: 18px;
     margin-bottom: 24px;
+    padding: 6px 0;
 }
-.dpr-title-wrap h1 {
-    font-size: 24px;
+.dpr-header-left {
+    flex: 1;
+    min-width: 280px;
+}
+.dpr-header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.dpr-badge-pulse {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+.dpr-header-title {
+    font-size: 26px;
     font-weight: 800;
-    color: var(--text-dark);
-    margin: 0 0 4px 0;
+    color: var(--dpr-text-dark);
+    margin: 0 0 6px 0;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+    letter-spacing: -0.3px;
 }
-.dpr-title-wrap p {
-    color: var(--text-muted);
-    font-size: 14px;
+.dpr-header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    background: var(--dpr-primary);
+    color: var(--dpr-accent);
+    border-radius: 10px;
+    font-size: 18px;
+    box-shadow: 0 4px 10px rgba(2, 68, 66, 0.2);
+}
+.dpr-header-sub {
+    color: var(--dpr-text-muted);
+    font-size: 13.5px;
     margin: 0;
+    line-height: 1.5;
 }
 .dpr-header-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     flex-wrap: wrap;
 }
 
-/* KPI Cards */
+/* ── Standard Button Styles ── */
+.btn-dpr {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    line-height: 1.4;
+    border: none;
+    outline: none;
+}
+.btn-dpr-primary {
+    background: var(--dpr-primary);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(2, 68, 66, 0.2);
+}
+.btn-dpr-primary:hover {
+    background: var(--dpr-primary-light);
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(2, 68, 66, 0.3);
+}
+.btn-dpr-accent {
+    background: var(--dpr-accent);
+    color: var(--dpr-primary-dark);
+    box-shadow: 0 2px 10px rgba(182, 247, 99, 0.4);
+}
+.btn-dpr-accent:hover {
+    background: var(--dpr-accent-hover);
+    color: var(--dpr-primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(182, 247, 99, 0.5);
+}
+.btn-dpr-secondary {
+    background: #ffffff;
+    color: var(--dpr-text-dark);
+    border: 1.5px solid var(--dpr-border);
+    box-shadow: var(--dpr-shadow-xs);
+}
+.btn-dpr-secondary:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: var(--dpr-primary);
+    transform: translateY(-1px);
+}
+.btn-dpr-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 8px;
+}
+
+/* ── KPI Metric Cards ── */
 .dpr-kpi-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
     gap: 16px;
     margin-bottom: 24px;
 }
 .dpr-kpi-card {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 20px;
-    box-shadow: var(--shadow-sm);
+    background: var(--dpr-card-bg);
+    border: 1px solid var(--dpr-border);
+    border-radius: var(--dpr-radius);
+    padding: 18px 20px;
+    box-shadow: var(--dpr-shadow-xs);
     display: flex;
     align-items: center;
-    gap: 18px;
-    position: relative;
-    overflow: hidden;
+    gap: 16px;
     transition: all 0.25s ease;
 }
 .dpr-kpi-card:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--dpr-shadow-md);
     border-color: #cbd5e1;
 }
-.dpr-kpi-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background: var(--kpi-accent, var(--primary-color));
-}
 .dpr-kpi-icon {
-    width: 52px;
-    height: 52px;
+    width: 48px;
+    height: 48px;
     border-radius: 12px;
-    background: var(--kpi-bg, #f0fdf4);
-    color: var(--kpi-accent, var(--primary-color));
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
+    font-size: 20px;
     flex-shrink: 0;
 }
-.dpr-kpi-content {
-    flex-grow: 1;
+.kpi-icon-blue    { background: #e0f2fe; color: #0284c7; }
+.kpi-icon-purple  { background: #ede9fe; color: #7c3aed; }
+.kpi-icon-emerald { background: #d1fae5; color: #059669; }
+.kpi-icon-rose    { background: #fee2e2; color: #dc2626; }
+.kpi-icon-slate   { background: #f1f5f9; color: #64748b; }
+
+.dpr-kpi-body {
+    flex: 1;
+    min-width: 0;
 }
-.dpr-kpi-number {
-    font-size: 26px;
+.dpr-kpi-value {
+    font-size: 25px;
     font-weight: 800;
-    color: var(--text-dark);
+    color: var(--dpr-text-dark);
     line-height: 1.1;
+    letter-spacing: -0.5px;
+}
+.dpr-kpi-value span {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--dpr-text-muted);
+    margin-left: 2px;
 }
 .dpr-kpi-label {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
-    color: var(--text-muted);
+    color: var(--dpr-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-top: 4px;
 }
 .dpr-kpi-sub {
     font-size: 12px;
-    color: #94a3b8;
-    margin-top: 2px;
+    color: var(--dpr-text-light);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dpr-rating-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #fffbeb;
+    color: #b45309;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 11px;
 }
 
-/* Featured Today's Submission Showcase Card */
+/* ── Featured Today's Submission Card ── */
 .today-showcase-card {
     background: linear-gradient(135deg, #024442 0%, #033634 100%);
     color: #ffffff;
-    border-radius: var(--radius-lg);
-    padding: 22px 26px;
+    border-radius: var(--dpr-radius-lg);
+    padding: 24px 28px;
     margin-bottom: 24px;
     box-shadow: 0 10px 25px -5px rgba(2, 68, 66, 0.3);
-    border: 1px solid rgba(182, 247, 99, 0.25);
+    border: 1px solid rgba(182, 247, 99, 0.3);
     position: relative;
     overflow: hidden;
-}
-.today-showcase-card::after {
-    content: '\f058';
-    font-family: 'Font Awesome 5 Free';
-    font-weight: 900;
-    position: absolute;
-    right: -15px;
-    bottom: -25px;
-    font-size: 140px;
-    color: rgba(255, 255, 255, 0.04);
-    pointer-events: none;
 }
 .today-showcase-header {
     display: flex;
@@ -300,16 +427,15 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     align-items: flex-start;
     flex-wrap: wrap;
     gap: 16px;
-    position: relative;
-    z-index: 2;
+    margin-bottom: 18px;
 }
 .today-badge-verified {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(182, 247, 99, 0.2);
+    background: rgba(182, 247, 99, 0.18);
     color: #B6F763;
-    border: 1px solid rgba(182, 247, 99, 0.4);
+    border: 1px solid rgba(182, 247, 99, 0.35);
     padding: 4px 12px;
     border-radius: 20px;
     font-size: 11.5px;
@@ -318,22 +444,56 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     letter-spacing: 0.5px;
     margin-bottom: 8px;
 }
+.today-showcase-title {
+    font-size: 20px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    color: #ffffff;
+    letter-spacing: -0.2px;
+}
+.today-showcase-meta {
+    font-size: 12.5px;
+    color: rgba(255, 255, 255, 0.75);
+}
+.today-showcase-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.btn-glass-action {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+.btn-glass-action:hover {
+    background: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
 .today-metrics-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 12px;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-    position: relative;
-    z-index: 2;
+    margin-bottom: 16px;
 }
 .today-metric-cell {
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(4px);
-    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 10px 14px;
+    backdrop-filter: blur(4px);
 }
 .today-metric-cell .label {
     font-size: 11px;
@@ -346,22 +506,37 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     font-size: 15px;
     font-weight: 800;
     color: #ffffff;
-    margin-top: 2px;
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.today-preview-box {
+    background: rgba(0, 0, 0, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.55;
+    white-space: pre-line;
+    max-height: 90px;
+    overflow-y: auto;
 }
 
-/* ── Today's Pending Banner when not submitted yet ── */
+/* ── Today's Pending Banner ── */
 .today-pending-banner {
-    background: #ffffff;
-    border: 1.5px dashed #0284c7;
-    border-radius: var(--radius-lg);
-    padding: 20px 24px;
+    background: linear-gradient(135deg, #ffffff 0%, #f0fdf9 100%);
+    border: 1.5px solid #a7f3d0;
+    border-radius: var(--dpr-radius-lg);
+    padding: 22px 26px;
     margin-bottom: 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 20px;
     flex-wrap: wrap;
-    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.06);
+    box-shadow: 0 4px 14px rgba(2, 68, 66, 0.05);
 }
 .today-pending-left {
     display: flex;
@@ -373,8 +548,9 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 .today-pending-icon {
     width: 48px;
     height: 48px;
-    background: #e0f2fe;
-    color: #0284c7;
+    background: #ecfdf5;
+    color: var(--dpr-primary);
+    border: 1px solid #bbf7d0;
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -383,115 +559,80 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     flex-shrink: 0;
 }
 .today-pending-title {
-    font-size: 16px;
+    font-size: 16.5px;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--dpr-text-dark);
     margin: 0 0 4px 0;
 }
 .today-pending-sub {
     font-size: 13px;
-    color: #64748b;
+    color: var(--dpr-text-muted);
     margin: 0;
-    line-height: 1.4;
+    line-height: 1.45;
 }
 
-/* ── DPR Locked Today Banner in Modal ── */
-.dpr-locked-date-banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #f0fdf4;
-    border: 1.5px solid #bbf7d0;
-    border-radius: 12px;
-    padding: 14px 18px;
-    margin-bottom: 18px;
-    gap: 12px;
-}
-.dpr-locked-icon {
-    width: 42px;
-    height: 42px;
-    background: var(--primary-color, #024442);
-    color: var(--accent-color, #B6F763);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
-}
-.dpr-locked-info {
-    flex-grow: 1;
-}
-.dpr-locked-label {
-    font-size: 11px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    color: #166534;
-}
-.dpr-locked-date {
-    font-size: 15px;
-    font-weight: 800;
-    color: #0f172a;
-    margin-top: 2px;
-}
-.dpr-locked-tag {
-    background: var(--primary-color, #024442);
-    color: #ffffff;
-    font-size: 11.5px;
-    font-weight: 700;
-    padding: 5px 12px;
-    border-radius: 20px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-}
-
-/* Filter Card */
+/* ── Filter Card ── */
 .dpr-filter-card {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 20px 24px;
+    background: var(--dpr-card-bg);
+    border: 1px solid var(--dpr-border);
+    border-radius: var(--dpr-radius);
+    padding: 18px 22px;
     margin-bottom: 24px;
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--dpr-shadow-xs);
 }
 .filter-row-top {
     display: flex;
     flex-wrap: wrap;
-    gap: 14px;
+    gap: 12px;
     align-items: flex-end;
 }
 .filter-group {
     flex: 1;
-    min-width: 160px;
+    min-width: 150px;
 }
 .filter-label {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 5px;
     font-size: 11.5px;
     font-weight: 700;
-    color: #475569;
+    color: var(--dpr-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 6px;
 }
+.filter-input-wrap {
+    position: relative;
+    width: 100%;
+}
+.filter-input-wrap i.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--dpr-text-light);
+    font-size: 13px;
+}
 .filter-input {
     width: 100%;
     padding: 9px 12px;
-    border: 1.5px solid var(--border-color);
-    border-radius: 8px;
+    border: 1.5px solid var(--dpr-border);
+    border-radius: var(--dpr-radius-sm);
     background: #f8fafc;
     font-size: 13px;
-    color: var(--text-dark);
-    font-weight: 500;
+    color: var(--dpr-text-dark);
+    font-weight: 600;
     transition: all 0.2s;
+    outline: none;
+    font-family: inherit;
+}
+.filter-input.with-icon {
+    padding-left: 34px;
 }
 .filter-input:focus {
-    border-color: var(--primary-color);
-    background: #fff;
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(2, 68, 66, 0.1);
+    border-color: var(--dpr-primary);
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(2, 68, 66, 0.08);
 }
 .preset-pills {
     display: flex;
@@ -499,51 +640,54 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     flex-wrap: wrap;
     margin-top: 14px;
     padding-top: 12px;
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid var(--dpr-border-light);
     align-items: center;
 }
 .preset-pill-label {
     font-size: 12px;
     font-weight: 700;
-    color: #64748b;
+    color: var(--dpr-text-muted);
     margin-right: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 .preset-btn {
     background: #f1f5f9;
     border: 1px solid transparent;
-    color: #475569;
+    color: var(--dpr-text-main);
     padding: 4px 12px;
     border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
-    text-decoration: none;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.15s;
+    outline: none;
 }
 .preset-btn:hover {
     background: #e2e8f0;
-    color: #0f172a;
+    color: var(--dpr-text-dark);
 }
 .preset-btn.active {
-    background: var(--primary-color);
+    background: var(--dpr-primary);
     color: #ffffff;
     font-weight: 700;
 }
 
-/* Reports Table Card */
+/* ── Table Card & Responsive Feed ── */
 .dpr-table-card {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
+    background: var(--dpr-card-bg);
+    border: 1px solid var(--dpr-border);
+    border-radius: var(--dpr-radius);
+    box-shadow: var(--dpr-shadow-xs);
     overflow: hidden;
 }
 .dpr-table-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 18px 24px;
-    border-bottom: 1px solid var(--border-color);
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--dpr-border);
     background: #ffffff;
     flex-wrap: wrap;
     gap: 12px;
@@ -551,51 +695,51 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 .dpr-table-title {
     font-size: 16px;
     font-weight: 800;
-    color: var(--text-dark);
+    color: var(--dpr-text-dark);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     margin: 0;
 }
 .dpr-count-badge {
     background: #f1f5f9;
-    color: #475569;
-    font-size: 12px;
+    color: var(--dpr-text-muted);
+    font-size: 11.5px;
     font-weight: 700;
-    padding: 4px 10px;
+    padding: 3px 9px;
     border-radius: 20px;
 }
 .dpr-table-actions {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
-/* Responsive Table */
 .dpr-table {
     width: 100%;
     border-collapse: collapse;
 }
 .dpr-table th {
     background: #f8fafc;
-    color: #475569;
+    color: var(--dpr-text-muted);
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border-color);
+    letter-spacing: 0.6px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--dpr-border);
     text-align: left;
+    white-space: nowrap;
 }
 .dpr-table td {
-    padding: 14px 16px;
-    border-bottom: 1px solid #f1f5f9;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--dpr-border-light);
     font-size: 13px;
     vertical-align: top;
-    color: #334155;
+    color: var(--dpr-text-main);
 }
 .dpr-table tr:hover td {
-    background-color: #fafbfc;
+    background-color: #fcfdfe;
 }
 
 /* Cell content helpers */
@@ -608,46 +752,39 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    background: linear-gradient(135deg, var(--primary-color) 0%, #064e3b 100%);
+    background: linear-gradient(135deg, var(--dpr-primary) 0%, #064e3b 100%);
     color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
+    font-weight: 800;
     font-size: 13px;
     flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(2, 68, 66, 0.2);
 }
 .dpr-user-name {
     font-weight: 700;
-    color: var(--text-dark);
-    line-height: 1.2;
+    color: var(--dpr-text-dark);
+    line-height: 1.25;
 }
 .dpr-user-role {
     font-size: 11px;
-    color: #64748b;
-    font-weight: 500;
+    color: var(--dpr-text-muted);
+    font-weight: 600;
 }
 
-.dpr-date-cell {
-    white-space: nowrap;
-}
 .dpr-date-main {
     font-weight: 700;
-    color: var(--text-dark);
+    color: var(--dpr-text-dark);
     font-size: 13px;
 }
 .dpr-date-day {
     font-size: 11.5px;
-    color: #64748b;
-}
-
-.dpr-tasks-list {
-    line-height: 1.45;
-    color: #334155;
-    font-size: 12.5px;
-    white-space: pre-line;
-    max-height: 75px;
-    overflow-y: auto;
+    color: var(--dpr-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
 }
 
 /* Badges & Tags */
@@ -656,12 +793,12 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     align-items: center;
     gap: 4px;
     background: #f1f5f9;
-    color: #0f172a;
+    color: var(--dpr-text-dark);
     font-size: 11px;
     font-weight: 700;
     padding: 2px 7px;
     border-radius: 6px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--dpr-border);
     margin-top: 4px;
 }
 .badge-project {
@@ -682,8 +819,8 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 }
 .badge-project-general {
     background: #f8fafc;
-    color: #64748b;
-    border-color: #e2e8f0;
+    color: var(--dpr-text-muted);
+    border-color: var(--dpr-border);
 }
 .badge-blocker-critical {
     background: #fef2f2;
@@ -731,7 +868,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 }
 .badge-yesterday {
     background: #f1f5f9;
-    color: #475569;
+    color: var(--dpr-text-main);
     font-size: 10.5px;
     font-weight: 700;
     padding: 1px 6px;
@@ -744,17 +881,27 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     background: #fffbeb;
     color: #b45309;
     border: 1px solid #fef08a;
-    padding: 2px 6px;
+    padding: 2px 7px;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 700;
+}
+.dpr-tasks-clamp {
+    line-height: 1.5;
+    color: var(--dpr-text-dark);
+    font-size: 12.5px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: pre-line;
 }
 .dpr-wip-tag {
     background: #eff6ff;
     border: 1px solid #bfdbfe;
     color: #1d4ed8;
     border-radius: 6px;
-    padding: 4px 8px;
+    padding: 3px 8px;
     font-size: 11.5px;
     line-height: 1.35;
     margin-top: 6px;
@@ -779,38 +926,38 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     background: #f5f3ff;
     color: #6d28d9;
     border: 1px solid #ddd6fe;
-    padding: 2px 6px;
+    padding: 2px 7px;
     border-radius: 6px;
     font-size: 11px;
     font-weight: 700;
-    margin-top: 4px;
+    margin-top: 5px;
 }
 
 /* Action buttons */
 .dpr-actions-cell {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     white-space: nowrap;
 }
 .btn-icon-action {
     width: 32px;
     height: 32px;
     border-radius: 8px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--dpr-border);
     background: #ffffff;
-    color: #475569;
+    color: var(--dpr-text-muted);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     font-size: 13px;
-    transition: all 0.2s;
+    transition: all 0.15s;
     text-decoration: none;
 }
 .btn-icon-action:hover {
     background: #f8fafc;
-    color: var(--primary-color);
+    color: var(--dpr-primary);
     border-color: #cbd5e1;
     transform: translateY(-1px);
 }
@@ -820,15 +967,15 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     border-color: #fca5a5;
 }
 
-/* Modals */
+/* ── Modals & Overlay ── */
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(4px);
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(5px);
     z-index: 9999;
     display: none;
     align-items: center;
@@ -840,24 +987,25 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     display: flex;
 }
 .modal-content {
-    background: #fff;
-    border-radius: 16px;
+    background: #ffffff;
+    border-radius: 18px;
     width: 100%;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
     overflow: hidden;
-    animation: modalSlideUp 0.3s ease-out;
+    animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     flex-direction: column;
-    max-height: 92vh;
+    max-height: 90vh;
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 @keyframes modalSlideUp {
-    from { transform: translateY(20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    from { transform: translateY(20px) scale(0.98); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
 }
 .modal-header {
-    background: var(--primary-color, #024442);
-    color: #fff;
-    padding: 16px 22px;
+    background: var(--dpr-primary);
+    color: #ffffff;
+    padding: 18px 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -866,11 +1014,11 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 .modal-header h4 {
     margin: 0;
     font-size: 1.15rem;
-    font-weight: 700;
+    font-weight: 800;
     display: flex;
     align-items: center;
     gap: 10px;
-    color: #fff;
+    color: #ffffff;
 }
 .modal-header-icon {
     display: flex;
@@ -881,20 +1029,22 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     background: rgba(255,255,255,0.15);
     border-radius: 8px;
     font-size: 14px;
-    color: #fff;
+    color: var(--dpr-accent);
 }
 .modal-close {
     background: none;
     border: none;
     color: rgba(255,255,255,0.7);
-    font-size: 24px;
+    font-size: 22px;
     cursor: pointer;
     line-height: 1;
-    padding: 0;
-    transition: color 0.2s;
+    padding: 4px;
+    border-radius: 6px;
+    transition: all 0.15s;
 }
 .modal-close:hover {
-    color: #fff;
+    color: #ffffff;
+    background: rgba(255,255,255,0.1);
 }
 .modal-content form {
     display: flex;
@@ -905,41 +1055,122 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     min-height: 0;
 }
 .modal-body {
-    padding: 22px 24px;
+    padding: 22px 26px;
     overflow-y: auto !important;
     flex: 1 1 auto;
     min-height: 0;
 }
 .modal-footer {
     padding: 14px 24px;
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid var(--dpr-border);
     display: flex;
     justify-content: flex-end;
+    gap: 10px;
+    background: #f8fafc;
+    flex-shrink: 0;
+}
+
+/* Modal Form Cards */
+.form-section-card {
+    background: #ffffff;
+    border: 1px solid var(--dpr-border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+.form-section-title {
+    font-size: 11.5px;
+    font-weight: 800;
+    color: var(--dpr-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.form-field-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--dpr-text-dark);
+    margin-bottom: 5px;
+}
+
+/* Modal Date Banner */
+.dpr-locked-date-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f0fdf9;
+    border: 1.5px solid #a7f3d0;
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
     gap: 12px;
-    background: #fbfcfc;
+}
+.dpr-locked-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--dpr-primary);
+    color: var(--dpr-accent);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+.dpr-locked-info {
+    flex-grow: 1;
+}
+.dpr-locked-label {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #065f46;
+}
+.dpr-locked-date {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--dpr-text-dark);
+    margin-top: 2px;
+}
+.dpr-locked-tag {
+    background: var(--dpr-primary);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     flex-shrink: 0;
 }
 
 /* Preset Hour Pills */
 .hour-pill-btn {
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--dpr-border);
     background: #f8fafc;
-    color: #475569;
+    color: var(--dpr-text-main);
     font-size: 11.5px;
-    font-weight: 600;
-    padding: 3px 8px;
+    font-weight: 700;
+    padding: 4px 9px;
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.15s;
+    outline: none;
 }
 .hour-pill-btn:hover {
     background: #e2e8f0;
-    color: #0f172a;
+    color: var(--dpr-text-dark);
 }
 .hour-pill-btn.active {
-    background: var(--primary-color);
-    color: #fff;
-    border-color: var(--primary-color);
+    background: var(--dpr-primary);
+    color: #ffffff;
+    border-color: var(--dpr-primary);
 }
 
 /* Rating Pill Buttons */
@@ -947,13 +1178,13 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     flex: 1;
     text-align: center;
     padding: 8px 4px;
-    border: 1.5px solid #e2e8f0;
+    border: 1.5px solid var(--dpr-border);
     border-radius: 8px;
     background: #f8fafc;
     cursor: pointer;
     font-size: 12px;
     font-weight: 700;
-    color: #475569;
+    color: var(--dpr-text-main);
     transition: all 0.2s;
 }
 .rating-pill-opt:hover {
@@ -971,13 +1202,13 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     flex: 1;
     text-align: center;
     padding: 8px 6px;
-    border: 1.5px solid #e2e8f0;
+    border: 1.5px solid var(--dpr-border);
     border-radius: 8px;
     background: #f8fafc;
     cursor: pointer;
     font-size: 12px;
     font-weight: 700;
-    color: #475569;
+    color: var(--dpr-text-main);
     transition: all 0.2s;
     display: flex;
     align-items: center;
@@ -999,82 +1230,196 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     border-color: #ef4444;
     color: #b91c1c;
 }
+
+/* View Dossier Section Cards */
+.dossier-card {
+    background: #ffffff;
+    border: 1px solid var(--dpr-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    border-left: 4px solid var(--dpr-border);
+}
+.dossier-card.card-emerald {
+    border-left-color: #10b981;
+    background: #fcfdfd;
+}
+.dossier-card.card-blue {
+    border-left-color: #3b82f6;
+    background: #fcfdfd;
+}
+.dossier-card.card-amber {
+    border-left-color: #f59e0b;
+    background: #fffdfa;
+}
+.dossier-card.card-purple {
+    border-left-color: #8b5cf6;
+    background: #fdfcff;
+}
+.dossier-card.card-sky {
+    border-left-color: #0284c7;
+    background: #fbfdfd;
+}
+.dossier-title {
+    font-size: 11.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.dossier-content {
+    font-size: 13.5px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: var(--dpr-text-dark);
+}
+
+/* Export format card */
+.export-format-card {
+    border: 2px solid var(--dpr-border);
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s;
+}
+.export-format-card.active {
+    border-color: var(--dpr-primary);
+    background: #f0fdf9;
+}
+
+/* Responsiveness */
+@media (max-width: 768px) {
+    .dpr-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .dpr-header-actions {
+        width: 100%;
+    }
+    .dpr-header-actions .btn-dpr {
+        flex: 1;
+    }
+    .filter-row-top {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .today-showcase-card {
+        padding: 18px 20px;
+    }
+}
 </style>
 
 <div class="height-100">
-    <div class="dpr-container">
+    <div class="dpr-wrapper">
 
         <!-- ── Page Header ────────────────────────────────────────────────────── -->
         <div class="dpr-header">
-            <div class="dpr-title-wrap">
-                <h1><i class="fas fa-calendar-check" style="color:var(--primary-color);"></i> Daily Progress Reports</h1>
-                <p><?= $is_manager ? 'Corporate work logs, billable hours, milestone delivery, and executive operations governance' : 'Submit and monitor your daily work accomplishments, project hours, roadblocks, and next objectives' ?></p>
+            <div class="dpr-header-left">
+                <div class="dpr-header-badge">
+                    <span class="dpr-badge-pulse"></span>
+                    <span>Daily Progress & Standup</span>
+                </div>
+                <h1 class="dpr-header-title">
+                    <span class="dpr-header-icon"><i class="fas fa-calendar-check"></i></span>
+                    <span>Daily Progress Reports</span>
+                </h1>
+                <p class="dpr-header-sub">
+                    <?= $is_manager 
+                        ? 'Executive dashboard for team work logs, billable hours, project milestones, and blocker mitigation.' 
+                        : 'Submit and track your daily work achievements, billable project time, obstacles, and next objectives.' ?>
+                </p>
             </div>
             <div class="dpr-header-actions">
-                <!-- Export Dropdown / Modal Trigger -->
-                <button type="button" class="btn-secondary-custom" onclick="openExportModal()" title="Export Reports">
-                    <i class="fas fa-file-export" style="color:var(--primary-color);"></i> Export Reports
+                <!-- Export Trigger -->
+                <button type="button" class="btn-dpr btn-dpr-secondary" onclick="openExportModal()" title="Export Reports">
+                    <i class="fas fa-file-export" style="color:var(--dpr-primary);"></i>
+                    <span>Export Reports</span>
                 </button>
 
                 <!-- DPR Submission / Edit Trigger -->
                 <?php if (!$today_report): ?>
-                    <button type="button" class="btn-primary-custom" onclick="openDprModal(false)">
-                        <i class="fas fa-plus-circle"></i> Submit Today's Report
+                    <button type="button" class="btn-dpr btn-dpr-primary" onclick="openDprModal(false)">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Submit Today's Report</span>
                     </button>
                 <?php else: ?>
-                    <button type="button" class="btn-volt" onclick="openDprModal(true, <?= htmlspecialchars(json_encode($today_report)) ?>)">
-                        <i class="fas fa-edit"></i> Edit Today's Report
+                    <button type="button" class="btn-dpr btn-dpr-accent" onclick="openDprModal(true, <?= htmlspecialchars(json_encode($today_report)) ?>)">
+                        <i class="fas fa-edit"></i>
+                        <span>Edit Today's Report</span>
                     </button>
                 <?php endif; ?>
             </div>
         </div>
 
-        <!-- ── KPI Metrics Row ────────────────────────────────────────────────── -->
+        <!-- ── KPI Metrics Grid ────────────────────────────────────────────────── -->
         <div class="dpr-kpi-grid">
             <!-- KPI 1: Total Reports -->
-            <div class="dpr-kpi-card" style="--kpi-accent: #0284c7; --kpi-bg: #e0f2fe;">
-                <div class="dpr-kpi-icon"><i class="fas fa-clipboard-list"></i></div>
-                <div class="dpr-kpi-content">
-                    <div class="dpr-kpi-number"><?= number_format($total_records) ?></div>
-                    <div class="dpr-kpi-label"><?= ($where_clause !== '1=1') ? 'Filtered Reports' : 'Total Reports' ?></div>
-                    <div class="dpr-kpi-sub"><?= $is_manager ? 'Across all team logs' : 'Your submitted logs' ?></div>
+            <div class="dpr-kpi-card">
+                <div class="dpr-kpi-icon kpi-icon-blue">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <div class="dpr-kpi-body">
+                    <div class="dpr-kpi-value"><?= number_format($total_records) ?></div>
+                    <div class="dpr-kpi-label"><?= ($where_clause !== '1=1') ? 'Filtered Reports' : 'Total Work Reports' ?></div>
+                    <div class="dpr-kpi-sub"><?= $is_manager ? 'Across all team members' : 'Your submitted logs' ?></div>
                 </div>
             </div>
 
             <!-- KPI 2: Total Hours Logged -->
-            <div class="dpr-kpi-card" style="--kpi-accent: #8b5cf6; --kpi-bg: #ede9fe;">
-                <div class="dpr-kpi-icon"><i class="fas fa-hourglass-half"></i></div>
-                <div class="dpr-kpi-content">
-                    <div class="dpr-kpi-number"><?= number_format($total_hours, 1) ?>h</div>
+            <div class="dpr-kpi-card">
+                <div class="dpr-kpi-icon kpi-icon-purple">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="dpr-kpi-body">
+                    <div class="dpr-kpi-value"><?= number_format($total_hours, 1) ?><span>h</span></div>
                     <div class="dpr-kpi-label">Work Hours Logged</div>
-                    <div class="dpr-kpi-sub"><span style="color:#f59e0b; font-weight:700;">★ <?= number_format($avg_rating, 1) ?></span> / 5.0 Productivity</div>
+                    <div class="dpr-kpi-sub">
+                        <span class="dpr-rating-pill"><i class="fas fa-star"></i> <?= number_format($avg_rating, 1) ?></span> / 5.0 Productivity
+                    </div>
                 </div>
             </div>
 
             <!-- KPI 3: Today's Submissions -->
-            <div class="dpr-kpi-card" style="--kpi-accent: #10b981; --kpi-bg: #d1fae5;">
-                <div class="dpr-kpi-icon"><i class="fas fa-check-double"></i></div>
-                <div class="dpr-kpi-content">
-                    <div class="dpr-kpi-number"><?= $today_submitted_count ?></div>
+            <div class="dpr-kpi-card">
+                <div class="dpr-kpi-icon kpi-icon-emerald">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <div class="dpr-kpi-body">
+                    <div class="dpr-kpi-value"><?= $today_submitted_count ?></div>
                     <div class="dpr-kpi-label"><?= $is_manager ? "Submitted Today" : "Today's Status" ?></div>
                     <div class="dpr-kpi-sub">
                         <?php if ($is_manager): ?>
-                            <?= $today_pending_count > 0 ? "$today_pending_count members pending" : "100% compliance today" ?>
+                            <?= $today_pending_count > 0 ? "<span style='color:#b45309;font-weight:700;'>$today_pending_count pending</span>" : "<span style='color:#059669;font-weight:700;'>100% compliance</span>" ?>
                         <?php else: ?>
-                            <?= $today_report ? "Submitted at " . date('h:i A', strtotime($today_report['created_at'])) : "Pending your submission" ?>
+                            <?= $today_report ? "<span style='color:#059669;font-weight:700;'>Logged at " . date('h:i A', strtotime($today_report['created_at'])) . "</span>" : "<span style='color:#b45309;font-weight:700;'>Pending submission</span>" ?>
                         <?php endif; ?>
                     </div>
                 </div>
             </div>
 
             <!-- KPI 4: Roadblocks Flagged -->
-            <div class="dpr-kpi-card" style="--kpi-accent: #ef4444; --kpi-bg: #fee2e2;">
-                <div class="dpr-kpi-icon"><i class="fas fa-shield-alt"></i></div>
-                <div class="dpr-kpi-content">
-                    <div class="dpr-kpi-number" style="color:<?= $total_blockers > 0 ? '#dc2626' : 'inherit' ?>;"><?= $total_blockers ?></div>
+            <div class="dpr-kpi-card">
+                <div class="dpr-kpi-icon <?= $total_blockers > 0 ? 'kpi-icon-rose' : 'kpi-icon-slate' ?>">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="dpr-kpi-body">
+                    <div class="dpr-kpi-value" style="<?= $total_blockers > 0 ? 'color:#dc2626;' : '' ?>"><?= $total_blockers ?></div>
                     <div class="dpr-kpi-label">Roadblocks Flagged</div>
                     <div class="dpr-kpi-sub">
-                        <?= $critical_blockers > 0 ? "<span style='color:#dc2626; font-weight:700;'>$critical_blockers critical issue(s)</span>" : ($total_blockers > 0 ? "Minor obstacles noted" : "Smooth operations") ?>
+                        <?php if ($critical_blockers > 0): ?>
+                            <span class="badge-blocker-critical"><i class="fas fa-exclamation-circle"></i> <?= $critical_blockers ?> critical</span>
+                        <?php elseif ($total_blockers > 0): ?>
+                            <span class="badge-blocker-minor">Minor delays noted</span>
+                        <?php else: ?>
+                            <span class="badge-smooth"><i class="fas fa-check"></i> Operating smoothly</span>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -1088,24 +1433,24 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                     <div class="today-badge-verified">
                         <i class="fas fa-check-circle"></i> Today's Report Recorded & Verified
                     </div>
-                    <h2 style="font-size:18px; font-weight:800; margin:0 0 4px 0; color:#fff; display:flex; align-items:center; gap:8px;">
-                        <span>Work Log: <?= date('l, F j, Y', strtotime($today_report['report_date'])) ?></span>
+                    <h2 class="today-showcase-title">
+                        Work Log: <?= date('l, F j, Y', strtotime($today_report['report_date'])) ?>
                     </h2>
-                    <div style="font-size:12.5px; color:rgba(255,255,255,0.75);">
+                    <div class="today-showcase-meta">
                         Submitted at <?= date('h:i A', strtotime($today_report['created_at'])) ?> &bull; Logged by <?= htmlspecialchars($today_report['user_name'] ?? 'You') ?>
                     </div>
                 </div>
 
                 <!-- Quick Actions on Today's Card -->
-                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; position:relative; z-index:2;">
-                    <button type="button" class="btn-volt" style="padding:8px 14px; font-size:12.5px;" onclick="openDprModal(true, <?= htmlspecialchars(json_encode($today_report)) ?>)">
+                <div class="today-showcase-actions">
+                    <button type="button" class="btn-dpr btn-dpr-accent btn-dpr-sm" onclick="openDprModal(true, <?= htmlspecialchars(json_encode($today_report)) ?>)">
                         <i class="fas fa-pencil-alt"></i> Edit Today's Report
                     </button>
-                    <a href="dpr_export.php?format=pdf&id=<?= $today_report['id'] ?>&preview=1" target="_blank" class="btn-secondary-custom" style="padding:8px 14px; font-size:12.5px; background:rgba(255,255,255,0.15); color:#fff; border-color:rgba(255,255,255,0.25);" title="Preview Branded PDF Dossier">
+                    <a href="dpr_export.php?format=pdf&id=<?= $today_report['id'] ?>&preview=1" target="_blank" class="btn-glass-action" title="Preview PDF Dossier">
                         <i class="fas fa-file-pdf" style="color:#ef4444;"></i> PDF Dossier
                     </a>
-                    <button type="button" class="btn-secondary-custom" style="padding:8px 14px; font-size:12.5px; background:rgba(255,255,255,0.15); color:#fff; border-color:rgba(255,255,255,0.25);" onclick="openViewModalFromObj(<?= htmlspecialchars(json_encode($today_report)) ?>)">
-                        <i class="fas fa-eye"></i> View Full Details
+                    <button type="button" class="btn-glass-action" onclick="openViewModalFromObj(<?= htmlspecialchars(json_encode($today_report)) ?>)">
+                        <i class="fas fa-eye"></i> View Details
                     </button>
                 </div>
             </div>
@@ -1118,7 +1463,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                 </div>
                 <div class="today-metric-cell">
                     <div class="label">Project Engagement</div>
-                    <div class="val" style="color:#B6F763; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    <div class="val" style="color:#B6F763;">
                         📁 <?= htmlspecialchars($today_report['project_name'] ?? 'General / Internal') ?>
                     </div>
                 </div>
@@ -1141,7 +1486,10 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
             </div>
 
             <!-- Accomplishments Snippet -->
-            <div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.1); font-size:13px; color:rgba(255,255,255,0.9); line-height:1.5; white-space:pre-line; max-height:80px; overflow-y:auto;">
+            <div class="today-preview-box">
+                <div style="font-size:11px; font-weight:800; text-transform:uppercase; color:rgba(255,255,255,0.6); margin-bottom:4px; letter-spacing:0.5px;">
+                    <i class="fas fa-check-circle" style="color:#B6F763;"></i> Key Accomplishments
+                </div>
                 <?= htmlspecialchars($today_report['tasks_completed']) ?>
             </div>
         </div>
@@ -1152,10 +1500,10 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                 <div class="today-pending-icon"><i class="fas fa-calendar-day"></i></div>
                 <div>
                     <h3 class="today-pending-title">Today's Progress Report Pending &bull; <?= date('l, F j, Y') ?></h3>
-                    <p class="today-pending-sub">You have not submitted your daily work report for today yet. Keep your team and management aligned with your daily progress.</p>
+                    <p class="today-pending-sub">You have not submitted your daily work update for today yet. Logging your accomplishments keeps the entire team aligned.</p>
                 </div>
             </div>
-            <button type="button" class="btn-primary-custom" onclick="openDprModal(false)" style="white-space:nowrap; padding:10px 18px; font-size:13.5px;">
+            <button type="button" class="btn-dpr btn-dpr-primary" onclick="openDprModal(false)" style="white-space:nowrap;">
                 <i class="fas fa-plus-circle"></i> Submit Today's Report
             </button>
         </div>
@@ -1168,7 +1516,10 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                     <!-- Search Input -->
                     <div class="filter-group" style="flex: 2; min-width: 220px;">
                         <label class="filter-label"><i class="fas fa-search"></i> Search Keyword</label>
-                        <input type="text" name="q" value="<?= htmlspecialchars($search_q) ?>" class="filter-input" placeholder="Search tasks, deliverables, blockers, projects...">
+                        <div class="filter-input-wrap">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" name="q" value="<?= htmlspecialchars($search_q) ?>" class="filter-input with-icon" placeholder="Search tasks, deliverables, blockers, projects...">
+                        </div>
                     </div>
 
                     <?php if ($is_manager): ?>
@@ -1190,7 +1541,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                     <div class="filter-group">
                         <label class="filter-label"><i class="fas fa-folder"></i> Project</label>
                         <select name="project_id" class="filter-input">
-                            <option value="">All Projects / Tasks</option>
+                            <option value="">All Projects</option>
                             <?php foreach ($projects as $p): ?>
                                 <option value="<?= $p['id'] ?>" <?= $filter_project == $p['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($p['project_name']) ?>
@@ -1224,10 +1575,10 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 
                     <!-- Action Buttons -->
                     <div style="display:flex; gap:8px; align-items:flex-end;">
-                        <button type="submit" class="btn-primary-custom" style="padding: 10px 18px; border-radius:8px;">
+                        <button type="submit" class="btn-dpr btn-dpr-primary" style="padding: 9px 18px;">
                             <i class="fas fa-filter"></i> Apply
                         </button>
-                        <a href="dpr.php" class="btn-secondary-custom" style="padding: 10px 16px; border-radius:8px;" title="Reset filters">
+                        <a href="dpr.php" class="btn-dpr btn-dpr-secondary" style="padding: 9px 14px;" title="Reset filters">
                             <i class="fas fa-undo"></i>
                         </a>
                     </div>
@@ -1235,7 +1586,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 
                 <!-- Quick Preset Pills -->
                 <div class="preset-pills">
-                    <span class="preset-pill-label"><i class="fas fa-bolt" style="color:var(--accent-color,#b8f35a);"></i> Quick Presets:</span>
+                    <span class="preset-pill-label"><i class="fas fa-bolt" style="color:var(--dpr-primary);"></i> Quick Presets:</span>
                     <button type="button" class="preset-btn <?= ($preset === '' && empty($filter_start_date) && empty($filter_end_date)) ? 'active' : '' ?>" onclick="setPreset('')">All Time</button>
                     <button type="button" class="preset-btn <?= $preset === 'today' || ($filter_start_date === date('Y-m-d') && $filter_end_date === date('Y-m-d')) ? 'active' : '' ?>" onclick="setPreset('today')">Today</button>
                     <button type="button" class="preset-btn <?= $preset === 'yesterday' ? 'active' : '' ?>" onclick="setPreset('yesterday')">Yesterday</button>
@@ -1250,17 +1601,17 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
             <div class="dpr-table-header">
                 <div>
                     <h3 class="dpr-table-title">
-                        <i class="fas fa-stream" style="color:var(--primary-color);"></i>
-                        <span>Corporate Progress Reports Feed</span>
+                        <i class="fas fa-stream" style="color:var(--dpr-primary);"></i>
+                        <span>Progress Reports Feed</span>
                         <span class="dpr-count-badge"><?= $total_records ?> record<?= $total_records != 1 ? 's' : '' ?></span>
                     </h3>
                 </div>
                 <div class="dpr-table-actions">
                     <!-- Direct Export Shortcuts for Current View -->
-                    <a href="<?= htmlspecialchars($export_csv_url) ?>" class="btn-icon-action" style="width:auto; padding:0 12px; font-weight:600; font-size:12.5px; gap:6px;" title="Export current filtered view to CSV">
+                    <a href="<?= htmlspecialchars($export_csv_url) ?>" class="btn-dpr btn-dpr-secondary btn-dpr-sm" title="Export current filtered view to CSV">
                         <i class="fas fa-file-csv" style="color:#10b981;"></i> CSV
                     </a>
-                    <a href="<?= htmlspecialchars($export_pdf_url) ?>&preview=1" target="_blank" class="btn-icon-action" style="width:auto; padding:0 12px; font-weight:600; font-size:12.5px; gap:6px;" title="Preview Branded PDF Summary Dossier">
+                    <a href="<?= htmlspecialchars($export_pdf_url) ?>&preview=1" target="_blank" class="btn-dpr btn-dpr-secondary btn-dpr-sm" title="Preview PDF Dossier">
                         <i class="fas fa-file-pdf" style="color:#ef4444;"></i> PDF Dossier
                     </a>
                 </div>
@@ -1274,12 +1625,12 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                             <?php if ($is_manager): ?>
                                 <th style="width: 17%;">Team Member</th>
                             <?php endif; ?>
-                            <th style="width: 13%;">Report Date</th>
-                            <th style="width: 15%;">Project Engagement</th>
-                            <th style="width: 25%;">Accomplishments & Delivery</th>
-                            <th style="width: 18%;">Roadblocks & Dependencies</th>
-                            <th style="width: 6%;">Productivity</th>
-                            <th style="width: 6%; text-align:right;">Actions</th>
+                            <th style="width: 14%;">Report Date</th>
+                            <th style="width: 16%;">Project Engagement</th>
+                            <th style="width: 26%;">Accomplishments & WIP</th>
+                            <th style="width: 16%;">Roadblocks</th>
+                            <th style="width: 6%;">Score</th>
+                            <th style="width: 5%; text-align:right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1313,20 +1664,18 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                                     <?php endif; ?>
 
                                     <td>
-                                        <div class="dpr-date-cell">
-                                            <div class="dpr-date-main"><?= date('M j, Y', $report_date_ts) ?></div>
-                                            <div class="dpr-date-day">
-                                                <?= date('l', $report_date_ts) ?>
-                                                <?php if ($is_today): ?>
-                                                    <span class="badge-today">Today</span>
-                                                <?php elseif ($is_yesterday): ?>
-                                                    <span class="badge-yesterday">Y'day</span>
-                                                <?php endif; ?>
-                                            </div>
-                                            <span class="badge-hours">
-                                                <i class="fas fa-clock" style="color:var(--primary-color);"></i> <?= number_format($row['hours_worked'] ?? 8, 1) ?>h Logged
-                                            </span>
+                                        <div class="dpr-date-main"><?= date('M j, Y', $report_date_ts) ?></div>
+                                        <div class="dpr-date-day">
+                                            <span><?= date('l', $report_date_ts) ?></span>
+                                            <?php if ($is_today): ?>
+                                                <span class="badge-today">Today</span>
+                                            <?php elseif ($is_yesterday): ?>
+                                                <span class="badge-yesterday">Y'day</span>
+                                            <?php endif; ?>
                                         </div>
+                                        <span class="badge-hours">
+                                            <i class="fas fa-clock" style="color:var(--dpr-primary);"></i> <?= number_format($row['hours_worked'] ?? 8, 1) ?>h Logged
+                                        </span>
                                     </td>
 
                                     <td>
@@ -1342,12 +1691,12 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                                     </td>
 
                                     <td>
-                                        <div class="dpr-tasks-list" title="<?= htmlspecialchars($row['tasks_completed']) ?>">
+                                        <div class="dpr-tasks-clamp" title="<?= htmlspecialchars($row['tasks_completed']) ?>">
                                             <?= htmlspecialchars($row['tasks_completed']) ?>
                                         </div>
                                         <?php if ($has_wip): ?>
                                             <div class="dpr-wip-tag" title="<?= htmlspecialchars($row['tasks_in_progress']) ?>">
-                                                <i class="fas fa-spinner fa-spin"></i> <strong>In Progress:</strong> <?= htmlspecialchars(mb_strimwidth($row['tasks_in_progress'], 0, 75, '...')) ?>
+                                                <i class="fas fa-spinner fa-spin"></i> <strong>WIP:</strong> <?= htmlspecialchars(mb_strimwidth($row['tasks_in_progress'], 0, 75, '...')) ?>
                                             </div>
                                         <?php endif; ?>
                                         <?php if ($has_links): ?>
@@ -1367,18 +1716,18 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                                                 <i class="fas fa-exclamation-triangle"></i> Minor Delay
                                             </div>
                                         <?php else: ?>
-                                            <span class="badge-smooth"><i class="fas fa-check-circle"></i> On Track / Smooth</span>
+                                            <span class="badge-smooth"><i class="fas fa-check-circle"></i> On Track</span>
                                         <?php endif; ?>
 
                                         <?php if ($has_challenges): ?>
                                             <div style="color:#b91c1c; font-size:12px; margin-top:4px; line-height:1.4;">
-                                                <?= htmlspecialchars(mb_strimwidth($row['challenges'], 0, 75, '...')) ?>
+                                                <?= htmlspecialchars(mb_strimwidth($row['challenges'], 0, 70, '...')) ?>
                                             </div>
                                         <?php endif; ?>
 
                                         <?php if ($has_waiting): ?>
                                             <div class="dpr-waiting-tag" title="Waiting on: <?= htmlspecialchars($row['waiting_on']) ?>">
-                                                <i class="fas fa-user-clock"></i> <strong>Wait:</strong> <?= htmlspecialchars(mb_strimwidth($row['waiting_on'], 0, 32, '...')) ?>
+                                                <i class="fas fa-user-clock"></i> <strong>Wait:</strong> <?= htmlspecialchars(mb_strimwidth($row['waiting_on'], 0, 30, '...')) ?>
                                             </div>
                                         <?php endif; ?>
                                     </td>
@@ -1392,7 +1741,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                                     <td style="text-align:right;">
                                         <div class="dpr-actions-cell" style="justify-content:flex-end;">
                                             <!-- View Details Modal Trigger -->
-                                            <button type="button" class="btn-icon-action" title="View Corporate Executive Dossier"
+                                            <button type="button" class="btn-icon-action" title="View Report Dossier"
                                                 data-id="<?= $row['id'] ?>"
                                                 data-name="<?= htmlspecialchars($row['user_name'] ?? 'Team Member') ?>"
                                                 data-role="<?= htmlspecialchars(ucfirst($row['user_role'] ?? 'User')) ?>"
@@ -1416,14 +1765,14 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                                             </button>
 
                                             <!-- View / Print Single PDF Dossier -->
-                                            <a href="dpr_export.php?format=pdf&id=<?= $row['id'] ?>&preview=1" target="_blank" class="btn-icon-action" title="View / Print Branded Corporate PDF Dossier">
+                                            <a href="dpr_export.php?format=pdf&id=<?= $row['id'] ?>&preview=1" target="_blank" class="btn-icon-action" title="View PDF Dossier">
                                                 <i class="fas fa-file-pdf" style="color:#ef4444;"></i>
                                             </a>
 
                                             <?php if ($can_edit): ?>
-                                            <!-- Edit Today's Report -->
+                                            <!-- Edit Report -->
                                             <button type="button" class="btn-icon-action" title="Edit Report" onclick="openDprModal(true, <?= htmlspecialchars(json_encode($row)) ?>)">
-                                                <i class="fas fa-pencil-alt" style="color:var(--primary-color);"></i>
+                                                <i class="fas fa-pencil-alt" style="color:var(--dpr-primary);"></i>
                                             </button>
                                             <?php endif; ?>
 
@@ -1439,19 +1788,19 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="<?= $is_manager ? 7 : 6 ?>" style="text-align:center; padding: 50px 20px;">
-                                    <div style="max-width: 420px; margin: 0 auto; color: #64748b;">
-                                        <div style="font-size: 42px; color: #cbd5e1; margin-bottom: 12px;">
+                                <td colspan="<?= $is_manager ? 7 : 6 ?>" style="text-align:center; padding: 60px 20px;">
+                                    <div style="max-width: 420px; margin: 0 auto; color: var(--dpr-text-muted);">
+                                        <div style="font-size: 46px; color: #cbd5e1; margin-bottom: 14px;">
                                             <i class="fas fa-clipboard-check"></i>
                                         </div>
-                                        <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 6px;">No Progress Reports Found</h4>
-                                        <p style="font-size: 13.5px; margin-bottom: 18px;">No reports matched your current filters. Try resetting your search parameters or submit today's work update.</p>
+                                        <h4 style="font-weight: 800; color: var(--dpr-text-dark); margin-bottom: 6px; font-size:17px;">No Progress Reports Found</h4>
+                                        <p style="font-size: 13.5px; margin-bottom: 20px; line-height: 1.5;">No reports matched your current filter criteria. Try resetting your search filters or submit today's work report.</p>
                                         <?php if (!$today_report): ?>
-                                            <button type="button" class="btn-primary-custom" onclick="openDprModal(false)">
+                                            <button type="button" class="btn-dpr btn-dpr-primary" onclick="openDprModal(false)">
                                                 <i class="fas fa-plus"></i> Submit Today's Report
                                             </button>
                                         <?php else: ?>
-                                            <a href="dpr.php" class="btn-secondary-custom">
+                                            <a href="dpr.php" class="btn-dpr btn-dpr-secondary">
                                                 <i class="fas fa-undo"></i> Reset Filters
                                             </a>
                                         <?php endif; ?>
@@ -1465,13 +1814,13 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 
             <!-- ── Pagination Controls ────────────────────────────────────────── -->
             <?php if ($total_pages > 1): ?>
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 24px; border-top:1px solid var(--border-color); flex-wrap:wrap; gap:12px;">
-                <div style="font-size:13px; color:#64748b;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 22px; border-top:1px solid var(--dpr-border); flex-wrap:wrap; gap:12px; background:#fafbfc;">
+                <div style="font-size:13px; color:var(--dpr-text-muted);">
                     Showing <strong><?= min($offset + 1, $total_records) ?></strong> to <strong><?= min($offset + $limit, $total_records) ?></strong> of <strong><?= $total_records ?></strong> reports
                 </div>
                 <div style="display:flex; gap:6px;">
                     <?php if ($page > 1): ?>
-                        <a href="?<?= http_build_query(array_merge($current_params, ['page' => $page - 1])) ?>" class="btn-icon-action" style="width:36px; height:36px;">
+                        <a href="?<?= http_build_query(array_merge($current_params, ['page' => $page - 1])) ?>" class="btn-icon-action" style="width:34px; height:34px;">
                             <i class="fas fa-chevron-left"></i>
                         </a>
                     <?php endif; ?>
@@ -1480,16 +1829,16 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                         <?php if ($i == 1 || $i == $total_pages || ($i >= $page - 2 && $i <= $page + 2)): ?>
                             <a href="?<?= http_build_query(array_merge($current_params, ['page' => $i])) ?>" 
                                class="btn-icon-action <?= $i === $page ? 'active' : '' ?>" 
-                               style="width:36px; height:36px; font-weight:700; <?= $i === $page ? 'background:var(--primary-color); color:#fff; border-color:var(--primary-color);' : '' ?>">
+                               style="width:34px; height:34px; font-weight:700; <?= $i === $page ? 'background:var(--dpr-primary); color:#fff; border-color:var(--dpr-primary);' : '' ?>">
                                 <?= $i ?>
                             </a>
                         <?php elseif ($i == $page - 3 || $i == $page + 3): ?>
-                            <span style="display:inline-flex; align-items:center; justify-content:center; width:36px; color:#94a3b8;">...</span>
+                            <span style="display:inline-flex; align-items:center; justify-content:center; width:34px; color:var(--dpr-text-light);">...</span>
                         <?php endif; ?>
                     <?php endfor; ?>
 
                     <?php if ($page < $total_pages): ?>
-                        <a href="?<?= http_build_query(array_merge($current_params, ['page' => $page + 1])) ?>" class="btn-icon-action" style="width:36px; height:36px;">
+                        <a href="?<?= http_build_query(array_merge($current_params, ['page' => $page + 1])) ?>" class="btn-icon-action" style="width:34px; height:34px;">
                             <i class="fas fa-chevron-right"></i>
                         </a>
                     <?php endif; ?>
@@ -1503,10 +1852,10 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<!-- MODAL 1: Submit / Edit Corporate Daily Progress Report                      -->
+<!-- MODAL 1: Submit / Edit Daily Progress Report                                -->
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <div id="dprModal" class="modal-overlay" onclick="if(event.target===this)closeDprModal()">
-    <div class="modal-content" style="max-width:740px;">
+    <div class="modal-content" style="max-width:720px;">
         <div class="modal-header">
             <h4>
                 <div class="modal-header-icon"><i class="fas fa-pen-alt"></i></div>
@@ -1526,7 +1875,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                         <i class="fas fa-calendar-check"></i>
                     </div>
                     <div class="dpr-locked-info">
-                        <div class="dpr-locked-label">Reporting For Today</div>
+                        <div class="dpr-locked-label">Reporting For</div>
                         <div class="dpr-locked-date" id="modalHumanDate"><?= date('l, F j, Y') ?></div>
                     </div>
                     <div class="dpr-locked-tag" id="modalLockedTag">
@@ -1536,19 +1885,19 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                 <input type="hidden" name="report_date" id="f_report_date" value="<?= date('Y-m-d') ?>">
 
                 <!-- Section 1: Time, Project & Productivity Rating -->
-                <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:18px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
-                    <div style="font-size:12px; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                <div class="form-section-card">
+                    <div class="form-section-title">
                         <i class="fas fa-clock"></i> Time Allocation & Project Focus
                     </div>
                     
                     <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap:16px; margin-bottom:14px;">
                         <!-- Hours Worked -->
                         <div>
-                            <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">
+                            <label class="form-field-label">
                                 Hours Worked <span style="color:#ef4444;">*</span>
                             </label>
                             <div style="display:flex; align-items:center; gap:8px;">
-                                <input type="number" step="0.5" min="0.5" max="24" name="hours_worked" id="f_hours_worked" value="8.0" required class="filter-input" style="font-weight:700; font-size:14px; width:100px;">
+                                <input type="number" step="0.5" min="0.5" max="24" name="hours_worked" id="f_hours_worked" value="8.0" required class="filter-input" style="font-weight:700; font-size:14px; width:95px;">
                                 <div style="display:flex; gap:4px; flex-wrap:wrap;">
                                     <button type="button" class="hour-pill-btn" onclick="setHours(4.0)">4h</button>
                                     <button type="button" class="hour-pill-btn" onclick="setHours(6.0)">6h</button>
@@ -1560,11 +1909,11 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 
                         <!-- Associated Project -->
                         <div>
-                            <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">
+                            <label class="form-field-label">
                                 Project Engagement
                             </label>
                             <select name="project_id" id="f_project_id" class="filter-input">
-                                <option value="">-- General / Non-Project / Multiple --</option>
+                                <option value="">-- General / Internal / Multiple --</option>
                                 <?php foreach ($projects as $p): ?>
                                     <option value="<?= $p['id'] ?>">
                                         <?= htmlspecialchars($p['project_name']) ?>
@@ -1576,7 +1925,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 
                     <!-- Productivity / Morale Rating -->
                     <div>
-                        <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:6px;">
+                        <label class="form-field-label">
                             Productivity & Morale Self-Assessment
                         </label>
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -1590,39 +1939,39 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                 </div>
 
                 <!-- Section 2: Tasks Completed Today -->
-                <div class="form-group" style="margin-bottom:18px;">
+                <div style="margin-bottom:16px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                        <label style="display:block; font-size:13px; font-weight:700; color:var(--text-dark); margin:0;">
+                        <label class="form-field-label" style="margin:0;">
                             <i class="fas fa-check-circle" style="color:#10b981;"></i> Key Accomplishments & Deliverables <span style="color:#ef4444;">*</span>
                         </label>
-                        <button type="button" class="btn-secondary-custom" style="padding:2px 8px; font-size:11px; border-radius:4px;" onclick="addBullet('f_tasks')">
+                        <button type="button" class="btn-dpr btn-dpr-secondary btn-dpr-sm" style="padding:2px 8px; font-size:11px;" onclick="addBullet('f_tasks')">
                             + Bullet
                         </button>
                     </div>
-                    <textarea name="tasks_completed" id="f_tasks" rows="4" required class="filter-input" style="width:100%; resize:vertical; font-family:inherit; line-height:1.5;" placeholder="• Completed UI revamp for DPR&#10;• Implemented CSV and PDF export with letterhead&#10;• Fixed responsive mobile layout and verified on staging"></textarea>
+                    <textarea name="tasks_completed" id="f_tasks" rows="3" required class="filter-input" style="width:100%; resize:vertical; line-height:1.5;" placeholder="• Completed UI revamp for DPR&#10;• Implemented CSV and PDF export&#10;• Fixed responsive mobile layout and verified on staging"></textarea>
                 </div>
 
                 <!-- Section 3: In-Progress / Ongoing Work -->
-                <div class="form-group" style="margin-bottom:18px;">
+                <div style="margin-bottom:16px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                        <label style="display:block; font-size:13px; font-weight:700; color:var(--text-dark); margin:0;">
+                        <label class="form-field-label" style="margin:0;">
                             <i class="fas fa-spinner fa-spin" style="color:#0284c7;"></i> In-Progress & Continuing Objectives (Optional)
                         </label>
-                        <button type="button" class="btn-secondary-custom" style="padding:2px 8px; font-size:11px; border-radius:4px;" onclick="addBullet('f_inprogress')">
+                        <button type="button" class="btn-dpr btn-dpr-secondary btn-dpr-sm" style="padding:2px 8px; font-size:11px;" onclick="addBullet('f_inprogress')">
                             + Bullet
                         </button>
                     </div>
-                    <textarea name="tasks_in_progress" id="f_inprogress" rows="2" class="filter-input" style="width:100%; resize:vertical; font-family:inherit; line-height:1.5;" placeholder="• Migrating payment gateway webhook (approx 70% complete)&#10;• Drafting new client onboarding wireframes"></textarea>
+                    <textarea name="tasks_in_progress" id="f_inprogress" rows="2" class="filter-input" style="width:100%; resize:vertical; line-height:1.5;" placeholder="• Migrating payment gateway webhook (approx 70% complete)&#10;• Drafting new client onboarding wireframes"></textarea>
                 </div>
 
                 <!-- Section 4: Roadblocks, Risks & Dependencies -->
-                <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:18px;">
-                    <div style="font-size:12px; font-weight:800; color:#dc2626; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                <div class="form-section-card">
+                    <div class="form-section-title" style="color:#dc2626;">
                         <i class="fas fa-exclamation-triangle"></i> Roadblocks, Obstacles & Dependency Log
                     </div>
 
                     <div style="margin-bottom:12px;">
-                        <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:6px;">
+                        <label class="form-field-label">
                             Blocker Severity Classification
                         </label>
                         <div style="display:flex; gap:8px;">
@@ -1639,45 +1988,45 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                     </div>
 
                     <div style="margin-bottom:12px;">
-                        <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">
+                        <label class="form-field-label">
                             Obstacle Narrative / Issues Encountered (Optional)
                         </label>
-                        <textarea name="challenges" id="f_challenges" rows="2" class="filter-input" style="width:100%; resize:vertical; font-family:inherit; line-height:1.5;" placeholder="Describe what is causing friction, delays, or blocking milestone delivery..."></textarea>
+                        <textarea name="challenges" id="f_challenges" rows="2" class="filter-input" style="width:100%; resize:vertical; line-height:1.5;" placeholder="Describe what is causing friction, delays, or blocking delivery..."></textarea>
                     </div>
 
                     <div>
-                        <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">
+                        <label class="form-field-label">
                             Waiting On / Dependency Owner (Optional)
                         </label>
-                        <input type="text" name="waiting_on" id="f_waiting_on" class="filter-input" placeholder="e.g. Waiting on client logo vector assets, API keys, or code review from Sarah">
+                        <input type="text" name="waiting_on" id="f_waiting_on" class="filter-input" placeholder="e.g. Waiting on client logo vector assets, API keys, or PR review">
                     </div>
                 </div>
 
                 <!-- Section 5: Work Proof / Deliverable Links -->
-                <div class="form-group" style="margin-bottom:18px;">
-                    <label style="display:block; font-size:13px; font-weight:700; color:var(--text-dark); margin-bottom:4px;">
-                        <i class="fas fa-link" style="color:#7c3aed;"></i> Deliverables, Artifacts & Work Proof (Optional)
+                <div style="margin-bottom:16px;">
+                    <label class="form-field-label">
+                        <i class="fas fa-link" style="color:#7c3aed;"></i> Deliverables, Artifacts & Work Proof Links (Optional)
                     </label>
-                    <textarea name="deliverable_links" id="f_links" rows="2" class="filter-input" style="width:100%; resize:vertical; font-family:inherit; line-height:1.5;" placeholder="Paste URLs to GitHub PRs, Figma prototypes, Staging URLs, or Google Docs (one per line)"></textarea>
+                    <textarea name="deliverable_links" id="f_links" rows="2" class="filter-input" style="width:100%; resize:vertical; line-height:1.5;" placeholder="Paste URLs to GitHub PRs, Figma prototypes, Staging URLs, or Google Docs (one per line)"></textarea>
                 </div>
 
                 <!-- Section 6: Plan for Tomorrow -->
-                <div class="form-group" style="margin-bottom:10px;">
+                <div style="margin-bottom:6px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                        <label style="display:block; font-size:13px; font-weight:700; color:var(--text-dark); margin:0;">
-                            <i class="fas fa-arrow-alt-circle-right" style="color:var(--primary-color);"></i> Tomorrow's Action Plan & Priorities <span style="color:#ef4444;">*</span>
+                        <label class="form-field-label" style="margin:0;">
+                            <i class="fas fa-arrow-alt-circle-right" style="color:var(--dpr-primary);"></i> Tomorrow's Action Plan & Priorities <span style="color:#ef4444;">*</span>
                         </label>
-                        <button type="button" class="btn-secondary-custom" style="padding:2px 8px; font-size:11px; border-radius:4px;" onclick="addBullet('f_plan')">
+                        <button type="button" class="btn-dpr btn-dpr-secondary btn-dpr-sm" style="padding:2px 8px; font-size:11px;" onclick="addBullet('f_plan')">
                             + Bullet
                         </button>
                     </div>
-                    <textarea name="plan_tomorrow" id="f_plan" rows="3" required class="filter-input" style="width:100%; resize:vertical; font-family:inherit; line-height:1.5;" placeholder="• Finalize payment webhook deployment and verify with test credentials&#10;• Sync with product designer on mobile navigation"></textarea>
+                    <textarea name="plan_tomorrow" id="f_plan" rows="3" required class="filter-input" style="width:100%; resize:vertical; line-height:1.5;" placeholder="• Finalize payment webhook deployment and verify with test credentials&#10;• Sync with product designer on mobile navigation"></textarea>
                 </div>
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary-custom" onclick="closeDprModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary-custom" id="dprSubmitBtn">
+                <button type="button" class="btn-dpr btn-dpr-secondary" onclick="closeDprModal()">Cancel</button>
+                <button type="submit" class="btn-dpr btn-dpr-primary" id="dprSubmitBtn">
                     <span id="dprBtnText"><i class="fas fa-paper-plane"></i> Submit Daily Report</span>
                 </button>
             </div>
@@ -1686,10 +2035,10 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
-<!-- MODAL 2: View Detailed Progress Report (Corporate Executive Dossier)       -->
+<!-- MODAL 2: View Detailed Progress Report (Executive Dossier)                  -->
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <div id="viewModal" class="modal-overlay" onclick="if(event.target===this)closeViewModal()">
-    <div class="modal-content" style="max-width:760px;">
+    <div class="modal-content" style="max-width:740px;">
         <div class="modal-header">
             <h4>
                 <div class="modal-header-icon"><i class="fas fa-file-alt"></i></div>
@@ -1698,98 +2047,98 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
             <button class="modal-close" onclick="closeViewModal()"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <!-- Corporate Header & Member Metadata Card -->
-            <div style="display:flex; align-items:center; justify-content:space-between; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px 20px; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
+            <!-- Header & Member Metadata Card -->
+            <div style="display:flex; align-items:center; justify-content:space-between; background:#f8fafc; border:1px solid var(--dpr-border); border-radius:12px; padding:16px 20px; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
                 <div style="display:flex; align-items:center; gap:12px;">
-                    <div id="viewModalAvatar" class="dpr-avatar" style="width:48px; height:48px; font-size:18px;">U</div>
+                    <div id="viewModalAvatar" class="dpr-avatar" style="width:46px; height:46px; font-size:17px;">U</div>
                     <div>
-                        <div id="viewModalUser" style="font-size:16px; font-weight:800; color:var(--text-dark);">User Name</div>
-                        <div id="viewModalRole" style="font-size:12.5px; color:#64748b;">Role &bull; user@graphicafix.com</div>
+                        <div id="viewModalUser" style="font-size:16px; font-weight:800; color:var(--dpr-text-dark);">User Name</div>
+                        <div id="viewModalRole" style="font-size:12.5px; color:var(--dpr-text-muted);">Role &bull; user@graphicafix.com</div>
                     </div>
                 </div>
                 <div style="text-align:right;">
-                    <div id="viewModalDate" style="font-weight:800; color:var(--primary-color); font-size:14.5px;">Date</div>
-                    <div id="viewModalCreated" style="font-size:12px; color:#94a3b8;">Logged at</div>
+                    <div id="viewModalDate" style="font-weight:800; color:var(--dpr-primary); font-size:14.5px;">Date</div>
+                    <div id="viewModalCreated" style="font-size:12px; color:var(--dpr-text-light);">Logged at</div>
                 </div>
             </div>
 
             <!-- Highlights Bar: Hours, Project, Productivity, Roadblocks -->
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:10px; margin-bottom:20px;">
-                <div style="background:#f1f5f9; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; text-align:center;">
-                    <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Hours Worked</div>
-                    <div id="viewHours" style="font-size:16px; font-weight:800; color:#0f172a; margin-top:2px;">8.0h</div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap:10px; margin-bottom:18px;">
+                <div style="background:#f1f5f9; border:1px solid var(--dpr-border); border-radius:8px; padding:10px 12px; text-align:center;">
+                    <div style="font-size:11px; font-weight:700; color:var(--dpr-text-muted); text-transform:uppercase;">Hours Worked</div>
+                    <div id="viewHours" style="font-size:15px; font-weight:800; color:var(--dpr-text-dark); margin-top:2px;">8.0h</div>
                 </div>
                 <div style="background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; padding:10px 12px; text-align:center;">
-                    <div style="font-size:11px; font-weight:700; color:#065f46; text-transform:uppercase;">Project Engagement</div>
+                    <div style="font-size:11px; font-weight:700; color:#065f46; text-transform:uppercase;">Project</div>
                     <div id="viewProject" style="font-size:13.5px; font-weight:800; color:#065f46; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">General</div>
                 </div>
                 <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 12px; text-align:center;">
-                    <div style="font-size:11px; font-weight:700; color:#b45309; text-transform:uppercase;">Productivity Rating</div>
-                    <div id="viewRating" style="font-size:15px; font-weight:800; color:#b45309; margin-top:2px;">★ 5 / 5</div>
+                    <div style="font-size:11px; font-weight:700; color:#b45309; text-transform:uppercase;">Productivity</div>
+                    <div id="viewRating" style="font-size:14px; font-weight:800; color:#b45309; margin-top:2px;">★ 5 / 5</div>
                 </div>
                 <div id="viewStatusBox" style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 12px; text-align:center;">
                     <div style="font-size:11px; font-weight:700; color:#166534; text-transform:uppercase;">Obstacle Status</div>
-                    <div id="viewSeverity" style="font-size:13.5px; font-weight:800; color:#166534; margin-top:2px;">On Track / Smooth</div>
+                    <div id="viewSeverity" style="font-size:13px; font-weight:800; color:#166534; margin-top:2px;">On Track</div>
                 </div>
             </div>
 
             <!-- Section 1: Tasks Completed -->
-            <div style="margin-bottom:18px;">
-                <label style="display:block; font-size:12px; font-weight:800; color:#047857; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+            <div class="dossier-card card-emerald">
+                <div class="dossier-title" style="color:#047857;">
                     <i class="fas fa-check-circle"></i> 1. Key Accomplishments & Deliverables
-                </label>
-                <div id="viewTasks" style="font-size:13.5px; color:#14532d; background:#f0fdf4; border:1px solid #bbf7d0; padding:14px; border-radius:8px; border-left:4px solid #10b981; white-space:pre-wrap; line-height:1.6;"></div>
+                </div>
+                <div id="viewTasks" class="dossier-content"></div>
             </div>
 
             <!-- Section 2: In-Progress / Ongoing Tasks -->
-            <div style="margin-bottom:18px;" id="viewInProgressWrap">
-                <label style="display:block; font-size:12px; font-weight:800; color:#1d4ed8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+            <div class="dossier-card card-blue" id="viewInProgressWrap">
+                <div class="dossier-title" style="color:#1d4ed8;">
                     <i class="fas fa-spinner fa-spin"></i> 2. In-Progress & Continuing Objectives
-                </label>
-                <div id="viewInProgress" style="font-size:13.5px; color:#1e3a8a; background:#eff6ff; border:1px solid #bfdbfe; padding:14px; border-radius:8px; border-left:4px solid #3b82f6; white-space:pre-wrap; line-height:1.6;"></div>
+                </div>
+                <div id="viewInProgress" class="dossier-content"></div>
             </div>
 
             <!-- Section 3: Roadblocks / Challenges -->
-            <div style="margin-bottom:18px;" id="viewChallengesWrap">
-                <label style="display:block; font-size:12px; font-weight:800; color:#dc2626; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+            <div class="dossier-card card-amber" id="viewChallengesWrap">
+                <div class="dossier-title" style="color:#b45309;">
                     <i class="fas fa-exclamation-triangle"></i> 3. Obstacles, Roadblocks & Dependency Log
-                </label>
-                <div id="viewChallenges" style="font-size:13.5px; color:#7f1d1d; background:#fef2f2; border:1px solid #fecaca; padding:14px; border-radius:8px; border-left:4px solid #ef4444; white-space:pre-wrap; line-height:1.6;"></div>
+                </div>
+                <div id="viewChallenges" class="dossier-content"></div>
                 <div id="viewWaitingWrap" style="margin-top:8px;">
-                    <div style="display:inline-flex; align-items:center; gap:6px; background:#fff7ed; border:1px solid #fed7aa; color:#c2410c; padding:6px 12px; border-radius:6px; font-size:12.5px; font-weight:700;">
-                        <i class="fas fa-hourglass-half"></i> <span>Waiting On / Action Required From: <span id="viewWaiting" style="font-weight:600; color:#9a3412;"></span></span>
+                    <div style="display:inline-flex; align-items:center; gap:6px; background:#fff7ed; border:1px solid #fed7aa; color:#c2410c; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:700;">
+                        <i class="fas fa-hourglass-half"></i> <span>Waiting On: <span id="viewWaiting" style="font-weight:600; color:#9a3412;"></span></span>
                     </div>
                 </div>
             </div>
 
             <!-- Section 4: Deliverables & Proof Links -->
-            <div style="margin-bottom:18px;" id="viewLinksWrap">
-                <label style="display:block; font-size:12px; font-weight:800; color:#6d28d9; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
-                    <i class="fas fa-link"></i> 4. Deliverables, Artifacts & Work Proof Links
-                </label>
-                <div id="viewLinks" style="font-size:13.5px; color:#4c1d95; background:#f5f3ff; border:1px solid #ddd6fe; padding:14px; border-radius:8px; border-left:4px solid #8b5cf6; white-space:pre-wrap; line-height:1.6; word-break:break-all;"></div>
+            <div class="dossier-card card-purple" id="viewLinksWrap">
+                <div class="dossier-title" style="color:#6d28d9;">
+                    <i class="fas fa-link"></i> 4. Deliverables, Artifacts & Work Proof
+                </div>
+                <div id="viewLinks" class="dossier-content" style="word-break:break-all;"></div>
             </div>
 
             <!-- Section 5: Plan Tomorrow -->
-            <div style="margin-bottom:10px;">
-                <label style="display:block; font-size:12px; font-weight:800; color:#0284c7; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+            <div class="dossier-card card-sky" style="margin-bottom:6px;">
+                <div class="dossier-title" style="color:#0284c7;">
                     <i class="fas fa-arrow-alt-circle-right"></i> 5. Tomorrow's Action Plan & Priorities
-                </label>
-                <div id="viewPlan" style="font-size:13.5px; color:#0c4a6e; background:#f0f9ff; border:1px solid #bae6fd; padding:14px; border-radius:8px; border-left:4px solid #0284c7; white-space:pre-wrap; line-height:1.6;"></div>
+                </div>
+                <div id="viewPlan" class="dossier-content"></div>
             </div>
         </div>
         <div class="modal-footer" style="justify-content:space-between; flex-wrap:wrap; gap:8px;">
             <div style="display:flex; gap:8px;">
                 <!-- Copy Standup text -->
-                <button type="button" class="btn-secondary-custom" id="btnCopyStandup" onclick="copyCurrentStandup()" style="font-size:13px; padding:8px 14px;">
-                    <i class="fas fa-copy"></i> Copy Standup Summary (Slack/WhatsApp)
+                <button type="button" class="btn-dpr btn-dpr-secondary btn-dpr-sm" id="btnCopyStandup" onclick="copyCurrentStandup()">
+                    <i class="fas fa-copy"></i> Copy Standup Summary
                 </button>
                 <!-- View / Print Single PDF Dossier -->
-                <a id="btnDownloadSinglePdf" href="#" target="_blank" class="btn-secondary-custom" style="font-size:13px; padding:8px 14px;">
-                    <i class="fas fa-file-pdf" style="color:#ef4444;"></i> View Branded PDF Dossier
+                <a id="btnDownloadSinglePdf" href="#" target="_blank" class="btn-dpr btn-dpr-secondary btn-dpr-sm">
+                    <i class="fas fa-file-pdf" style="color:#ef4444;"></i> PDF Dossier
                 </a>
             </div>
-            <button type="button" class="btn-primary-custom" style="font-size:13px; padding:8px 18px;" onclick="closeViewModal()">Close</button>
+            <button type="button" class="btn-dpr btn-dpr-primary btn-dpr-sm" onclick="closeViewModal()">Close</button>
         </div>
     </div>
 </div>
@@ -1798,7 +2147,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 <!-- MODAL 3: Custom Export Options                                              -->
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <div id="exportModal" class="modal-overlay" onclick="if(event.target===this)closeExportModal()">
-    <div class="modal-content" style="max-width:550px;">
+    <div class="modal-content" style="max-width:520px;">
         <div class="modal-header">
             <h4>
                 <div class="modal-header-icon"><i class="fas fa-file-export"></i></div>
@@ -1808,45 +2157,45 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
         </div>
         <form action="dpr_export.php" method="GET" target="_blank" id="customExportForm">
             <div class="modal-body">
-                <p style="font-size:13.5px; color:#64748b; margin-top:0; margin-bottom:18px;">
-                    Generate a corporate-standard Daily Progress Report download in Excel CSV or branded executive PDF format.
+                <p style="font-size:13px; color:var(--dpr-text-muted); margin-top:0; margin-bottom:16px;">
+                    Generate a Daily Progress Report download in Excel CSV spreadsheet format or branded PDF dossier.
                 </p>
 
-                <!-- Export Format Radio -->
-                <div style="margin-bottom:20px;">
-                    <label style="display:block; font-size:12px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">
+                <!-- Export Format Selector -->
+                <div style="margin-bottom:18px;">
+                    <label class="form-field-label">
                         Select Format
                     </label>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                        <label style="border:2px solid var(--primary-color); background:#f0fdf4; border-radius:10px; padding:14px; cursor:pointer; display:flex; align-items:center; gap:10px; transition:all 0.2s;" id="labelFormatCsv" class="export-format-opt">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <label class="export-format-card active" id="labelFormatCsv">
                             <input type="radio" name="format" value="csv" checked onchange="toggleFormatStyle(this)">
                             <div>
-                                <div style="font-weight:700; font-size:14px; color:#0f172a;"><i class="fas fa-file-csv" style="color:#10b981;"></i> CSV Spreadsheet</div>
-                                <div style="font-size:11.5px; color:#64748b;">For Microsoft Excel & Sheets</div>
+                                <div style="font-weight:700; font-size:13.5px; color:var(--dpr-text-dark);"><i class="fas fa-file-csv" style="color:#10b981;"></i> CSV Spreadsheet</div>
+                                <div style="font-size:11px; color:var(--dpr-text-muted);">For Microsoft Excel & Sheets</div>
                             </div>
                         </label>
-                        <label style="border:2px solid #e2e8f0; background:#fff; border-radius:10px; padding:14px; cursor:pointer; display:flex; align-items:center; gap:10px; transition:all 0.2s;" id="labelFormatPdf" class="export-format-opt">
+                        <label class="export-format-card" id="labelFormatPdf">
                             <input type="radio" name="format" value="pdf" onchange="toggleFormatStyle(this)">
                             <div>
-                                <div style="font-weight:700; font-size:14px; color:#0f172a;"><i class="fas fa-file-pdf" style="color:#ef4444;"></i> PDF Document</div>
-                                <div style="font-size:11.5px; color:#64748b;">Branded Executive Letterhead</div>
+                                <div style="font-weight:700; font-size:13.5px; color:var(--dpr-text-dark);"><i class="fas fa-file-pdf" style="color:#ef4444;"></i> PDF Document</div>
+                                <div style="font-size:11px; color:var(--dpr-text-muted);">Executive Letterhead Dossier</div>
                             </div>
                         </label>
                     </div>
                 </div>
 
                 <!-- Date Range Selection -->
-                <div style="margin-bottom:18px;">
-                    <label style="display:block; font-size:12px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">
+                <div style="margin-bottom:16px;">
+                    <label class="form-field-label">
                         Date Range
                     </label>
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                         <div>
-                            <span style="font-size:11px; color:#64748b;">From:</span>
+                            <span style="font-size:11px; color:var(--dpr-text-muted);">From:</span>
                             <input type="date" name="start_date" id="exportStartDate" value="<?= htmlspecialchars($filter_start_date) ?>" class="filter-input">
                         </div>
                         <div>
-                            <span style="font-size:11px; color:#64748b;">To:</span>
+                            <span style="font-size:11px; color:var(--dpr-text-muted);">To:</span>
                             <input type="date" name="end_date" id="exportEndDate" value="<?= htmlspecialchars($filter_end_date) ?>" class="filter-input">
                         </div>
                     </div>
@@ -1854,8 +2203,8 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 
                 <?php if ($is_manager): ?>
                 <!-- Team Member -->
-                <div style="margin-bottom:18px;">
-                    <label style="display:block; font-size:12px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">
+                <div style="margin-bottom:16px;">
+                    <label class="form-field-label">
                         Filter by Team Member
                     </label>
                     <select name="user_id" class="filter-input">
@@ -1870,8 +2219,8 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                 <?php endif; ?>
 
                 <!-- Project Selector -->
-                <div style="margin-bottom:18px;">
-                    <label style="display:block; font-size:12px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">
+                <div style="margin-bottom:16px;">
+                    <label class="form-field-label">
                         Filter by Project
                     </label>
                     <select name="project_id" class="filter-input">
@@ -1885,16 +2234,16 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                 </div>
 
                 <!-- Only Blockers Checkbox -->
-                <div style="margin-bottom:10px;">
-                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13.5px; font-weight:600; color:#334155;">
+                <div style="margin-bottom:6px;">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:600; color:var(--dpr-text-dark);">
                         <input type="checkbox" name="has_blockers" value="1" <?= $filter_blockers === 1 ? 'checked' : '' ?> style="width:16px; height:16px;">
                         <span>Export only reports with flagged Roadblocks / Challenges</span>
                     </label>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary-custom" onclick="closeExportModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary-custom" onclick="window.setTimeout(closeExportModal, 500)">
+                <button type="button" class="btn-dpr btn-dpr-secondary" onclick="closeExportModal()">Cancel</button>
+                <button type="submit" class="btn-dpr btn-dpr-primary" onclick="window.setTimeout(closeExportModal, 500)">
                     <i class="fas fa-download"></i> Download Export
                 </button>
             </div>
@@ -1903,7 +2252,7 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 </div>
 
 <!-- Toast Container -->
-<div id="toastContainer" style="position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;"></div>
+<div id="toastContainer" style="position:fixed;bottom:24px;right:24px;z-index:99999;display:flex;flex-direction:column;gap:8px;"></div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <!-- JAVASCRIPT LOGIC                                                            -->
@@ -2041,7 +2390,7 @@ function renderActiveViewModal() {
     document.getElementById('viewModalTitle').textContent = `Daily Progress Report — ${activeModalData.name} (${activeModalData.date})`;
     document.getElementById('viewModalAvatar').textContent = activeModalData.name.charAt(0).toUpperCase();
     document.getElementById('viewModalUser').textContent = activeModalData.name;
-    document.getElementById('viewModalRole').textContent = `${activeModalData.role} • ${activeModalData.email || 'Graphicafix Staff'}`;
+    document.getElementById('viewModalRole').textContent = `${activeModalData.role} • ${activeModalData.email || 'Graphicafix Team'}`;
     document.getElementById('viewModalDate').textContent = activeModalData.date;
     document.getElementById('viewModalCreated').textContent = `Logged: ${activeModalData.created}`;
     
@@ -2067,7 +2416,7 @@ function renderActiveViewModal() {
         statusBox.style.background = '#f0fdf4';
         statusBox.style.borderColor = '#bbf7d0';
         sevLabel.style.color = '#166534';
-        sevLabel.textContent = 'On Track / Smooth';
+        sevLabel.textContent = 'On Track';
     }
 
     // Tasks Completed
@@ -2140,7 +2489,7 @@ function copyCurrentStandup() {
     if (activeModalData.challenges && activeModalData.challenges.trim() !== '') {
         text += `⚠️ *3. Roadblocks & Dependency Log [${activeModalData.severity.toUpperCase()}]:*\n${activeModalData.challenges}\n`;
         if (activeModalData.waiting && activeModalData.waiting.trim() !== '') {
-            text += `✋ *Waiting On / Action Required From:* ${activeModalData.waiting}\n`;
+            text += `✋ *Waiting On:* ${activeModalData.waiting}\n`;
         }
         text += '\n';
     } else {
@@ -2154,7 +2503,7 @@ function copyCurrentStandup() {
     text += `🎯 *5. Tomorrow's Action Plan:*\n${activeModalData.plan}`;
 
     navigator.clipboard.writeText(text).then(() => {
-        showToast('Corporate standup summary copied to clipboard!');
+        showToast('Standup summary copied to clipboard!');
     }).catch(() => {
         showToast('Unable to copy text to clipboard', 'error');
     });
@@ -2239,7 +2588,7 @@ document.getElementById('dprForm').addEventListener('submit', function(e) {
     const orig = txt.innerHTML;
 
     btn.disabled = true;
-    txt.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recording Report...';
+    txt.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving Report...';
 
     const payload = new URLSearchParams();
     payload.append('action', 'save_dpr');
@@ -2330,15 +2679,11 @@ function toggleFormatStyle(radio) {
     const csvOpt = document.getElementById('labelFormatCsv');
     const pdfOpt = document.getElementById('labelFormatPdf');
     if (radio.value === 'csv') {
-        csvOpt.style.borderColor = 'var(--primary-color)';
-        csvOpt.style.background = '#f0fdf4';
-        pdfOpt.style.borderColor = '#e2e8f0';
-        pdfOpt.style.background = '#ffffff';
+        csvOpt.classList.add('active');
+        pdfOpt.classList.remove('active');
     } else {
-        pdfOpt.style.borderColor = 'var(--primary-color)';
-        pdfOpt.style.background = '#fef2f2';
-        csvOpt.style.borderColor = '#e2e8f0';
-        csvOpt.style.background = '#ffffff';
+        pdfOpt.classList.add('active');
+        csvOpt.classList.remove('active');
     }
 }
 
@@ -2347,8 +2692,8 @@ function showToast(msg, type = 'success') {
     const t = document.createElement('div');
     const icon = type === 'success' ? 'fa-check-circle' : 'fa-times-circle';
     const color = type === 'success' ? '#10b981' : '#ef4444';
-    t.style.cssText = `background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,.1);font-size:13.5px;min-width:260px;border-left:4px solid ${color};animation:slideUp .2s ease;`;
-    t.innerHTML = `<span style="font-weight:700;color:${color}"><i class="fas ${icon}"></i></span><span style="font-weight:600;color:#1e293b;">${msg}</span>`;
+    t.style.cssText = `background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 25px -5px rgba(0,0,0,.1);font-size:13.5px;min-width:260px;border-left:4px solid ${color};animation:modalSlideUp .2s ease;`;
+    t.innerHTML = `<span style="font-weight:700;color:${color}"><i class="fas ${icon}"></i></span><span style="font-weight:700;color:#0f172a;">${msg}</span>`;
     document.getElementById('toastContainer').appendChild(t);
     setTimeout(() => {
         t.style.opacity = '0';
