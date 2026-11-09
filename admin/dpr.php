@@ -167,7 +167,13 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 
 <style>
 /* ── DPR Executive Design Tokens ── */
-.dpr-wrapper {
+:root,
+.dpr-wrapper,
+.modal-overlay,
+.modal-content,
+#dprModal,
+#viewModal,
+#exportModal {
     --dpr-primary: #024442;
     --dpr-primary-light: #035c59;
     --dpr-primary-dark: #012b2a;
@@ -179,8 +185,8 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     --dpr-text-main: #334155;
     --dpr-text-muted: #64748b;
     --dpr-text-light: #94a3b8;
-    --dpr-border: #e2e8f0;
-    --dpr-border-light: #f1f5f9;
+    --dpr-border: #cbd5e1;
+    --dpr-border-light: #e2e8f0;
     --dpr-card-bg: #ffffff;
     --dpr-radius: 14px;
     --dpr-radius-sm: 8px;
@@ -190,6 +196,9 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     --dpr-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.03);
     --dpr-shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -1px rgba(15, 23, 42, 0.03);
     --dpr-shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+}
+
+.dpr-wrapper {
     max-width: 1440px;
     margin: 0 auto;
     padding-bottom: 40px;
@@ -285,17 +294,57 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     border: none;
     outline: none;
 }
-.btn-dpr-primary {
-    background: var(--dpr-primary);
-    color: #ffffff;
-    box-shadow: 0 2px 8px rgba(2, 68, 66, 0.2);
+
+/* Primary Button - Strictly Primary #024442 and Text White */
+.btn-dpr-primary,
+button.btn-dpr-primary,
+#dprSubmitBtn,
+button#dprSubmitBtn {
+    background: #024442 !important;
+    background-color: #024442 !important;
+    color: #ffffff !important;
+    border: 1.5px solid #024442 !important;
+    box-shadow: 0 2px 8px rgba(2, 68, 66, 0.25) !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
 }
-.btn-dpr-primary:hover {
-    background: var(--dpr-primary-light);
-    color: #ffffff;
+
+.btn-dpr-primary *,
+button.btn-dpr-primary *,
+#dprSubmitBtn *,
+button#dprSubmitBtn *,
+#dprBtnText,
+#dprBtnText * {
+    color: #ffffff !important;
+}
+
+.btn-dpr-primary:hover,
+button.btn-dpr-primary:hover,
+#dprSubmitBtn:hover,
+button#dprSubmitBtn:hover {
+    background: #035c59 !important;
+    background-color: #035c59 !important;
+    color: #ffffff !important;
+    border-color: #035c59 !important;
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(2, 68, 66, 0.3);
+    box-shadow: 0 4px 14px rgba(2, 68, 66, 0.35) !important;
 }
+
+.btn-dpr-primary:hover *,
+button.btn-dpr-primary:hover *,
+#dprSubmitBtn:hover *,
+button#dprSubmitBtn:hover * {
+    color: #ffffff !important;
+}
+
+.btn-dpr-primary:active,
+#dprSubmitBtn:active {
+    background: #012b2a !important;
+    background-color: #012b2a !important;
+    color: #ffffff !important;
+    transform: translateY(0);
+}
+
 .btn-dpr-accent {
     background: var(--dpr-accent);
     color: var(--dpr-primary-dark);
@@ -307,18 +356,25 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     transform: translateY(-1px);
     box-shadow: 0 4px 14px rgba(182, 247, 99, 0.5);
 }
-.btn-dpr-secondary {
-    background: #ffffff;
-    color: var(--dpr-text-dark);
-    border: 1.5px solid var(--dpr-border);
-    box-shadow: var(--dpr-shadow-xs);
+
+.btn-dpr-secondary,
+button.btn-dpr-secondary {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #334155 !important;
+    border: 1.5px solid #cbd5e1 !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+    font-weight: 700 !important;
 }
-.btn-dpr-secondary:hover {
-    background: #f8fafc;
-    border-color: #cbd5e1;
-    color: var(--dpr-primary);
+.btn-dpr-secondary:hover,
+button.btn-dpr-secondary:hover {
+    background: #f8fafc !important;
+    background-color: #f8fafc !important;
+    border-color: #94a3b8 !important;
+    color: #024442 !important;
     transform: translateY(-1px);
 }
+
 .btn-dpr-sm {
     padding: 6px 12px;
     font-size: 12px;
@@ -613,26 +669,56 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     color: var(--dpr-text-light);
     font-size: 13px;
 }
-.filter-input {
+/* ── Form Inputs & Textareas with Crisp Visible Outline ── */
+.filter-input,
+.modal-content input.filter-input,
+.modal-content select.filter-input,
+.modal-content textarea.filter-input,
+#dprModal input,
+#dprModal select,
+#dprModal textarea,
+.modal-body input[type="text"],
+.modal-body input[type="number"],
+.modal-body input[type="date"],
+.modal-body select,
+.modal-body textarea {
     width: 100%;
-    padding: 9px 12px;
-    border: 1.5px solid var(--dpr-border);
-    border-radius: var(--dpr-radius-sm);
-    background: #f8fafc;
-    font-size: 13px;
-    color: var(--dpr-text-dark);
-    font-weight: 600;
-    transition: all 0.2s;
-    outline: none;
-    font-family: inherit;
+    padding: 10px 13px !important;
+    border: 1.5px solid #94a3b8 !important;
+    border-radius: var(--dpr-radius-sm, 8px) !important;
+    background: #ffffff !important;
+    font-size: 13.5px !important;
+    color: #0f172a !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+    outline: none !important;
+    font-family: inherit !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
 }
 .filter-input.with-icon {
-    padding-left: 34px;
+    padding-left: 36px !important;
 }
-.filter-input:focus {
-    border-color: var(--dpr-primary);
-    background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(2, 68, 66, 0.08);
+.filter-input::placeholder,
+#dprModal input::placeholder,
+#dprModal textarea::placeholder {
+    color: #94a3b8 !important;
+    font-weight: 400 !important;
+}
+.filter-input:hover,
+#dprModal input:hover,
+#dprModal select:hover,
+#dprModal textarea:hover {
+    border-color: #64748b !important;
+}
+.filter-input:focus,
+#dprModal input:focus,
+#dprModal select:focus,
+#dprModal textarea:focus {
+    border-color: #024442 !important;
+    background: #ffffff !important;
+    outline: 2px solid #024442 !important;
+    outline-offset: 1px !important;
+    box-shadow: 0 0 0 3px rgba(2, 68, 66, 0.2) !important;
 }
 .preset-pills {
     display: flex;
@@ -1152,25 +1238,26 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
 
 /* Preset Hour Pills */
 .hour-pill-btn {
-    border: 1px solid var(--dpr-border);
-    background: #f8fafc;
-    color: var(--dpr-text-main);
-    font-size: 11.5px;
-    font-weight: 700;
-    padding: 4px 9px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s;
-    outline: none;
+    border: 1.5px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    color: #334155 !important;
+    font-size: 11.5px !important;
+    font-weight: 700 !important;
+    padding: 4px 10px !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    transition: all 0.15s !important;
+    outline: none !important;
 }
 .hour-pill-btn:hover {
-    background: #e2e8f0;
-    color: var(--dpr-text-dark);
+    background: #f1f5f9 !important;
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
 }
 .hour-pill-btn.active {
-    background: var(--dpr-primary);
-    color: #ffffff;
-    border-color: var(--dpr-primary);
+    background: #024442 !important;
+    color: #ffffff !important;
+    border-color: #024442 !important;
 }
 
 /* Rating Pill Buttons */
@@ -1178,23 +1265,23 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     flex: 1;
     text-align: center;
     padding: 8px 4px;
-    border: 1.5px solid var(--dpr-border);
-    border-radius: 8px;
-    background: #f8fafc;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--dpr-text-main);
-    transition: all 0.2s;
+    border: 1.5px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    color: #334155 !important;
+    transition: all 0.2s !important;
 }
 .rating-pill-opt:hover {
-    border-color: #cbd5e1;
-    background: #f1f5f9;
+    border-color: #94a3b8 !important;
+    background: #f8fafc !important;
 }
 .rating-pill-opt.active {
-    background: #fffbeb;
-    border-color: #f59e0b;
-    color: #b45309;
+    background: #fffbeb !important;
+    border-color: #f59e0b !important;
+    color: #b45309 !important;
 }
 
 /* Severity Pill Buttons */
@@ -1202,33 +1289,57 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
     flex: 1;
     text-align: center;
     padding: 8px 6px;
-    border: 1.5px solid var(--dpr-border);
-    border-radius: 8px;
-    background: #f8fafc;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--dpr-text-main);
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
+    border: 1.5px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    color: #334155 !important;
+    transition: all 0.2s !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+}
+.severity-pill-opt:hover {
+    border-color: #94a3b8 !important;
 }
 .severity-pill-opt.active-none {
-    background: #f0fdf4;
-    border-color: #10b981;
-    color: #047857;
+    background: #f0fdf4 !important;
+    border-color: #10b981 !important;
+    color: #047857 !important;
 }
 .severity-pill-opt.active-minor {
-    background: #fffbeb;
-    border-color: #f59e0b;
-    color: #b45309;
+    background: #fffbeb !important;
+    border-color: #f59e0b !important;
+    color: #b45309 !important;
 }
 .severity-pill-opt.active-critical {
-    background: #fef2f2;
-    border-color: #ef4444;
-    color: #b91c1c;
+    background: #fef2f2 !important;
+    border-color: #ef4444 !important;
+    color: #b91c1c !important;
+}
+
+/* Bullet helper button */
+.btn-bullet-pill {
+    background: #f0fdf9 !important;
+    color: #024442 !important;
+    border: 1px solid #a7f3d0 !important;
+    font-size: 11.5px !important;
+    font-weight: 700 !important;
+    padding: 3px 10px !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    transition: all 0.15s !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+.btn-bullet-pill:hover {
+    background: #024442 !important;
+    color: #ffffff !important;
+    border-color: #024442 !important;
 }
 
 /* View Dossier Section Cards */
@@ -1944,8 +2055,8 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                         <label class="form-field-label" style="margin:0;">
                             <i class="fas fa-check-circle" style="color:#10b981;"></i> Key Accomplishments & Deliverables <span style="color:#ef4444;">*</span>
                         </label>
-                        <button type="button" class="btn-dpr btn-dpr-secondary btn-dpr-sm" style="padding:2px 8px; font-size:11px;" onclick="addBullet('f_tasks')">
-                            + Bullet
+                        <button type="button" class="btn-bullet-pill" onclick="addBullet('f_tasks')">
+                            <i class="fas fa-plus"></i> Bullet
                         </button>
                     </div>
                     <textarea name="tasks_completed" id="f_tasks" rows="3" required class="filter-input" style="width:100%; resize:vertical; line-height:1.5;" placeholder="• Completed UI revamp for DPR&#10;• Implemented CSV and PDF export&#10;• Fixed responsive mobile layout and verified on staging"></textarea>
@@ -1957,8 +2068,8 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                         <label class="form-field-label" style="margin:0;">
                             <i class="fas fa-spinner fa-spin" style="color:#0284c7;"></i> In-Progress & Continuing Objectives (Optional)
                         </label>
-                        <button type="button" class="btn-dpr btn-dpr-secondary btn-dpr-sm" style="padding:2px 8px; font-size:11px;" onclick="addBullet('f_inprogress')">
-                            + Bullet
+                        <button type="button" class="btn-bullet-pill" onclick="addBullet('f_inprogress')">
+                            <i class="fas fa-plus"></i> Bullet
                         </button>
                     </div>
                     <textarea name="tasks_in_progress" id="f_inprogress" rows="2" class="filter-input" style="width:100%; resize:vertical; line-height:1.5;" placeholder="• Migrating payment gateway webhook (approx 70% complete)&#10;• Drafting new client onboarding wireframes"></textarea>
@@ -2016,8 +2127,8 @@ $export_pdf_url = 'dpr_export.php?' . http_build_query(array_merge($current_para
                         <label class="form-field-label" style="margin:0;">
                             <i class="fas fa-arrow-alt-circle-right" style="color:var(--dpr-primary);"></i> Tomorrow's Action Plan & Priorities <span style="color:#ef4444;">*</span>
                         </label>
-                        <button type="button" class="btn-dpr btn-dpr-secondary btn-dpr-sm" style="padding:2px 8px; font-size:11px;" onclick="addBullet('f_plan')">
-                            + Bullet
+                        <button type="button" class="btn-bullet-pill" onclick="addBullet('f_plan')">
+                            <i class="fas fa-plus"></i> Bullet
                         </button>
                     </div>
                     <textarea name="plan_tomorrow" id="f_plan" rows="3" required class="filter-input" style="width:100%; resize:vertical; line-height:1.5;" placeholder="• Finalize payment webhook deployment and verify with test credentials&#10;• Sync with product designer on mobile navigation"></textarea>
