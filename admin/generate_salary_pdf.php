@@ -106,7 +106,7 @@ if ($salary_id > 0 || $target_user > 0) {
             COUNT(*) as total_logged,
             SUM(IF(status = 'present' OR status = 'late', 1, 0)) as days_present,
             SUM(IF(is_late = 1, 1, 0)) as days_late,
-            SUM(IF(status = 'leave', 1, 0)) as days_leave
+            SUM(IF(status = 'on_leave' OR status = 'half_day', 1, 0)) as days_leave
         FROM attendance_records
         WHERE user_id = ? AND DATE_FORMAT(attendance_date, '%Y-%m') = ?
     ");
@@ -115,14 +115,65 @@ if ($salary_id > 0 || $target_user > 0) {
     $att_summary = $att_stmt->get_result()->fetch_assoc();
     $att_stmt->close();
 
-    // Header & Footer Image Assets
-    $headerImgPath = realpath(__DIR__ . '/../assets/images/letter_header.png');
-    $footerImgPath = realpath(__DIR__ . '/../assets/images/letter_footer.png');
-    $hasHeader = ($headerImgPath && file_exists($headerImgPath));
-    $hasFooter = ($footerImgPath && file_exists($footerImgPath));
+    $days_in_month = intval(date('t', strtotime($sal_month . '-01')));
+    $paid_days     = intval($att_summary['days_present'] ?? 0);
+    if ($paid_days === 0 && floatval($salary['base_salary']) > 0) {
+        $paid_days = $days_in_month - intval($att_summary['days_leave'] ?? 0);
+    }
+    $lop_days      = intval($att_summary['days_leave'] ?? 0);
+
+    $emp_code     = $salary['employee_id'] ?: ('GF-' . str_pad($salary['user_id'], 4, '0', STR_PAD_LEFT));
+    $designation  = $salary['job_title'] ?: ($salary['user_job_title'] ?: 'Staff');
+    $department   = $salary['department'] ?: ($salary['user_dept'] ?: 'General');
+    $join_date    = !empty($salary['join_date']) ? date('d/m/Y', strtotime($salary['join_date'])) : '—';
+    $pay_date     = !empty($salary['payment_date']) ? date('d/m/Y', strtotime($salary['payment_date'])) : date('t/m/Y', strtotime($sal_month . '-01'));
+
+    if (!function_exists('fmt_pdf_amt')) {
+        function fmt_pdf_amt($val) {
+            return 'PKR ' . number_format(floatval($val), 2);
+        }
+    }
 
     $net_in_words = amountToWords($salary['net_salary'], 'PKR');
     $net_in_words = str_ireplace([' and 00/100 Only.', ' and 00/100 Only', ' and 00/100', ' 00/100'], [' Only.', ' Only', '', ''], $net_in_words);
+
+    // Build Earnings list
+    $earnings = [];
+    $earnings[] = ['label' => 'Basic Salary', 'amount' => floatval($salary['base_salary'])];
+    if (floatval($salary['allowances']) > 0) {
+        $earnings[] = ['label' => 'Allowances & Benefits', 'amount' => floatval($salary['allowances'])];
+    }
+    if (floatval($salary['previous_pending']) > 0) {
+        $earnings[] = ['label' => 'Previous Arrears Added', 'amount' => floatval($salary['previous_pending'])];
+    }
+    $total_gross = floatval($salary['gross_pay']) + max(0, floatval($salary['previous_pending']));
+
+    // Build Deductions list
+    $deductions = [];
+    if (!empty($itemized_deductions)) {
+        foreach ($itemized_deductions as $id_row) {
+            $lbl = $id_row['deduction_type'];
+            if (!empty($id_row['date_incurred'])) {
+                $lbl .= ' (' . date('d M', strtotime($id_row['date_incurred'])) . ')';
+            }
+            $deductions[] = ['label' => $lbl, 'amount' => floatval($id_row['amount'])];
+        }
+    } elseif (floatval($salary['deductions']) > 0) {
+        $deductions[] = ['label' => 'Itemized Deductions', 'amount' => floatval($salary['deductions'])];
+    }
+
+    if (floatval($salary['tax']) > 0) {
+        $deductions[] = ['label' => 'Income Tax', 'amount' => floatval($salary['tax'])];
+    }
+    if (floatval($salary['advance']) > 0) {
+        $deductions[] = ['label' => 'Salary Advance / Loan Recovery', 'amount' => floatval($salary['advance'])];
+    }
+    $total_deductions = floatval($salary['deductions']) + floatval($salary['tax']) + floatval($salary['advance']);
+
+    // Balanced rows for side-by-side presentation
+    $max_rows = max(count($earnings), count($deductions), 4);
+
+    $logoPath = realpath(__DIR__ . '/../assets/images/logo.png');
 
     ob_start();
     ?>
@@ -133,379 +184,416 @@ if ($salary_id > 0 || $target_user > 0) {
     <title>Pay Slip - <?= htmlspecialchars($emp_name) ?> (<?= $period_label ?>)</title>
     <style>
         @page {
-            margin-top: <?= $hasHeader ? '42mm' : '15mm' ?>;
-            margin-bottom: <?= $hasFooter ? '32mm' : '15mm' ?>;
-            margin-left: 12mm;
-            margin-right: 12mm;
-            header: html_LetterHeader;
-            footer: html_LetterFooter;
+            margin-top: 14mm;
+            margin-bottom: 12mm;
+            margin-left: 14mm;
+            margin-right: 14mm;
         }
         body {
             font-family: 'dejavusans', sans-serif;
             color: #1e293b;
-            font-size: 9pt;
+            font-size: 8.5pt;
             line-height: 1.4;
         }
-        .slip-header-title {
-            text-align: center;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #024442;
-        }
-        .slip-header-title h1 {
-            font-size: 16pt;
-            color: #024442;
-            margin: 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .slip-header-title p {
-            font-size: 9pt;
-            color: #64748b;
-            margin: 3px 0 0;
-            font-weight: bold;
-        }
-        .meta-table {
-            width: 100%;
+        table {
             border-collapse: collapse;
+        }
+
+        /* ── Header ─────────────────────────────────────────── */
+        .header-tbl {
+            width: 100%;
+            margin-bottom: 12px;
+        }
+        .company-title {
+            font-size: 15pt;
+            font-weight: bold;
+            color: #0f172a;
+            letter-spacing: -0.3px;
+            margin: 0;
+            line-height: 1.1;
+        }
+        .company-sub {
+            font-size: 8pt;
+            color: #64748b;
+            margin-top: 3px;
+        }
+        .period-title-sub {
+            font-size: 8pt;
+            color: #64748b;
+            text-align: right;
+        }
+        .period-title-main {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #0f172a;
+            text-align: right;
+            margin-top: 2px;
+        }
+
+        .divider-line {
+            border-top: 1px solid #e2e8f0;
+            margin-bottom: 16px;
+        }
+
+        /* ── Employee Summary & Net Pay Box ─────────────────── */
+        .top-section-tbl {
+            width: 100%;
             margin-bottom: 14px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
         }
-        .meta-table td {
-            padding: 6px 10px;
-            font-size: 8.5pt;
-            border: 1px solid #e2e8f0;
-            vertical-align: middle;
-        }
-        .meta-lbl {
+        .summary-heading {
+            font-size: 8pt;
             font-weight: bold;
             color: #475569;
-            width: 18%;
-            background: #f1f5f9;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 8px;
+        }
+        .meta-list-tbl {
+            width: 100%;
+        }
+        .meta-list-tbl td {
+            padding: 3.5px 0;
+            font-size: 8.5pt;
+            vertical-align: top;
+        }
+        .meta-lbl {
+            color: #64748b;
+            width: 38%;
+        }
+        .meta-sep {
+            color: #94a3b8;
+            width: 4%;
+            text-align: center;
         }
         .meta-val {
             color: #0f172a;
-            width: 32%;
+            width: 58%;
+            font-weight: 500;
         }
-        .section-heading {
-            font-size: 10pt;
+
+        /* Net Pay Highlight Card (Zoho style) */
+        .net-box-outer {
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            background: #ffffff;
+            width: 100%;
+        }
+        .net-box-top {
+            background: #f0fdf4;
+            padding: 12px 14px;
+            border-bottom: 1px dashed #bbf7d0;
+            border-radius: 7px 7px 0 0;
+        }
+        .net-pay-amount {
+            font-size: 17pt;
             font-weight: bold;
-            color: #024442;
-            margin: 12px 0 6px;
+            color: #0f172a;
+            line-height: 1.1;
+        }
+        .net-pay-label {
+            font-size: 8pt;
+            color: #166534;
+            font-weight: 600;
+            margin-top: 3px;
+        }
+        .net-box-bottom {
+            padding: 10px 14px;
+            background: #ffffff;
+            border-radius: 0 0 7px 7px;
+        }
+        .net-stat-tbl {
+            width: 100%;
+        }
+        .net-stat-tbl td {
+            padding: 2.5px 0;
+            font-size: 8.5pt;
+        }
+
+        /* ── Sub Metadata Bar ───────────────────────────────── */
+        .submeta-bar {
+            border-top: 1px dotted #cbd5e1;
+            border-bottom: 1px dotted #cbd5e1;
+            padding: 6px 4px;
+            margin-bottom: 16px;
+            font-size: 8pt;
+            color: #475569;
+        }
+        .submeta-bar td {
+            font-size: 8pt;
+            color: #475569;
+            vertical-align: middle;
+        }
+
+        /* ── Earnings & Deductions Table Box ─────────────────── */
+        .breakdown-box {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            width: 100%;
+            margin-bottom: 14px;
+        }
+        .breakdown-box th {
+            font-size: 8pt;
+            font-weight: bold;
+            color: #334155;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 7px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+        .breakdown-box td {
+            padding: 6.5px 10px;
+            font-size: 8.5pt;
+            color: #1e293b;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+        .breakdown-box .col-earn-title { width: 32%; text-align: left; }
+        .breakdown-box .col-earn-amt   { width: 18%; text-align: right; font-weight: 600; }
+        .breakdown-box .col-ded-title  { width: 32%; text-align: left; border-left: 1px solid #e2e8f0; }
+        .breakdown-box .col-ded-amt    { width: 18%; text-align: right; font-weight: 600; }
+        .breakdown-total-row td {
+            background: #f8fafc;
+            font-weight: bold;
+            color: #0f172a;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: none;
+            padding: 8px 10px;
+        }
+
+        /* ── Net Payable Banner ─────────────────────────────── */
+        .net-banner-tbl {
+            width: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background: #f8fafc;
+            margin-bottom: 10px;
+        }
+        .net-banner-left {
+            padding: 10px 14px;
+            vertical-align: middle;
+            width: 65%;
+        }
+        .net-banner-title {
+            font-size: 9pt;
+            font-weight: bold;
+            color: #0f172a;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        .dual-breakdown {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 14px;
-        }
-        .dual-breakdown td {
-            vertical-align: top;
-            padding: 0;
-        }
-        .breakdown-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #cbd5e1;
-        }
-        .breakdown-table th {
-            background: #024442;
-            color: #ffffff;
-            font-size: 8.5pt;
-            font-weight: bold;
-            text-transform: uppercase;
-            padding: 6px 8px;
-            text-align: left;
-        }
-        .breakdown-table th.r { text-align: right; }
-        .breakdown-table td {
-            padding: 6px 8px;
-            font-size: 8.5pt;
-            border-bottom: 1px solid #f1f5f9;
-        }
-        .breakdown-table tr:nth-child(even) td {
-            background: #fafbfc;
-        }
-        .breakdown-table tfoot td {
-            background: #e6f4f1;
-            font-weight: bold;
-            border-top: 1px solid #024442;
-            padding: 7px 8px;
-        }
-        .net-card {
-            background: #f0fdf4;
-            border: 1.5px solid #16a34a;
-            border-radius: 6px;
-            padding: 10px 14px;
-            margin-bottom: 14px;
-        }
-        .net-title {
-            font-size: 9pt;
-            font-weight: bold;
-            color: #166534;
-            text-transform: uppercase;
-        }
-        .net-amount {
-            font-size: 16pt;
-            font-weight: bold;
-            color: #15803d;
+        .net-banner-sub {
+            font-size: 7.5pt;
+            color: #64748b;
             margin-top: 2px;
         }
-        .net-words {
-            font-size: 8.5pt;
-            color: #334155;
-            font-style: italic;
-            margin-top: 3px;
+        .net-banner-right {
+            background: #f0fdf4;
+            border-left: 1px solid #e2e8f0;
+            padding: 10px 18px;
+            text-align: right;
+            vertical-align: middle;
+            width: 35%;
+            border-radius: 0 5px 5px 0;
         }
-        .badge {
-            display: inline-block;
-            padding: 2px 7px;
-            border-radius: 4px;
+        .net-banner-amt {
+            font-size: 15pt;
+            font-weight: bold;
+            color: #0f172a;
+        }
+
+        /* ── Amount In Words ─────────────────────────────────── */
+        .amount-words-wrap {
+            text-align: right;
+            font-size: 8pt;
+            color: #475569;
+            margin-bottom: 30px;
+            padding-right: 4px;
+        }
+        .amount-words-val {
+            font-weight: bold;
+            color: #0f172a;
+        }
+
+        /* ── Footer Disclaimer ───────────────────────────────── */
+        .footer-disclaimer {
+            text-align: center;
             font-size: 7.5pt;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        .badge-paid { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-        .badge-partial { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
-        .badge-pending { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
-        .sig-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 35px;
-        }
-        .sig-table td {
-            width: 50%;
-            vertical-align: bottom;
-            font-size: 8.5pt;
-        }
-        .sig-line {
-            width: 75%;
-            border-top: 1px solid #334155;
-            margin-top: 40px;
-            padding-top: 4px;
-            font-weight: bold;
-            color: #1e293b;
+            color: #94a3b8;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 12px;
+            margin-top: 20px;
         }
     </style>
     </head>
     <body>
 
-        <!-- Edge-to-Edge Letterhead Header -->
-        <htmlpageheader name="LetterHeader">
-            <?php if ($hasHeader): ?>
-                <div style="position: absolute; top:0; left:0; right:0; margin:0; padding:0; width:100%;">
-                    <img src="<?= $headerImgPath ?>" style="width: 100%; margin:0; padding:0;" />
-                </div>
-            <?php else: ?>
-                <div style="padding: 10px 12mm 0; border-bottom: 2px solid #024442;">
-                    <strong style="font-size:14pt; color:#024442;">GRAPHICA FIX</strong>
-                    <span style="font-size:8pt; color:#64748b; margin-left:10px;">Human Resources & Payroll</span>
-                </div>
-            <?php endif; ?>
-        </htmlpageheader>
-
-        <!-- Edge-to-Edge Letterhead Footer -->
-        <htmlpagefooter name="LetterFooter">
-            <?php if ($hasFooter): ?>
-                <div style="position: absolute; bottom:0; left:0; right:0; margin:0; padding:0; width:100%;">
-                    <img src="<?= $footerImgPath ?>" style="width: 100%; margin:0; padding:0;" />
-                </div>
-            <?php else: ?>
-                <div style="padding: 0 12mm 6mm; text-align:center; font-size:7.5pt; color:#64748b; border-top: 1px solid #e2e8f0;">
-                    Graphica Fix · Confidential Employee Salary Payslip · Generated on <?= date('d M Y, h:i A') ?>
-                </div>
-            <?php endif; ?>
-        </htmlpagefooter>
-
-        <!-- Payslip Title Block -->
-        <div class="slip-header-title">
-            <h1>CONFIDENTIAL SALARY PAYSLIP</h1>
-            <p>PAY PERIOD: <?= strtoupper($period_label) ?> · REF: <?= $slip_ref ?></p>
-        </div>
-
-        <!-- Employee Info Metadata -->
-        <table class="meta-table">
+        <!-- 1. Header Row -->
+        <table class="header-tbl">
             <tr>
-                <td class="meta-lbl">Employee Name:</td>
-                <td class="meta-val"><strong><?= htmlspecialchars($emp_name) ?></strong></td>
-                <td class="meta-lbl">Employee ID:</td>
-                <td class="meta-val"><strong><?= htmlspecialchars($salary['employee_id'] ?: ('EMP' . str_pad($salary['user_id'], 4, '0', STR_PAD_LEFT))) ?></strong></td>
-            </tr>
-            <tr>
-                <td class="meta-lbl">Designation:</td>
-                <td class="meta-val"><?= htmlspecialchars($salary['job_title'] ?: ($salary['user_job_title'] ?: 'Staff')) ?></td>
-                <td class="meta-lbl">Department:</td>
-                <td class="meta-val"><?= htmlspecialchars($salary['department'] ?: ($salary['user_dept'] ?: 'General')) ?></td>
-            </tr>
-            <tr>
-                <td class="meta-lbl">Shift Timing:</td>
-                <td class="meta-val"><?= $shift_hours ?></td>
-                <td class="meta-lbl">Payment Status:</td>
-                <td class="meta-val">
-                    <?php if ($salary['payment_status'] === 'Paid'): ?>
-                        <span class="badge badge-paid">PAID IN FULL</span>
-                    <?php elseif ($salary['payment_status'] === 'Partially Paid'): ?>
-                        <span class="badge badge-partial">PARTIALLY PAID</span>
-                    <?php else: ?>
-                        <span class="badge badge-pending">PENDING</span>
-                    <?php endif; ?>
-                </td>
-            </tr>
-            <?php if (!empty($att_summary['days_present'])): ?>
-            <tr>
-                <td class="meta-lbl">Days Present:</td>
-                <td class="meta-val"><?= intval($att_summary['days_present']) ?> Days</td>
-                <td class="meta-lbl">Late Arrivals:</td>
-                <td class="meta-val"><?= intval($att_summary['days_late']) ?> Day(s)<?= intval($att_summary['days_leave']) > 0 ? " (Leaves: {$att_summary['days_leave']})" : '' ?></td>
-            </tr>
-            <?php endif; ?>
-        </table>
-
-        <!-- Dual Column Breakdown: Earnings vs Deductions -->
-        <table class="dual-breakdown">
-            <tr>
-                <!-- LEFT: EARNINGS -->
-                <td style="width: 49%; padding-right: 1%;">
-                    <div class="section-heading">Earnings (Gross)</div>
-                    <table class="breakdown-table">
-                        <thead>
-                            <tr>
-                                <th>Description</th>
-                                <th class="r">Amount (PKR)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Basic Salary</td>
-                                <td align="right"><?= number_format($salary['base_salary'], 2) ?></td>
-                            </tr>
-                            <tr>
-                                <td>Allowances & Benefits</td>
-                                <td align="right"><?= number_format($salary['allowances'], 2) ?></td>
-                            </tr>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td><strong>Gross Earnings</strong></td>
-                                <td align="right"><strong>PKR <?= number_format($salary['gross_pay'], 2) ?></strong></td>
-                            </tr>
-                        </tfoot>
+                <td style="width: 60%; vertical-align: top;">
+                    <table style="border-collapse: collapse;">
+                        <tr>
+                            <?php if ($logoPath && file_exists($logoPath)): ?>
+                            <td style="vertical-align: middle; padding-right: 12px;">
+                                <img src="<?= $logoPath ?>" style="height: 38px;" />
+                            </td>
+                            <?php endif; ?>
+                            <td style="vertical-align: middle;">
+                                <div class="company-title">Graphica Fix</div>
+                                <div class="company-sub">Design, Development & Creative Media Agency</div>
+                            </td>
+                        </tr>
                     </table>
                 </td>
-
-                <!-- RIGHT: DEDUCTIONS -->
-                <td style="width: 49%; padding-left: 1%;">
-                    <div class="section-heading">Deductions & Recoveries</div>
-                    <table class="breakdown-table">
-                        <thead>
-                            <tr>
-                                <th>Description</th>
-                                <th class="r">Amount (PKR)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (!empty($itemized_deductions)): ?>
-                                <?php foreach ($itemized_deductions as $id_row): ?>
-                                <tr>
-                                    <td>
-                                        <?= htmlspecialchars($id_row['deduction_type']) ?>
-                                        <?php if (!empty($id_row['description'])): ?>
-                                            <div style="font-size:7pt; color:#64748b;"><?= htmlspecialchars($id_row['description']) ?></div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td align="right" style="color:#dc2626;">-<?= number_format($id_row['amount'], 2) ?></td>
-                                </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <?php if ($salary['deductions'] > 0): ?>
-                                <tr>
-                                    <td>Itemized Deductions</td>
-                                    <td align="right" style="color:#dc2626;">-<?= number_format($salary['deductions'], 2) ?></td>
-                                </tr>
-                                <?php else: ?>
-                                <tr>
-                                    <td colspan="2" style="color:#64748b; font-style:italic;">No deductions incurred.</td>
-                                </tr>
-                                <?php endif; ?>
-                            <?php endif; ?>
-
-                            <?php if ($salary['tax'] > 0): ?>
-                            <tr>
-                                <td>Income Tax</td>
-                                <td align="right" style="color:#dc2626;">-<?= number_format($salary['tax'], 2) ?></td>
-                            </tr>
-                            <?php endif; ?>
-
-                            <?php if ($salary['advance'] > 0): ?>
-                            <tr>
-                                <td>Salary Advance / Loan Recovery</td>
-                                <td align="right" style="color:#dc2626;">-<?= number_format($salary['advance'], 2) ?></td>
-                            </tr>
-                            <?php endif; ?>
-
-                            <?php if ($salary['previous_pending'] > 0): ?>
-                            <tr>
-                                <td>Previous Arrears Added</td>
-                                <td align="right" style="color:#16a34a;">+<?= number_format($salary['previous_pending'], 2) ?></td>
-                            </tr>
-                            <?php endif; ?>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td><strong>Total Deductions</strong></td>
-                                <td align="right" style="color:#dc2626;"><strong>-PKR <?= number_format($salary['deductions'] + $salary['tax'] + $salary['advance'], 2) ?></strong></td>
-                            </tr>
-                        </tfoot>
-                    </table>
+                <td style="width: 40%; vertical-align: top; text-align: right;">
+                    <div class="period-title-sub">Payslip For the Month</div>
+                    <div class="period-title-main"><?= $period_label ?></div>
                 </td>
             </tr>
         </table>
 
-        <!-- Net Take Home Pay Card -->
-        <div class="net-card">
-            <table width="100%" style="border-collapse:collapse;">
+        <div class="divider-line"></div>
+
+        <!-- 2. Top Summary Section: Employee Info (Left) + Net Pay Card (Right) -->
+        <table class="top-section-tbl">
+            <tr>
+                <!-- Left: Employee Summary -->
+                <td style="width: 58%; vertical-align: top; padding-right: 20px;">
+                    <div class="summary-heading">EMPLOYEE SUMMARY</div>
+                    <table class="meta-list-tbl">
+                        <tr>
+                            <td class="meta-lbl">Employee Name</td>
+                            <td class="meta-sep">:</td>
+                            <td class="meta-val"><strong><?= htmlspecialchars($emp_name) ?></strong></td>
+                        </tr>
+                        <tr>
+                            <td class="meta-lbl">Designation</td>
+                            <td class="meta-sep">:</td>
+                            <td class="meta-val"><?= htmlspecialchars($designation) ?></td>
+                        </tr>
+                        <tr>
+                            <td class="meta-lbl">Employee ID</td>
+                            <td class="meta-sep">:</td>
+                            <td class="meta-val"><?= htmlspecialchars($emp_code) ?></td>
+                        </tr>
+                        <tr>
+                            <td class="meta-lbl">Date of Joining</td>
+                            <td class="meta-sep">:</td>
+                            <td class="meta-val"><?= $join_date ?></td>
+                        </tr>
+                        <tr>
+                            <td class="meta-lbl">Pay Period</td>
+                            <td class="meta-sep">:</td>
+                            <td class="meta-val"><?= $period_label ?></td>
+                        </tr>
+                        <tr>
+                            <td class="meta-lbl">Pay Date</td>
+                            <td class="meta-sep">:</td>
+                            <td class="meta-val"><?= $pay_date ?></td>
+                        </tr>
+                    </table>
+                </td>
+
+                <!-- Right: Net Pay Box (Zoho Style) -->
+                <td style="width: 42%; vertical-align: top;">
+                    <div class="net-box-outer">
+                        <div class="net-box-top">
+                            <div class="net-pay-amount"><?= fmt_pdf_amt($salary['net_salary']) ?></div>
+                            <div class="net-pay-label">Employee Net Pay</div>
+                        </div>
+                        <div class="net-box-bottom">
+                            <table class="net-stat-tbl">
+                                <tr>
+                                    <td style="color:#64748b; width:60%;">Paid Days</td>
+                                    <td style="color:#94a3b8; width:10%;">:</td>
+                                    <td style="color:#0f172a; width:30%; font-weight:600; text-align:right;"><?= $paid_days ?></td>
+                                </tr>
+                                <tr>
+                                    <td style="color:#64748b; width:60%;">LOP / Unpaid Days</td>
+                                    <td style="color:#94a3b8; width:10%;">:</td>
+                                    <td style="color:#0f172a; width:30%; font-weight:600; text-align:right;"><?= $lop_days ?></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <!-- 3. Sub-Metadata Bar -->
+        <table class="submeta-bar" width="100%">
+            <tr>
+                <td style="width: 34%;">
+                    <span style="color:#64748b;">Department :</span>
+                    <strong><?= htmlspecialchars($department) ?></strong>
+                </td>
+                <td style="width: 36%; text-align: center;">
+                    <span style="color:#64748b;">Shift Timing :</span>
+                    <strong><?= $shift_hours ?></strong>
+                </td>
+                <td style="width: 30%; text-align: right;">
+                    <span style="color:#64748b;">Payment Status :</span>
+                    <strong><?= htmlspecialchars($salary['payment_status'] ?: 'Paid') ?></strong>
+                </td>
+            </tr>
+        </table>
+
+        <!-- 4. Earnings & Deductions Table (Single Boxed Container) -->
+        <table class="breakdown-box" width="100%">
+            <thead>
                 <tr>
-                    <td style="width:65%; vertical-align:middle;">
-                        <div class="net-title">Net Take-Home Salary Payable</div>
-                        <div class="net-amount">PKR <?= number_format($salary['net_salary'], 2) ?></div>
-                        <div class="net-words">Amount in Words: <strong><?= $net_in_words ?></strong></div>
-                    </td>
-                    <td style="width:35%; text-align:right; vertical-align:middle;">
-                        <div style="font-size:8pt; color:#475569;">Amount Disbursed:</div>
-                        <div style="font-size:11pt; font-weight:bold; color:#0f172a;">PKR <?= number_format($salary['amount_paid'], 2) ?></div>
-                        <?php $bal = max(0, $salary['net_salary'] - $salary['amount_paid']); ?>
-                        <?php if ($bal > 0): ?>
-                            <div style="font-size:8pt; color:#dc2626; font-weight:bold; margin-top:2px;">Remaining Balance: PKR <?= number_format($bal, 2) ?></div>
-                        <?php endif; ?>
-                    </td>
+                    <th class="col-earn-title">EARNINGS</th>
+                    <th class="col-earn-amt">AMOUNT</th>
+                    <th class="col-ded-title">DEDUCTIONS</th>
+                    <th class="col-ded-amt">AMOUNT</th>
                 </tr>
-            </table>
-        </div>
+            </thead>
+            <tbody>
+                <?php for ($i = 0; $i < $max_rows; $i++): ?>
+                    <?php
+                        $earn_row = $earnings[$i] ?? null;
+                        $ded_row  = $deductions[$i] ?? null;
+                    ?>
+                    <tr>
+                        <td class="col-earn-title"><?= $earn_row ? htmlspecialchars($earn_row['label']) : '' ?></td>
+                        <td class="col-earn-amt"><?= $earn_row ? fmt_pdf_amt($earn_row['amount']) : '' ?></td>
+                        <td class="col-ded-title"><?= $ded_row ? htmlspecialchars($ded_row['label']) : '' ?></td>
+                        <td class="col-ded-amt"><?= $ded_row ? fmt_pdf_amt($ded_row['amount']) : '' ?></td>
+                    </tr>
+                <?php endfor; ?>
+            </tbody>
+            <tfoot>
+                <tr class="breakdown-total-row">
+                    <td class="col-earn-title">Gross Earnings</td>
+                    <td class="col-earn-amt"><?= fmt_pdf_amt($total_gross) ?></td>
+                    <td class="col-ded-title">Total Deductions</td>
+                    <td class="col-ded-amt"><?= fmt_pdf_amt($total_deductions) ?></td>
+                </tr>
+            </tfoot>
+        </table>
 
-        <!-- Note & Dispute Info -->
-        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; padding:6px 10px; font-size:7.5pt; color:#64748b; margin-top:6px;">
-            <strong>Note:</strong> Standard shift: <strong><?= $shift_hours ?></strong> (8 hrs standard). Late arrival penalty applies after grace period (10 min Male / 30 min Female). If you find any discrepancies, you may raise a dispute ticket via the Employee Portal within 5 days of payslip issuance.
-        </div>
-
-        <!-- Signatures Block -->
-        <table class="sig-table">
+        <!-- 5. Total Net Payable Banner -->
+        <table class="net-banner-tbl">
             <tr>
-                <td>
-                    <div class="sig-line">
-                        Employee Signature: <?= htmlspecialchars($emp_name) ?><br>
-                        <span style="font-size:7.5pt; font-weight:normal; color:#64748b;">Date: ________________________</span>
-                    </div>
+                <td class="net-banner-left">
+                    <div class="net-banner-title">TOTAL NET PAYABLE</div>
+                    <div class="net-banner-sub">Gross Earnings - Total Deductions</div>
                 </td>
-                <td align="right">
-                    <div class="sig-line" style="margin-left:auto; text-align:left;">
-                        Authorized Signatory: Ibadullah<br>
-                        <span style="font-size:7.5pt; font-weight:normal; color:#64748b;">Managing Director · Graphica Fix</span>
-                    </div>
+                <td class="net-banner-right">
+                    <div class="net-banner-amt"><?= fmt_pdf_amt($salary['net_salary']) ?></div>
                 </td>
             </tr>
         </table>
+
+        <!-- 6. Amount in Words -->
+        <div class="amount-words-wrap">
+            Amount In Words : <span class="amount-words-val"><?= htmlspecialchars($net_in_words) ?></span>
+        </div>
+
+        <!-- 7. Footer Disclaimer -->
+        <div class="footer-disclaimer">
+            -- This document has been automatically generated by Graphica Fix Payroll System; therefore, a signature is not required. --
+        </div>
 
     </body>
     </html>
@@ -515,12 +603,10 @@ if ($salary_id > 0 || $target_user > 0) {
     $mpdf = new \Mpdf\Mpdf([
         'mode'          => 'utf-8',
         'format'        => 'A4',
-        'margin_top'    => $hasHeader ? 42 : 15,
-        'margin_bottom' => $hasFooter ? 32 : 15,
-        'margin_left'   => 12,
-        'margin_right'  => 12,
-        'margin_header' => 0,
-        'margin_footer' => 0,
+        'margin_top'    => 14,
+        'margin_bottom' => 12,
+        'margin_left'   => 14,
+        'margin_right'  => 14,
         'default_font'  => 'dejavusans'
     ]);
 
@@ -529,7 +615,11 @@ if ($salary_id > 0 || $target_user > 0) {
     $mpdf->WriteHTML($html);
 
     $outFileName = 'Payslip-' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $emp_name) . '-' . $sal_month . '.pdf';
-    $mpdf->Output($outFileName, $dest);
+    if ($dest === 'S') {
+        echo $mpdf->Output($outFileName, 'S');
+    } else {
+        $mpdf->Output($outFileName, $dest);
+    }
     exit;
 }
 
@@ -961,5 +1051,9 @@ $mpdf->SetAuthor('Graphica Fix Human Resources');
 $mpdf->WriteHTML($html);
 
 $outFileName = 'Payroll-Register-' . $filter_month . '.pdf';
-$mpdf->Output($outFileName, $dest);
+if ($dest === 'S') {
+    echo $mpdf->Output($outFileName, 'S');
+} else {
+    $mpdf->Output($outFileName, $dest);
+}
 exit;
