@@ -351,39 +351,88 @@ elseif ($role === 'student') {
     margin-bottom: 30px;
 }
 
-/* Interactive clickable stat cards matching base aesthetics */
+/* Interactive clickable stat cards matching modern clean aesthetics */
 .stat-card { 
-    border-top: 4px solid var(--accent); 
     position: relative; 
-    overflow: hidden; 
-    background:#fff; 
-    padding:20px 22px; 
-    border-radius:10px; 
-    box-shadow:0 4px 12px rgba(0,0,0,0.02);
-    border: 1px solid #f0f3f6;
-    border-top: 4px solid var(--accent);
+    background: #ffffff; 
+    padding: 24px 20px 22px; 
+    border-radius: 14px; 
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
+                box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
+                border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.stat-card::before { content: ''; position: absolute; top: -40px; right: -40px; width: 100px; height: 100px; background: rgba(0,0,0,0.03); border-radius: 50%; }
-.stat-card.red    { border-top-color: #d63031; }
-.stat-card.green  { border-top-color: #00b894; }
-.stat-card.orange { border-top-color: #e17055; }
-.stat-card.blue   { border-top-color: #0984e3; }
-.stat-card.purple { border-top-color: #8b5cf6; }
-.stat-card.emerald{ border-top-color: #10b981; }
-.stat-card.teal   { border-top-color: #0f766e; }
+.stat-card::before { display: none !important; }
 
+/* Elegant Soft-Tinted Icon Badges */
+.stat-card .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    margin: 0 auto 12px auto;
+    background: #f1f5f9;
+    color: var(--primary, #024442) !important;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.22s ease;
+    flex-shrink: 0;
+}
+
+.stat-card.green .stat-icon,
+.stat-card.emerald .stat-icon {
+    background: #ecfdf5 !important;
+    color: #059669 !important;
+}
+.stat-card.blue .stat-icon {
+    background: #eff6ff !important;
+    color: #2563eb !important;
+}
+.stat-card.red .stat-icon {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+}
+.stat-card.orange .stat-icon {
+    background: #fffbeb !important;
+    color: #d97706 !important;
+}
+.stat-card.purple .stat-icon {
+    background: #f5f3ff !important;
+    color: #7c3aed !important;
+}
+.stat-card.teal .stat-icon {
+    background: #f0fdfa !important;
+    color: #0d9488 !important;
+}
+
+/* Card Interactive Links & Subtle Micro-interactions */
 a.stat-card {
     text-decoration: none !important;
     color: inherit !important;
-    display: block;
     cursor: pointer;
-    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
 }
 a.stat-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    box-shadow: 0 12px 24px -4px rgba(15, 23, 42, 0.08), 0 4px 8px -2px rgba(15, 23, 42, 0.03);
+    border-color: #cbd5e1;
     color: inherit !important;
 }
+a.stat-card:hover .stat-icon {
+    transform: scale(1.08);
+}
+a.stat-card.green:hover, a.stat-card.emerald:hover { border-color: #a7f3d0; }
+a.stat-card.blue:hover   { border-color: #bfdbfe; }
+a.stat-card.red:hover    { border-color: #fecaca; }
+a.stat-card.orange:hover { border-color: #fde68a; }
+a.stat-card.purple:hover { border-color: #ddd6fe; }
+a.stat-card.teal:hover   { border-color: #99f6e4; }
 a.stat-card:active {
     transform: translateY(-1px);
 }
@@ -432,9 +481,24 @@ a.stat-card:active {
     border-radius: 4px;
     transition: width 0.4s ease;
 }
-.stat-icon  { font-size: 2rem; margin-bottom:10px;}
-.stat-value { font-size: 2.2rem; font-weight: 700; color: #333; line-height: 1; margin-bottom:5px;}
-.stat-label { font-size: .85rem; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-value { 
+    font-size: 1.95rem; 
+    font-weight: 800; 
+    color: #0f172a; 
+    line-height: 1.15; 
+    margin-bottom: 4px;
+    letter-spacing: -0.025em;
+    font-feature-settings: "tnum";
+    font-variant-numeric: tabular-nums;
+}
+.stat-label { 
+    font-size: 0.72rem; 
+    color: #64748b; 
+    font-weight: 700; 
+    text-transform: uppercase; 
+    letter-spacing: 0.65px; 
+    line-height: 1.3;
+}
 
 /* Quick actions */
 .quick-actions-grid {
