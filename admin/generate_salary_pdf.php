@@ -173,7 +173,7 @@ if ($salary_id > 0 || $target_user > 0) {
     // Balanced rows for side-by-side presentation
     $max_rows = max(count($earnings), count($deductions), 4);
 
-    $logoPath = realpath(__DIR__ . '/../assets/images/logo.png');
+    $logoPath = realpath(__DIR__ . '/../assets/images/logo-black.png') ?: realpath(__DIR__ . '/../assets/images/logo-secondary.png');
 
     ob_start();
     ?>
@@ -430,20 +430,12 @@ if ($salary_id > 0 || $target_user > 0) {
         <!-- 1. Header Row -->
         <table class="header-tbl">
             <tr>
-                <td style="width: 60%; vertical-align: top;">
-                    <table style="border-collapse: collapse;">
-                        <tr>
-                            <?php if ($logoPath && file_exists($logoPath)): ?>
-                            <td style="vertical-align: middle; padding-right: 12px;">
-                                <img src="<?= $logoPath ?>" style="height: 38px;" />
-                            </td>
-                            <?php endif; ?>
-                            <td style="vertical-align: middle;">
-                                <div class="company-title">Graphica Fix</div>
-                                <div class="company-sub">Design, Development & Creative Media Agency</div>
-                            </td>
-                        </tr>
-                    </table>
+                <td style="width: 60%; vertical-align: middle;">
+                    <?php if ($logoPath && file_exists($logoPath)): ?>
+                        <img src="<?= $logoPath ?>" style="height: 44px;" />
+                    <?php else: ?>
+                        <div class="company-title">Graphica Fix</div>
+                    <?php endif; ?>
                 </td>
                 <td style="width: 40%; vertical-align: top; text-align: right;">
                     <div class="period-title-sub">Payslip For the Month</div>
@@ -496,26 +488,30 @@ if ($salary_id > 0 || $target_user > 0) {
 
                 <!-- Right: Net Pay Box (Zoho Style) -->
                 <td style="width: 42%; vertical-align: top;">
-                    <div class="net-box-outer">
-                        <div class="net-box-top">
-                            <div class="net-pay-amount"><?= fmt_pdf_amt($salary['net_salary']) ?></div>
-                            <div class="net-pay-label">Employee Net Pay</div>
-                        </div>
-                        <div class="net-box-bottom">
-                            <table class="net-stat-tbl">
-                                <tr>
-                                    <td style="color:#64748b; width:60%;">Paid Days</td>
-                                    <td style="color:#94a3b8; width:10%;">:</td>
-                                    <td style="color:#0f172a; width:30%; font-weight:600; text-align:right;"><?= $paid_days ?></td>
-                                </tr>
-                                <tr>
-                                    <td style="color:#64748b; width:60%;">LOP / Unpaid Days</td>
-                                    <td style="color:#94a3b8; width:10%;">:</td>
-                                    <td style="color:#0f172a; width:30%; font-weight:600; text-align:right;"><?= $lop_days ?></td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
+                    <table style="width: 100%; border: 1px solid #cbd5e1; border-collapse: collapse; background: #ffffff;">
+                        <tr>
+                            <td style="background: #f0fdf4; padding: 12px 14px; border-bottom: 1px dashed #cbd5e1; border-left: 3px solid #16a34a;">
+                                <div class="net-pay-amount"><?= fmt_pdf_amt($salary['net_salary']) ?></div>
+                                <div class="net-pay-label">Employee Net Pay</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px 14px; background: #ffffff;">
+                                <table class="net-stat-tbl">
+                                    <tr>
+                                        <td style="color:#64748b; width:60%;">Paid Days</td>
+                                        <td style="color:#94a3b8; width:10%;">:</td>
+                                        <td style="color:#0f172a; width:30%; font-weight:600; text-align:right;"><?= $paid_days ?></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color:#64748b; width:60%;">LOP / Unpaid Days</td>
+                                        <td style="color:#94a3b8; width:10%;">:</td>
+                                        <td style="color:#0f172a; width:30%; font-weight:600; text-align:right;"><?= $lop_days ?></td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
                 </td>
             </tr>
         </table>
@@ -523,15 +519,15 @@ if ($salary_id > 0 || $target_user > 0) {
         <!-- 3. Sub-Metadata Bar -->
         <table class="submeta-bar" width="100%">
             <tr>
-                <td style="width: 34%;">
+                <td style="width: 44%;">
                     <span style="color:#64748b;">Department :</span>
                     <strong><?= htmlspecialchars($department) ?></strong>
                 </td>
-                <td style="width: 36%; text-align: center;">
+                <td style="width: 34%; text-align: center;">
                     <span style="color:#64748b;">Shift Timing :</span>
                     <strong><?= $shift_hours ?></strong>
                 </td>
-                <td style="width: 30%; text-align: right;">
+                <td style="width: 22%; text-align: right;">
                     <span style="color:#64748b;">Payment Status :</span>
                     <strong><?= htmlspecialchars($salary['payment_status'] ?: 'Paid') ?></strong>
                 </td>
