@@ -1,5 +1,11 @@
 <?php
 require_once __DIR__ . '/../core/config.php';
+
+$page_title = "Our Work & Projects | Graphicafix Portfolio";
+$meta_description = "Explore Graphicafix's portfolio of branding, website development, graphic design, and digital projects delivered for businesses and organizations.";
+$meta_keywords = "Digital agency portfolio, branding portfolio, website development portfolio, case studies, graphic design projects, software development showcase";
+$canonical_url = "https://graphicafix.com/portfolio";
+
 include __DIR__ . '/../templates/header.php';
 
 // Fetch all active, public projects
@@ -28,8 +34,8 @@ $featured_projects = array_values(array_filter($projects, fn($p) => $p['show_hom
     <!-- Hero Banner -->
     <section class="portfolio-hero">
         <div class="container pt-5">
-            <h1>Our <span class="highlight">Portfolio</span></h1>
-            <p>Explore our creative work across branding, web design, digital marketing, and more. Each project tells a unique story of innovation and excellence.</p>
+            <h1>Our Work &amp; <span class="highlight">Projects</span></h1>
+            <p>Explore Graphicafix's portfolio of branding, website development, graphic design, and digital projects delivered for businesses and organizations.</p>
         </div>
     </section>
 
@@ -120,12 +126,22 @@ $featured_projects = array_values(array_filter($projects, fn($p) => $p['show_hom
 
         <div class="featured-slider-container" style="position: relative; overflow: hidden; width: 100%;">
             <div class="featured-slider-track" style="display: flex; transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); width: 100%;">
-                <?php foreach ($featured_projects as $index => $project): ?>
+                <?php foreach ($featured_projects as $index => $project): 
+                    $f_alt = htmlspecialchars($project['project_name']);
+                    if (stripos($f_alt, 'Qaswa') !== false) $f_alt = "Qaswa Elevators brand identity and logo design by Graphicafix";
+                    elseif (stripos($f_alt, 'Zarmall') !== false) $f_alt = "Zarmall clothing brand identity designed by Graphicafix";
+                    elseif (stripos($f_alt, 'Emanon') !== false) $f_alt = "Emanon Institute website and branding project by Graphicafix";
+                    elseif (stripos($f_alt, 'Islamabad Elevators') !== false) $f_alt = "Islamabad Elevators visual identity project by Graphicafix";
+                    elseif (stripos($f_alt, 'Bab-ul-Ilm') !== false) $f_alt = "Bab-ul-Ilm digital platform project by Graphicafix";
+                    elseif (stripos($f_alt, 'Glowing Star') !== false) $f_alt = "Glowing Star Windows Design Project by Graphicafix";
+                    elseif (stripos($f_alt, 'KBRose') !== false) $f_alt = "KBRose Foundation School branding by Graphicafix";
+                    else $f_alt .= " by Graphicafix digital solutions agency";
+                ?>
                     <div class="featured-slide" style="flex: 0 0 100%; width: 100%; box-sizing: border-box; padding: 10px;">
                         <div class="featured-card-grid" style="display: grid; grid-template-columns: 1.2fr 1fr; border-radius: 24px; overflow: hidden; background: #ffffff; box-shadow: 0 20px 40px rgba(2, 68, 66, 0.06); border: 1px solid #e2e8f0;">
                             <!-- Image side -->
                             <div style="position: relative; overflow: hidden; aspect-ratio: 16/10; background: #f1f5f9;">
-                                <img src="<?= BASE_URL ?>admin/<?= htmlspecialchars($project['thumbnail']) ?>" alt="<?= htmlspecialchars($project['project_name']) ?>" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s ease;" class="showcase-img">
+                                <img src="<?= BASE_URL ?>admin/<?= htmlspecialchars($project['thumbnail']) ?>" alt="<?= htmlspecialchars($f_alt) ?>" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s ease;" class="showcase-img" loading="lazy">
                                 <div style="position: absolute; inset: 0; background: linear-gradient(to right, rgba(255,255,255,0.2) 0%, transparent 100%);"></div>
                             </div>
                             <!-- Content side -->
@@ -178,9 +194,19 @@ $featured_projects = array_values(array_filter($projects, fn($p) => $p['show_hom
         <div class="container-fluid" style="max-width: 1600px;">
             <?php if (!empty($projects)): ?>
                 <div class="dynamic-portfolio-grid" id="portfolioGrid">
-                    <?php foreach ($projects as $project): ?>
+                    <?php foreach ($projects as $project): 
+                        $g_alt = htmlspecialchars($project['project_name']);
+                        if (stripos($g_alt, 'Qaswa') !== false) $g_alt = "Qaswa Elevators brand identity and logo design by Graphicafix";
+                        elseif (stripos($g_alt, 'Zarmall') !== false) $g_alt = "Zarmall clothing brand identity designed by Graphicafix";
+                        elseif (stripos($g_alt, 'Emanon') !== false) $g_alt = "Emanon Institute website and branding project by Graphicafix";
+                        elseif (stripos($g_alt, 'Islamabad Elevators') !== false) $g_alt = "Islamabad Elevators visual identity project by Graphicafix";
+                        elseif (stripos($g_alt, 'Bab-ul-Ilm') !== false) $g_alt = "Bab-ul-Ilm digital platform project by Graphicafix";
+                        elseif (stripos($g_alt, 'Glowing Star') !== false) $g_alt = "Glowing Star Windows Design Project by Graphicafix";
+                        elseif (stripos($g_alt, 'KBRose') !== false) $g_alt = "KBRose Foundation School branding by Graphicafix";
+                        else $g_alt .= " by Graphicafix digital solutions agency";
+                    ?>
                         <div class="portfolio-item" data-category="<?= htmlspecialchars($project['category']) ?>" onclick="window.location.href='project_details.php?id=<?= $project['id'] ?>'">
-                            <img src="<?= BASE_URL ?>admin/<?= htmlspecialchars($project['thumbnail']) ?>" alt="<?= htmlspecialchars($project['project_name']) ?>">
+                            <img src="<?= BASE_URL ?>admin/<?= htmlspecialchars($project['thumbnail']) ?>" alt="<?= htmlspecialchars($g_alt) ?>" loading="lazy">
                             <div class="portfolio-item-overlay">
                                 <div class="portfolio-item-category"><?= htmlspecialchars($project['category']) ?></div>
                                 <h3 class="portfolio-item-title"><?= htmlspecialchars($project['project_name']) ?></h3>

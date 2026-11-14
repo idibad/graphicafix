@@ -351,6 +351,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
     header("Location: course_thank_you.php?eid=" . $raw_id . "&course=" . urlencode($course['title']));
     exit;
 }
+
+$page_title = "Professional IT & Digital Skills Courses | Graphicafix";
+$meta_description = "Explore professional courses at Graphicafix in programming, Python, artificial intelligence, and digital skills. Build practical skills for your career.";
+$meta_keywords = "IT courses, programming courses, Python courses, artificial intelligence training, digital skills courses, tech education";
+$canonical_url = "https://graphicafix.com/courses";
+
 include __DIR__ . '/../templates/header.php';
 
 // Fetch all published courses

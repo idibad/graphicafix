@@ -32,8 +32,8 @@
             <div class="footer-grid">
                 <!-- Brand Section -->
                 <div class="footer-brand">
-                    <img src="<?= BASE_URL ?>assets/images/logo.png" alt="Graphicafix Logo">
-                    <p>With a diverse skill set and experience across hundreds of branding and design projects, we can take on your creative needs—whether it's a single project or your entire design pipeline.</p>
+                    <img src="<?= BASE_URL ?>assets/images/logo.png" alt="Graphicafix digital solutions agency logo">
+                    <p>Your end-to-end digital solutions partner. We combine creative design, custom software development, digital marketing, and AI automation to help ambitious businesses build, operate, and grow.</p>
                     <h5>Follow Us</h5>
                     <div class="social-links">
                         <a href="https://facebook.com/graphicafix" target="_blank" aria-label="Facebook">
@@ -55,11 +55,11 @@
                 <div class="footer-section">
                     <h5>Quick Links</h5>
                     <ul>
-                        <li><a href="<?= BASE_URL ?>index"><i class="fas fa-chevron-right"></i> Home</a></li>
+                        <li><a href="<?= BASE_URL ?>"><i class="fas fa-chevron-right"></i> Home</a></li>
                         <li><a href="<?= BASE_URL ?>services"><i class="fas fa-chevron-right"></i> Services</a></li>
                         <li><a href="<?= BASE_URL ?>portfolio"><i class="fas fa-chevron-right"></i> Portfolio</a></li>
                         <li><a href="<?= BASE_URL ?>about"><i class="fas fa-chevron-right"></i> About</a></li>
-                        <li><a href="<?= BASE_URL ?>contact_us"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
+                        <li><a href="<?= BASE_URL ?>contact"><i class="fas fa-chevron-right"></i> Contact Us</a></li>
                     </ul>
                 </div>
 
@@ -67,11 +67,11 @@
                 <div class="footer-section">
                     <h5>Our Services</h5>
                     <ul>
-                        <li><a href="<?= BASE_URL ?>services#branding"><i class="fas fa-chevron-right"></i> Branding</a></li>
-                        <li><a href="<?= BASE_URL ?>services#web-design"><i class="fas fa-chevron-right"></i> Web Design</a></li>
-                        <li><a href="<?= BASE_URL ?>services#graphic-design"><i class="fas fa-chevron-right"></i> Graphic Design</a></li>
-                        <li><a href="<?= BASE_URL ?>services#social-media"><i class="fas fa-chevron-right"></i> Social Media</a></li>
-                        <li><a href="<?= BASE_URL ?>career"><i class="fas fa-chevron-right"></i> Career</a></li>
+                        <li><a href="<?= BASE_URL ?>services#branding-creative-design"><i class="fas fa-chevron-right"></i> Branding & Creative Design</a></li>
+                        <li><a href="<?= BASE_URL ?>services#website-design-development"><i class="fas fa-chevron-right"></i> Website Design & Development</a></li>
+                        <li><a href="<?= BASE_URL ?>services#custom-software-saas"><i class="fas fa-chevron-right"></i> Custom Software & SaaS</a></li>
+                        <li><a href="<?= BASE_URL ?>services#digital-marketing-growth"><i class="fas fa-chevron-right"></i> Digital Marketing & Growth</a></li>
+                        <li><a href="<?= BASE_URL ?>services#ai-business-automation"><i class="fas fa-chevron-right"></i> AI & Business Automation</a></li>
                     </ul>
                 </div>
 
@@ -135,30 +135,87 @@
 
 
 
-// Mobile Menu Toggle
-const mobileToggle = document.getElementById('mobileToggle');
-const mobileMenu = document.getElementById('mobileMenu');
+// Mobile Menu Controller
+(function() {
+    const mobileToggle = document.getElementById('mobileToggle');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const mobileBackdrop = document.getElementById('mobileBackdrop');
 
-mobileToggle.addEventListener('click', () => {
-    mobileToggle.classList.toggle('active');
-    mobileMenu.classList.toggle('active');
-});
+    if (!mobileToggle || !mobileMenu) return;
+
+    function openMobileMenu() {
+        mobileToggle.classList.add('active');
+        mobileToggle.setAttribute('aria-expanded', 'true');
+        mobileMenu.classList.add('active');
+        mobileMenu.setAttribute('aria-hidden', 'false');
+        if (mobileBackdrop) mobileBackdrop.classList.add('active');
+        document.body.classList.add('mobile-nav-locked');
+    }
+
+    function closeMobileMenu() {
+        mobileToggle.classList.remove('active');
+        mobileToggle.setAttribute('aria-expanded', 'false');
+        mobileMenu.classList.remove('active');
+        mobileMenu.setAttribute('aria-hidden', 'true');
+        if (mobileBackdrop) mobileBackdrop.classList.remove('active');
+        document.body.classList.remove('mobile-nav-locked');
+    }
+
+    function toggleMobileMenu() {
+        if (mobileMenu.classList.contains('active')) {
+            closeMobileMenu();
+        } else {
+            openMobileMenu();
+        }
+    }
+
+    mobileToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleMobileMenu();
+    });
+
+    if (mobileBackdrop) {
+        mobileBackdrop.addEventListener('click', closeMobileMenu);
+    }
+
+    // Close when clicking outside of modern-navbar
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.modern-navbar')) {
+            closeMobileMenu();
+        }
+    });
+
+    // Close on any mobile nav link or modal trigger click
+    mobileMenu.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+            closeMobileMenu();
+        });
+    });
+
+    // Close on Escape key press
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && mobileMenu.classList.contains('active')) {
+            closeMobileMenu();
+        }
+    });
+
+    // Close when resizing to desktop viewport
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 992 && mobileMenu.classList.contains('active')) {
+            closeMobileMenu();
+        }
+    });
+})();
 
 // Navbar Scroll Effect
 window.addEventListener('scroll', () => {
     const navbar = document.querySelector('.modern-navbar');
-    if (window.scrollY > 50) {
-        navbar.classList.add('scrolled');
-    } else {
-        navbar.classList.remove('scrolled');
-    }
-});
-
-// Close mobile menu when clicking outside
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.modern-navbar')) {
-        mobileToggle.classList.remove('active');
-        mobileMenu.classList.remove('active');
+    if (navbar) {
+        if (window.scrollY > 40) {
+            navbar.classList.add('scrolled');
+        } else {
+            navbar.classList.remove('scrolled');
+        }
     }
 });
     </script>

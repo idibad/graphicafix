@@ -1,4 +1,11 @@
-<?php require_once __DIR__ . '/../core/config.php';
+<?php 
+require_once __DIR__ . '/../core/config.php';
+
+$page_title = "Terms of Service | Graphicafix";
+$meta_description = "Review Graphicafix's Terms of Service, including website usage conditions, service agreements, project responsibilities, and applicable policies.";
+$meta_keywords = "Terms of service, website terms, service agreements, project responsibilities, Graphicafix terms";
+$canonical_url = "https://graphicafix.com/terms";
+
 include __DIR__ . '/../templates/header.php'; ?>
 
 <main class="terms-page">

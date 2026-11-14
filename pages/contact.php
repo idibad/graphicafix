@@ -4,6 +4,12 @@ error_reporting(0);
 ini_set('display_errors', '0');
 
 require_once __DIR__ . '/../core/config.php';
+
+$page_title = "Contact Graphicafix | Discuss Your Digital Project";
+$meta_description = "Have a project in mind? Contact Graphicafix for branding, website development, software solutions, digital marketing, and AI automation services.";
+$meta_keywords = "Contact digital agency, discuss digital project, hire digital solutions agency, software development enquiry, web development quote";
+$canonical_url = "https://graphicafix.com/contact";
+
 include __DIR__ . '/../templates/header.php';
 
 // ── Auto-patch contacts table safely to support Phone and Subject ─────────────
@@ -156,8 +162,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_contact'])) {
 
 <section class="contact-hero">
     <div class="container">
-        <h1>Let's work <span>together</span></h1>
-        <p>Whether you have a question, want to discuss a new project, or just want to say hello, our team is ready to listen.</p>
+        <h1>Discuss Your <span>Digital Project</span></h1>
+        <p>Have a project in mind? Contact Graphicafix for branding, website development, software solutions, digital marketing, and AI automation services.</p>
     </div>
 </section>
 

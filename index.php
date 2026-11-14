@@ -1,4 +1,9 @@
 <?php
+    $page_title = "Graphicafix | Digital Solutions & Services Agency";
+    $meta_description = "Graphicafix delivers end-to-end digital solutions, including branding, web and software development, digital marketing, AI automation, and creative design.";
+    $meta_keywords = "Digital services agency, digital solutions agency, software development company, web design and development, branding and graphic design, AI automation services, digital marketing agency";
+    $canonical_url = "https://graphicafix.com/";
+
     include 'templates/header.php';
 
     if (isset($_POST['submit_contact'])) {
@@ -47,7 +52,12 @@ if ($promo_query && $promo_query->num_rows > 0):
     $p_img = !empty($promoCourse['thumbnail']) ? htmlspecialchars($promoCourse['thumbnail']) : 'https://images.unsplash.com/photo-1651608671719-fcccf959672f?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'; // Fallback image
     $p_price = floatval($promoCourse['price']);
     $p_disc = intval($promoCourse['discount_percent'] ?? 0);
-    $p_start = !empty($promoCourse['start_date']) ? date('F j, Y', strtotime($promoCourse['start_date'])) : 'Start Immediately';
+    if (!empty($promoCourse['start_date'])) {
+        $start_ts = strtotime($promoCourse['start_date']);
+        $p_start = ($start_ts < time()) ? 'Next Cohort Enrolling Now' : date('F j, Y', $start_ts);
+    } else {
+        $p_start = 'Start Immediately';
+    }
     
     // The link can go to the course details or the enrollment page directly
     $p_link = "courses.php?course_id=" . $promoCourse['id'];
@@ -327,45 +337,126 @@ function closePromo() {
 /* ── GRAPHICAFIX EDITORIAL AGENCY HERO ── */
 .hero-section {
     position: relative;
-    background-color: #F7F8F7;
-    padding: 155px 0 95px;
+    background-color: #F8FAF8;
+    padding: 140px 0 25px;
     overflow: hidden;
     color: #111111;
+    text-align: center;
+}
+
+/* Subtle architectural drafting grid & ambient brand glow */
+.hero-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: 
+        radial-gradient(circle at 50% 20%, rgba(182, 247, 99, 0.16) 0%, rgba(2, 68, 66, 0.04) 45%, transparent 70%),
+        linear-gradient(to right, rgba(2, 68, 66, 0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(2, 68, 66, 0.025) 1px, transparent 1px);
+    background-size: 100% 100%, 48px 48px, 48px 48px;
+    pointer-events: none;
+    z-index: 1;
 }
 
 .hero-container {
     position: relative;
     z-index: 2;
-    max-width: 1360px;
+    max-width: 1080px;
     margin: 0 auto;
     padding: 0 24px;
 }
 
-.hero-grid {
-    display: grid;
-    grid-template-columns: 0.95fr 1.15fr;
-    gap: 60px;
-    align-items: center;
+/* Floating 4-Point Sparkles (matching reference image) */
+.hero-sparkle {
+    position: absolute;
+    pointer-events: none;
+    z-index: 2;
+    animation: sparkleFloat 4s ease-in-out infinite alternate;
+}
+.sparkle-left {
+    top: 40px;
+    left: 4%;
+    width: 36px;
+    height: 36px;
+    fill: #024442;
+    opacity: 0.85;
+}
+.sparkle-right {
+    top: 52%;
+    right: 5%;
+    width: 38px;
+    height: 38px;
+    fill: #024442;
+    opacity: 0.9;
+    animation-delay: -2s;
 }
 
-/* ── LEFT: SCULPTURAL EDITORIAL TYPOGRAPHY & CTAs ── */
-.hero-copy {
+@keyframes sparkleFloat {
+    0% { transform: translateY(0) rotate(0deg) scale(0.95); }
+    100% { transform: translateY(-12px) rotate(15deg) scale(1.05); }
+}
+
+/* Centered Copy */
+.hero-copy-centered {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    animation: heroTextReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    align-items: center;
+    text-align: center;
+    margin: 0 auto;
+    animation: heroTextReveal 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Status / Pill Badge */
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 18px;
+    background: #ffffff;
+    border: 1px solid rgba(2, 68, 66, 0.12);
+    border-radius: 999px;
+    box-shadow: 0 2px 10px rgba(2, 68, 66, 0.04);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #024442;
+    margin-bottom: 24px;
+}
+
+.hero-badge-pulse {
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: pulseDot 2s infinite;
+}
+
+@keyframes pulseDot {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* Main Heading */
 .hero-title {
-    font-size: clamp(3rem, 5vw, 4.6rem);
+    font-size: clamp(2.75rem, 6.2vw, 5.2rem);
     font-weight: 850;
-    line-height: 1.05;
+    line-height: 1.08;
     letter-spacing: -0.04em;
     color: #111111;
-    margin: 0 0 24px 0;
+    margin: 0 0 16px 0;
+    max-width: 900px;
 }
 
-/* Graphic lime-green accent on 'Forward.' */
+.hero-support-title {
+    font-size: clamp(1.15rem, 2.2vw, 1.65rem);
+    font-weight: 700;
+    color: #024442;
+    margin: 0 0 16px 0;
+    letter-spacing: -0.02em;
+    max-width: 800px;
+}
+
 .hero-accent {
     position: relative;
     display: inline-block;
@@ -376,109 +467,310 @@ function closePromo() {
 .hero-accent::after {
     content: '';
     position: absolute;
-    left: -2%;
-    bottom: 0.08em;
-    width: 104%;
+    left: -4%;
+    bottom: 0.06em;
+    width: 108%;
     height: 0.34em;
     background: #B6F763;
     z-index: -1;
-    border-radius: 3px;
+    border-radius: 4px;
 }
 
+/* Subtext */
 .hero-subtext {
-    font-size: clamp(1.05rem, 1.3vw, 1.22rem);
+    font-size: clamp(1.05rem, 1.35vw, 1.25rem);
     color: #4a5568;
     line-height: 1.65;
-    max-width: 510px;
-    margin: 0 0 38px 0;
+    max-width: 600px;
+    margin: 0 auto 34px auto;
     letter-spacing: -0.01em;
 }
 
+/* Actions */
 .hero-actions {
     display: flex;
     align-items: center;
-    gap: 28px;
+    justify-content: center;
+    gap: 16px;
     flex-wrap: wrap;
+    margin-bottom: 25px;
 }
 
-/* Primary CTA Button */
 .hero-btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 10px;
     background: #024442;
-    color: #ffffff;
+    color: #ffffff !important;
     font-size: 15.5px;
     font-weight: 600;
-    padding: 17px 36px;
+    padding: 16px 36px;
     border-radius: 999px;
-    text-decoration: none;
-    letter-spacing: -0.01em;
-    transition: all 0.25s ease;
-    border: none;
-    box-shadow: 0 6px 20px rgba(2, 68, 66, 0.16);
+    text-decoration: none !important;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1px solid #024442;
+    box-shadow: 0 6px 20px rgba(2, 68, 66, 0.18);
 }
 
 .hero-btn-primary:hover {
     background: #035a57;
-    color: #ffffff;
     transform: translateY(-2px);
-    box-shadow: 0 10px 28px rgba(2, 68, 66, 0.26);
+    box-shadow: 0 10px 28px rgba(2, 68, 66, 0.28);
 }
 
-/* Secondary CTA Text Link */
-.hero-link-secondary {
+.hero-btn-primary i {
+    color: #B6F763;
+    font-size: 13px;
+    transition: transform 0.2s ease;
+}
+
+.hero-btn-primary:hover i {
+    transform: translateX(3px);
+}
+
+.hero-btn-secondary {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 10px;
-    color: #111111;
+    background: #ffffff;
+    color: #024442 !important;
     font-size: 15.5px;
     font-weight: 600;
-    text-decoration: none;
-    letter-spacing: -0.01em;
-    transition: color 0.2s ease;
-    padding: 8px 0;
+    padding: 15px 32px;
+    border-radius: 999px;
+    text-decoration: none !important;
+    transition: all 0.25s ease;
+    border: 1.5px solid rgba(2, 68, 66, 0.25);
+    box-shadow: 0 2px 8px rgba(2, 68, 66, 0.04);
 }
 
-.hero-link-secondary .cta-arrow {
-    display: inline-block;
-    transition: transform 0.25s ease;
-    color: #024442;
+.hero-btn-secondary:hover {
+    background: rgba(2, 68, 66, 0.05);
+    border-color: #024442;
+    transform: translateY(-2px);
 }
 
-.hero-link-secondary:hover {
-    color: #024442;
-}
-
-.hero-link-secondary:hover .cta-arrow {
-    transform: translateX(6px);
-}
-
-/* ── RIGHT: PURE CINEMATIC VIDEO (NO FRAMES, NO EXTRA ELEMENTS) ── */
-.hero-video-wrap {
+/* ── STATIC DIAGONAL STRIPES WITH SCROLL-DRIVEN TEXT ── */
+.hero-stripes-container {
     position: relative;
     width: 100%;
-    min-height: 520px;
-    aspect-ratio: 16 / 11;
-    border-radius: 28px;
+    margin-top: 45px;
+    padding: 38px 0 28px;
     overflow: hidden;
-    background: #024442;
-    box-shadow: 0 25px 70px -15px rgba(2, 68, 66, 0.18), 0 10px 30px -10px rgba(0, 0, 0, 0.06);
-    animation: heroMediaReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
-.hero-video {
+/* The stripe containers remain 100% static at all times */
+.hero-stripe {
+    width: 130vw;
+    margin-left: -15vw;
+    padding: 15px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    position: relative;
+    transform-origin: center center;
+    pointer-events: auto;
+}
+
+/* Stripe 1: Deep Teal (Static fixed rotation) */
+.stripe-teal {
+    background: #024442;
+    color: #ffffff;
+    transform: rotate(-2.6deg) !important;
+    box-shadow: 0 10px 30px rgba(2, 68, 66, 0.22);
+    z-index: 2;
+    margin-bottom: -18px; /* Overlap with second stripe */
+}
+
+/* Stripe 2: Vibrant Electric Lime (Static fixed rotation) */
+.stripe-lime {
+    background: #B6F763;
+    color: #024442;
+    transform: rotate(2.2deg) !important;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12);
+    z-index: 3;
+}
+
+/* Scroll track: text is static when idle, moves ONLY on scroll */
+.stripe-scroll-track {
+    display: flex;
+    width: max-content;
+    will-change: transform;
+    animation: none !important; /* No continuous auto-marquee */
+}
+
+.stripe-unit {
+    display: flex;
+    align-items: center;
+    gap: 34px;
+    padding-right: 34px;
+    font-size: clamp(1.1rem, 1.8vw, 1.45rem);
+    font-weight: 850;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* 4-point Sparkle Star Divider */
+.stripe-star {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    fill: currentColor;
+    transition: transform 0.3s ease;
+}
+.stripe-teal .stripe-star {
+    fill: #B6F763;
+}
+.stripe-lime .stripe-star {
+    fill: #024442;
+}
+
+/* Outlined typography matching reference */
+.text-outline-light {
+    color: transparent !important;
+    -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.85);
+    transition: all 0.25s ease;
+}
+.text-outline-dark {
+    color: transparent !important;
+    -webkit-text-stroke: 1.5px #024442;
+    transition: all 0.25s ease;
+}
+
+.stripe-unit span {
+    transition: all 0.25s ease;
+    cursor: default;
+}
+.stripe-unit span:hover {
+    color: #ffffff !important;
+    -webkit-text-stroke: 0 !important;
+    text-shadow: 0 0 14px rgba(255, 255, 255, 0.7);
+}
+.stripe-lime .stripe-unit span:hover {
+    color: #024442 !important;
+}
+
+/* ── UPGRADED CLIENT LOGOS SECTION ── */
+.trusted-by {
+    position: relative;
+    background: #ffffff;
+    padding: 50px 0 45px;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    border-top: 1px solid rgba(2, 68, 66, 0.08);
+    border-bottom: 1px solid rgba(2, 68, 66, 0.08);
+    overflow: hidden;
+}
+
+.trusted-header {
+    margin-bottom: 28px;
+}
+
+.trusted-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 12.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #024442;
+    opacity: 0.75;
+    margin: 0;
+}
+
+.trusted-line {
+    width: 40px;
+    height: 1px;
+    background: rgba(2, 68, 66, 0.2);
+    display: inline-block;
+}
+
+.logo-slider {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    padding: 6px 0;
+}
+
+/* Luxury edge gradient dissolve masks */
+.logo-fade {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 160px;
+    z-index: 4;
+    pointer-events: none;
+}
+.logo-fade-left {
+    left: 0;
+    background: linear-gradient(to right, #ffffff 15%, rgba(255, 255, 255, 0) 100%);
+}
+.logo-fade-right {
+    right: 0;
+    background: linear-gradient(to left, #ffffff 15%, rgba(255, 255, 255, 0) 100%);
+}
+
+.logo-track {
+    display: flex;
+    align-items: center;
+    gap: 50px;
+    width: max-content;
+    will-change: transform;
+    animation: clientLogoGlide 30s linear infinite;
+}
+
+.logo-slider:hover .logo-track {
+    animation-play-state: paused;
+}
+
+.client-logo-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 52px;
+    min-width: 140px;
+    padding: 4px 14px;
+    border-radius: 12px;
+    transition: all 0.25s ease;
+}
+
+.client-logo-wrapper:hover {
+    background: rgba(2, 68, 66, 0.03);
+}
+
+.client-logo {
+    max-height: 42px;
+    width: auto;
+    max-width: 130px;
+    object-fit: contain;
+    filter: grayscale(100%);
+    opacity: 0.55;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     display: block;
+}
+
+.client-logo:hover,
+.client-logo-wrapper:hover .client-logo {
+    filter: grayscale(0%);
+    opacity: 1;
+    transform: scale(1.08);
+}
+
+@keyframes clientLogoGlide {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
 }
 
 /* ── ANIMATIONS ── */
 @keyframes heroTextReveal {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(22px);
     }
     to {
         opacity: 1;
@@ -486,254 +778,736 @@ function closePromo() {
     }
 }
 
-@keyframes heroMediaReveal {
-    from {
-        opacity: 0;
-        transform: scale(0.98);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-/* ── ACCESSIBILITY / PREFERS-REDUCED-MOTION ── */
+/* ── ACCESSIBILITY ── */
 @media (prefers-reduced-motion: reduce) {
-    .hero-copy,
-    .hero-video-wrap {
+    .hero-copy-centered,
+    .hero-sparkle,
+    .hero-badge-pulse,
+    .logo-track {
         animation: none !important;
     }
-    .hero-link-secondary .cta-arrow,
-    .hero-btn-primary {
+    .hero-btn-primary,
+    .hero-btn-secondary {
         transition: none !important;
     }
 }
 
-/* ── RESPONSIVE DESIGN ── */
-/* Tablet */
+/* ── RESPONSIVE ── */
 @media (max-width: 991px) {
     .hero-section {
-        padding: 130px 0 70px;
-    }
-    .hero-grid {
-        grid-template-columns: 1fr;
-        gap: 48px;
+        padding: 120px 0 25px;
     }
     .hero-title {
-        font-size: clamp(2.6rem, 6vw, 3.6rem);
+        font-size: clamp(2.5rem, 6.8vw, 3.8rem);
     }
     .hero-subtext {
-        max-width: 100%;
+        font-size: 1.05rem;
+        margin-bottom: 28px;
     }
-    .hero-video-wrap {
-        aspect-ratio: 16 / 10;
-        min-height: 380px;
-        border-radius: 22px;
+    .sparkle-left {
+        top: 20px;
+        left: 2%;
+        width: 28px;
+        height: 28px;
+    }
+    .sparkle-right {
+        right: 2%;
+        width: 30px;
+        height: 30px;
+    }
+    .stripe-unit {
+        gap: 26px;
+        padding-right: 26px;
+        font-size: 1.15rem;
+    }
+    .stripe-star {
+        width: 17px;
+        height: 17px;
+    }
+    .trusted-by {
+        padding: 40px 0 35px;
+    }
+    .logo-fade {
+        width: 80px;
+    }
+    .logo-track {
+        gap: 36px;
+    }
+    .client-logo {
+        max-height: 36px;
+        max-width: 110px;
     }
 }
 
-/* Mobile */
 @media (max-width: 576px) {
     .hero-section {
-        padding: 110px 0 50px;
+        padding: 100px 0 20px;
     }
-    .hero-title {
-        font-size: clamp(2.2rem, 8.8vw, 2.85rem);
-        line-height: 1.1;
+    .hero-badge {
+        font-size: 12px;
+        padding: 6px 14px;
         margin-bottom: 18px;
     }
+    .hero-title {
+        font-size: clamp(2.15rem, 9.5vw, 2.85rem);
+        line-height: 1.12;
+        margin-bottom: 16px;
+    }
     .hero-subtext {
-        font-size: 1rem;
-        line-height: 1.6;
-        margin-bottom: 28px;
+        font-size: 0.98rem;
+        line-height: 1.55;
+        margin-bottom: 24px;
     }
     .hero-actions {
         flex-direction: column;
         align-items: stretch;
-        gap: 16px;
+        gap: 12px;
         width: 100%;
+        max-width: 340px;
+        margin: 0 auto 15px auto;
     }
-    .hero-btn-primary {
+    .hero-btn-primary,
+    .hero-btn-secondary {
         width: 100%;
-        padding: 16px 24px;
+        padding: 15px 24px;
         font-size: 15px;
     }
-    .hero-link-secondary {
-        justify-content: flex-start;
-        padding: 4px 0;
+    .sparkle-left,
+    .sparkle-right {
+        display: none;
     }
-    .hero-video-wrap {
-        aspect-ratio: 16 / 10;
-        min-height: 230px;
-        border-radius: 16px;
-        margin-top: 8px;
+    .hero-stripes-container {
+        margin-top: 30px;
+        padding: 25px 0 20px;
+    }
+    .stripe-unit {
+        gap: 20px;
+        padding-right: 20px;
+        font-size: 0.98rem;
+    }
+    .stripe-star {
+        width: 15px;
+        height: 15px;
+    }
+    .hero-stripe {
+        padding: 11px 0;
+    }
+    .stripe-teal {
+        margin-bottom: -12px;
+    }
+    .trusted-label {
+        font-size: 11px;
+        gap: 10px;
+    }
+    .trusted-line {
+        width: 20px;
     }
 }
 </style>
 
 <section class="hero-section" id="hero">
+    <!-- Floating 4-point design sparkles matching reference image -->
+    <div class="hero-sparkle sparkle-left" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+    </div>
+    <div class="hero-sparkle sparkle-right" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+    </div>
+
     <div class="container hero-container">
-        <div class="hero-grid">
+        <div class="hero-copy-centered">
+            <!-- Primary H1 -->
+            <h1 class="hero-title">
+                Don't worry,<br>
+                we will fix <span class="hero-accent">IT.</span>
+            </h1>
+
+            <!-- Supporting Heading -->
+            <h2 class="hero-support-title">Your End-to-End Digital Solutions Partner</h2>
             
-            <!-- Left: Headline, Supporting Text, and Intentional CTAs -->
-            <div class="hero-copy">
-                <h1 class="hero-title">
-                    We Build What<br>
-                    Moves Business<br>
-                    <span class="hero-accent">Forward.</span>
-                </h1>
+            <!-- Supporting Description -->
+            <p class="hero-subtext">
+                From branding and creative design to websites, custom software, digital marketing, and AI automation, Graphicafix brings everything together to help businesses build, operate, and grow.
+            </p>
+            
+            <div class="hero-actions">
+                <a href="#" data-bs-toggle="modal" data-bs-target="#projectRequestModal" class="hero-btn-primary">
+                    <span>Start a Project</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
                 
-                <p class="hero-subtext">
-                    From distinctive brands to intelligent digital products, we turn ambitious ideas into solutions built to make a difference.
-                </p>
-                
-                <div class="hero-actions">
-                    <a href="<?= BASE_URL ?>portfolio" class="hero-btn-primary">
-                        Explore Our Work
-                    </a>
-                    
-                    <a href="#" data-bs-toggle="modal" data-bs-target="#projectRequestModal" class="hero-link-secondary">
-                        <span>Let's Discuss Your Project</span>
-                        <svg class="cta-arrow" width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M3.75 9H14.25M14.25 9L9.75 4.5M14.25 9L9.75 13.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </a>
+                <a href="<?= BASE_URL ?>portfolio" class="hero-btn-secondary">
+                    <span>Explore Work</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Diagonal Ribbon Stripes (Static Stripes, Text Scrolls Directly With Page Scroll) -->
+    <div class="hero-stripes-container" id="heroStripesContainer">
+        <!-- Stripe 1: Deep Forest Teal Ribbon (Static Container) -->
+        <div class="hero-stripe stripe-teal" id="stripeTeal">
+            <div class="stripe-scroll-track" id="trackTeal">
+                <?php for ($s = 0; $s < 4; $s++): ?>
+                <div class="stripe-unit" <?= ($s > 0) ? 'aria-hidden="true"' : ''; ?>>
+                    <span>BRAND IDENTITY</span>
+                    <svg class="stripe-star" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+                    <span class="text-outline-light">VISUAL STORYTELLING</span>
+                    <svg class="stripe-star" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+                    <span>UI/UX DESIGN</span>
+                    <svg class="stripe-star" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+                    <span class="text-outline-light">WEB DEVELOPMENT</span>
+                    <svg class="stripe-star" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+                    <span>WEBSITE MANAGEMENT</span>
+                    <svg class="stripe-star" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+                    <span class="text-outline-light">PACKAGING &amp; PRINT</span>
+                    <svg class="stripe-star" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+                    <span>CREATIVE DIRECTION</span>
+                    <svg class="stripe-star" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
                 </div>
+                <?php endfor; ?>
             </div>
+        </div>
 
-            <!-- Right: Pure, Cinematic Video (No Frames, No Extra Elements) -->
-            <div class="hero-video-wrap">
-                <video autoplay loop muted playsinline poster="<?= BASE_URL ?>assets/images/gfix_bg.png" class="hero-video">
-                    <source src="<?= BASE_URL ?>assets/images/bg-vid.mp4" type="video/mp4">
-                </video>
+        <!-- Stripe 2: Vibrant Electric Lime Ribbon (Static Container) -->
+        <div class="hero-stripe stripe-lime" id="stripeLime">
+            <div class="stripe-scroll-track" id="trackLime">
+                <?php for ($s = 0; $s < 4; $s++): ?>
+                <div class="stripe-unit" <?= ($s > 0) ? 'aria-hidden="true"' : ''; ?>>
+                    <span>WE WILL FIX IT</span>
+                    <svg class="stripe-star" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+                    <span class="text-outline-dark">GRAPHICAFIX</span>
+                    <svg class="stripe-star" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+                    <span>PIXEL PERFECT</span>
+                    <svg class="stripe-star" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+                    <span class="text-outline-dark">DIGITAL CRAFT</span>
+                    <svg class="stripe-star" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+                    <span>BESPOKE DESIGN STUDIO</span>
+                    <svg class="stripe-star" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+                    <span class="text-outline-dark">MOVE BUSINESS FORWARD</span>
+                    <svg class="stripe-star" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+                </div>
+                <?php endfor; ?>
             </div>
-
         </div>
     </div>
 </section>
 
-<section class="trusted-by">
-    <div class="text-center">
-        <div class="logo-slider">
-            <div class="logo-track">
-               <?php
-                   // Loop twice
-                for ($repeat = 0; $repeat < 2; $repeat++) {
-                    foreach ($logos as $index => $logoPath) {
-                        echo '<img src="' . htmlspecialchars($logoPath) . '" alt="Client Logo ' . ($index + 1) . '" class="client-logo">';
-                    }
+<!-- Scroll-Linked Parallax Script: Buttery-Smooth Lerp Physics -->
+<script>
+(function() {
+    const trackTeal = document.getElementById('trackTeal');
+    const trackLime = document.getElementById('trackLime');
+    if (!trackTeal || !trackLime) return;
+
+    let targetScrollY = window.pageYOffset || document.documentElement.scrollTop;
+    let currentScrollY = targetScrollY;
+    let isTicking = false;
+
+    // Cache repeating unit widths to eliminate layout thrashing
+    let widthTeal = 1350;
+    let widthLime = 1350;
+
+    function measureWidths() {
+        const unitTeal = trackTeal.querySelector('.stripe-unit');
+        const unitLime = trackLime.querySelector('.stripe-unit');
+        if (unitTeal && unitTeal.offsetWidth > 100) widthTeal = unitTeal.offsetWidth;
+        if (unitLime && unitLime.offsetWidth > 100) widthLime = unitLime.offsetWidth;
+    }
+    measureWidths();
+    window.addEventListener('resize', measureWidths, { passive: true });
+    window.addEventListener('load', measureWidths, { passive: true });
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(measureWidths);
+    }
+
+    function renderScroll() {
+        // Smooth linear interpolation (lerp) for liquid ease-out inertia
+        const diff = targetScrollY - currentScrollY;
+        currentScrollY += diff * 0.085;
+
+        // Modulo calculations for seamless wrapping
+        const offsetTeal = - ((currentScrollY * 0.85) % widthTeal);
+        const offsetLime = -widthLime + ((currentScrollY * 0.85) % widthLime);
+
+        trackTeal.style.transform = `translate3d(${offsetTeal.toFixed(2)}px, 0, 0)`;
+        trackLime.style.transform = `translate3d(${offsetLime.toFixed(2)}px, 0, 0)`;
+
+        // Continue RAF loop while there is momentum
+        if (Math.abs(diff) > 0.08) {
+            requestAnimationFrame(renderScroll);
+        } else {
+            currentScrollY = targetScrollY;
+            isTicking = false;
+        }
+    }
+
+    window.addEventListener('scroll', function() {
+        targetScrollY = window.pageYOffset || document.documentElement.scrollTop;
+        if (!isTicking) {
+            isTicking = true;
+            requestAnimationFrame(renderScroll);
+        }
+    }, { passive: true });
+
+    // Initial render
+    renderScroll();
+})();
+</script>
+
+<!-- Upgraded Client Logos Section -->
+<section class="trusted-by" id="trustedBy">
+    <div class="container">
+        <div class="trusted-header text-center">
+            <p class="trusted-label">
+                <span class="trusted-line"></span>
+                <span>TRUSTED BY INDUSTRY LEADERS &amp; GROWING BRANDS</span>
+                <span class="trusted-line"></span>
+            </p>
+        </div>
+    </div>
+    
+    <div class="logo-slider">
+        <!-- Edge Gradient Dissolve Masks -->
+        <div class="logo-fade logo-fade-left"></div>
+        <div class="logo-fade logo-fade-right"></div>
+
+        <div class="logo-track">
+           <?php
+               // Loop 4 times for silky smooth infinite loop on all display sizes
+            for ($repeat = 0; $repeat < 4; $repeat++) {
+                foreach ($logos as $index => $logoPath) {
+                    echo '<div class="client-logo-wrapper">';
+                    echo '<img src="' . htmlspecialchars($logoPath) . '" alt="Client partner brand logo" class="client-logo" loading="lazy">';
+                    echo '</div>';
                 }
-                ?>
+            }
+            ?>
+        </div>
+    </div>
+</section>
+
+<!-- ── UPGRADED CREATIVE SOLUTIONS SECTION ── -->
+<style>
+.services-clean-section {
+    background-color: #F8FAF8;
+    padding: 95px 0 90px;
+    position: relative;
+    overflow: hidden;
+}
+
+.services-clean-header {
+    margin-bottom: 50px;
+}
+
+.services-pill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    background: #ffffff;
+    border: 1px solid rgba(2, 68, 66, 0.12);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #024442;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(2, 68, 66, 0.04);
+}
+
+.services-pill-badge .pill-dot {
+    width: 7px;
+    height: 7px;
+    background: #B6F763;
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(182, 247, 99, 0.9);
+}
+
+.services-clean-title {
+    font-size: clamp(2.3rem, 4.4vw, 3.4rem);
+    font-weight: 850;
+    color: #111111;
+    letter-spacing: -0.035em;
+    margin-bottom: 14px;
+    line-height: 1.15;
+}
+
+.services-clean-accent {
+    position: relative;
+    display: inline-block;
+    color: #024442;
+    z-index: 1;
+}
+
+.services-clean-accent::after {
+    content: '';
+    position: absolute;
+    left: -3%;
+    bottom: 0.08em;
+    width: 106%;
+    height: 0.3em;
+    background: #B6F763;
+    z-index: -1;
+    border-radius: 3px;
+}
+
+.services-clean-subtext {
+    font-size: clamp(1rem, 1.25vw, 1.14rem);
+    color: #64748b;
+    max-width: 560px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+/* Service Clean Cards */
+.service-clean-card {
+    position: relative;
+    background: #ffffff;
+    border: 1px solid rgba(2, 68, 66, 0.09);
+    border-radius: 22px;
+    padding: 34px 26px 30px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: left;
+    box-shadow: 0 4px 20px -2px rgba(2, 68, 66, 0.04);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+    overflow: hidden;
+}
+
+.service-clean-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3.5px;
+    background: #B6F763;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.service-clean-card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(2, 68, 66, 0.22);
+    box-shadow: 0 20px 42px -10px rgba(2, 68, 66, 0.12);
+}
+
+.service-clean-card:hover::before {
+    opacity: 1;
+}
+
+.card-number {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(2, 68, 66, 0.25);
+    letter-spacing: 1px;
+}
+
+.card-icon-box {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: rgba(2, 68, 66, 0.05);
+    color: #024442;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin-bottom: 22px;
+    transition: all 0.3s ease;
+}
+
+.service-clean-card:hover .card-icon-box {
+    background: #024442;
+    color: #B6F763;
+    transform: scale(1.06);
+}
+
+.card-body-content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.card-title {
+    font-size: 1.28rem;
+    font-weight: 750;
+    color: #111111;
+    margin-bottom: 12px;
+    letter-spacing: -0.02em;
+}
+
+.card-desc {
+    font-size: 0.94rem;
+    color: #4b5563;
+    line-height: 1.62;
+    margin-bottom: 24px;
+    flex-grow: 1;
+}
+
+.card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #024442 !important;
+    text-decoration: none !important;
+    transition: gap 0.25s ease, color 0.25s ease;
+    margin-top: auto;
+}
+
+.card-link i {
+    font-size: 12px;
+    transition: transform 0.25s ease;
+}
+
+.service-clean-card:hover .card-link {
+    color: #035a57 !important;
+    gap: 12px;
+}
+
+.service-clean-card:hover .card-link i {
+    transform: translateX(4px);
+}
+
+/* Explore all services button */
+.services-btn-explore {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: #024442;
+    color: #ffffff !important;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 15px 36px;
+    border-radius: 999px;
+    text-decoration: none !important;
+    box-shadow: 0 4px 18px rgba(2, 68, 66, 0.16);
+    transition: all 0.25s ease;
+    border: 1px solid #024442;
+}
+
+.services-btn-explore:hover {
+    background: #035a57;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(2, 68, 66, 0.24);
+}
+
+.services-btn-explore i {
+    color: #B6F763;
+    font-size: 13px;
+    transition: transform 0.2s ease;
+}
+
+.services-btn-explore:hover i {
+    transform: translateX(3px);
+}
+
+@media (max-width: 768px) {
+    .services-clean-section {
+        padding: 65px 0 60px;
+    }
+    .service-clean-card {
+        padding: 26px 20px 24px;
+    }
+    .card-title {
+        font-size: 1.2rem;
+    }
+}
+</style>
+
+<section class="services-clean-section text-center" id="services">
+    <div class="container">
+        <!-- Section Header -->
+        <div class="services-clean-header" data-aos="fade-up">
+            <div class="services-pill-badge">
+                <span class="pill-dot"></span>
+                <span>WHAT WE DO</span>
+            </div>
+            <h2 class="services-clean-title">Our Digital <span class="services-clean-accent">Services.</span></h2>
+            <p class="services-clean-subtext">Complete digital solutions for modern businesses — from branding and custom websites to scalable software, performance marketing, and AI automation.</p>
+        </div>
+
+        <!-- Clean Service Cards Grid (Expanded Core Services) -->
+        <div class="row g-4" data-aos="fade-up">
+            <!-- Card 1: Branding & Creative Design -->
+            <div class="col-lg-4 col-md-6">
+                <div class="service-clean-card">
+                    <span class="card-number">01</span>
+                    <div class="card-icon-box">
+                        <i class="fas fa-palette"></i>
+                    </div>
+                    <div class="card-body-content">
+                        <h3 class="card-title">Branding &amp; Creative Design</h3>
+                        <p class="card-desc">Bespoke brand strategy, visual identities, logos, style guidelines, and marketing collaterals that distinguish your business.</p>
+                        <a href="<?= BASE_URL ?>services#branding-creative-design" class="card-link">
+                            <span>Explore Service</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Website Design & Development -->
+            <div class="col-lg-4 col-md-6">
+                <div class="service-clean-card">
+                    <span class="card-number">02</span>
+                    <div class="card-icon-box">
+                        <i class="fas fa-laptop-code"></i>
+                    </div>
+                    <div class="card-body-content">
+                        <h3 class="card-title">Website Design &amp; Development</h3>
+                        <p class="card-desc">High-speed, conversion-focused, and SEO-optimized responsive websites built on modern architectures that drive sustainable growth.</p>
+                        <a href="<?= BASE_URL ?>services#website-design-development" class="card-link">
+                            <span>Explore Service</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Custom Software & SaaS Development -->
+            <div class="col-lg-4 col-md-6">
+                <div class="service-clean-card">
+                    <span class="card-number">03</span>
+                    <div class="card-icon-box">
+                        <i class="fas fa-cubes"></i>
+                    </div>
+                    <div class="card-body-content">
+                        <h3 class="card-title">Custom Software &amp; SaaS</h3>
+                        <p class="card-desc">End-to-end custom software development, cloud web applications, CRM/ERP platforms, and scalable multi-tenant SaaS products.</p>
+                        <a href="<?= BASE_URL ?>services#custom-software-saas" class="card-link">
+                            <span>Explore Service</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4: Digital Marketing & Content -->
+            <div class="col-lg-4 col-md-6">
+                <div class="service-clean-card">
+                    <span class="card-number">04</span>
+                    <div class="card-icon-box">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+                    <div class="card-body-content">
+                        <h3 class="card-title">Digital Marketing &amp; Content</h3>
+                        <p class="card-desc">Targeted search engine optimization (SEO), paid ads, brand storytelling, and strategic content pipelines that convert prospects into clients.</p>
+                        <a href="<?= BASE_URL ?>services#digital-marketing-growth" class="card-link">
+                            <span>Explore Service</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 5: AI & Business Automation -->
+            <div class="col-lg-4 col-md-6">
+                <div class="service-clean-card">
+                    <span class="card-number">05</span>
+                    <div class="card-icon-box">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="card-body-content">
+                        <h3 class="card-title">AI &amp; Business Automation</h3>
+                        <p class="card-desc">Custom AI assistants, intelligent workflow automations, API integrations, and operational tools that streamline work and eliminate bottlenecks.</p>
+                        <a href="<?= BASE_URL ?>services#ai-business-automation" class="card-link">
+                            <span>Explore Service</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 6: Mobile App Development -->
+            <div class="col-lg-4 col-md-6">
+                <div class="service-clean-card">
+                    <span class="card-number">06</span>
+                    <div class="card-icon-box">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <div class="card-body-content">
+                        <h3 class="card-title">Mobile App Development</h3>
+                        <p class="card-desc">Intuitive, cross-platform and native iOS and Android applications engineered for fluid user journeys and high customer retention.</p>
+                        <a href="<?= BASE_URL ?>services#mobile-app-development" class="card-link">
+                            <span>Explore Service</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <div class="col-12 text-center mt-5">
+                <a href="<?= BASE_URL ?>services" class="services-btn-explore">
+                    <span>Explore All Services &amp; Packages</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
             </div>
         </div>
     </div>
 </section>
-          
-    <div class="services text-center">
-        <div class="container mt-5">
-            <div class="section-title color-primary">
-                <h1>Creative <span >Solutions</span></h1>
-            </div>
-            <div class="row cards-cont" data-aos="fade-up">
-    <div class="col-lg-3 col-md-6">
-        <div class="card-single">
-            <div class="card-icon-wrapper">
-                <div class="card-icon">
-                    <i class="fas fa-palette"></i>
-                </div>
-            </div>
-            <div class="card-info">
-                <h3>Graphic Design</h3>
-                <p>We craft visually stunning graphics that bring your brand to life, from logos to marketing materials.</p>
-                <div class="card-learn-more">
-                    <span>Learn More <i class="fas fa-arrow-right"></i></span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-3 col-md-6">
-        <div class="card-single">
-            <div class="card-icon-wrapper">
-                <div class="card-icon">
-                    <i class="fas fa-code"></i>
-                </div>
-            </div>
-            <div class="card-info">
-                <h3>Web Development</h3>
-                <p>We build fast, responsive, and SEO-friendly websites that engage your audience and drive growth.</p>
-                <div class="card-learn-more">
-                    <span>Learn More <i class="fas fa-arrow-right"></i></span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-3 col-md-6">
-        <div class="card-single">
-            <div class="card-icon-wrapper">
-                <div class="card-icon">
-                    <i class="fas fa-pen-nib"></i>
-                </div>
-            </div>
-            <div class="card-info">
-                <h3>Content Writing</h3>
-                <p>We create compelling, SEO-optimized content for blogs, websites, and social media to engage your audience.</p>
-                <div class="card-learn-more">
-                    <span>Learn More <i class="fas fa-arrow-right"></i></span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-3 col-md-6">
-        <div class="card-single">
-            <div class="card-icon-wrapper">
-                <div class="card-icon">
-                    <i class="fas fa-lightbulb"></i>
-                </div>
-            </div>
-            <div class="card-info">
-                <h3>Branding</h3>
-                <p>We develop unique brand identities, including logos, color schemes, and brand guidelines.</p>
-                <div class="card-learn-more">
-                    <span>Learn More <i class="fas fa-arrow-right"></i></span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12">
-        <div class="action-btn mt-4 mb-5">
-            <a href="services.php" class="main-btn p-3">See All Services</a>
-        </div>
-    </div>
-</div>
-</div>
-</div>
-        <div class="work-cards">
+        <div class="work-cards" id="portfolio">
             <div class="container">        
-                <div class="row">
-                        <div class="col-md-3 mb-1">
-                            <div class="work-card-single">
-                                <h4>
-                                Creative Portfolio
-                                </h4>
-                                <p>
-                                    Explore some of the creative projects we've crafted for our clients, 
-                                    showcasing innovation, quality, and attention to detail.
+                <div class="row g-4 align-items-stretch">
+                        <div class="col-lg-3 col-md-6">
+                            <div class="work-card-intro">
+                                <span class="work-intro-badge">
+                                    <i class="fas fa-star" style="color: #024442; font-size: 11px;"></i> Featured Work
+                                </span>
+                                <h3 class="work-intro-title">
+                                    Creative Portfolio
+                                </h3>
+                                <p class="work-intro-desc">
+                                    Explore some of the high-impact branding, custom websites, and digital solutions we have delivered for growing businesses and organizations.
                                 </p>
-                                <a href="#" class="main-btn bg-primary-clr" data-bs-toggle="modal" data-bs-target="#projectRequestModal">Request Project</a>
+                                <a href="#" class="work-intro-btn" data-bs-toggle="modal" data-bs-target="#projectRequestModal">
+                                    <span>Request Project</span>
+                                    <i class="fas fa-arrow-right"></i>
+                                </a>
                             </div>
                         </div>
                         <?php
-                        while ($project = $result->fetch_assoc()): ?>
-                            <div class="col-md-3">
-                                <a href="project_details.php?id=<?= intval($project['id']) ?>" class="work-card-link">
+                        while ($project = $result->fetch_assoc()): 
+                            $p_name = htmlspecialchars($project['project_name']);
+                            $p_alt = $p_name . " by Graphicafix digital solutions agency";
+                            if (stripos($p_name, 'Qaswa') !== false) {
+                                $p_alt = "Qaswa Elevators brand identity and logo design by Graphicafix";
+                            } elseif (stripos($p_name, 'Zarmall') !== false) {
+                                $p_alt = "Zarmall clothing brand identity designed by Graphicafix";
+                            } elseif (stripos($p_name, 'Emanon') !== false) {
+                                $p_alt = "Emanon Institute website and branding project by Graphicafix";
+                            } elseif (stripos($p_name, 'Islamabad Elevators') !== false) {
+                                $p_alt = "Islamabad Elevators visual identity project by Graphicafix";
+                            } elseif (stripos($p_name, 'Bab-ul-Ilm') !== false) {
+                                $p_alt = "Bab-ul-Ilm digital platform project by Graphicafix";
+                            } elseif (stripos($p_name, 'Glowing Star') !== false) {
+                                $p_alt = "Glowing Star Windows Design Project by Graphicafix";
+                            } elseif (stripos($p_name, 'KBRose') !== false) {
+                                $p_alt = "KBRose Foundation School branding project by Graphicafix";
+                            }
+                        ?>
+                            <div class="col-lg-3 col-md-6">
+                                <a href="project_details.php?id=<?= intval($project['id']) ?>" class="work-card-link" aria-label="<?= $p_name ?>">
                                     <div class="work-card-single">
-                                        <img src="<?= !empty($project['thumbnail']) ? 'admin/' . htmlspecialchars($project['thumbnail']) : 'assets/images/placeholder.png' ?>" alt="<?= htmlspecialchars($project['project_name']) ?>">
-                                        <div class="overlay">
-                                            <h3><?= htmlspecialchars($project['project_name']) ?></h3>
+                                        <img src="<?= !empty($project['thumbnail']) ? 'admin/' . htmlspecialchars($project['thumbnail']) : 'assets/images/placeholder.png' ?>" alt="<?= htmlspecialchars($p_alt) ?>" loading="lazy">
+                                        <div class="work-card-overlay">
+                                            <div class="work-card-overlay-inner">
+                                                <div class="work-card-meta">
+                                                    <span class="work-card-pill">Case Study</span>
+                                                    <span class="work-card-icon"><i class="fas fa-arrow-right"></i></span>
+                                                </div>
+                                                <h4 class="work-card-title"><?= $p_name ?></h4>
+                                            </div>
                                         </div>
                                     </div>
                                 </a>
@@ -748,31 +1522,81 @@ function closePromo() {
                     </div>
                 </div>
             </div>
-            <div class="scroll-text-wrapper">
-            <div class="scroll-text">
-                <span class="line">
-                    <span class="w1">FIX</span>
-                    <span class="w2">ENHANCE</span>
-                    <span class="w3">AND</span>
-                    <span class="w4">ELEVATE</span>
-                    <span class="w5">YOUR</span>
-                    <span class="w6">BRANDS</span>
-                </span>
-
-                <span class="line">
-                    <span class="w1">FIX</span>
-                    <span class="w2">ENHANCE</span>
-                    <span class="w3">AND</span>
-                    <span class="w4">ELEVATE</span>
-                    <span class="w5">YOUR</span>
-                    <span class="w6">BRANDS</span>
-                </span>
+            <!-- Infinite Marquee Text Section (Scroll-Linked Animation) -->
+            <div class="scroll-text-wrapper" id="marqueeWrapper">
+                <div class="scroll-text" id="marqueeScrollTrack">
+                    <?php for ($m = 0; $m < 5; $m++): ?>
+                    <span class="line" <?= ($m > 0) ? 'aria-hidden="true"' : ''; ?>>
+                        <span class="w1">FIX</span>
+                        <span class="w2">ENHANCE</span>
+                        <span class="w3">AND</span>
+                        <span class="w4">ELEVATE</span>
+                        <span class="w5">YOUR</span>
+                        <span class="w6">BRANDS</span>
+                        <svg class="scroll-star" viewBox="0 0 24 24"><path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5Z"/></svg>
+                    </span>
+                    <?php endfor; ?>
+                </div>
             </div>
-        </div>
+
+            <!-- Scroll-Linked Script for Post-Portfolio Marquee -->
+            <script>
+            (function() {
+                const scrollTrack = document.getElementById('marqueeScrollTrack');
+                if (!scrollTrack) return;
+
+                let targetScrollY = window.pageYOffset || document.documentElement.scrollTop;
+                let currentScrollY = targetScrollY;
+                let isTicking = false;
+                let unitWidth = 1400;
+
+                function measureUnitWidth() {
+                    const firstLine = scrollTrack.querySelector('.line');
+                    if (firstLine && firstLine.offsetWidth > 100) {
+                        unitWidth = firstLine.offsetWidth;
+                    }
+                }
+                measureUnitWidth();
+                window.addEventListener('resize', measureUnitWidth, { passive: true });
+                window.addEventListener('load', measureUnitWidth, { passive: true });
+                if (document.fonts && document.fonts.ready) {
+                    document.fonts.ready.then(measureUnitWidth);
+                }
+
+                function renderMarquee() {
+                    const diff = targetScrollY - currentScrollY;
+                    currentScrollY += diff * 0.085;
+
+                    // Positive modulo logic ensures flawless forward & reverse looping
+                    const positiveOffset = ((currentScrollY * 0.95) % unitWidth + unitWidth) % unitWidth;
+                    const offset = -unitWidth - positiveOffset;
+
+                    scrollTrack.style.transform = `translate3d(${offset.toFixed(2)}px, 0, 0)`;
+
+                    if (Math.abs(diff) > 0.08) {
+                        requestAnimationFrame(renderMarquee);
+                    } else {
+                        currentScrollY = targetScrollY;
+                        isTicking = false;
+                    }
+                }
+
+                window.addEventListener('scroll', function() {
+                    targetScrollY = window.pageYOffset || document.documentElement.scrollTop;
+                    if (!isTicking) {
+                        isTicking = true;
+                        requestAnimationFrame(renderMarquee);
+                    }
+                }, { passive: true });
+
+                // Initial render
+                renderMarquee();
+            })();
+            </script>
 <section class="process-section">
         <div class="header">
             <div class="header-small">STEP BY STEP PROCESS</div>
-            <h1 class="header-title">We Complete every <span>Step Carefully</span></h1>
+            <h2 class="header-title">We Complete Every <span>Step Carefully</span></h2>
         </div>
 
         <div class="flow-container">
@@ -780,19 +1604,19 @@ function closePromo() {
                 <div class="step">
                     <div class="step-icon"><i class="fas fa-cog" style="color: var(--primary);"></i></div>
                     <div class="step-title">Planning</div>
-                    <div class="step-description">Design the look and feel, content and structure of your custom web or app</div>
+                    <div class="step-description">We analyze your business objectives, target audience, and project scope to map out an agile, goal-driven roadmap.</div>
                 </div>
 
                 <div class="step">
                     <div class="step-icon"><i class="fas fa-palette" style="color: var(--primary);"></i></div>
                     <div class="step-title">Design</div>
-                    <div class="step-description">Use files and adopt a deep-app group context which works with your task</div>
+                    <div class="step-description">Our creative team crafts bespoke, high-conversion UI/UX wireframes, visual prototypes, and brand identities tailored to your audience.</div>
                 </div>
 
                 <div class="step">
                     <div class="step-icon"><i class="fas fa-laptop-code" style="color: var(--primary);"></i></div>
                     <div class="step-title">Development</div>
-                    <div class="step-description">We provide a design mock up from code to bring them to development</div>
+                    <div class="step-description">We engineer scalable, secure, and clean-code architectures using modern frameworks and performance-optimized standards.</div>
                 </div>
 
                 <div class="connector connector-top"></div>
@@ -803,19 +1627,19 @@ function closePromo() {
                 <div class="step">
                     <div class="step-icon"><i class="fas fa-clipboard-check" style="color: var(--primary);"></i></div>
                     <div class="step-title">Testing</div>
-                    <div class="step-description">Using Data that invoke the execution of your design movements</div>
+                    <div class="step-description">Rigorous quality assurance, cross-browser compatibility, security audits, and performance testing ensure flawless execution.</div>
                 </div>
 
                 <div class="step">
                     <div class="step-icon"><i class="fas fa-rocket" style="color: var(--primary);"></i></div>
                     <div class="step-title">Launch</div>
-                    <div class="step-description">Organizing them is a core part before of the design movements</div>
+                    <div class="step-description">Seamless deployment to production environments with zero downtime, comprehensive SEO setup, and live monitoring.</div>
                 </div>
 
                 <div class="step">
                     <div class="step-icon"><i class="fas fa-life-ring" style="color: var(--primary);"></i></div>
                     <div class="step-title">Support</div>
-                    <div class="step-description">Explain and concept of designs helping to deliver the theme</div>
+                    <div class="step-description">Continuous maintenance, security patches, performance tuning, and scalable feature updates to ensure long-term growth.</div>
                 </div>
 
                 <div class="connector connector-bottom"></div>
@@ -823,31 +1647,31 @@ function closePromo() {
         </div>
     </section>
         <section class="why-choose-us">
-    <h2>Why Choose Us</h2>
+    <h2>Why Businesses Choose Graphicafix</h2>
     <div class="container">
     <div class="wcu-grid">
         <div class="wcu-card">
             <i class="far fa-lightbulb"></i>
-            <h3>Creative Approach</h3>
-            <p>We combine strategy, creativity, and clean execution to deliver meaningful results.</p>
+            <h3>Integrated Expertise</h3>
+            <p>From visual branding to custom code and AI, we bring all digital capabilities under one agile roof.</p>
         </div>
 
         <div class="wcu-card">
             <i class="far fa-gem"></i>
-            <h3>High Quality</h3>
-            <p>Every project is crafted with precision, clarity, and top-tier design standards.</p>
+            <h3>High Standards</h3>
+            <p>Every digital product is engineered with precision, exceptional UX, clean code, and search visibility.</p>
         </div>
 
         <div class="wcu-card">
             <i class="far fa-clock"></i>
             <h3>On-Time Delivery</h3>
-            <p>We deliver work on time without compromising quality or detail.</p>
+            <p>Transparent sprint planning and agile communication ensure your projects launch reliably on schedule.</p>
         </div>
 
         <div class="wcu-card">
             <i class="far fa-handshake"></i>
-            <h3>Trusted Partnership</h3>
-            <p>We work closely with clients and ensure long-term, reliable collaboration.</p>
+            <h3>Long-Term Partnership</h3>
+            <p>We serve as an ongoing technology and growth partner for businesses across Pakistan, the UK, and globally.</p>
         </div>
     </div>
     </div>
@@ -874,8 +1698,23 @@ while ($project = $result->fetch_assoc()):
         <?php if ($class === 'project-card'): ?>
             <h2 class="project-title"><?= $projectName ?></h2>
             <a href="project_details.php?id=<?= $projectID ?>" class="project-link dark">View Project ></a>
-        <?php else: ?>
-            <img src="admin/<?= $projectThumb ?>" alt="<?= $projectName ?>">
+        <?php else: 
+            $p_alt_thumb = $projectName . " by Graphicafix digital solutions agency";
+            if (stripos($projectName, 'Qaswa') !== false) {
+                $p_alt_thumb = "Qaswa Elevators brand identity and logo design by Graphicafix";
+            } elseif (stripos($projectName, 'Zarmall') !== false) {
+                $p_alt_thumb = "Zarmall clothing brand identity designed by Graphicafix";
+            } elseif (stripos($projectName, 'Emanon') !== false) {
+                $p_alt_thumb = "Emanon Institute website and branding project by Graphicafix";
+            } elseif (stripos($projectName, 'Islamabad Elevators') !== false) {
+                $p_alt_thumb = "Islamabad Elevators visual identity project by Graphicafix";
+            } elseif (stripos($projectName, 'Bab-ul-Ilm') !== false) {
+                $p_alt_thumb = "Bab-ul-Ilm digital platform project by Graphicafix";
+            } elseif (stripos($projectName, 'Glowing Star') !== false) {
+                $p_alt_thumb = "Glowing Star Windows Design Project by Graphicafix";
+            }
+        ?>
+            <img src="admin/<?= $projectThumb ?>" alt="<?= htmlspecialchars($p_alt_thumb) ?>" loading="lazy">
             <div class="project-info">
                 <h3><?= $projectName ?></h3>
                 <a href="project_details.php?id=<?= $projectID ?>" class="project-link">View Project ></a>
@@ -925,7 +1764,7 @@ endwhile;
   <section class="reviews-section">
     <div class="reviews-header">
         <div class="faq-header-small">TESTIMONIALS</div>
-        <h1 class="faq-header-title">What Our <span>Clients Say</span></h1>
+        <h2 class="faq-header-title">What Our <span>Clients Say</span></h2>
     </div>
 
     <?php
@@ -987,7 +1826,7 @@ endwhile;
     <section class="faq-section">
         <div class="faq-header">
             <div class="faq-header-small">FAQ</div>
-            <h1 class="faq-header-title">Frequently Asked <span>Questions</span></h1>
+            <h2 class="faq-header-title">Frequently Asked Questions <span>About Our Services</span></h2>
         </div>
 
         <div class="faq-container">

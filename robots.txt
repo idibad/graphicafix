@@ -1,5 +1,13 @@
 User-agent: *
 Disallow: /admin/
+Disallow: /portal/
+Disallow: /core/
+Disallow: /database/
+Disallow: /logs/
+Disallow: /api/
+Disallow: /download_form.php
+Disallow: /reset_password.php
+Disallow: /forgot_password.php
 Allow: /
 
 Sitemap: https://graphicafix.com/sitemap.xml

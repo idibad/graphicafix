@@ -4,6 +4,12 @@
     ini_set('display_errors', '0');
 
     require_once __DIR__ . '/../core/config.php';
+
+    $page_title = "About Graphicafix | Your Digital Solutions Partner";
+    $meta_description = "Discover Graphicafix, a full-service digital solutions agency combining creative design, technology, marketing, and automation to help businesses grow.";
+    $meta_keywords = "Digital solutions company, full-service digital agency, technology agency, AI automation, branding agency, Graphicafix about";
+    $canonical_url = "https://graphicafix.com/about";
+
     include __DIR__ . '/../templates/header.php';
 
     // Check available columns defensively
@@ -298,8 +304,14 @@
 
     <section class="about-hero">
         <div class="container">
-            <h1>About <span>Graphicafix</span></h1>
-            <p>We are a full-service creative digital agency helping brands grow through strategic graphic design, web development, and digital marketing excellence.</p>
+            <span style="font-size: 0.8rem; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 700; color: var(--accent-lime); display: block; margin-bottom: 12px;">Full-Service Digital Solutions Agency</span>
+            <h1>We Bring Creativity, Technology &amp; <span>Business Together.</span></h1>
+            <p style="font-size: 1.15rem; max-width: 820px; margin: 0 auto; line-height: 1.8; color: rgba(255, 255, 255, 0.92); font-weight: 300;">
+                Graphicafix is a full-service digital solutions agency providing businesses with the creative expertise and technical capabilities needed to succeed in today's digital environment. Our services span branding, creative design, web development, custom software, digital marketing, and AI-powered automation.
+            </p>
+            <p style="font-size: 1.02rem; max-width: 740px; margin: 16px auto 0; line-height: 1.7; color: rgba(255, 255, 255, 0.78); font-weight: 300;">
+                We work with businesses, startups, and organizations to develop practical digital solutions, strengthen their presence, and improve the way they operate.
+            </p>
         </div>
     </section>
 
@@ -489,11 +501,48 @@
         </div>
     </section>
 
+    <!-- Markets Served Section -->
+    <section style="padding: 80px 0; background: #ffffff; border-top: 1px solid #e8e8e8;">
+        <div class="container">
+            <div class="text-center mb-5">
+                <span class="section-header-small">Global Reach</span>
+                <h2 class="section-title">Markets We <span>Proudly Serve</span></h2>
+                <p style="color: #64748b; font-size: 1rem; max-width: 650px; margin: 12px auto 0;">
+                    Delivering agile digital solutions with established operational presence across Pakistan and the United Kingdom.
+                </p>
+            </div>
+            <div class="row g-4 justify-content-center">
+                <div class="col-md-5">
+                    <div style="background: #f7f9f5; border: 1.5px solid #e2e8f0; border-radius: 20px; padding: 32px 28px; height: 100%;">
+                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+                            <img src="https://flagcdn.com/w40/pk.png" width="32" height="22" alt="Pakistan" style="border-radius:3px;">
+                            <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--primary-dark); margin: 0;">Pakistan Operations</h3>
+                        </div>
+                        <p style="font-size: 0.9rem; color: #666; line-height: 1.65; margin: 0;">
+                            Serving fast-growing national businesses, industrial manufacturers, retail brands, and startups with comprehensive brand strategy, bespoke web platforms, custom ERP software, and high-engagement digital campaigns.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div style="background: #f7f9f5; border: 1.5px solid #e2e8f0; border-radius: 20px; padding: 32px 28px; height: 100%;">
+                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+                            <img src="https://flagcdn.com/w40/gb.png" width="32" height="22" alt="United Kingdom" style="border-radius:3px;">
+                            <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--primary-dark); margin: 0;">United Kingdom &amp; Global</h3>
+                        </div>
+                        <p style="font-size: 0.9rem; color: #666; line-height: 1.65; margin: 0;">
+                            Partnering with international agencies, e-commerce brands, and educational institutions across the UK, Europe, and North America. Delivering cost-effective remote engineering, custom SaaS, and conversion design with rapid time-to-market.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <section class="about-cta">
         <div class="container">
             <h2>Ready to transform your brand?</h2>
             <p class="mb-4 text-dark font-weight-bold">Let's discuss your next big project.</p>
-            <a href="contact.php" class="btn-dark-custom">Start a Project</a>
+            <a href="<?= BASE_URL ?>contact" class="btn-dark-custom">Start a Project</a>
         </div>
     </section>
 

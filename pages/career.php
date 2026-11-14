@@ -1,5 +1,11 @@
 <?php
 require_once __DIR__ . '/../core/config.php';
+
+$page_title = "Careers at Graphicafix | Join Our Team";
+$meta_description = "Explore career opportunities at Graphicafix. Join our creative and technology team and contribute to branding, software, web development, and digital projects.";
+$meta_keywords = "Digital agency careers, tech jobs, software developer jobs, UI UX designer jobs, graphic design vacancies, join Graphicafix";
+$canonical_url = "https://graphicafix.com/career";
+
 include __DIR__ . '/../templates/header.php';
 
 // ── Handle application submission ─────────────────────────────────────────────

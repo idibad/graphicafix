@@ -31,33 +31,236 @@ if (isset($conn) && $conn instanceof mysqli) {
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-    <title>
-        <?php
-        if (isset($page_title)) {
-            echo $page_title;
-        } else {
-            $page = basename($_SERVER['PHP_SELF'], '.php');
-            if ($page == "index") { $page = 'home'; }
-            echo ucfirst($page) . " | Graphicafix | Graphic Design Agency";
-        }
-        ?>
-    </title>
-    <!-- SEO  Meta Tags -->
-    <meta name="description" content="We provide high-quality graphic design services, including branding, logo design, and UI/UX. Elevate your brand with stunning visuals.">
-    <meta name="keywords" content="graphic design, logo design, branding, UI/UX, creative agency">
-    <meta name="author" content="Ibadullah Shalmany">
-    <meta name="robots" content="index, follow">
+    <?php
+    // ── Dynamic SEO & Metadata Determination ────────────────────────────────
+    $script_file = basename($_SERVER['PHP_SELF'], '.php');
+    $detected_page = ($script_file === 'index') ? 'home' : $script_file;
+
+    // Fallbacks per page
+    $seo_defaults = [
+        'home' => [
+            'title'       => 'Graphicafix | Digital Solutions & Services Agency',
+            'description' => 'Graphicafix delivers end-to-end digital solutions, including branding, web and software development, digital marketing, AI automation, and creative design.',
+            'keywords'    => 'Digital services agency, digital solutions agency, software development company, web design and development, branding and graphic design, AI automation services, digital marketing agency',
+            'canonical'   => 'https://graphicafix.com/'
+        ],
+        'services' => [
+            'title'       => 'Digital Services | Web, Software, Marketing & AI – Graphicafix',
+            'description' => 'Explore Graphicafix\'s complete digital services, including branding, graphic design, web development, custom software, digital marketing, and AI automation.',
+            'keywords'    => 'Digital services, website development company, web design services, custom software development, digital marketing services, AI automation services, business automation, mobile app development, website maintenance services',
+            'canonical'   => 'https://graphicafix.com/services'
+        ],
+        'portfolio' => [
+            'title'       => 'Our Work & Projects | Graphicafix Portfolio',
+            'description' => 'Explore Graphicafix\'s portfolio of branding, website development, graphic design, and digital projects delivered for businesses and organizations.',
+            'keywords'    => 'Digital agency portfolio, branding portfolio, website development portfolio, case studies, graphic design projects, digital solutions showcase',
+            'canonical'   => 'https://graphicafix.com/portfolio'
+        ],
+        'about' => [
+            'title'       => 'About Graphicafix | Your Digital Solutions Partner',
+            'description' => 'Discover Graphicafix, a full-service digital solutions agency combining creative design, technology, marketing, and automation to help businesses grow.',
+            'keywords'    => 'Digital solutions company, full-service digital agency, technology agency, AI automation, branding agency, Graphicafix about',
+            'canonical'   => 'https://graphicafix.com/about'
+        ],
+        'contact' => [
+            'title'       => 'Contact Graphicafix | Discuss Your Digital Project',
+            'description' => 'Have a project in mind? Contact Graphicafix for branding, website development, software solutions, digital marketing, and AI automation services.',
+            'keywords'    => 'Contact digital agency, discuss digital project, hire digital solutions agency, software development enquiry, web development quote',
+            'canonical'   => 'https://graphicafix.com/contact'
+        ],
+        'career' => [
+            'title'       => 'Careers at Graphicafix | Join Our Team',
+            'description' => 'Explore career opportunities at Graphicafix. Join our creative and technology team and contribute to branding, software, web development, and digital projects.',
+            'keywords'    => 'Digital agency careers, tech jobs, software developer jobs, UI UX designer jobs, graphic design vacancies, join Graphicafix',
+            'canonical'   => 'https://graphicafix.com/career'
+        ],
+        'courses' => [
+            'title'       => 'Professional IT & Digital Skills Courses | Graphicafix',
+            'description' => 'Explore professional courses at Graphicafix in programming, Python, artificial intelligence, and digital skills. Build practical skills for your career.',
+            'keywords'    => 'IT courses, programming courses, Python courses, artificial intelligence training, digital skills courses, tech education',
+            'canonical'   => 'https://graphicafix.com/courses'
+        ],
+        'privacy-policy' => [
+            'title'       => 'Privacy Policy | Graphicafix',
+            'description' => 'Read Graphicafix\'s Privacy Policy to understand how we collect, use, protect, and manage personal information submitted through our website.',
+            'keywords'    => 'Privacy policy, data protection, personal information policy, Graphicafix legal',
+            'canonical'   => 'https://graphicafix.com/privacy-policy'
+        ],
+        'terms' => [
+            'title'       => 'Terms of Service | Graphicafix',
+            'description' => 'Review Graphicafix\'s Terms of Service, including website usage conditions, service agreements, project responsibilities, and applicable policies.',
+            'keywords'    => 'Terms of service, website terms, service agreements, project responsibilities, Graphicafix terms',
+            'canonical'   => 'https://graphicafix.com/terms'
+        ],
+        'project_details' => [
+            'title'       => 'Case Study & Project Details | Graphicafix',
+            'description' => 'Explore detailed case studies and digital project deliverables by Graphicafix, spanning branding, custom software, and website development.',
+            'keywords'    => 'Client case study, digital solutions project, branding portfolio, software development showcase',
+            'canonical'   => 'https://graphicafix.com/portfolio'
+        ]
+    ];
+
+    $cur_def = $seo_defaults[$detected_page] ?? [
+        'title'       => ucfirst($detected_page) . ' | Graphicafix | Digital Solutions & Services Agency',
+        'description' => 'Graphicafix delivers end-to-end digital solutions, including branding, web and software development, digital marketing, AI automation, and creative design.',
+        'keywords'    => 'Digital services agency, digital solutions, software development, web design, AI automation, branding',
+        'canonical'   => 'https://graphicafix.com/' . ($detected_page !== 'home' ? $detected_page : '')
+    ];
+
+    $resolved_title = !empty($page_title) ? $page_title : $cur_def['title'];
+    $resolved_desc  = !empty($meta_description) ? $meta_description : (!empty($page_desc) ? $page_desc : $cur_def['description']);
+    $resolved_keys  = !empty($meta_keywords) ? $meta_keywords : $cur_def['keywords'];
+    $resolved_canon = !empty($canonical_url) ? $canonical_url : $cur_def['canonical'];
+
+    // Robots meta determination
+    $request_uri_str = $_SERVER['REQUEST_URI'] ?? '';
+    $is_noindex = (
+        strpos($request_uri_str, 'admin') !== false ||
+        strpos($request_uri_str, 'portal') !== false ||
+        strpos($request_uri_str, 'login') !== false ||
+        strpos($request_uri_str, 'reset_password') !== false ||
+        strpos($request_uri_str, 'forgot_password') !== false ||
+        strpos($request_uri_str, 'download_form') !== false ||
+        strpos($request_uri_str, '404') !== false ||
+        strpos($request_uri_str, '403') !== false
+    );
+    $resolved_robots = !empty($robots_meta) ? $robots_meta : ($is_noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large');
+
+    // Social sharing meta
+    $resolved_og_title = !empty($og_title) ? $og_title : $resolved_title;
+    $resolved_og_desc  = !empty($og_description) ? $og_description : $resolved_desc;
+    $resolved_og_image = !empty($og_image) ? $og_image : 'https://graphicafix.com/assets/images/social-preview.jpg';
+    $resolved_og_url   = !empty($og_url) ? $og_url : $resolved_canon;
+    $resolved_og_type  = !empty($og_type) ? $og_type : 'website';
+
+    $resolved_tw_title = !empty($twitter_title) ? $twitter_title : $resolved_og_title;
+    $resolved_tw_desc  = !empty($twitter_description) ? $twitter_description : $resolved_og_desc;
+    $resolved_tw_image = !empty($twitter_image) ? $twitter_image : $resolved_og_image;
+    ?>
+    <title><?= htmlspecialchars($resolved_title) ?></title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="<?= htmlspecialchars($resolved_desc) ?>">
+    <meta name="keywords" content="<?= htmlspecialchars($resolved_keys) ?>">
+    <meta name="author" content="Graphicafix">
+    <meta name="robots" content="<?= htmlspecialchars($resolved_robots) ?>">
+    <link rel="canonical" href="<?= htmlspecialchars($resolved_canon) ?>">
+
     <!-- Open Graph (Facebook, LinkedIn, etc.) -->
-    <meta property="og:title" content="Graphicafix | Graphic Design Agency ">
-    <meta property="og:description" content="We create visually stunning graphics to enhance your brand identity.">
-    <meta property="og:image" content="<?= BASE_URL ?>assets/images/preview.jpg">
-    <meta property="og:url" content="https://graphicafix.com">
-    <meta property="og:type" content="website">
-    <meta name="theme-color" content="#ffffff">
+    <meta property="og:site_name" content="Graphicafix">
+    <meta property="og:type" content="<?= htmlspecialchars($resolved_og_type) ?>">
+    <meta property="og:title" content="<?= htmlspecialchars($resolved_og_title) ?>">
+    <meta property="og:description" content="<?= htmlspecialchars($resolved_og_desc) ?>">
+    <meta property="og:url" content="<?= htmlspecialchars($resolved_og_url) ?>">
+    <meta property="og:image" content="<?= htmlspecialchars($resolved_og_image) ?>">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter / X Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@graphicafix">
+    <meta name="twitter:title" content="<?= htmlspecialchars($resolved_tw_title) ?>">
+    <meta name="twitter:description" content="<?= htmlspecialchars($resolved_tw_desc) ?>">
+    <meta name="twitter:image" content="<?= htmlspecialchars($resolved_tw_image) ?>">
+
+    <!-- Theme & Mobile Settings -->
+    <meta name="theme-color" content="#024442">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <link rel="canonical" href="https://graphicafix.com">
+
+    <!-- Structured Data (Schema.org JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://graphicafix.com/#organization",
+          "name": "Graphicafix",
+          "url": "https://graphicafix.com/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://graphicafix.com/assets/images/logo.png"
+          },
+          "email": "contact@graphicafix.com",
+          "description": "A full-service digital solutions agency providing branding, creative design, web development, custom software, digital marketing, and AI automation.",
+          "sameAs": [
+            "https://facebook.com/graphicafix",
+            "https://instagram.com/graphicafix",
+            "https://linkedin.com/company/graphicafix",
+            "https://youtube.com/@graphicafix"
+          ],
+          "contactPoint": [
+            {
+              "@type": "ContactPoint",
+              "telephone": "+92-345-4568986",
+              "contactType": "customer service",
+              "areaServed": ["PK", "GB", "US", "AE"],
+              "availableLanguage": ["English", "Urdu"]
+            },
+            {
+              "@type": "ContactPoint",
+              "telephone": "+44-7903-442499",
+              "contactType": "customer service",
+              "areaServed": "GB",
+              "availableLanguage": ["English"]
+            }
+          ]
+        },
+        <?php if ($detected_page === 'home'): ?>
+        {
+          "@type": "WebSite",
+          "@id": "https://graphicafix.com/#website",
+          "url": "https://graphicafix.com/",
+          "name": "Graphicafix",
+          "publisher": {
+            "@id": "https://graphicafix.com/#organization"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://graphicafix.com/portfolio?search={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "ProfessionalService",
+          "@id": "https://graphicafix.com/#service",
+          "name": "Graphicafix - Digital Solutions Agency",
+          "url": "https://graphicafix.com/",
+          "image": "https://graphicafix.com/assets/images/social-preview.jpg",
+          "priceRange": "$$",
+          "email": "contact@graphicafix.com",
+          "telephone": "+923454568986",
+          "description": "End-to-end digital solutions, including branding, website design, custom software development, SaaS, digital marketing, and AI automation.",
+          "areaServed": ["Pakistan", "United Kingdom", "United States", "Global"],
+          "openingHours": "Mo-Fr 09:00-18:00"
+        }
+        <?php else: ?>
+        {
+          "@type": "BreadcrumbList",
+          "@id": "<?= htmlspecialchars($resolved_canon) ?>#breadcrumb",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://graphicafix.com/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "<?= htmlspecialchars($resolved_title) ?>",
+              "item": "<?= htmlspecialchars($resolved_canon) ?>"
+            }
+          ]
+        }
+        <?php endif; ?>
+        <?php if (!empty($extra_schema_json)): ?>
+        , <?= $extra_schema_json ?>
+        <?php endif; ?>
+      ]
+    }
+    </script>
 
 
     <!-- Linked Files -->
@@ -71,20 +274,34 @@ if (isset($conn) && $conn instanceof mysqli) {
     <!-- Swiper CSS & JS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <!-- Active Nav Link Detection -->
     <script>
       document.addEventListener("DOMContentLoaded", function () {
-    const links = document.querySelectorAll(".navbar-menu .nav-link");
-    const currentPage = window.location.pathname.split("/").pop().replace('.php','');
+        const currentPath = window.location.pathname.replace(/\/+$/, "");
+        const currentFile = currentPath.split("/").pop().replace(/\.php$/, "") || "home";
 
-    links.forEach(link => {
-        const linkPage = link.getAttribute("href").replace('.php','');
-        if (linkPage === currentPage) {
-            link.classList.add("active");
-        } else {
-            link.classList.remove("active");
-        }
-    });
-});
+        const allNavLinks = document.querySelectorAll(".navbar-menu .nav-link, .mobile-menu .mobile-nav-link");
+        allNavLinks.forEach(link => {
+            const href = link.getAttribute("href");
+            if (!href || href === "#") return;
+            try {
+                const url = new URL(href, window.location.origin);
+                const linkPath = url.pathname.replace(/\/+$/, "");
+                const linkFile = linkPath.split("/").pop().replace(/\.php$/, "") || "home";
+
+                const isHomeCurrent = (currentFile === "home" || currentFile === "graphicafix" || currentFile === "index" || currentPath === "" || currentPath === "/graphicafix");
+                const isHomeLink = (linkFile === "home" || linkFile === "graphicafix" || linkFile === "index" || linkPath === "" || linkPath === "/graphicafix");
+
+                if ((isHomeCurrent && isHomeLink) || (currentFile && currentFile === linkFile)) {
+                    link.classList.add("active");
+                } else {
+                    link.classList.remove("active");
+                }
+            } catch (e) {
+                // Ignore parsing errors for custom protocols
+            }
+        });
+      });
     </script>
     
     <!-- Meta Pixel Code -->
@@ -108,120 +325,420 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
 
     <style>
     /* Force Font Awesome to render */
-.fas, .fa {
-    font-family: "Font Awesome 5 Free" !important;
-    font-weight: 900 !important;
-    display: inline-block;
-    font-style: normal;
-    font-variant: normal;
-    text-rendering: auto;
-    -webkit-font-smoothing: antialiased;
-}
+    .fas, .fa, .fab {
+        display: inline-block;
+        font-style: normal;
+        font-variant: normal;
+        text-rendering: auto;
+        -webkit-font-smoothing: antialiased;
+    }
 
-/* Translucent Navbar with Primary Color Bottom Border */
-.modern-navbar {
-    background: rgba(255, 255, 255, 0.75) !important;
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 2px solid #024442 !important;
-    transition: all 0.3s ease;
-}
-.modern-navbar.scrolled {
-    background: rgba(255, 255, 255, 0.9) !important;
-    border-bottom: 2px solid #024442 !important;
-    box-shadow: 0 4px 25px rgba(2, 68, 66, 0.08) !important;
-}
-.navbar-menu .nav-link {
-    color: #111111 !important;
-    font-weight: 500;
-}
-.navbar-menu .nav-link:hover,
-.navbar-menu .nav-link.active {
-    color: #024442 !important;
-}
-.navbar-menu .nav-link::after {
-    background: #024442 !important;
-}
-.navbar-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.navbar-actions .btn-primary {
-    background: #024442 !important;
-    color: #ffffff !important;
-    padding: 10px 22px !important;
-    border-radius: 50px !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    text-decoration: none !important;
-    border: 1px solid #024442 !important;
-    transition: all 0.25s ease !important;
-    box-shadow: 0 4px 14px rgba(2, 68, 66, 0.16) !important;
-}
-.navbar-actions .btn-primary:hover {
-    background: #035a57 !important;
-    color: #ffffff !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 8px 22px rgba(2, 68, 66, 0.24) !important;
-}
-.navbar-actions .btn-primary i {
-    color: #B6F763 !important;
-}
-.navbar-actions .btn-secondary {
-    background: transparent !important;
-    color: #024442 !important;
-    padding: 9px 20px !important;
-    border-radius: 50px !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    text-decoration: none !important;
-    border: 1.5px solid rgba(2, 68, 66, 0.3) !important;
-    transition: all 0.25s ease !important;
-}
-.navbar-actions .btn-secondary:hover {
-    background: rgba(2, 68, 66, 0.05) !important;
-    border-color: #024442 !important;
-    color: #024442 !important;
-    transform: translateY(-2px) !important;
-}
-.mobile-toggle span {
-    background: #111111 !important;
-}
-.mobile-menu {
-    background: #ffffff !important;
-    border-top: 1px solid rgba(0, 0, 0, 0.07) !important;
-    box-shadow: 0 16px 30px rgba(0, 0, 0, 0.08) !important;
-}
-.mobile-menu ul li a {
-    color: #111111 !important;
-}
-.mobile-menu ul li a:hover {
-    color: #024442 !important;
-    background: rgba(2, 68, 66, 0.04) !important;
-}
+    /* ── TRANSLUCENT MODERN NAVBAR ── */
+    .modern-navbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1030;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-bottom: 2px solid #024442;
+        transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+    .modern-navbar.scrolled {
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 4px 25px rgba(2, 68, 66, 0.09);
+    }
+    .navbar-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.95rem 0;
+    }
+    .navbar-logo img {
+        height: 38px;
+        width: auto;
+        display: block;
+        transition: opacity 0.2s ease;
+    }
+    .navbar-logo:hover img {
+        opacity: 0.88;
+    }
+
+    /* ── DESKTOP NAVIGATION ── */
+    .navbar-menu {
+        display: flex;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        gap: 2.2rem;
+        align-items: center;
+    }
+    .navbar-menu .nav-link {
+        color: #1a202c;
+        text-decoration: none;
+        font-weight: 550;
+        font-size: 15px;
+        padding: 0.25rem 0;
+        position: relative;
+        transition: color 0.2s ease;
+        letter-spacing: -0.01em;
+    }
+    .navbar-menu .nav-link::after {
+        content: '';
+        position: absolute;
+        bottom: -4px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: #024442;
+        border-radius: 2px;
+        transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .navbar-menu .nav-link:hover,
+    .navbar-menu .nav-link.active {
+        color: #024442;
+    }
+    .navbar-menu .nav-link:hover::after,
+    .navbar-menu .nav-link.active::after {
+        width: 100%;
+    }
+
+    /* ── DESKTOP ACTIONS ── */
+    .navbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .navbar-actions .btn-primary {
+        background: #024442;
+        color: #ffffff !important;
+        padding: 9px 22px;
+        border-radius: 50px;
+        font-size: 14px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        border: 1px solid #024442;
+        transition: all 0.25s ease;
+        box-shadow: 0 4px 14px rgba(2, 68, 66, 0.16);
+    }
+    .navbar-actions .btn-primary:hover {
+        background: #035a57;
+        color: #ffffff !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 22px rgba(2, 68, 66, 0.24);
+    }
+    .navbar-actions .btn-primary i {
+        color: #B6F763;
+    }
+    .navbar-actions .btn-secondary {
+        background: transparent;
+        color: #024442 !important;
+        padding: 8px 20px;
+        border-radius: 50px;
+        font-size: 14px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
+        border: 1.5px solid rgba(2, 68, 66, 0.25);
+        transition: all 0.25s ease;
+    }
+    .navbar-actions .btn-secondary:hover {
+        background: rgba(2, 68, 66, 0.05);
+        border-color: #024442;
+        color: #024442 !important;
+        transform: translateY(-2px);
+    }
+
+    /* ── MOBILE TOGGLE BUTTON ── */
+    .mobile-toggle {
+        display: none;
+        width: 44px;
+        height: 44px;
+        background: transparent;
+        border: 1px solid rgba(2, 68, 66, 0.15);
+        border-radius: 12px;
+        cursor: pointer;
+        padding: 0;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 5px;
+        transition: all 0.25s ease;
+        position: relative;
+        z-index: 1032;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .mobile-toggle:hover,
+    .mobile-toggle:focus {
+        background: rgba(2, 68, 66, 0.05);
+        border-color: #024442;
+        outline: none;
+    }
+    .mobile-toggle .bar {
+        display: block;
+        width: 20px;
+        height: 2px;
+        background: #024442;
+        border-radius: 2px;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+        transform-origin: center;
+    }
+    .mobile-toggle.active .bar-1 {
+        transform: translateY(7px) rotate(45deg);
+    }
+    .mobile-toggle.active .bar-2 {
+        opacity: 0;
+        transform: scaleX(0);
+    }
+    .mobile-toggle.active .bar-3 {
+        transform: translateY(-7px) rotate(-45deg);
+    }
+
+    /* ── MOBILE MENU BACKDROP ── */
+    .mobile-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        background: rgba(2, 68, 66, 0.4);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        z-index: 1028;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .mobile-backdrop.active {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    /* ── MOBILE MENU DRAWER ── */
+    .mobile-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        width: 100%;
+        background: #ffffff;
+        border-top: 1px solid rgba(2, 68, 66, 0.08);
+        border-bottom: 2px solid #024442;
+        box-shadow: 0 24px 45px -10px rgba(2, 68, 66, 0.2);
+        z-index: 1029;
+        max-height: 0;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, visibility 0.25s ease;
+    }
+    .mobile-menu.active {
+        max-height: calc(100dvh - 65px);
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    body.mobile-nav-locked {
+        overflow: hidden !important;
+        touch-action: none;
+    }
+
+    .mobile-menu-container {
+        max-width: 620px;
+        margin: 0 auto;
+        padding: 1rem 1.25rem 1.5rem;
+    }
+
+    .mobile-nav-list {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 1.2rem 0;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .mobile-nav-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        border-radius: 12px;
+        color: #1a202c !important;
+        font-size: 15.5px;
+        font-weight: 550;
+        text-decoration: none !important;
+        transition: all 0.2s ease;
+        background: transparent;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .mobile-nav-link .link-label {
+        display: inline-flex;
+        align-items: center;
+    }
+    .mobile-nav-link .link-label i {
+        width: 22px;
+        font-size: 14px;
+        color: #024442;
+        opacity: 0.8;
+    }
+    .mobile-nav-link .link-arrow {
+        font-size: 11px;
+        opacity: 0.35;
+        transition: transform 0.2s ease, opacity 0.2s ease;
+        color: #024442;
+    }
+    .mobile-nav-link:hover,
+    .mobile-nav-link:focus {
+        background: rgba(2, 68, 66, 0.05) !important;
+        color: #024442 !important;
+        padding-left: 18px;
+    }
+    .mobile-nav-link:hover .link-arrow {
+        opacity: 1;
+        transform: translateX(4px);
+    }
+    .mobile-nav-link.active {
+        background: rgba(2, 68, 66, 0.08) !important;
+        color: #024442 !important;
+        font-weight: 700;
+        border-left: 3.5px solid #024442;
+        padding-left: 14px;
+    }
+    .mobile-nav-link.active .link-label i {
+        color: #024442;
+        opacity: 1;
+    }
+
+    .mobile-badge-pulse {
+        background: #B6F763;
+        color: #024442;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 20px;
+        margin-left: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .mobile-menu-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding-top: 14px;
+        border-top: 1px solid rgba(2, 68, 66, 0.08);
+        margin-bottom: 14px;
+    }
+    .mobile-btn-primary {
+        background: #024442 !important;
+        color: #ffffff !important;
+        padding: 13px 20px;
+        border-radius: 50px;
+        font-size: 15px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none !important;
+        box-shadow: 0 4px 15px rgba(2, 68, 66, 0.2);
+        transition: all 0.2s ease;
+        border: 1px solid #024442;
+    }
+    .mobile-btn-primary:active {
+        transform: scale(0.98);
+    }
+    .mobile-btn-secondary {
+        background: rgba(2, 68, 66, 0.04) !important;
+        color: #024442 !important;
+        padding: 12px 20px;
+        border-radius: 50px;
+        font-size: 15px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none !important;
+        border: 1.5px solid rgba(2, 68, 66, 0.2);
+        transition: all 0.2s ease;
+    }
+    .mobile-btn-secondary:active {
+        transform: scale(0.98);
+    }
+
+    .mobile-menu-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 6px;
+        font-size: 13px;
+        color: #718096;
+    }
+    .mobile-footer-pill {
+        color: #024442 !important;
+        text-decoration: none !important;
+        font-weight: 600;
+        background: rgba(2, 68, 66, 0.05);
+        padding: 5px 12px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+    }
+    .mobile-footer-tag {
+        font-size: 12px;
+        color: #a0aec0;
+        font-weight: 500;
+    }
+
+    /* ── RESPONSIVE BREAKPOINT ── */
+    @media (max-width: 991.98px) {
+        .navbar-menu,
+        .navbar-actions {
+            display: none !important;
+        }
+        .mobile-toggle {
+            display: flex !important;
+        }
+    }
+    @media (min-width: 992px) {
+        .mobile-menu,
+        .mobile-backdrop {
+            display: none !important;
+        }
+        .mobile-toggle {
+            display: none !important;
+        }
+    }
     </style>
 
 
 </head>
 <body>
 
-<nav class="modern-navbar">
+<nav class="modern-navbar" id="modernNavbar">
     <div class="container">
         <div class="navbar-content">
             <!-- Logo -->
-            <a class="navbar-logo" href="<?= BASE_URL ?>">
-                <img src="<?= BASE_URL ?>assets/images/logo.png" alt="Graphicafix">
+            <a class="navbar-logo" href="<?= BASE_URL ?>" aria-label="Graphicafix Home">
+                <img src="<?= BASE_URL ?>assets/images/logo.png" alt="Graphicafix digital solutions agency logo">
             </a>
 
             <!-- Desktop Menu -->
             <ul class="navbar-menu">
-                <li><a href="<?= BASE_URL ?>" class="nav-link active">Home</a></li>
+                <li><a href="<?= BASE_URL ?>" class="nav-link">Home</a></li>
                 <li><a href="<?= BASE_URL ?>services" class="nav-link">Services</a></li>
                 <li><a href="<?= BASE_URL ?>portfolio" class="nav-link">Portfolio</a></li>
                 <li><a href="<?= BASE_URL ?>career" class="nav-link">Career</a></li>
@@ -243,37 +760,83 @@ src="https://www.facebook.com/tr?id=798320433152391&ev=PageView&noscript=1"
                 </a>                                                            
             </div>
 
-            <!-- Mobile Toggle -->
-            <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation">
-                <span></span>
-                <span></span>
-                <span></span>
+            <!-- Mobile Toggle Button -->
+            <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mobileMenu">
+                <span class="bar bar-1"></span>
+                <span class="bar bar-2"></span>
+                <span class="bar bar-3"></span>
             </button>
         </div>
+    </div>
 
-        <!-- Mobile Menu -->
-        <div class="mobile-menu" id="mobileMenu">
-            <ul>
-                <li><a href="<?= BASE_URL ?>">Home</a></li>
-                <li><a href="<?= BASE_URL ?>services">Services</a></li>
-                <li><a href="<?= BASE_URL ?>portfolio">Portfolio</a></li>
-                <li><a href="<?= BASE_URL ?>career">Career</a></li>
-                <?php if (!empty($has_active_courses)): ?>
-                <li><a href="<?= BASE_URL ?>courses">Courses</a></li>
-                <?php endif; ?>
-                <li><a href="<?= BASE_URL ?>about">About</a></li>
-                <li><a href="<?= BASE_URL ?>contact">Contact</a></li>
-                <li class="mobile-divider"></li>
+    <!-- Mobile Menu Backdrop -->
+    <div class="mobile-backdrop" id="mobileBackdrop"></div>
+
+    <!-- Mobile Menu Dropdown -->
+    <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+        <div class="mobile-menu-container">
+            <ul class="mobile-nav-list">
                 <li>
-                    <a href="#" data-bs-toggle="modal" data-bs-target="#projectRequestModal" class="main-btn w-100 text-center justify-content-center d-flex mb-2" style="background:#024442; color:#ffffff; font-weight:600; border-radius: 50px;">
-                        <i class="fas fa-star me-2" style="color:#B6F763;"></i> Request Project
+                    <a href="<?= BASE_URL ?>" class="mobile-nav-link">
+                        <span class="link-label"><i class="fas fa-home me-2"></i>Home</span>
+                        <i class="fas fa-chevron-right link-arrow"></i>
                     </a>
-                    <a href="<?= BASE_URL ?><?= $isLoggedIn ? 'admin/' : 'admin/login.php'; ?>" 
-                       class="main-btn w-100 text-center justify-content-center d-flex" style="color: #024442; background: rgba(2, 68, 66, 0.05); border: 1.5px solid rgba(2, 68, 66, 0.2); font-weight: 600; border-radius: 50px;">
-                        <?= $isLoggedIn ? 'Dashboard' : 'Login'; ?>
+                </li>
+                <li>
+                    <a href="<?= BASE_URL ?>services" class="mobile-nav-link">
+                        <span class="link-label"><i class="fas fa-th-large me-2"></i>Services</span>
+                        <i class="fas fa-chevron-right link-arrow"></i>
+                    </a>
+                </li>
+                <li>
+                    <a href="<?= BASE_URL ?>portfolio" class="mobile-nav-link">
+                        <span class="link-label"><i class="fas fa-briefcase me-2"></i>Portfolio</span>
+                        <i class="fas fa-chevron-right link-arrow"></i>
+                    </a>
+                </li>
+                <li>
+                    <a href="<?= BASE_URL ?>career" class="mobile-nav-link">
+                        <span class="link-label"><i class="fas fa-user-tie me-2"></i>Career</span>
+                        <i class="fas fa-chevron-right link-arrow"></i>
+                    </a>
+                </li>
+                <?php if (!empty($has_active_courses)): ?>
+                <li>
+                    <a href="<?= BASE_URL ?>courses" class="mobile-nav-link">
+                        <span class="link-label"><i class="fas fa-graduation-cap me-2"></i>Courses <span class="mobile-badge-pulse">Hot</span></span>
+                        <i class="fas fa-chevron-right link-arrow"></i>
+                    </a>
+                </li>
+                <?php endif; ?>
+                <li>
+                    <a href="<?= BASE_URL ?>about" class="mobile-nav-link">
+                        <span class="link-label"><i class="fas fa-info-circle me-2"></i>About</span>
+                        <i class="fas fa-chevron-right link-arrow"></i>
+                    </a>
+                </li>
+                <li>
+                    <a href="<?= BASE_URL ?>contact" class="mobile-nav-link">
+                        <span class="link-label"><i class="fas fa-envelope me-2"></i>Contact</span>
+                        <i class="fas fa-chevron-right link-arrow"></i>
                     </a>
                 </li>
             </ul>
+
+            <div class="mobile-menu-actions">
+                <a href="#" data-bs-toggle="modal" data-bs-target="#projectRequestModal" class="mobile-btn-primary">
+                    <i class="fas fa-star me-2" style="color: #B6F763;"></i> Request Project
+                </a>
+                <a href="<?= BASE_URL ?><?= $isLoggedIn ? 'admin/' : 'admin/login.php'; ?>" class="mobile-btn-secondary">
+                    <i class="fas fa-user-circle me-2"></i> <?= $isLoggedIn ? 'Dashboard' : 'Client Login'; ?>
+                </a>
+            </div>
+
+            <div class="mobile-menu-footer">
+                <a href="https://wa.me/+923454568986" target="_blank" class="mobile-footer-pill">
+                    <i class="fab fa-whatsapp me-1 text-success"></i> +92 345 4568986
+                </a>
+                <span class="mobile-footer-tag">Crafted with precision</span>
+            </div>
         </div>
     </div>
 </nav>

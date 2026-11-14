@@ -1,4 +1,11 @@
-<?php require_once __DIR__ . '/../core/config.php';
+<?php 
+require_once __DIR__ . '/../core/config.php';
+
+$page_title = "Privacy Policy | Graphicafix";
+$meta_description = "Read Graphicafix's Privacy Policy to understand how we collect, use, protect, and manage personal information submitted through our website.";
+$meta_keywords = "Privacy policy, data protection, personal information policy, Graphicafix legal";
+$canonical_url = "https://graphicafix.com/privacy-policy";
+
 include __DIR__ . '/../templates/header.php'; ?>
 
 <main class="policy-page">

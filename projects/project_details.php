@@ -1,7 +1,7 @@
 <?php
 
-if(!$conn){
-    include __DIR__ . '/../core/config.php';
+if (!isset($conn) || !($conn instanceof mysqli)) {
+    require_once __DIR__ . '/../core/config.php';
 }
    
 $project_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -60,9 +60,118 @@ if (!$next_project) {
     $first_stmt->close();
 }
 
-$page_title = htmlspecialchars($project['project_name']) . " | Graphicafix";
-$project_title = htmlspecialchars($project['project_name']);
-$current_url = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+// ── Match recommended SEO Title ──────────────────────────────────────────────
+$p_name_raw = $project['project_name'];
+$recommended_seo_titles = [
+    'Qaswa'               => 'Qaswa Elevators Branding Project | Graphicafix',
+    'Zarmall'             => 'Zarmall Brand Identity Design | Graphicafix',
+    'Glowing Star'        => 'Glowing Star Windows Design Project | Graphicafix',
+    'Emanon'              => 'Emanon Institute Website & Design Project | Graphicafix',
+    'Islamabad Elevators' => 'Islamabad Elevators Branding Project | Graphicafix',
+    'KBRose'              => 'KBRose Foundation School Branding | Graphicafix',
+    'Bab-ul-Ilm'          => 'Bab-ul-Ilm Digital Project | Graphicafix'
+];
+
+$matched_title = null;
+foreach ($recommended_seo_titles as $key => $title) {
+    if (stripos($p_name_raw, $key) !== false) {
+        $matched_title = $title;
+        break;
+    }
+}
+
+$page_title    = $matched_title ?: htmlspecialchars($p_name_raw) . " Case Study | Graphicafix";
+$project_title = htmlspecialchars($p_name_raw);
+$canonical_url = "https://graphicafix.com/project/" . $project_id;
+$meta_description = !empty($project['description']) 
+    ? htmlspecialchars(mb_strimwidth(strip_tags($project['description']), 0, 160, '...')) 
+    : "Discover the " . htmlspecialchars($p_name_raw) . " case study delivered by Graphicafix digital solutions agency.";
+$og_title      = $page_title;
+$og_description = $meta_description;
+$og_image      = !empty($project['thumbnail']) ? BASE_URL . 'admin/' . $project['thumbnail'] : 'https://graphicafix.com/assets/images/social-preview.jpg';
+$current_url   = "https://graphicafix.com/project/" . $project_id;
+
+// ── Project Narrative Details (Industry, Scope, Approach, Deliverables) ──────
+$project_profiles = [
+    'Qaswa' => [
+        'industry'     => 'Elevators & Engineering',
+        'requirements' => 'Design an authoritative, clean brand identity and corporate digital collateral that positions Qaswa as a trusted provider of precision elevator engineering.',
+        'services'     => 'Brand Strategy, Logo Design, Stationery, Corporate Profile, Web Assets',
+        'approach'     => 'Constructed a minimalist geometric emblem representing vertical motion and precision engineering, combined with an architectural corporate color palette.',
+        'deliverables' => 'Vector Master Logo Suite, Brand Guidelines Manual, Business Collateral, Social Media Assets'
+    ],
+    'Zarmall' => [
+        'industry'     => 'Apparel & E-Commerce Retail',
+        'requirements' => 'Develop a high-fashion contemporary brand identity, luxury typography system, and packaging suite that resonates with modern urban shoppers.',
+        'services'     => 'Visual Identity, Typographic Branding, Packaging Design, Labeling & Hangtags',
+        'approach'     => 'High-contrast monochrome typography balanced with elegant minimalist packaging accents, optimizing for both retail shelf presence and unboxing experience.',
+        'deliverables' => 'Primary Logo, Secondary Sub-marks, Packaging Boxes, Garment Tags, Brand Identity Book'
+    ],
+    'Glowing Star' => [
+        'industry'     => 'Architectural Glazing & Construction',
+        'requirements' => 'Create a dependable brand identity and marketing collateral reflecting structural clarity, modern aesthetics, and thermal window excellence.',
+        'services'     => 'Branding & Logo Design, Marketing Brochures, Signage & Fleet Assets',
+        'approach'     => 'Sharp geometric lines evoking architectural window mullions and light reflection, paired with clean sans-serif typography.',
+        'deliverables' => 'Logo Package, Corporate Profile, Van Livery Graphics, Print Collateral'
+    ],
+    'Emanon' => [
+        'industry'     => 'Higher Education & Online Learning',
+        'requirements' => 'Design an authoritative educational platform identity and website interface for international students and faculty.',
+        'services'     => 'Web Design & UI/UX, Brand Identity, Student Portal Wireframes',
+        'approach'     => 'Academic credibility meets modern digital accessibility, ensuring intuitive navigation and responsive speed on all devices.',
+        'deliverables' => 'UI/UX Component Library, Responsive Web Layouts, Institutional Branding Guidelines'
+    ],
+    'Islamabad Elevators' => [
+        'industry'     => 'Industrial Infrastructure & Elevators',
+        'requirements' => 'Rebrand an established elevator enterprise to reflect modern engineering standards, safety certifications, and architectural prestige.',
+        'services'     => 'Rebranding, Corporate Company Profile, Logo Modernization, Print Collateral',
+        'approach'     => 'Refined the legacy identity into a forward-leaning, trustworthy visual mark denoting reliability, strength, and continuous ascent.',
+        'deliverables' => 'Vector Logo Suite, Comprehensive Corporate Profile PDF, Stationery, Fleet Branding'
+    ],
+    'KBRose' => [
+        'industry'     => 'Primary & Secondary Education',
+        'requirements' => 'Establish an inspiring, welcoming, and prestigious visual identity for an educational foundation dedicated to academic excellence.',
+        'services'     => 'School Crest / Logo Design, Prospectus Design, Signage, Uniform Badges',
+        'approach'     => 'Combined traditional heraldic educational symbolism with modern clean line work, evoking wisdom, growth, and aspiration.',
+        'deliverables' => 'Official School Crest, Vector Identity Files, Admission Prospectus, Signage System'
+    ],
+    'Bab-ul-Ilm' => [
+        'industry'     => 'EdTech & Digital Learning Platform',
+        'requirements' => 'Develop a comprehensive digital platform identity and user interface for online education and community learning.',
+        'services'     => 'Platform Branding, UI/UX Web Design, Digital Collateral',
+        'approach'     => 'Accessible digital layouts prioritizing reading comfort, structured course navigation, and responsive mobile interfaces.',
+        'deliverables' => 'Brand Identity System, Web Interface Design, Social Graphics, Learning Assets'
+    ],
+];
+
+$matched_profile = null;
+foreach ($project_profiles as $key => $prof) {
+    if (stripos($p_name_raw, $key) !== false) {
+        $matched_profile = $prof;
+        break;
+    }
+}
+
+$client_industry = $matched_profile['industry'] ?? (!empty($project['category']) ? ucwords(str_replace('-', ' ', $project['category'])) : 'Digital & Commercial');
+$requirements_text = $matched_profile['requirements'] ?? 'Deliver a cohesive, high-impact digital and creative solution tailored to market objectives.';
+$services_delivered = $matched_profile['services'] ?? (!empty($project['category']) ? ucwords(str_replace('-', ' ', $project['category'])) . ' & Strategic Execution' : 'Digital Solutions & Design');
+$design_approach = $matched_profile['approach'] ?? 'Agile discovery and sprint-based creative iterations ensuring scalable, top-tier aesthetic and technical execution.';
+$final_deliverables = $matched_profile['deliverables'] ?? 'Complete digital deliverables, production-ready source files, and brand implementation assets.';
+
+$extra_schema_json = json_encode([
+    "@type" => "CreativeWork",
+    "@id" => "https://graphicafix.com/project/" . $project_id . "#work",
+    "name" => $page_title,
+    "headline" => $page_title,
+    "description" => $meta_description,
+    "image" => $og_image,
+    "author" => [
+        "@id" => "https://graphicafix.com/#organization"
+    ],
+    "publisher" => [
+        "@id" => "https://graphicafix.com/#organization"
+    ]
+], JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
 
 require_once __DIR__ . '/../templates/header.php';
 ?>
@@ -331,15 +440,19 @@ require_once __DIR__ . '/../templates/header.php';
     <div class="container text-center">
         <h1 class="reveal text-capitalize"><?= $project_title ?></h1>
         <div class="row justify-content-center">
-            <div class="col-lg-8">
+            <div class="col-lg-10">
                 <div class="meta-card d-flex flex-column flex-md-row justify-content-around reveal">
                     <div class="meta-item flex-fill">
                         <span class="meta-label">Client</span>
                         <span class="meta-value"><?= htmlspecialchars($project['client_name'] ?? 'Direct Client') ?></span>
                     </div>
                     <div class="meta-item flex-fill">
-                        <span class="meta-label">Category</span>
-                        <span class="meta-value"><?= ucwords(str_replace('-', ' ', htmlspecialchars($project['category']))) ?></span>
+                        <span class="meta-label">Industry</span>
+                        <span class="meta-value"><?= htmlspecialchars($client_industry) ?></span>
+                    </div>
+                    <div class="meta-item flex-fill">
+                        <span class="meta-label">Services</span>
+                        <span class="meta-value"><?= htmlspecialchars($services_delivered) ?></span>
                     </div>
                     <div class="meta-item flex-fill">
                         <span class="meta-label">Year</span>
@@ -361,14 +474,52 @@ require_once __DIR__ . '/../templates/header.php';
         <div class="showcase-grid reveal">
             <!-- Mockup Showcase Image -->
             <div class="showcase-image-wrapper">
-                <img src="<?= BASE_URL ?>admin/<?= htmlspecialchars($project['thumbnail']) ?>" class="showcase-img" alt="<?= $project_title ?>">
+                <img src="<?= BASE_URL ?>admin/<?= htmlspecialchars($project['thumbnail']) ?>" class="showcase-img" alt="<?= htmlspecialchars($project_title) ?> project deliverable by Graphicafix" loading="lazy">
             </div>
             <!-- Introduction / Brief Case Study details -->
             <div class="showcase-content">
-                <span class="meta-label" style="margin-bottom:12px;">The Project Brief</span>
-                <h2 style="font-family: var(--font-head); font-size: 32px; color: #024442; margin-bottom: 20px; font-weight: 500;">Overview & Objective</h2>
-                <div style="font-size: 16px; line-height: 1.8; color: #475569;">
-                    <?= !empty($project['description']) ? nl2br(htmlspecialchars(strip_tags($project['description']))) : 'This case study showcases the custom creative strategy designed and deployed by Graphicafix to achieve outstanding results for ' . htmlspecialchars($project['client_name'] ?? $project_title) . '.' ?>
+                <span class="meta-label" style="margin-bottom:12px;">Case Study Overview</span>
+                <h2 style="font-family: var(--font-head); font-size: 32px; color: #024442; margin-bottom: 20px; font-weight: 500;">Objectives & Scope</h2>
+                <div style="font-size: 16px; line-height: 1.8; color: #475569; margin-bottom: 20px;">
+                    <?= !empty($project['description']) ? nl2br(htmlspecialchars(strip_tags($project['description']))) : 'This case study demonstrates the strategic design and technical execution deployed by Graphicafix to achieve measurable growth for ' . htmlspecialchars($project['client_name'] ?? $project_title) . '.' ?>
+                </div>
+                <div style="background: #f8fafc; border-left: 3px solid #024442; padding: 14px 18px; border-radius: 0 10px 10px 0;">
+                    <strong style="color: #024442; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px;">Client Objectives:</strong>
+                    <span style="font-size: 14px; color: #64748b;"><?= htmlspecialchars($requirements_text) ?></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Detailed Case Study Narrative Grid -->
+<section style="padding: 20px 0 60px;">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-md-6 reveal">
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 32px; height: 100%; box-shadow: 0 10px 30px rgba(2,68,66,0.03);">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+                        <span style="width:36px; height:36px; border-radius:10px; background:rgba(184,243,90,0.25); color:#024442; display:flex; align-items:center; justify-content:center; font-size:16px;">
+                            <i class="fas fa-compass"></i>
+                        </span>
+                        <h3 style="font-size: 18px; font-weight: 700; color: #024442; margin: 0;">Design & Development Approach</h3>
+                    </div>
+                    <p style="font-size: 15px; line-height: 1.7; color: #475569; margin: 0;">
+                        <?= htmlspecialchars($design_approach) ?>
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-6 reveal">
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 32px; height: 100%; box-shadow: 0 10px 30px rgba(2,68,66,0.03);">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+                        <span style="width:36px; height:36px; border-radius:10px; background:rgba(2,68,66,0.1); color:#024442; display:flex; align-items:center; justify-content:center; font-size:16px;">
+                            <i class="fas fa-check-double"></i>
+                        </span>
+                        <h3 style="font-size: 18px; font-weight: 700; color: #024442; margin: 0;">Final Deliverables</h3>
+                    </div>
+                    <p style="font-size: 15px; line-height: 1.7; color: #475569; margin: 0;">
+                        <?= htmlspecialchars($final_deliverables) ?>
+                    </p>
                 </div>
             </div>
         </div>
@@ -379,7 +530,7 @@ require_once __DIR__ . '/../templates/header.php';
 <?php if (!empty($project['public_description'])): ?>
 <div class="container">
     <div class="description-card reveal">
-        <span class="meta-label text-center mb-3">Case Study Details</span>
+        <span class="meta-label text-center mb-3">In-Depth Case Study</span>
         <div class="desc-text" id="descText">
             <?= $project['public_description'] ?>
         </div>
@@ -388,27 +539,31 @@ require_once __DIR__ . '/../templates/header.php';
 </div>
 <?php endif; ?>
 
-<!-- Masonry Showcase Gallery -->
+<!-- Masonry Showcase Gallery with Descriptive Alt Attributes -->
 <?php if (!empty($gallery_images)): ?>
 <section class="masonry-gallery">
     <div class="container">
+        <div class="text-center mb-5 reveal">
+            <span class="meta-label">Visual Deliverables</span>
+            <h2 style="font-family: var(--font-head); font-size: 32px; color: #024442;">Project Showcase Gallery</h2>
+        </div>
         <div class="row align-items-center">
             <?php 
             foreach($gallery_images as $index => $img): 
-                // Dynamic layout pattern
                 $pattern = $index % 4; 
+                $gal_alt = htmlspecialchars($project_title) . " showcase visual " . ($index + 1) . " designed by Graphicafix";
                 
                 if ($pattern == 0): // Full Width
-                    echo '<div class="col-12 gallery-item reveal" onclick="openLightbox(\'' . BASE_URL . 'admin/' . htmlspecialchars($img) . '\')"><div class="gallery-img-wrapper"><img src="' . BASE_URL . 'admin/' . htmlspecialchars($img) . '" class="gallery-img"></div></div>';
+                    echo '<div class="col-12 gallery-item reveal" onclick="openLightbox(\'' . BASE_URL . 'admin/' . htmlspecialchars($img) . '\')"><div class="gallery-img-wrapper"><img src="' . BASE_URL . 'admin/' . htmlspecialchars($img) . '" class="gallery-img" alt="' . $gal_alt . '" loading="lazy"></div></div>';
                 
                 elseif ($pattern == 1): // Left Side Offset
-                    echo '<div class="col-md-7 gallery-item reveal" onclick="openLightbox(\'' . BASE_URL . 'admin/' . htmlspecialchars($img) . '\')"><div class="gallery-img-wrapper"><img src="' . BASE_URL . 'admin/' . htmlspecialchars($img) . '" class="gallery-img"></div></div>';
+                    echo '<div class="col-md-7 gallery-item reveal" onclick="openLightbox(\'' . BASE_URL . 'admin/' . htmlspecialchars($img) . '\')"><div class="gallery-img-wrapper"><img src="' . BASE_URL . 'admin/' . htmlspecialchars($img) . '" class="gallery-img" alt="' . $gal_alt . '" loading="lazy"></div></div>';
                 
                 elseif ($pattern == 2): // Right Side Offset Small
-                    echo '<div class="col-md-4 offset-md-1 gallery-item reveal offset-lg-down" onclick="openLightbox(\'' . BASE_URL . 'admin/' . htmlspecialchars($img) . '\')"><div class="gallery-img-wrapper"><img src="' . BASE_URL . 'admin/' . htmlspecialchars($img) . '" class="gallery-img"></div></div>';
+                    echo '<div class="col-md-4 offset-md-1 gallery-item reveal offset-lg-down" onclick="openLightbox(\'' . BASE_URL . 'admin/' . htmlspecialchars($img) . '\')"><div class="gallery-img-wrapper"><img src="' . BASE_URL . 'admin/' . htmlspecialchars($img) . '" class="gallery-img" alt="' . $gal_alt . '" loading="lazy"></div></div>';
                 
                 elseif ($pattern == 3): // Narrow Center
-                    echo '<div class="col-md-8 offset-md-2 gallery-item reveal" onclick="openLightbox(\'' . BASE_URL . 'admin/' . htmlspecialchars($img) . '\')"><div class="gallery-img-wrapper"><img src="' . BASE_URL . 'admin/' . htmlspecialchars($img) . '" class="gallery-img"></div></div>';
+                    echo '<div class="col-md-8 offset-md-2 gallery-item reveal" onclick="openLightbox(\'' . BASE_URL . 'admin/' . htmlspecialchars($img) . '\')"><div class="gallery-img-wrapper"><img src="' . BASE_URL . 'admin/' . htmlspecialchars($img) . '" class="gallery-img" alt="' . $gal_alt . '" loading="lazy"></div></div>';
                 
                 endif;
             endforeach; ?>
@@ -416,6 +571,25 @@ require_once __DIR__ . '/../templates/header.php';
     </div>
 </section>
 <?php endif; ?>
+
+<!-- Related Services & Enquiry Consultation Banner -->
+<section style="padding: 70px 0; background: #024442; color: #ffffff; text-align: center;">
+    <div class="container">
+        <span style="font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; color: #b8f35a; display: block; margin-bottom: 12px;">Start Your Digital Transformation</span>
+        <h2 style="font-family: var(--font-head); font-size: clamp(28px, 4vw, 42px); font-weight: 500; margin-bottom: 16px; color: #ffffff;">Need a Similar Solution for Your Business?</h2>
+        <p style="font-size: 16px; color: rgba(255,255,255,0.8); max-width: 620px; margin: 0 auto 32px; line-height: 1.7;">
+            Whether you need comprehensive branding, a high-converting website, custom software, or AI automation, our team is ready to build it.
+        </p>
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <a href="<?= BASE_URL ?>services" class="btn" style="background: transparent; border: 1.5px solid rgba(255,255,255,0.4); color: #ffffff; border-radius: 50px; padding: 12px 28px; font-weight: 600; font-size: 14px;">
+                Explore Related Services
+            </a>
+            <a href="<?= BASE_URL ?>contact" class="btn" style="background: #b8f35a; color: #024442; border-radius: 50px; padding: 12px 32px; font-weight: 700; font-size: 14px;">
+                Discuss Your Project <i class="fas fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+</section>
 
 <!-- Social Share Section -->
 <section style="padding: 60px 0; background: #ffffff; border-top: 1px solid #e2e8f0; text-align: center;">
