@@ -122,19 +122,8 @@ textarea.pop-up-form-control { resize:vertical; min-height:120px; }
             <div class="modal-body">
                 <form id="projectRequestForm" action="<?= BASE_URL ?>project_request_submission" method="POST" enctype="multipart/form-data" onsubmit="return validateForm(this)">
 
-                    <!-- ── Spam protection fields ── -->
-
-                    <!-- CSRF token (set by PHP via setModalCsrf() called when modal opens) -->
-                    <input type="hidden" name="_csrf_token" value="<?= $_SESSION['_csrf_token']; ?>">
-
-                    <!-- Timing field: JS sets this to current timestamp when modal opens -->
-                    <input type="hidden" name="_form_time" id="formTime" value="">
-
-                    <!-- Honeypot: hidden from humans via CSS, bots fill it -->
-                    <div style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true" tabindex="-1">
-                        <label for="_hp_website">Leave this field empty</label>
-                        <input type="text" name="_hp_website" id="_hp_website" value="" autocomplete="off" tabindex="-1" style="display:none;">
-                    </div>
+                    <!-- ── Anti-Spam Security Shield ── -->
+                    <?= gfx_render_anti_spam_fields('project_request'); ?>
 
                     <!-- Hidden: auto-filled from package selection -->
                     <input type="hidden" id="modal_service_type"  name="modal_service_type"  value="">
@@ -258,7 +247,7 @@ textarea.pop-up-form-control { resize:vertical; min-height:120px; }
 // ── CSRF token ────────────────────────────────────────────────────────────────
 
 function initFormProtection() {
-    var timeField = document.getElementById('formTime');
+    var timeField = document.getElementById('gfxFormTime_project_request') || document.getElementById('formTime');
     if (timeField) { timeField.value = Math.floor(Date.now() / 1000); }
     var hp = document.getElementById('_hp_website');
     if (hp) { hp.value = ''; }

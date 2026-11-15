@@ -46,6 +46,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['course_id'])) {
     $education_level = isset($_POST['education_level']) ? clean_reg($_POST['education_level']) : '';
     $payment_type = isset($_POST['payment_type']) ? clean_reg($_POST['payment_type']) : 'full';
 
+    // Anti-Spam Security Shield Verification
+    $spam_check = gfx_verify_form_submission($conn, 'course_enrollment', [
+        'student_name'  => $student_name,
+        'student_email' => $student_email,
+        'student_phone' => $student_phone,
+        'address'       => $address
+    ], [
+        'require_csrf'   => true,
+        'require_time'   => false,
+        'max_attempts'   => 5,
+        'window_seconds' => 600
+    ]);
+
+    if (!$spam_check['success']) {
+        if ($spam_check['is_bot']) {
+            die("Registration received. Our admissions team will review your application.");
+        }
+        die($spam_check['error']);
+    }
+
     if (!isset($_POST['course_id']) || $_POST['course_id'] === '' || !$student_name || !$student_email || !$student_phone || !$student_occ) {
         die("Required fields missing.");
     }
@@ -607,6 +627,7 @@ foreach ($courses as $c) {
             <div id="toastContainer" style="position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;"></div>
 
             <form id="regForm" action="" method="POST" enctype="multipart/form-data" novalidate>
+                <?= gfx_render_anti_spam_fields('course_enrollment'); ?>
                 <input type="hidden" name="course_id" id="regCourseId" value="<?= $preselect_id ?>">
                 <input type="hidden" name="discount_pct" id="regDiscPct" value="0">
                 <input type="hidden" name="applied_referral_code" id="appliedRefCode" value="">

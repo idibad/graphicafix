@@ -34,7 +34,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_contact'])) {
     $subject = trim(htmlspecialchars($_POST['subject'] ?? ''));
     $message = trim(htmlspecialchars($_POST['message'] ?? ''));
 
-    if (!empty($name) && !empty($email) && !empty($message)) {
+    // Anti-Spam Security Shield Verification
+    $spam_check = gfx_verify_form_submission($conn, 'contact', [
+        'name'    => $name,
+        'email'   => $email,
+        'phone'   => $phone,
+        'subject' => $subject,
+        'message' => $message
+    ], [
+        'require_csrf' => true,
+        'require_time' => true,
+        'max_attempts' => 5,
+        'window_seconds' => 600
+    ]);
+
+    if (!$spam_check['success']) {
+        if ($spam_check['is_bot']) {
+            // Silently deflect bots with fake success
+            $status_msg = "Message sent successfully! Our team will get back to you shortly.";
+            $status_type = "success";
+        } else {
+            $status_msg = $spam_check['error'];
+            $status_type = "error";
+        }
+    } elseif (!empty($name) && !empty($email) && !empty($message)) {
         // Updated insert to include phone and subject safely
         $stmt = $conn->prepare("INSERT INTO contacts (name, email, phone, subject, message) VALUES (?, ?, ?, ?, ?)");
         if ($stmt) {
@@ -228,6 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_contact'])) {
 
                     <form id="contactForm" action="" method="POST">
                         <input type="hidden" name="submit_contact" value="1">
+                        <?= gfx_render_anti_spam_fields('contact'); ?>
                         
                         <div class="row g-3">
                             <div class="col-md-6">

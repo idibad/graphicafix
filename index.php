@@ -7,26 +7,46 @@
     include 'templates/header.php';
 
     if (isset($_POST['submit_contact'])) {
-    $name = trim($_POST['name']);
-    $email = trim($_POST['email']);
-    $message = trim($_POST['message']);
+        $name    = trim(htmlspecialchars($_POST['name'] ?? ''));
+        $email   = trim(htmlspecialchars($_POST['email'] ?? ''));
+        $message = trim(htmlspecialchars($_POST['message'] ?? ''));
 
-    // Optional: basic validation
-    if (!empty($name) && !empty($email) && !empty($message)) {
-        $stmt = $conn->prepare("INSERT INTO contacts (name, email, message) VALUES (?, ?, ?)");
-        $stmt->bind_param("sss", $name, $email, $message);
+        // Anti-Spam Security Shield Verification
+        $spam_check = gfx_verify_form_submission($conn, 'home_quote', [
+            'name'    => $name,
+            'email'   => $email,
+            'message' => $message
+        ], [
+            'require_csrf'   => true,
+            'require_time'   => true,
+            'max_attempts'   => 5,
+            'window_seconds' => 600
+        ]);
 
-        if ($stmt->execute()) {
-            echo "<script>alert('Message sent successfully!');window.location='contact.php';</script>";
+        if (!$spam_check['success']) {
+            if ($spam_check['is_bot']) {
+                // Silently fake success for bots
+                echo "<script>alert('Message sent successfully!');window.location='contact.php';</script>";
+                exit;
+            } else {
+                $err_alert = addslashes($spam_check['error']);
+                echo "<script>alert('{$err_alert}');</script>";
+            }
+        } elseif (!empty($name) && !empty($email) && !empty($message)) {
+            $stmt = $conn->prepare("INSERT INTO contacts (name, email, message) VALUES (?, ?, ?)");
+            $stmt->bind_param("sss", $name, $email, $message);
+
+            if ($stmt->execute()) {
+                echo "<script>alert('Message sent successfully!');window.location='contact.php';</script>";
+            } else {
+                echo "<script>alert('Failed to send message. Please try again.');</script>";
+            }
+
+            $stmt->close();
         } else {
-            echo "<script>alert('Failed to send message. Please try again.');</script>";
+            echo "<script>alert('Please fill all fields.');</script>";
         }
-
-        $stmt->close();
-    } else {
-        echo "<script>alert('Please fill all fields.');</script>";
     }
-}
 
     $logoFolder = 'assets/images/client_logo/';
     $logos = glob($logoFolder . '*.png'); // get all logos
@@ -1739,6 +1759,7 @@ endwhile;
       </div>
 
       <form class="p-4 rounded shadow-sm" style="background-color: #fff;" action="" method="POST">
+        <?= gfx_render_anti_spam_fields('home_quote'); ?>
         <div class="mb-3">
         <label for="name" class="form-label fw-semibold">Name</label>
         <input type="text" class="form-control" id="name" name="name" placeholder="Your Name" required>
@@ -1877,6 +1898,9 @@ endwhile;
             <p>Join the Graphicafix community. Get insider branding tips, development tutorials, and early access to upcoming programs like our Applied AI launch.</p>
             
             <form id="gfxSubscribeForm" class="gfx-form">
+                <div style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;" aria-hidden="true" tabindex="-1">
+                    <input type="text" name="_hp_website_title" value="" autocomplete="off" tabindex="-1">
+                </div>
                 <div class="gfx-input-group">
                     <i class="fas fa-envelope"></i>
                     <input type="email" name="email" id="gfxSubEmail" placeholder="Enter your best email..." required>
@@ -2086,8 +2110,10 @@ document.getElementById('gfxSubscribeForm').addEventListener('submit', function(
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     btn.disabled = true;
 
-    const formData = new FormData();
-    formData.append('email', email);
+    const formData = new FormData(this);
+    if (!formData.has('email')) {
+        formData.append('email', email);
+    }
 
     // Keep this pointing to your standalone PHP file
     fetch('api/subscribe_handler.php', {

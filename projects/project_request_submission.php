@@ -18,107 +18,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  DEBUG MODE — set to false in production
-//  When true: shows exactly which check failed instead of generic error
 // ─────────────────────────────────────────────────────────────────────────────
-define('SPAM_DEBUG', true); // ← change to false after you confirm it works
+define('SPAM_DEBUG', false);
 
 function reject(string $reason, string $redirect = 'index.php'): never {
     if (SPAM_DEBUG) {
-        // Show exact failure reason while debugging
         die("<pre style='font-family:monospace;padding:20px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;margin:20px;border-radius:8px;'>
 <strong>Spam Protection Blocked This Submission</strong>
 Reason: $reason
-
-POST data received:
-" . print_r(array_map('htmlspecialchars', $_POST), true) . "
-Session data:
-" . print_r($_SESSION, true) . "
 </pre>");
     }
-    $safe = urlencode("Submission blocked. Please try again.");
+    $safe = urlencode($reason ?: "Submission blocked. Please try again.");
     header("Location: $redirect?err=$safe");
     exit;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  LAYER 1 — CSRF TOKEN
-// ══════════════════════════════════════════════════════════════════════════════
-$submitted_token = trim($_POST['_csrf_token'] ?? '');
-$session_token = trim($_SESSION['_csrf_token'] ?? '');
-
-if (SPAM_DEBUG) {
-    // Log to PHP error log for diagnosis (never shown to users in production)
-    error_log("CSRF DEBUG — submitted: '$submitted_token' | session: '$session_token'");
-}
-
-if (
-    empty($submitted_token) ||
-    empty($session_token)   ||
-    !hash_equals($session_token, $submitted_token)
-) {
-    unset($_SESSION['_csrf_token']);
-    reject("CSRF token mismatch — submitted='$submitted_token' session='$session_token'");
-}
-
-// One-time use
-unset($_SESSION['_csrf_token']);
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  LAYER 2 — HONEYPOT + TIMING
-// ══════════════════════════════════════════════════════════════════════════════
-$honeypot = $_POST['_hp_website'] ?? '';
-
-if ($honeypot !== '') {
-    // Bot filled the honeypot — fake success
-    if (SPAM_DEBUG) reject("Honeypot field was filled: '$honeypot'");$redirect = $_SERVER['HTTP_REFERER'] ?? 'index.php';
-    header("Location: $redirect?success=1");
-    exit;
-}
-
-$form_open_time = intval($_POST['_form_time'] ?? 0);
-$elapsed        = time() - $form_open_time;
-
-if (SPAM_DEBUG) {
-    error_log("TIMING DEBUG — form_time: $form_open_time | elapsed: {$elapsed}s");
-}
-
-// Only enforce timing if _form_time was actually sent (JS was loaded)
-if ($form_open_time > 0 && $elapsed < 4) {
-    if (SPAM_DEBUG) reject("Form submitted too fast: {$elapsed}s (minimum 4s required)");
-    $redirect = $_SERVER['HTTP_REFERER'] ?? 'index.php';
-    header("Location: $redirect?success=1");
-    exit;
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  LAYER 3 — RATE LIMITING
-// ══════════════════════════════════════════════════════════════════════════════
-define('RATE_LIMIT_MAX', 7);
-
-$ip = $_SERVER['HTTP_CF_CONNECTING_IP']
-  ?? $_SERVER['HTTP_X_FORWARDED_FOR']
-  ?? $_SERVER['REMOTE_ADDR']
-  ?? '0.0.0.0';
-$ip      = trim(explode(',', $ip)[0]);
-$ip_hash = hash('sha256', $ip . 'gfx_salt_2024');
-
-// Check if table exists before querying (graceful if schema not yet run)
-$table_check = $conn->query("SHOW TABLES LIKE 'form_submissions_log'")->num_rows;
-if ($table_check > 0) {
-    $conn->query("DELETE FROM form_submissions_log WHERE submitted_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)");
-    $rstmt = $conn->prepare("SELECT COUNT(*) AS cnt FROM form_submissions_log WHERE ip_hash = ? AND form_name = 'project_request' AND submitted_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)");
-    $rstmt->bind_param("s", $ip_hash);
-    $rstmt->execute();
-    $rate_count = $rstmt->get_result()->fetch_assoc()['cnt'] ?? 0;
-
-    if ($rate_count >= RATE_LIMIT_MAX) {
-        $wait = urlencode("Too many submissions. Please wait an hour before trying again.");
-        header("Location: index.php?err=$wait"); exit;
-    }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  COLLECT + VALIDATE
+//  COLLECT INPUTS
 // ══════════════════════════════════════════════════════════════════════════════
 $name          = clean($_POST['name']               ?? '');
 $company       = clean($_POST['company']            ?? '');
@@ -133,16 +49,42 @@ $service_type  = clean($_POST['modal_service_type']  ?? '');
 $package_name  = clean($_POST['modal_package_name']  ?? '');
 $package_price = clean($_POST['modal_package_price'] ?? '');
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  ANTI-SPAM SECURITY SHIELD VERIFICATION
+// ══════════════════════════════════════════════════════════════════════════════
+$spam_check = gfx_verify_form_submission($conn, 'project_request', [
+    'name'        => $name,
+    'company'     => $company,
+    'email'       => $email,
+    'phone'       => $phone,
+    'description' => $description
+], [
+    'require_csrf' => true,
+    'require_time' => true,
+    'max_attempts' => 5,
+    'window_seconds' => 600
+]);
+
+if (!$spam_check['success']) {
+    if ($spam_check['is_bot']) {
+        // Silently deflect bots with fake success to prevent automated retry mutations
+        $redirect = $_SERVER['HTTP_REFERER'] ?? 'index.php';
+        header("Location: $redirect?success=1");
+        exit;
+    }
+    reject($spam_check['error']);
+}
+
 if (!$name || !$email || !$phone || !$projectType || !$timeframe || !$description) {
-    reject("Required fields missing — name='$name' email='$email' phone='$phone' type='$projectType' time='$timeframe' desc='" . substr($description,0,20) . "'");
+    reject("Required fields are missing. Please complete all required inputs.");
 }
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    reject("Invalid email: '$email'");
+    reject("Please enter a valid email address.");
 }
 
-if (mb_strlen($description) < 20) {
-    reject("Description too short: " . mb_strlen($description) . " chars");
+if (mb_strlen($description) < 15) {
+    reject("Project description is too short (minimum 15 characters required).");
 }
 
 // ── Discount code ─────────────────────────────────────────────────────────────

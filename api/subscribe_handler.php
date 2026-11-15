@@ -6,8 +6,10 @@ ini_set('display_errors', '0');
 // Tell the browser to expect pure JSON
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/../core/config.php';
+
 // ══════════════════════════════════════════════════════════════════════════════
-//  EMAIL HELPERS (Copied exactly from your dashboard for brand consistency)
+//  EMAIL HELPERS
 // ══════════════════════════════════════════════════════════════════════════════
 function buildEmailWrapper($icon, $heading, $body_html, $btn_text='', $btn_url='') {
     $siteUrl = 'https://graphicafix.com';
@@ -47,7 +49,7 @@ function sendWelcomeEmail($email) {
     ";
 
     $btnText = 'Explore Courses';
-    $btnUrl = "$siteUrl/courses"; // Assuming your courses page based on htaccess
+    $btnUrl = "$siteUrl/courses";
 
     $html = buildEmailWrapper($icon, $heading, $body, $btnText, $btnUrl);
     
@@ -57,7 +59,7 @@ function sendWelcomeEmail($email) {
     $headers .= "Reply-To: info@graphicafix.com\r\n";
     
     // Send the email
-    mail($email, "$icon Welcome to Graphicafix! Here is your 10% Off code.", $html, $headers);
+    @mail($email, "Welcome to Graphicafix! Here is your 10% Off code.", $html, $headers);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -68,21 +70,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $email = trim($_POST['email'] ?? '');
 
+    // Anti-Spam Security Shield Check
+    $spam_check = gfx_verify_form_submission($conn, 'newsletter', [
+        'email' => $email
+    ], [
+        'require_csrf'   => false, // Allow smooth cross-page footer AJAX subscriptions
+        'require_time'   => false,
+        'max_attempts'   => 4,
+        'window_seconds' => 600
+    ]);
+
+    if (!$spam_check['success']) {
+        if ($spam_check['is_bot']) {
+            // Fake success response for bots so they don't retry, but DO NOT save or email
+            echo json_encode(['success' => true, 'message' => 'Success! Check your email for your 10% code.']);
+            exit;
+        }
+        echo json_encode(['success' => false, 'message' => $spam_check['error']]);
+        exit;
+    }
+
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         echo json_encode(['success' => false, 'message' => 'Please enter a valid email address.']);
         exit;
     }
 
-    $server = "localhost";
-    $username = "u935542951_graphicafix";
-    $password = "2025.Graphica_fix";
-    $db = "u935542951_graphicafix_db";
-
-
-    $conn = @mysqli_connect($server, $username,$password, $db);
-
-    if ($conn->connect_error) {
-        echo json_encode(['success' => false, 'message' => 'Database connection failed.']);
+    if (!$conn || $conn->connect_error) {
+        echo json_encode(['success' => false, 'message' => 'Service temporarily unavailable. Please try again later.']);
         exit;
     }
 
@@ -93,31 +107,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     )");
 
     $check = $conn->prepare("SELECT id FROM newsletter_subscribers WHERE email = ?");
-    $check->bind_param("s", $email);
-    $check->execute();
-    if ($check->get_result()->num_rows > 0) {
-        echo json_encode(['success' => false, 'message' => 'You are already subscribed!']);
+    if ($check) {
+        $check->bind_param("s", $email);
+        $check->execute();
+        if ($check->get_result()->num_rows > 0) {
+            echo json_encode(['success' => false, 'message' => 'You are already subscribed!']);
+            $check->close();
+            exit;
+        }
         $check->close();
-        $conn->close();
-        exit;
     }
-    $check->close();
 
     $insert = $conn->prepare("INSERT INTO newsletter_subscribers (email) VALUES (?)");
-    $insert->bind_param("s", $email);
-    
-    if ($insert->execute()) {
-        // 🔥 Send the welcome email immediately after saving to DB!
-        sendWelcomeEmail($email);
-        
-        // Return a slightly modified success message
-        echo json_encode(['success' => true, 'message' => 'Success! Check your email for your 10% code.']);
+    if ($insert) {
+        $insert->bind_param("s", $email);
+        if ($insert->execute()) {
+            sendWelcomeEmail($email);
+            echo json_encode(['success' => true, 'message' => 'Success! Check your email for your 10% code.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Unable to complete subscription. Please try again.']);
+        }
+        $insert->close();
     } else {
         echo json_encode(['success' => false, 'message' => 'Database error. Please try again.']);
     }
-    
-    $insert->close();
-    $conn->close();
 } else {
     echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
 }

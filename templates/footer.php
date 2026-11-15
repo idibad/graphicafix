@@ -13,6 +13,9 @@
                     </div>
                     <div class="footer-newsletter-action">
                         <form id="footerSubscribeForm" class="footer-newsletter-form" onsubmit="handleFooterSubscribe(event)">
+                            <div style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;" aria-hidden="true" tabindex="-1">
+                                <input type="text" name="_hp_website_title" value="" autocomplete="off" tabindex="-1">
+                            </div>
                             <div class="footer-newsletter-input-group">
                                 <i class="fas fa-envelope footer-input-icon"></i>
                                 <input type="email" name="email" id="footerSubEmail" placeholder="Enter your email address..." required autocomplete="email">
@@ -318,8 +321,10 @@ function handleFooterSubscribe(e) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subscribing...';
     btn.disabled = true;
 
-    const formData = new FormData();
-    formData.append('email', email);
+    const formData = new FormData(form);
+    if (!formData.has('email')) {
+        formData.append('email', email);
+    }
 
     fetch('<?= BASE_URL ?>api/subscribe_handler.php', {
         method: 'POST',

@@ -23,57 +23,66 @@ $conn->query($sql);
 
 
 $message = "";
-
+$error_message = "";
 
 // Form Submission
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
+    $student_name = trim(htmlspecialchars($_POST['student_name'] ?? ''));
+    $email = trim(htmlspecialchars($_POST['email'] ?? ''));
+    $course_name = trim(htmlspecialchars($_POST['course_name'] ?? ''));
+    $rating = intval($_POST['rating'] ?? 5);
+    $course_feedback = trim(htmlspecialchars($_POST['course_feedback'] ?? ''));
+    $instructor_feedback = trim(htmlspecialchars($_POST['instructor_feedback'] ?? ''));
+    $suggestions = trim(htmlspecialchars($_POST['suggestions'] ?? ''));
 
-    $student_name = $_POST['student_name'];
-    $email = $_POST['email'];
-    $course_name = $_POST['course_name'];
-    $rating = $_POST['rating'];
-    $course_feedback = $_POST['course_feedback'];
-    $instructor_feedback = $_POST['instructor_feedback'];
-    $suggestions = $_POST['suggestions'];
+    // Anti-Spam Security Shield Verification
+    $spam_check = gfx_verify_form_submission($conn, 'course_feedback', [
+        'student_name'        => $student_name,
+        'email'               => $email,
+        'course_feedback'     => $course_feedback,
+        'instructor_feedback' => $instructor_feedback,
+        'suggestions'         => $suggestions
+    ], [
+        'require_csrf'   => true,
+        'require_time'   => true,
+        'max_attempts'   => 5,
+        'window_seconds' => 600
+    ]);
 
+    if (!$spam_check['success']) {
+        if ($spam_check['is_bot']) {
+            $message = "Thank you! Your feedback has been submitted successfully.";
+        } else {
+            $error_message = $spam_check['error'];
+        }
+    } else {
+        $stmt = $conn->prepare(
+            "INSERT INTO course_feedback 
+            (student_name,email,course_name,rating,course_feedback,instructor_feedback,suggestions)
+            VALUES (?,?,?,?,?,?,?)"
+        );
 
+        $stmt->bind_param(
+            "sssisss",
+            $student_name,
+            $email,
+            $course_name,
+            $rating,
+            $course_feedback,
+            $instructor_feedback,
+            $suggestions
+        );
 
-    $stmt = $conn->prepare(
-        "INSERT INTO course_feedback 
-        (student_name,email,course_name,rating,course_feedback,instructor_feedback,suggestions)
-        VALUES (?,?,?,?,?,?,?)"
-    );
-
-
-    $stmt->bind_param(
-        "sssisss",
-        $student_name,
-        $email,
-        $course_name,
-        $rating,
-        $course_feedback,
-        $instructor_feedback,
-        $suggestions
-    );
-
-
-    if($stmt->execute()){
-
-        $message = "Thank you! Your feedback has been submitted successfully.";
-
+        if($stmt->execute()){
+            $message = "Thank you! Your feedback has been submitted successfully.";
+        } else {
+            $error_message = "Unable to save feedback. Please try again.";
+        }
+        $stmt->close();
     }
-    else{
-
-        $message = "Error submitting feedback.";
-
-    }
-
-
 }
-
-
 ?>
 
 
@@ -177,15 +186,15 @@ button:hover{
 <?php
 
 if($message!=""){
-
-echo "<p class='success'>$message</p>";
-
+    echo "<p class='success'>$message</p>";
 }
-
+if(!empty($error_message)){
+    echo "<p class='error' style='color:#dc2626;background:#fef2f2;padding:12px;border-radius:8px;'>$error_message</p>";
+}
 ?>
 
-
 <form method="POST">
+<?= gfx_render_anti_spam_fields('course_feedback'); ?>
 
 
 <label>

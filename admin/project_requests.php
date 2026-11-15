@@ -39,6 +39,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->query("DELETE FROM project_requests WHERE status = 'spam'");
         header('Location: project_requests.php?purged=1'); exit;
     }
+
+    // Smart Auto-Scan & Purge Spam
+    if (isset($_POST['auto_purge_spam'])) {
+        $res = $conn->query("SELECT id, name, company, email, phone, description, status FROM project_requests");
+        $deleted = 0;
+        if ($res) {
+            while ($r = $res->fetch_assoc()) {
+                [$clean, $reason] = gfx_analyze_content([
+                    'name'        => $r['name'],
+                    'company'     => $r['company'],
+                    'email'       => $r['email'],
+                    'phone'       => $r['phone'],
+                    'description' => $r['description']
+                ]);
+                if (!$clean || $r['status'] === 'spam') {
+                    $conn->query("DELETE FROM project_requests WHERE id = " . intval($r['id']));
+                    $deleted++;
+                }
+            }
+        }
+        header('Location: project_requests.php?tab=' . urlencode($_POST['current_tab'] ?? 'all') . '&purged=' . $deleted);
+        exit;
+    }
 }
 
 // ── Active tab / filter ───────────────────────────────────────────────────────
@@ -140,17 +163,26 @@ function reqTimeAgo($dt) {
         <div class="main-header">
             <h3><i class="fas fa-clipboard"></i> Project Requests</h3>
 
-            <!-- Purge spam button (only shown on spam tab) -->
-            <?php if ($tab === 'spam' && $count_spam > 0): ?>
-            <form method="POST" onsubmit="return confirm('Permanently delete all <?= $count_spam ?> spam entries? This cannot be undone.');">
-                <input type="hidden" name="purge_spam" value="1">
-                <button type="submit" class="btn" style="background:#fef2f2;color:#d63031;border:1.5px solid #fecaca;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">
-                    <i class="fas fa-trash"></i>️ Purge All Spam
-                </button>
-            </form>
-            <?php else: ?>
-            <span style="font-size:13px;color:#888;"><?= $total ?> result<?= $total != 1 ? 's' : '' ?></span>
-            <?php endif; ?>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <form method="POST" onsubmit="return confirm('Scan and purge all detected bot spam entries?');">
+                    <input type="hidden" name="auto_purge_spam" value="1">
+                    <input type="hidden" name="current_tab" value="<?= htmlspecialchars($tab) ?>">
+                    <button type="submit" class="btn" style="background:#fef2f2;color:#d63031;border:1.5px solid #fecaca;padding:6px 14px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;">
+                        <i class="fas fa-shield-alt"></i> Clean Bot Spam
+                    </button>
+                </form>
+
+                <!-- Purge spam button (only shown on spam tab) -->
+                <?php if ($tab === 'spam' && $count_spam > 0): ?>
+                <form method="POST" onsubmit="return confirm('Permanently delete all <?= $count_spam ?> spam entries? This cannot be undone.');">
+                    <input type="hidden" name="purge_spam" value="1">
+                    <button type="submit" class="btn" style="background:#fef2f2;color:#d63031;border:1.5px solid #fecaca;padding:6px 14px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;">
+                        <i class="fas fa-trash"></i>️ Purge All Spam
+                    </button>
+                </form>
+                <?php endif; ?>
+                <span style="font-size:13px;color:#888;"><?= $total ?> result<?= $total != 1 ? 's' : '' ?></span>
+            </div>
         </div>
 
         <!-- Filter tabs -->

@@ -6,15 +6,38 @@ if (!in_array($role, ['super_admin', 'superadmin'])) {
     exit;
 }
 
-// ── Handle delete ─────────────────────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_contact'])) {
-    $del_id = intval($_POST['contact_id'] ?? 0);
-    if ($del_id) {
-        $stmt = $conn->prepare("DELETE FROM contacts WHERE id = ?");
-        $stmt->bind_param("i", $del_id);
-        $stmt->execute();
+// ── Handle actions ────────────────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['delete_contact'])) {
+        $del_id = intval($_POST['contact_id'] ?? 0);
+        if ($del_id) {
+            $stmt = $conn->prepare("DELETE FROM contacts WHERE id = ?");
+            $stmt->bind_param("i", $del_id);
+            $stmt->execute();
+        }
+        header('Location: messages.php?deleted=1'); exit;
     }
-    header('Location: messages.php?deleted=1'); exit;
+
+    if (isset($_POST['auto_purge_spam'])) {
+        $res = $conn->query("SELECT id, name, email, phone, subject, message FROM contacts");
+        $deleted = 0;
+        if ($res) {
+            while ($r = $res->fetch_assoc()) {
+                [$clean, $reason] = gfx_analyze_content([
+                    'name'    => $r['name'],
+                    'email'   => $r['email'],
+                    'phone'   => $r['phone'],
+                    'subject' => $r['subject'],
+                    'message' => $r['message']
+                ]);
+                if (!$clean) {
+                    $conn->query("DELETE FROM contacts WHERE id = " . intval($r['id']));
+                    $deleted++;
+                }
+            }
+        }
+        header('Location: messages.php?purged=' . $deleted); exit;
+    }
 }
 
 $contacts = $conn->query("SELECT * FROM contacts ORDER BY created_at DESC");
@@ -39,7 +62,15 @@ function contactTimeAgo($datetime) {
     <div class="main-card">
         <div class="main-header">
             <h3><i class="fas fa-envelope-open-text"></i> Contact Messages</h3>
-            <span style="font-size:13px;color:#888;"><?= $total ?> message<?= $total != 1 ? 's' : '' ?></span>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <form method="POST" onsubmit="return confirm('Scan and purge all detected spam messages?');">
+                    <input type="hidden" name="auto_purge_spam" value="1">
+                    <button type="submit" class="btn" style="background:#fef2f2;color:#d63031;border:1.5px solid #fecaca;padding:6px 14px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;">
+                        <i class="fas fa-shield-alt"></i> Clean Bot Spam
+                    </button>
+                </form>
+                <span style="font-size:13px;color:#888;"><?= $total ?> message<?= $total != 1 ? 's' : '' ?></span>
+            </div>
         </div>
 
         <div class="main-table">

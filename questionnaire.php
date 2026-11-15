@@ -70,7 +70,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_submit'])) {
     $preferred_launch_date = trim($_POST['sec_21_2_launch_date'] ?? '');
     $decision_maker = trim($_POST['sec_21_6_decision_maker'] ?? '');
 
-    if (empty($organization)) {
+    // Anti-Spam Security Shield Verification
+    $spam_check = gfx_verify_form_submission($conn, 'questionnaire', [
+        'client_name'       => $client_name,
+        'organization'      => $organization,
+        'email'             => $email,
+        'phone'             => $phone,
+        'primary_objective' => $primary_objective
+    ], [
+        'require_csrf'   => true,
+        'require_time'   => false,
+        'max_attempts'   => 5,
+        'window_seconds' => 600
+    ]);
+
+    if (!$spam_check['success']) {
+        if ($spam_check['is_bot']) {
+            $submitted_id = 'DISC-PROTECTED';
+            $success = true;
+        } else {
+            $error_msg = $spam_check['error'];
+        }
+    } elseif (empty($organization)) {
         $error_msg = "Please provide the official institution or organization name in Section 1.1.";
     } else {
         $submission_id = 'DISC-' . date('Ymd') . '-' . strtoupper(substr(uniqid(mt_rand(), true), -5));
@@ -426,6 +447,7 @@ localStorage.removeItem('simple_discovery_draft');
 
     <form id="discoveryForm" method="POST" action="questionnaire.php">
         <input type="hidden" name="form_submit" value="1">
+        <?= gfx_render_anti_spam_fields('questionnaire'); ?>
 
         <!-- ── 1. Institution & Business Overview ── -->
         <div class="form-section">

@@ -9,6 +9,7 @@ $canonical_url = "https://graphicafix.com/career";
 include __DIR__ . '/../templates/header.php';
 
 // ── Handle application submission ─────────────────────────────────────────────
+$career_error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])) {
     $name       = trim(htmlspecialchars($_POST['name']       ?? ''));
     $email      = trim(htmlspecialchars($_POST['email']      ?? ''));
@@ -19,23 +20,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_application'])
     $experience = trim(htmlspecialchars($_POST['experience'] ?? ''));
     $bio        = trim(htmlspecialchars($_POST['bio']        ?? ''));
 
-    // CV upload
-    $cvPath = null;
-    if (!empty($_FILES['cv']['name']) && $_FILES['cv']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = 'uploads/cvs/';
-        if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
-        $ext     = strtolower(pathinfo($_FILES['cv']['name'], PATHINFO_EXTENSION));
-        $allowed = ['pdf','doc','docx'];
-        if (in_array($ext, $allowed) && $_FILES['cv']['size'] <= 5 * 1024 * 1024) {
-            $newName = uniqid('cv_', true) . '.' . $ext;
-            $target  = $uploadDir . $newName;
-            if (move_uploaded_file($_FILES['cv']['tmp_name'], $target)) $cvPath = $target;
-        }
-    }
+    // Anti-Spam Security Shield Verification
+    $spam_check = gfx_verify_form_submission($conn, 'career', [
+        'name'      => $name,
+        'email'     => $email,
+        'phone'     => $phone,
+        'position'  => $position,
+        'skills'    => $skills,
+        'portfolio' => $portfolio,
+        'bio'       => $bio
+    ], [
+        'require_csrf'   => true,
+        'require_time'   => true,
+        'max_attempts'   => 5,
+        'window_seconds' => 600
+    ]);
 
-    $stmt = $conn->prepare("INSERT INTO career_applications (name, email, phone, position, skills, portfolio, experience, cv, bio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssssssss", $name, $email, $phone, $position, $skills, $portfolio, $experience, $cvPath, $bio);
-    $submitted = $stmt->execute();
+    if (!$spam_check['success']) {
+        if ($spam_check['is_bot']) {
+            $submitted = true; // Fake success for bots
+        } else {
+            $submitted = false;
+            $career_error = $spam_check['error'];
+        }
+    } else {
+        // CV upload
+        $cvPath = null;
+        if (!empty($_FILES['cv']['name']) && $_FILES['cv']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = 'uploads/cvs/';
+            if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
+            $ext     = strtolower(pathinfo($_FILES['cv']['name'], PATHINFO_EXTENSION));
+            $allowed = ['pdf','doc','docx'];
+            if (in_array($ext, $allowed) && $_FILES['cv']['size'] <= 5 * 1024 * 1024) {
+                $newName = uniqid('cv_', true) . '.' . $ext;
+                $target  = $uploadDir . $newName;
+                if (move_uploaded_file($_FILES['cv']['tmp_name'], $target)) $cvPath = $target;
+            }
+        }
+
+        $stmt = $conn->prepare("INSERT INTO career_applications (name, email, phone, position, skills, portfolio, experience, cv, bio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssssssss", $name, $email, $phone, $position, $skills, $portfolio, $experience, $cvPath, $bio);
+        $submitted = $stmt->execute();
+    }
 }
 
 // ── Fetch open positions ──────────────────────────────────────────────────────
@@ -332,8 +358,16 @@ $total_open = $total_open_query ? ($total_open_query->fetch_assoc()['c'] ?? 0) :
                 <p style="color:var(--text-gray);">Fill in your details below and attach your CV to apply.</p>
             </div>
 
+            <?php if (!empty($career_error)): ?>
+            <div style="background:#fee2e2;border:1px solid #f87171;color:#b91c1c;padding:14px 20px;border-radius:12px;margin-bottom:24px;display:flex;align-items:center;gap:10px;">
+                <i class="fas fa-exclamation-circle"></i>
+                <span><?= htmlspecialchars($career_error) ?></span>
+            </div>
+            <?php endif; ?>
+
             <form method="POST" action="" enctype="multipart/form-data">
                 <input type="hidden" name="submit_application" value="1">
+                <?= gfx_render_anti_spam_fields('career'); ?>
                 <div class="row g-4">
 
                     <div class="col-md-6">
