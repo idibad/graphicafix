@@ -1656,7 +1656,7 @@ html, body {
                             <label>In Time (Check-In) <span style="color:#ef4444;">*</span></label>
                             <input type="time" name="in_time" id="add_in_time" value="09:00" required onchange="recalculateAddSalary()">
                             <small id="add_in_time_hint" style="font-size: 10px; color: #64748b; display: block; margin-top: 3px;">
-                                Remote: 10m grace · On-site Female: 30m grace · On-site Male: 10m grace
+                                Grace period: 10m flat from check-in time (both Male &amp; Female)
                             </small>
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
@@ -2000,7 +2000,7 @@ function calculateAttendanceAndDeduction(baseSalary, allowances, inTimeStr, outT
 
     const isFemale = (String(gender).toLowerCase() === 'female');
     const isRemote = (String(workMode).toLowerCase() !== 'onsite');
-    const graceMins = isRemote ? 10 : (isFemale ? 30 : 10);
+    const graceMins = 10; // Flat 10 minutes for both male & female
     const modeDesc = isRemote ? 'Remote' : (isFemale ? 'On-site Female' : 'On-site Male');
 
     let inTimeFull  = inTimeStr ? (inTimeStr.length === 5 ? inTimeStr + ':00' : inTimeStr) : '09:00:00';
@@ -2090,7 +2090,7 @@ function onSelectUserForSalary() {
     document.getElementById('add_base_salary').value = base;
     document.getElementById('add_allowances').value  = allow;
 
-    const graceMins = (workMode === 'remote') ? 10 : (gender === 'Female' ? 30 : 10);
+    const graceMins = 10; // Flat 10 minutes for both male & female
     const modeDesc  = (workMode === 'remote') ? 'Remote' : (gender === 'Female' ? 'On-site Female' : 'On-site Male');
 
     const badge = document.getElementById('add_user_meta_badge');

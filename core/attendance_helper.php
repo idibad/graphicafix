@@ -1,7 +1,7 @@
 <?php
 /**
  * core/attendance_helper.php
- * Core Business Logic for Geolocation Attendance, Gender-Based Grace Periods,
+ * Core Business Logic for Geolocation Attendance, 10-Minute Grace Periods,
  * Late Pattern Detection, Medical Leave Limits, and Payroll Synchronization.
  */
 
@@ -291,9 +291,9 @@ function countMedicalLeavesInMonth($conn, $user_id, $month, $exclude_date = null
 /**
  * Main Check-In Engine:
  * - Checks location coordinates vs office or marks denied
- * - Computes late vs on time based on gender grace periods:
- *     - Male: 10 mins grace (cutoff 09:10:00)
- *     - Female: 30 mins grace (cutoff 09:30:00)
+ * - Computes late vs on time based on grace period:
+ *     - Flat 10 mins grace from employee's configured in_time (both Male and Female)
+ *     - Cutoff is in_time + 10 minutes
  * - Pattern detection:
  *     - Max 3 grace arrivals allowed per month
  *     - 4th+ arrival in grace period is penalized (100 PKR) & flagged as habitual late pattern
@@ -380,17 +380,11 @@ function recordDailyCheckIn($conn, $user_id, $lat = null, $lng = null, $accuracy
 
         // ── Grace Period & Late Logic ─────────────────────────────────────────────
         // Base official time: 09:00:00 AM
-        // Male grace: 10 minutes -> 09:10:00
-        // Female grace: 30 minutes -> 09:30:00
+        // Grace period: flat 10 minutes from sign-in time for all employees (both male & female)
+        // Cutoff: in_time + 10 minutes
         $base_time = !empty($user_meta['in_time']) ? $user_meta['in_time'] : (defined('OFFICE_START_TIME') ? OFFICE_START_TIME : ($_ENV['OFFICE_START_TIME'] ?? '09:00:00'));
         if (strlen($base_time) === 5) $base_time .= ':00';
-        $male_grace_mins = intval($_ENV['MALE_GRACE_MINUTES'] ?? 10);
-        $female_grace_mins = intval($_ENV['FEMALE_GRACE_MINUTES'] ?? 30);
-        if ($work_mode === 'remote') {
-            $grace_mins = 10;
-        } else {
-            $grace_mins = ($gender === 'Female') ? 30 : 10;
-        }
+        $grace_mins = 10; // Flat 10 minutes from configured sign-in time for all employees (both male & female)
         $grace_cutoff = date('H:i:s', strtotime($base_time) + ($grace_mins * 60));
 
         $is_late             = 0;

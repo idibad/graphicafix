@@ -512,7 +512,7 @@ foreach ($final_records as $row) {
             $user_in_time = !empty($row['in_time']) ? $row['in_time'] : '09:00:00';
             if (strlen($user_in_time) === 5) $user_in_time .= ':00';
 
-            $grace_mins = ($user_wm === 'remote') ? 10 : (($user_gender === 'Female') ? 30 : 10);
+            $grace_mins = 10; // Flat 10 minutes from configured sign-in time (both male & female)
             $grace_limit = date('H:i:s', strtotime($user_in_time) + ($grace_mins * 60));
             $is_actually_late = (!empty($row['check_in_time']) && empty($row['is_override']) && $row['check_in_time'] > $grace_limit);
 
