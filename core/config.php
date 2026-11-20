@@ -43,19 +43,22 @@ $default_timeout = isset($_ENV['SESSION_TIMEOUT']) ? intval($_ENV['SESSION_TIMEO
 $has_remember = (!empty($_COOKIE['remember_token']) || (!empty($_SESSION) && !empty($_SESSION['remember_me'])));
 $session_lifetime = $has_remember ? (30 * 86400) : $default_timeout;
 
-ini_set('session.gc_maxlifetime', (string)max(30 * 86400, $session_lifetime));
-
 if (session_status() === PHP_SESSION_NONE) {
-    $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
-    session_set_cookie_params([
-        'lifetime' => $has_remember ? (30 * 86400) : 0,
-        'path'     => '/',
-        'domain'   => '',
-        'secure'   => $is_https,
-        'httponly' => true,
-        'samesite' => 'Lax'
-    ]);
-    session_start();
+    if (!headers_sent()) {
+        @ini_set('session.gc_maxlifetime', (string)max(30 * 86400, $session_lifetime));
+        $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+        session_set_cookie_params([
+            'lifetime' => $has_remember ? (30 * 86400) : 0,
+            'path'     => '/',
+            'domain'   => '',
+            'secure'   => $is_https,
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
+        session_start();
+    } else {
+        @session_start();
+    }
 }
 
 // 4. Database Connection
@@ -74,10 +77,17 @@ if (!isset($conn) || !($conn instanceof mysqli) || !@$conn->ping()) {
 }
 
 if (!$conn) {
-    echo "<div class='alert alert-danger alert-dismissible fade show' role='alert'>
+    $is_api_request = (
+        (isset($_SERVER['REQUEST_URI']) && (strpos($_SERVER['REQUEST_URI'], '_api.php') !== false || strpos($_SERVER['REQUEST_URI'], '/api/') !== false)) ||
+        (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
+        (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+    );
+    if (!$is_api_request) {
+        echo "<div class='alert alert-danger alert-dismissible fade show' role='alert'>
   Connection unsuccesful
   <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button>
 </div>";
+    }
 }
 
 date_default_timezone_set('Asia/Karachi');

@@ -32,7 +32,9 @@ $phone   = $data['phone'];
 $email   = $data['email'];
 $user_id = $data['user_id'];
 $role    = strtolower($data['role']); // super_admin | admin | user | client | teacher | student
-$_SESSION['role'] = $role;
+$_SESSION['user_id'] = $user_id;
+$_SESSION['role']    = $role;
+$_SESSION['name']    = $name;
 
 $is_super_admin   = ($role === 'super_admin' || $role === 'superadmin');
 $is_admin_officer = ($role === 'admin');
