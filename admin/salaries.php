@@ -58,6 +58,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $amount_paid      = floatval($_POST['amount_paid'] ?? 0);
 
         if ($user_id > 0 && $base_salary > 0) {
+            $block_reason = '';
+            if (!isSalaryMonthAllowedForUser($conn, $user_id, $filter_month, $block_reason)) {
+                $_SESSION['toast_msg'] = $block_reason;
+                $_SESSION['toast_type'] = "error";
+                header("Location: salaries.php?month={$filter_month}");
+                exit;
+            }
+
             $user_meta = getUserAttendanceMeta($conn, $user_id);
             $user_name = $user_meta['name'] ?: 'Staff';
             $gender    = !empty($user_meta['gender']) ? ucfirst(strtolower(trim($user_meta['gender']))) : 'Male';

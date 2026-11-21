@@ -49,7 +49,17 @@ ensure_attendance_schema($conn);
 if ($salary_id > 0 || $target_user > 0) {
     // Non-admin can only view their own slip
     if (!$is_admin_hrm && $target_user > 0 && $target_user !== $current_user_id) {
+        http_response_code(403);
         die('Access Denied. You can only access your own salary slip.');
+    }
+
+    // Block pre-joining or future months early when requested by user_id + month
+    if ($salary_id <= 0 && $target_user > 0) {
+        $block_reason = '';
+        if (!isSalaryMonthAllowedForUser($conn, $target_user, $filter_month, $block_reason)) {
+            http_response_code(403);
+            die(htmlspecialchars($block_reason));
+        }
     }
 
     $sql = "
@@ -70,16 +80,27 @@ if ($salary_id > 0 || $target_user > 0) {
     $stmt->close();
 
     if (!$salary) {
+        http_response_code(404);
         die('Salary slip record not found for the requested period.');
     }
 
     // Authorization check for single record by ID
     if (!$is_admin_hrm && intval($salary['user_id']) !== $current_user_id) {
+        http_response_code(403);
         die('Access Denied.');
     }
 
     $emp_id       = intval($salary['user_id']);
     $sal_month    = $salary['salary_month'];
+
+    // Enforce joining date & no-future-month rule even for direct salary_id lookups
+    $block_reason = '';
+    if (!isSalaryMonthAllowedForUser($conn, $emp_id, $sal_month, $block_reason)) {
+        http_response_code(403);
+        die(htmlspecialchars($block_reason));
+    }
+
+    $emp_join_info = getEmployeeJoiningDate($conn, $emp_id);
     $period_label = date('F Y', strtotime($sal_month . '-01'));
     $emp_name     = $salary['name'] ?: $salary['user_name'];
     $gender       = !empty($salary['gender']) ? ucfirst(strtolower(trim($salary['gender']))) : 'Male';
@@ -125,7 +146,8 @@ if ($salary_id > 0 || $target_user > 0) {
     $emp_code     = $salary['employee_id'] ?: ('GF-' . str_pad($salary['user_id'], 4, '0', STR_PAD_LEFT));
     $designation  = $salary['job_title'] ?: ($salary['user_job_title'] ?: 'Staff');
     $department   = $salary['department'] ?: ($salary['user_dept'] ?: 'General');
-    $join_date    = !empty($salary['join_date']) ? date('d/m/Y', strtotime($salary['join_date'])) : '—';
+    $resolved_join = !empty($emp_join_info['joining_date']) ? $emp_join_info['joining_date'] : ($salary['join_date'] ?? '');
+    $join_date    = !empty($resolved_join) ? date('d/m/Y', strtotime($resolved_join)) : '—';
     $pay_date     = !empty($salary['payment_date']) ? date('d/m/Y', strtotime($salary['payment_date'])) : date('t/m/Y', strtotime($sal_month . '-01'));
 
     if (!function_exists('fmt_pdf_amt')) {

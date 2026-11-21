@@ -173,6 +173,140 @@ function getUserAttendanceMeta($conn, $user_id) {
 }
 
 /**
+ * Resolves an employee's official joining date & month (YYYY-MM-DD / YYYY-MM).
+ * Priority:
+ *   1. HR Staff Directory (`team.joined_at`) matched by employee_id, email, or name.
+ *   2. User account creation date (`users.created_at`) as fallback.
+ */
+function getEmployeeJoiningDate($conn, $user_id) {
+    $result = [
+        'joining_date'  => null,
+        'joining_month' => null,
+        'source'        => 'none'
+    ];
+    if (!$conn || empty($user_id)) return $result;
+
+    $u_emp_id  = '';
+    $u_name    = '';
+    $u_email   = '';
+    $u_created = null;
+
+    try {
+        $stmt = $conn->prepare("SELECT name, email, employee_id, created_at FROM users WHERE user_id = ? LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            if ($row = $stmt->get_result()->fetch_assoc()) {
+                $u_emp_id  = trim($row['employee_id'] ?? '');
+                $u_name    = trim($row['name'] ?? '');
+                $u_email   = trim($row['email'] ?? '');
+                $u_created = $row['created_at'] ?? null;
+            }
+            $stmt->close();
+        }
+    } catch (Throwable $e) {
+        try {
+            $stmt2 = $conn->prepare("SELECT name, email, created_at FROM users WHERE user_id = ? LIMIT 1");
+            if ($stmt2) {
+                $stmt2->bind_param("i", $user_id);
+                $stmt2->execute();
+                if ($row2 = $stmt2->get_result()->fetch_assoc()) {
+                    $u_name    = trim($row2['name'] ?? '');
+                    $u_email   = trim($row2['email'] ?? '');
+                    $u_created = $row2['created_at'] ?? null;
+                }
+                $stmt2->close();
+            }
+        } catch (Throwable $e2) {}
+    }
+
+    // 1. Check HR Staff Directory (`team.joined_at`)
+    try {
+        $team_joined = null;
+        if (!empty($u_emp_id)) {
+            $st = $conn->prepare("SELECT joined_at FROM team WHERE LOWER(TRIM(employee_id)) = LOWER(TRIM(?)) AND joined_at IS NOT NULL AND joined_at != '0000-00-00' LIMIT 1");
+            if ($st) {
+                $st->bind_param("s", $u_emp_id);
+                $st->execute();
+                if ($tr = $st->get_result()->fetch_assoc()) $team_joined = $tr['joined_at'];
+                $st->close();
+            }
+        }
+        if (empty($team_joined) && !empty($u_email)) {
+            $st = $conn->prepare("SELECT joined_at FROM team WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND joined_at IS NOT NULL AND joined_at != '0000-00-00' LIMIT 1");
+            if ($st) {
+                $st->bind_param("s", $u_email);
+                $st->execute();
+                if ($tr = $st->get_result()->fetch_assoc()) $team_joined = $tr['joined_at'];
+                $st->close();
+            }
+        }
+        if (empty($team_joined) && !empty($u_name)) {
+            $st = $conn->prepare("SELECT joined_at FROM team WHERE LOWER(TRIM(member_name)) = LOWER(TRIM(?)) AND joined_at IS NOT NULL AND joined_at != '0000-00-00' LIMIT 1");
+            if ($st) {
+                $st->bind_param("s", $u_name);
+                $st->execute();
+                if ($tr = $st->get_result()->fetch_assoc()) $team_joined = $tr['joined_at'];
+                $st->close();
+            }
+        }
+
+        if (!empty($team_joined) && strtotime($team_joined)) {
+            $ts = strtotime($team_joined);
+            return [
+                'joining_date'  => date('Y-m-d', $ts),
+                'joining_month' => date('Y-m', $ts),
+                'source'        => 'team'
+            ];
+        }
+    } catch (Throwable $e) {}
+
+    // 2. Fallback to users.created_at
+    if (!empty($u_created) && strtotime($u_created)) {
+        $ts = strtotime($u_created);
+        return [
+            'joining_date'  => date('Y-m-d', $ts),
+            'joining_month' => date('Y-m', $ts),
+            'source'        => 'users'
+        ];
+    }
+
+    return $result;
+}
+
+/**
+ * Checks whether a salary month (YYYY-MM) is valid for a given employee:
+ *   - Must be valid YYYY-MM format
+ *   - Must NOT be earlier than the employee's joining month
+ *   - Must NOT be in the future (after current month)
+ */
+function isSalaryMonthAllowedForUser($conn, $user_id, $salary_month, &$reason = null) {
+    $salary_month = trim($salary_month ?? '');
+    if (!preg_match('/^\d{4}-\d{2}$/', $salary_month)) {
+        $reason = 'Invalid salary month format.';
+        return false;
+    }
+
+    $current_month = date('Y-m');
+    if ($salary_month > $current_month) {
+        $req_disp = date('F Y', strtotime($salary_month . '-01'));
+        $reason = "Salary slip for {$req_disp} is not available yet.";
+        return false;
+    }
+
+    $join_info = getEmployeeJoiningDate($conn, $user_id);
+    if (!empty($join_info['joining_month']) && $salary_month < $join_info['joining_month']) {
+        $join_disp  = date('d M Y', strtotime($join_info['joining_date']));
+        $start_disp = date('F Y', strtotime($join_info['joining_month'] . '-01'));
+        $req_disp   = date('F Y', strtotime($salary_month . '-01'));
+        $reason = "Salary slip is not available for {$req_disp}. Date of joining is {$join_disp}, so slips are only available from {$start_disp} onwards.";
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * Returns today's attendance record for a user (or null)
  */
 function getTodayAttendanceRecord($conn, $user_id, $date = null) {
@@ -624,6 +758,11 @@ function recordAttendanceHeartbeat($conn, $user_id) {
  */
 function syncUserMonthlySalary($conn, $user_id, $salary_month) {
     if (!$conn || empty($user_id) || empty($salary_month)) return false;
+
+    // Never create or sync salary records for months prior to joining date or in the future
+    if (!isSalaryMonthAllowedForUser($conn, $user_id, $salary_month)) {
+        return false;
+    }
 
     try {
         ensure_attendance_schema($conn);

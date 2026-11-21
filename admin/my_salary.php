@@ -11,49 +11,66 @@ require_once __DIR__ . '/../core/attendance_helper.php';
 
 ensure_attendance_schema($conn);
 
-$filter_month = $_GET['month'] ?? date('Y-m');
-
-// Ensure user's salary is synced for this month
-syncUserMonthlySalary($conn, $user_id, $filter_month);
-
-// Fetch user's salary row
-$stmt_sal = $conn->prepare("SELECT * FROM salaries WHERE user_id = ? AND salary_month = ? LIMIT 1");
-$stmt_sal->bind_param("is", $user_id, $filter_month);
-$stmt_sal->execute();
-$my_salary = $stmt_sal->get_result()->fetch_assoc();
-$stmt_sal->close();
-
-// Fallback if not found
-if (!$my_salary) {
-    $meta = getUserAttendanceMeta($conn, $user_id);
-    $my_salary = [
-        'base_salary'      => $meta['base_salary'],
-        'allowances'       => $meta['allowances'],
-        'gross_pay'        => $meta['base_salary'] + $meta['allowances'],
-        'tax'              => 0,
-        'advance'          => 0,
-        'deductions'       => 0,
-        'previous_pending' => 0,
-        'net_salary'       => $meta['base_salary'] + $meta['allowances'],
-        'payment_status'   => 'Pending',
-        'employee_id'      => $meta['employee_id'],
-        'department'       => $meta['department'],
-        'job_title'        => $meta['job_title']
-    ];
+$filter_month = trim($_GET['month'] ?? date('Y-m'));
+if (!preg_match('/^\d{4}-\d{2}$/', $filter_month)) {
+    $filter_month = date('Y-m');
 }
 
-// Fetch itemized deductions for this user and month
-$stmt_ded = $conn->prepare("
-    SELECT d.*, t.id as ticket_id, t.ticket_number, t.status as ticket_status, t.admin_remarks
-    FROM salary_deductions d
-    LEFT JOIN deduction_tickets t ON d.id = t.deduction_id
-    WHERE d.user_id = ? AND d.salary_month = ?
-    ORDER BY d.date_incurred DESC
-");
-$stmt_ded->bind_param("is", $user_id, $filter_month);
-$stmt_ded->execute();
-$deductions = $stmt_ded->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt_ded->close();
+$current_month = date('Y-m');
+$join_info     = getEmployeeJoiningDate($conn, $user_id);
+$joining_date  = $join_info['joining_date'];
+$joining_month = $join_info['joining_month'];
+$meta          = getUserAttendanceMeta($conn, $user_id);
+
+$block_reason  = '';
+$month_allowed = isSalaryMonthAllowedForUser($conn, $user_id, $filter_month, $block_reason);
+
+$my_salary  = null;
+$deductions = [];
+
+if ($month_allowed) {
+    // Ensure user's salary is synced for this eligible month
+    syncUserMonthlySalary($conn, $user_id, $filter_month);
+
+    // Fetch user's salary row
+    $stmt_sal = $conn->prepare("SELECT * FROM salaries WHERE user_id = ? AND salary_month = ? LIMIT 1");
+    $stmt_sal->bind_param("is", $user_id, $filter_month);
+    $stmt_sal->execute();
+    $my_salary = $stmt_sal->get_result()->fetch_assoc();
+    $stmt_sal->close();
+
+    // Fallback if not found
+    if (!$my_salary) {
+        $my_salary = [
+            'user_id'          => $user_id,
+            'base_salary'      => $meta['base_salary'],
+            'allowances'       => $meta['allowances'],
+            'gross_pay'        => $meta['base_salary'] + $meta['allowances'],
+            'tax'              => 0,
+            'advance'          => 0,
+            'deductions'       => 0,
+            'previous_pending' => 0,
+            'net_salary'       => $meta['base_salary'] + $meta['allowances'],
+            'payment_status'   => 'Pending',
+            'employee_id'      => $meta['employee_id'],
+            'department'       => $meta['department'],
+            'job_title'        => $meta['job_title']
+        ];
+    }
+
+    // Fetch itemized deductions for this user and month
+    $stmt_ded = $conn->prepare("
+        SELECT d.*, t.id as ticket_id, t.ticket_number, t.status as ticket_status, t.admin_remarks
+        FROM salary_deductions d
+        LEFT JOIN deduction_tickets t ON d.id = t.deduction_id
+        WHERE d.user_id = ? AND d.salary_month = ?
+        ORDER BY d.date_incurred DESC
+    ");
+    $stmt_ded->bind_param("is", $user_id, $filter_month);
+    $stmt_ded->execute();
+    $deductions = $stmt_ded->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt_ded->close();
+}
 ?>
 
 <style>
@@ -172,20 +189,52 @@ $stmt_ded->close();
             <div>
                 <h2><i class="fas fa-file-invoice-dollar"></i> My Salary Slip & Deductions</h2>
                 <span style="font-size:13.5px; color:#64748b;">
-                    Month: <strong><?= date('F Y', strtotime($filter_month . '-01')) ?></strong> · Employee ID: <strong><?= htmlspecialchars($my_salary['employee_id'] ?: 'EMP-' . str_pad($user_id, 3, '0', STR_PAD_LEFT)) ?></strong>
+                    Month: <strong><?= date('F Y', strtotime($filter_month . '-01')) ?></strong>
+                    · Employee ID: <strong><?= htmlspecialchars(($my_salary['employee_id'] ?? '') ?: ($meta['employee_id'] ?: 'EMP-' . str_pad($user_id, 3, '0', STR_PAD_LEFT))) ?></strong>
+                    <?php if (!empty($joining_date)): ?>
+                        · Joined: <strong><?= date('d M Y', strtotime($joining_date)) ?></strong>
+                    <?php endif; ?>
                 </span>
             </div>
 
-            <div style="display:flex; align-items:center; gap:10px;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <form method="GET" style="display:flex; gap:8px; align-items:center; margin:0;">
-                    <input type="month" name="month" value="<?= htmlspecialchars($filter_month) ?>" onchange="this.form.submit()" style="padding:8px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13.5px; outline:none; background:#f8fafc;">
+                    <input type="month" name="month"
+                           value="<?= htmlspecialchars($filter_month) ?>"
+                           <?php if (!empty($joining_month)): ?>min="<?= htmlspecialchars($joining_month) ?>"<?php endif; ?>
+                           max="<?= htmlspecialchars($current_month) ?>"
+                           onchange="this.form.submit()"
+                           style="padding:8px 12px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:13.5px; outline:none; background:#f8fafc;">
                 </form>
-                <a href="generate_salary_pdf.php?user_id=<?= $my_salary['user_id'] ?>&month=<?= urlencode($filter_month) ?>" target="_blank" class="btn btn-secondary-custom" style="padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                <?php if ($month_allowed && $my_salary): ?>
+                <a href="generate_salary_pdf.php?user_id=<?= intval($user_id) ?>&month=<?= urlencode($filter_month) ?>" target="_blank" class="btn btn-secondary-custom" style="padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
                     <i class="fas fa-file-pdf" style="color:#ef4444;"></i> Print Slip (PDF)
                 </a>
+                <?php endif; ?>
             </div>
         </div>
 
+        <?php if (!$month_allowed): ?>
+        <div style="padding: 56px 28px; text-align: center; background: #fbfdfc;">
+            <div style="width:58px; height:58px; border-radius:50%; background:#fef2f2; color:#dc2626; display:inline-flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:14px;">
+                <i class="fas fa-calendar-times" style="color:#dc2626;"></i>
+            </div>
+            <h3 style="margin:0 0 8px; font-size:1.15rem; font-weight:800; color:#0f172a;">Salary Slip Not Available for This Period</h3>
+            <p style="margin:0 auto 20px; max-width:520px; font-size:13.5px; color:#64748b; line-height:1.6;">
+                <?= htmlspecialchars($block_reason) ?>
+            </p>
+            <div style="display:inline-flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+                <a href="my_salary.php?month=<?= urlencode($current_month) ?>" class="btn btn-primary-custom" style="padding:9px 18px; border-radius:8px; font-size:13px; text-decoration:none;">
+                    <i class="fas fa-calendar-day" style="color:#fff;"></i> View Current Month (<?= date('M Y') ?>)
+                </a>
+                <?php if (!empty($joining_month) && $joining_month !== $current_month): ?>
+                <a href="my_salary.php?month=<?= urlencode($joining_month) ?>" class="btn btn-secondary-custom" style="padding:9px 18px; border-radius:8px; font-size:13px; text-decoration:none;">
+                    <i class="fas fa-history"></i> View First Eligible Month (<?= date('M Y', strtotime($joining_month . '-01')) ?>)
+                </a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php else: ?>
         <!-- Slip summary grid -->
         <div class="salary-slip-grid">
             <div class="slip-box">
@@ -326,6 +375,7 @@ $stmt_ded->close();
                 </tbody>
             </table>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 
