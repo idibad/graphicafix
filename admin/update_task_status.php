@@ -37,7 +37,8 @@ if (isset($_POST['id'], $_POST['status'])) {
     $check->execute();
     $t = $check->get_result()->fetch_assoc();
 
-    if (!$t || (!$is_admin && $t['assigned_to'] != $user_id && $t['created_by'] != $user_id)) {
+    $is_member = ($t && ($t['assigned_to'] == $user_id || $t['created_by'] == $user_id || isUserAssignedToTask($conn, $task_id, $user_id)));
+    if (!$t || (!$is_admin && !$is_member)) {
         echo json_encode(['success' => false, 'message' => 'Unauthorized: You do not have permission to modify this task']);
         exit;
     }

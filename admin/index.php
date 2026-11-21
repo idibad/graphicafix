@@ -1,5 +1,7 @@
 <?php
-include 'dashboard_header.php'; 
+include 'dashboard_header.php';
+require_once __DIR__ . '/../core/task_assignees_helper.php';
+ensureTaskUserSchema($conn);
 
 // ── 1. Ensure Teacher/Student/Blogs Tables Exist ──
 $conn->query("CREATE TABLE IF NOT EXISTS live_sessions (
@@ -128,14 +130,25 @@ $notice_result = mysqli_query($conn, $notice_query);
 $notice_cout = mysqli_num_rows($notice_result);
 $notice_count = $notice_cout;
 
-// Fetch tasks based on role
+// Fetch tasks based on role (includes grouped task assignments)
 if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin') {
     $task_query = "SELECT * FROM tasks WHERE status NOT IN ('Completed', 'Cancelled') ORDER BY due_date ASC";
 } else {
-    $task_query = "SELECT * FROM tasks WHERE (assigned_to = $user_id OR created_by = $user_id) AND status NOT IN ('Completed', 'Cancelled') ORDER BY due_date ASC";
+    $access_sql = userTaskAccessSql($user_id, '');
+    $task_query = "SELECT * FROM tasks WHERE {$access_sql} AND status NOT IN ('Completed', 'Cancelled') ORDER BY due_date ASC";
 }
 $task_result = mysqli_query($conn, $task_query);
-$task_count  = mysqli_num_rows($task_result);
+$dashboard_tasks = [];
+if ($task_result) {
+    while ($tr = mysqli_fetch_assoc($task_result)) {
+        $dashboard_tasks[] = $tr;
+    }
+    if (mysqli_num_rows($task_result) > 0) {
+        mysqli_data_seek($task_result, 0);
+    }
+}
+$task_count = count($dashboard_tasks);
+$dashboard_assignees_map = getAssigneesMapForTasks($conn, array_column($dashboard_tasks, 'id'));
 
 // Fetch resources
 $resource_query  = "SELECT * FROM resources ORDER BY created_at DESC";
@@ -146,7 +159,7 @@ $resource_count  = mysqli_num_rows($resource_result);
 if (in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager', 'sales', 'user', 'hrm'])) {
     $stats_filter = "1=1";
     if (!in_array($role, ['super_admin', 'superadmin', 'admin'])) {
-        $stats_filter = "(assigned_to = $user_id OR created_by = $user_id)";
+        $stats_filter = userTaskAccessSql($user_id, '');
     }
 
     if ($role === 'super_admin' || $role === 'superadmin') {
@@ -997,23 +1010,41 @@ a.stat-card:active {
                 <span>Due Date</span>
                 <span>Done</span>
             </div>
-            <?php while($task = mysqli_fetch_assoc($task_result)): ?>
+            <?php foreach($dashboard_tasks as $task):
+                $t_members = $dashboard_assignees_map[intval($task['id'])] ?? [];
+                $t_is_group = count($t_members) > 1;
+                $t_names_title = implode(', ', array_map(function($m) { return $m['name']; }, $t_members));
+            ?>
             <div class="table-row" style="grid-template-columns:2.5fr 1fr 1fr 1.2fr 0.5fr;" id="admin-task-<?= $task['id'] ?>">
                 <div>
-                    <strong class="task-title" style="display:block;font-size:14px;margin-bottom:3px;"><?= htmlspecialchars($task['title']) ?></strong>
-                    <span style="font-size:12.5px;color:#888;"><?= htmlspecialchars(substr($task['description'],0,60)) ?><?= strlen($task['description'])>60?'…':'' ?></span>
+                    <a href="task_details.php?id=<?= $task['id'] ?>" class="task-title" style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:inherit;text-decoration:none;margin-bottom:3px;">
+                        <?= htmlspecialchars($task['title']) ?>
+                        <?php if ($t_is_group): ?>
+                        <span title="Grouped Task (<?= count($t_members) ?> members): <?= htmlspecialchars($t_names_title) ?>" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;">
+                            <i class="fas fa-users" style="font-size:9px;color:#0369a1 !important;"></i> Group (<?= count($t_members) ?>)
+                        </span>
+                        <?php endif; ?>
+                    </a>
+                    <div style="font-size:12.5px;color:#888;"><?= htmlspecialchars(substr($task['description'] ?? '',0,60)) ?><?= strlen($task['description'] ?? '')>60?'…':'' ?></div>
                 </div>
                 <span data-label="Priority">
                     <span class="task-priority priority-<?= strtolower($task['priority']) ?>"><?= $task['priority'] ?></span>
                 </span>
-                <span data-label="Assignee">
-                    <?php if (!empty($task['assigned_to'])): ?>
+                <span data-label="Assignee" title="<?= htmlspecialchars($t_names_title ?: 'Unassigned') ?>">
+                    <?php if (!empty($t_members)): ?>
+                    <div style="display:inline-flex;align-items:center;gap:6px;">
+                        <?= renderTaskAvatarStackHtml($t_members, 3, 24) ?>
+                        <span style="font-size:12px;font-weight:600;color:#334155;">
+                            <?= htmlspecialchars($t_members[0]['name']) ?><?= $t_is_group ? ' <strong style="color:#0369a1;">+' . (count($t_members) - 1) . '</strong>' : '' ?>
+                        </span>
+                    </div>
+                    <?php elseif (!empty($task['assigned_to'])): ?>
                     <span class="assignee-chip"><i class="fas fa-user"></i> User #<?= $task['assigned_to'] ?></span>
                     <?php else: ?>
                     <span style="color:#aaa;font-size:13px;">—</span>
                     <?php endif; ?>
                 </span>
-                <span data-label="Due" style="font-size:13px;color:#888;">⏰ <?= date('M d, Y', strtotime($task['due_date'])) ?></span>
+                <span data-label="Due" style="font-size:13px;color:#888;">⏰ <?= !empty($task['due_date']) ? date('M d, Y', strtotime($task['due_date'])) : 'No date' ?></span>
                 <span>
                     <input type="checkbox" class="task-status"
                         data-task-id="<?= $task['id'] ?>"
@@ -1021,7 +1052,7 @@ a.stat-card:active {
                         style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent);">
                 </span>
             </div>
-            <?php endwhile; ?>
+            <?php endforeach; ?>
         </div>
     </div>
 
@@ -1585,23 +1616,39 @@ a.stat-card:active {
                 <a href="tasks.php" class="view-all-link">Full Task Board &rarr;</a>
             </div>
             <?php if ($task_count > 0): ?>
-                <?php mysqli_data_seek($task_result, 0); while($task = mysqli_fetch_assoc($task_result)): ?>
+                <?php foreach($dashboard_tasks as $task):
+                    $t_members = $dashboard_assignees_map[intval($task['id'])] ?? [];
+                    $t_is_group = count($t_members) > 1;
+                    $t_names_title = implode(', ', array_map(function($m) { return $m['name']; }, $t_members));
+                ?>
                 <div class="task-item" style="padding:14px 16px; border-bottom:1px solid #f1f5f9; display:flex; align-items:flex-start; gap:12px;">
                     <div class="task-checkbox" style="padding-top:2px;">
                         <input type="checkbox" class="task-status" data-task-id="<?= $task['id'] ?>" <?= $task['status'] === 'Completed' ? 'checked' : '' ?> style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent);">
                     </div>
                     <div class="task-content" style="flex:1;">
-                        <div class="task-title" style="font-weight:700; color:#1e293b; font-size:14px;"><?= htmlspecialchars($task['title']) ?></div>
+                        <div class="task-title" style="font-weight:700; color:#1e293b; font-size:14px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                            <a href="task_details.php?id=<?= $task['id'] ?>" style="color:inherit;text-decoration:none;"><?= htmlspecialchars($task['title']) ?></a>
+                            <?php if ($t_is_group): ?>
+                            <span title="Grouped Task (<?= count($t_members) ?> members): <?= htmlspecialchars($t_names_title) ?>" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;">
+                                <i class="fas fa-users" style="font-size:9px;color:#0369a1 !important;"></i> Group (<?= count($t_members) ?>)
+                            </span>
+                            <?php endif; ?>
+                        </div>
                         <?php if (!empty($task['description'])): ?>
                         <div class="task-description" style="font-size:12.5px; color:#64748b; margin-top:3px;"><?= htmlspecialchars(mb_strimwidth($task['description'], 0, 95, '...')) ?></div>
                         <?php endif; ?>
-                        <div class="task-meta" style="margin-top:6px; display:flex; gap:10px; align-items:center;">
+                        <div class="task-meta" style="margin-top:6px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                             <span class="status-pill <?= strtolower($task['priority'] ?? 'low') ?>"><?= htmlspecialchars($task['priority'] ?? 'Normal') ?></span>
                             <span style="font-size:11.5px; color:#94a3b8;"><i class="fas fa-clock"></i> Due: <?= !empty($task['due_date']) ? date('M d, Y', strtotime($task['due_date'])) : 'No date' ?></span>
+                            <?php if ($t_is_group): ?>
+                            <span title="<?= htmlspecialchars($t_names_title) ?>" style="display:inline-flex;align-items:center;gap:4px;">
+                                <?= renderTaskAvatarStackHtml($t_members, 3, 20) ?>
+                            </span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
-                <?php endwhile; ?>
+                <?php endforeach; ?>
             <?php else: ?>
                 <div style="text-align:center; padding:35px 20px; color:#94a3b8;">
                     <i class="fas fa-check-double" style="font-size:2rem; margin-bottom:8px; display:block; color:#10b981;"></i>

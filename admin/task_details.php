@@ -82,10 +82,22 @@ if (!$task) {
     exit;
 }
 
-if (!$is_admin && $task['assigned_to'] != $user_id && $task['created_by'] != $user_id) {
+$is_task_member = ($task['assigned_to'] == $user_id || $task['created_by'] == $user_id || isUserAssignedToTask($conn, $task_id, $user_id));
+if (!$is_admin && !$is_task_member) {
     echo "<div class='height-100'><div class='main-card' style='text-align:center; padding: 50px;'><h2 style='color:#ef4444;'>Unauthorized Access</h2><p>You do not have permission to view this task.</p><a href='tasks.php' class='btn-primary-custom'>Go Back</a></div></div>";
     include('dashboard_footer.php');
     exit;
+}
+
+// ── Fetch Assignees (Grouped Task Support) ───────────────────────────────────
+$task_assignees     = getTaskAssignees($conn, $task_id);
+$task_assignee_ids  = array_map(function($m) { return intval($m['user_id']); }, $task_assignees);
+$is_group_task      = count($task_assignees) > 1;
+$can_manage_members = ($is_admin || intval($task['created_by']) === $user_id);
+$all_staff_for_task = [];
+if ($can_manage_members) {
+    $u_st = $conn->query("SELECT user_id AS id, name, role, department FROM users WHERE (status='active' OR status IS NULL) AND role != 'student' AND role NOT IN ('client','client_sub') ORDER BY name ASC");
+    if ($u_st) while ($ur = $u_st->fetch_assoc()) $all_staff_for_task[] = $ur;
 }
 
 // ── Fetch Subtasks, Comments, Files and History ───────────────────────────────
@@ -741,11 +753,19 @@ $priorityBadge = getPriorityBadge($task['priority']);
                 <!-- ── TAB 2: Checklist (Subtasks) ──────────────────────────── -->
                 <div id="tab-subtasks" class="td-pane">
                     <!-- Inline Add Subtask Form -->
-                    <form onsubmit="handleAddSubtask(event)" style="display:flex; gap:8px; margin-bottom:16px;">
-                        <input type="text" id="newSubtaskTitle" required placeholder="Add item..." style="flex:1; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13.5px;">
+                    <form onsubmit="handleAddSubtask(event)" style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+                        <input type="text" id="newSubtaskTitle" required placeholder="Add checklist item..." style="flex:1; min-width:180px; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13.5px;">
+                        <?php if (!empty($task_assignees)): ?>
+                        <select id="newSubtaskAssignee" style="padding:9px 10px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; color:#334155; background:#fff;">
+                            <option value="">Any member</option>
+                            <?php foreach ($task_assignees as $tm): ?>
+                            <option value="<?= intval($tm['user_id']) ?>"><?= htmlspecialchars($tm['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php endif; ?>
                         <input type="date" id="newSubtaskDue" style="padding:9px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;">
                         <button type="submit" class="btn-primary-custom" style="padding:9px 16px; font-size:13px; font-weight:700;">
-                            <i class="fas fa-plus"></i> Add
+                            <i class="fas fa-plus" style="color:#fff !important;"></i> Add
                         </button>
                     </form>
 
@@ -763,7 +783,12 @@ $priorityBadge = getPriorityBadge($task['priority']);
                                     <input type="checkbox" style="width:17px; height:17px; cursor:pointer;" <?= $is_done ? 'checked' : '' ?> onchange="handleToggleSubtask(<?= $sub['id'] ?>, this.checked)">
                                     <span class="item-title" style="font-size:13.5px; font-weight:600; color:#1e293b;"><?= htmlspecialchars($sub['title']) ?></span>
                                 </label>
-                                <div style="font-size:12px; color:#64748b;">
+                                <div style="display:flex; align-items:center; gap:8px; font-size:12px; color:#64748b;">
+                                    <?php if (!empty($sub['assignee_name'])): ?>
+                                    <span style="background:#edf5f4; color:#024442; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700;">
+                                        <?= htmlspecialchars($sub['assignee_name']) ?>
+                                    </span>
+                                    <?php endif; ?>
                                     <?= !empty($sub['due_date']) ? date('M d', strtotime($sub['due_date'])) : '' ?>
                                 </div>
                             </div>
@@ -956,18 +981,48 @@ $priorityBadge = getPriorityBadge($task['priority']);
         <div>
             <div class="td-card">
                 
-                <!-- Assignee -->
+                <!-- Assigned Team / Group Members -->
                 <div class="td-side-section">
-                    <div class="td-side-title">Assignee</div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <div style="width:34px; height:34px; border-radius:50%; background:#e6f4f2; color:#024442; font-weight:800; font-size:13px; display:inline-flex; align-items:center; justify-content:center;">
-                            <?= strtoupper(substr($task['assignee_name'] ?: 'U', 0, 1)) ?>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <div class="td-side-title" style="margin:0; display:flex; align-items:center; gap:6px;">
+                            <span><?= $is_group_task ? 'Team Members' : 'Assignee' ?></span>
+                            <?php if ($is_group_task): ?>
+                            <span style="background:#e6f4f2; color:#024442; border:1px solid #b5ded9; font-size:10px; font-weight:800; padding:1px 7px; border-radius:10px; text-transform:uppercase;">
+                                Group &middot; <?= count($task_assignees) ?>
+                            </span>
+                            <?php endif; ?>
                         </div>
-                        <div>
-                            <div style="font-size:13.5px; font-weight:700; color:#0f172a;"><?= htmlspecialchars($task['assignee_name'] ?: 'Unassigned') ?></div>
-                            <div style="font-size:11.5px; color:#64748b;"><?= htmlspecialchars($task['assignee_email']) ?></div>
-                        </div>
+                        <?php if ($can_manage_members): ?>
+                        <button type="button" onclick="openManageMembersModal()" style="background:none; border:none; color:#024442; font-size:11.5px; font-weight:700; cursor:pointer; padding:2px 6px; border-radius:6px;">
+                            <i class="fas fa-user-plus"></i> Manage
+                        </button>
+                        <?php endif; ?>
                     </div>
+
+                    <?php if (empty($task_assignees)): ?>
+                        <div style="font-size:13px; color:#94a3b8;">Unassigned</div>
+                    <?php else: ?>
+                        <div style="display:flex; flex-direction:column; gap:9px;">
+                            <?php foreach ($task_assignees as $idx => $m):
+                                $av = getTaskMemberAvatarMeta($m['name']);
+                            ?>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <div style="width:32px; height:32px; border-radius:50%; background:<?= $av['bg'] ?>; color:<?= $av['color'] ?>; font-weight:800; font-size:12px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                    <?= $av['initials'] ?>
+                                </div>
+                                <div style="min-width:0; flex:1;">
+                                    <div style="font-size:13px; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+                                        <span><?= htmlspecialchars($m['name']) ?></span>
+                                        <?php if ($is_group_task && $idx === 0): ?>
+                                        <span style="background:#f1f5f9; color:#475569; font-size:9.5px; font-weight:800; padding:1px 5px; border-radius:4px; text-transform:uppercase;">Lead</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div style="font-size:11px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($m['email']) ?></div>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Project -->
@@ -1188,6 +1243,8 @@ function handleAddSubtask(e) {
     e.preventDefault();
     const title = document.getElementById('newSubtaskTitle').value.trim();
     const dueDate = document.getElementById('newSubtaskDue').value;
+    const assigneeEl = document.getElementById('newSubtaskAssignee');
+    const assignedTo = assigneeEl ? assigneeEl.value : '';
     if (!title) return;
 
     const payload = new FormData();
@@ -1195,6 +1252,7 @@ function handleAddSubtask(e) {
     payload.append('task_id', '<?= $task_id ?>');
     payload.append('title', title);
     payload.append('due_date', dueDate);
+    if (assignedTo) payload.append('assigned_to', assignedTo);
 
     fetch('task_action.php', { method: 'POST', body: payload })
         .then(r => r.json())
@@ -1505,5 +1563,97 @@ document.addEventListener('DOMContentLoaded', () => {
     <?php endif; ?>
 });
 </script>
+
+<?php if ($can_manage_members): ?>
+<!-- Manage Task Team Members Modal -->
+<div id="manageMembersModal" class="modal-overlay" onclick="if(event.target===this)closeManageMembersModal()">
+    <div class="modal-content modal-sm">
+        <div class="modal-header">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div class="modal-header-icon"><i class="fas fa-users"></i></div>
+                <div>
+                    <h4>Manage Task Members</h4>
+                    <div style="font-size:12px; color:#64748b; margin-top:2px;">Add multiple members to collaborate on this grouped task</div>
+                </div>
+            </div>
+            <button type="button" class="modal-close" onclick="closeManageMembersModal()">&times;</button>
+        </div>
+
+        <div class="modal-body" style="padding:20px 24px !important;">
+            <input type="text" id="tdMemberSearch" oninput="filterTdMembers(this.value)" placeholder="Search team members..." style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; margin-bottom:12px; outline:none;">
+            <div id="tdMembersList" style="display:flex; flex-direction:column; gap:8px;">
+                <?php foreach ($all_staff_for_task as $st):
+                    $is_sel = in_array(intval($st['id']), $task_assignee_ids, true);
+                    $av = getTaskMemberAvatarMeta($st['name']);
+                ?>
+                <label class="td-member-row <?= $is_sel ? 'selected' : '' ?>" data-search="<?= htmlspecialchars(strtolower($st['name'] . ' ' . ($st['role'] ?? ''))) ?>" style="display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; border:1.5px solid <?= $is_sel ? '#024442' : '#e2e8f0' ?>; background:<?= $is_sel ? '#f2faf9' : '#fff' ?>; cursor:pointer; margin:0;">
+                    <input type="checkbox" class="td-member-cb" value="<?= intval($st['id']) ?>" <?= $is_sel ? 'checked' : '' ?> onchange="toggleTdMemberStyle(this)" style="width:17px; height:17px; accent-color:#024442; cursor:pointer;">
+                    <span style="width:30px; height:30px; border-radius:50%; background:<?= $av['bg'] ?>; color:<?= $av['color'] ?>; font-weight:800; font-size:11px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;"><?= $av['initials'] ?></span>
+                    <div style="min-width:0; flex:1;">
+                        <div style="font-size:13px; font-weight:700; color:#0f172a;"><?= htmlspecialchars($st['name']) ?></div>
+                        <div style="font-size:11px; color:#64748b;"><?= htmlspecialchars(ucfirst($st['role'] ?? 'Staff')) ?></div>
+                    </div>
+                </label>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary-custom" onclick="closeManageMembersModal()">Cancel</button>
+            <button type="button" class="btn-primary-custom" id="btnSaveTdMembers" onclick="saveTaskMembers()">
+                <i class="fas fa-check" style="color:#fff !important;"></i> Save Members
+            </button>
+        </div>
+    </div>
+</div>
+<script>
+function openManageMembersModal() {
+    document.getElementById('manageMembersModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+function closeManageMembersModal() {
+    document.getElementById('manageMembersModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+function toggleTdMemberStyle(cb) {
+    const row = cb.closest('.td-member-row');
+    if (row) {
+        row.style.borderColor = cb.checked ? '#024442' : '#e2e8f0';
+        row.style.background  = cb.checked ? '#f2faf9' : '#ffffff';
+    }
+}
+function filterTdMembers(q) {
+    const term = q.trim().toLowerCase();
+    document.querySelectorAll('#tdMembersList .td-member-row').forEach(r => {
+        r.style.display = (!term || (r.dataset.search || '').includes(term)) ? 'flex' : 'none';
+    });
+}
+function saveTaskMembers() {
+    const ids = Array.from(document.querySelectorAll('#tdMembersList .td-member-cb:checked')).map(cb => cb.value);
+    if (ids.length === 0) {
+        showToast('Please select at least one member', 'error');
+        return;
+    }
+    const btn = document.getElementById('btnSaveTdMembers');
+    btn.disabled = true;
+    const fd = new FormData();
+    fd.append('ajax_action', 'update_task_assignees');
+    fd.append('task_id', '<?= $task_id ?>');
+    fd.append('assignees', ids.join(','));
+    fetch('task_action.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            btn.disabled = false;
+            if (d.success) {
+                showToast(d.message || 'Members updated');
+                setTimeout(() => location.reload(), 500);
+            } else {
+                showToast(d.message || 'Failed to update members', 'error');
+            }
+        })
+        .catch(() => { btn.disabled = false; showToast('Network error', 'error'); });
+}
+</script>
+<?php endif; ?>
 
 <?php include('dashboard_footer.php'); ?>

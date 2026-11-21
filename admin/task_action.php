@@ -31,7 +31,8 @@ if ($task_id > 0) {
     $check->execute();
     $t = $check->get_result()->fetch_assoc();
 
-    if (!$t || (!$is_admin && $t['assigned_to'] != $user_id && $t['created_by'] != $user_id)) {
+    $is_member = ($t && ($t['assigned_to'] == $user_id || $t['created_by'] == $user_id || isUserAssignedToTask($conn, $task_id, $user_id)));
+    if (!$t || (!$is_admin && !$is_member)) {
         echo json_encode(['success' => false, 'message' => 'Unauthorized: You do not have permission to modify this task']); exit;
     }
 }
@@ -49,7 +50,8 @@ if ($action === 'create_task') {
     $status          = $_POST['status'] ?? 'Pending';
     $stage           = trim($_POST['stage'] ?? 'Brief');
     $due_date        = !empty($_POST['due_date']) ? $_POST['due_date'] : date('Y-m-d', strtotime('+3 days'));
-    $assigned_to     = intval($_POST['assigned_to'] ?? 0) ?: $user_id;
+    $assignee_ids    = parseAssigneeIdsInput($_POST['assignees'] ?? null, intval($_POST['assigned_to'] ?? 0) ?: $user_id);
+    $assigned_to     = !empty($assignee_ids) ? $assignee_ids[0] : $user_id;
     $project_id      = intval($_POST['project_id'] ?? 0) ?: null;
     $milestone_id    = intval($_POST['milestone_id'] ?? 0) ?: null;
     $task_type       = trim($_POST['task_type'] ?? 'Design');
@@ -73,13 +75,14 @@ if ($action === 'create_task') {
     
     if ($stmt->execute()) {
         $new_id = $conn->insert_id;
-        if ($assigned_to && $assigned_to != $user_id) {
-            if (file_exists(__DIR__ . '/../core/notification_mailer.php')) {
-                require_once __DIR__ . '/../core/notification_mailer.php';
-                if (function_exists('notifyTaskAssigned')) notifyTaskAssigned($conn, $new_id);
-            }
+        $sync_res = syncTaskAssignees($conn, $new_id, $assignee_ids, $user_id);
+        $notify_ids = array_values(array_filter($sync_res['all_ids'], function($id) use ($user_id) { return $id != $user_id; }));
+        if (!empty($notify_ids) && file_exists(__DIR__ . '/../core/notification_mailer.php')) {
+            require_once __DIR__ . '/../core/notification_mailer.php';
+            if (function_exists('notifyTaskAssigned')) notifyTaskAssigned($conn, $new_id, $notify_ids);
         }
-        echo json_encode(['success' => true, 'task_id' => $new_id, 'message' => 'Task created successfully']);
+        $lbl = $sync_res['is_group'] ? ('Grouped task created with ' . count($sync_res['all_ids']) . ' members') : 'Task created successfully';
+        echo json_encode(['success' => true, 'task_id' => $new_id, 'is_group' => $sync_res['is_group'], 'message' => $lbl]);
     } else {
         echo json_encode(['success' => false, 'message' => $conn->error]);
     }
@@ -95,7 +98,8 @@ if ($action === 'create_task') {
     $priority        = $_POST['priority'] ?? 'Medium';
     $status          = $_POST['status'] ?? 'Pending';
     $due_date        = !empty($_POST['due_date']) ? $_POST['due_date'] : date('Y-m-d');
-    $assigned_to     = intval($_POST['assigned_to'] ?? 0) ?: $user_id;
+    $assignee_ids    = parseAssigneeIdsInput($_POST['assignees'] ?? null, intval($_POST['assigned_to'] ?? 0) ?: $user_id);
+    $assigned_to     = !empty($assignee_ids) ? $assignee_ids[0] : $user_id;
     $project_id      = intval($_POST['project_id'] ?? 0) ?: null;
     $milestone_id    = intval($_POST['milestone_id'] ?? 0) ?: null;
     $task_type       = trim($_POST['task_type'] ?? 'Design');
@@ -118,19 +122,51 @@ if ($action === 'create_task') {
         exit;
     }
 
-    $stmt = $conn->prepare("UPDATE tasks SET title=?, description=?, priority=?, status=?, due_date=?, assigned_to=?, project_id=?, milestone_id=?, task_type=?, estimated_hours=?, logged_hours=?, updated_at=NOW() WHERE id=?");
-    $stmt->bind_param("sssssiiisddi", $title, $description, $priority, $status, $due_date, $assigned_to, $project_id, $milestone_id, $task_type, $estimated_hours, $logged_hours, $task_id);
+    $stmt = $conn->prepare("UPDATE tasks SET title=?, description=?, priority=?, status=?, due_date=?, project_id=?, milestone_id=?, task_type=?, estimated_hours=?, logged_hours=?, updated_at=NOW() WHERE id=?");
+    $stmt->bind_param("sssssiisddi", $title, $description, $priority, $status, $due_date, $project_id, $milestone_id, $task_type, $estimated_hours, $logged_hours, $task_id);
 
     if ($stmt->execute()) {
+        $sync_res = syncTaskAssignees($conn, $task_id, $assignee_ids, $user_id);
+        $added_notify = array_values(array_filter($sync_res['added_ids'], function($id) use ($user_id) { return $id != $user_id; }));
+        if (!empty($added_notify) && file_exists(__DIR__ . '/../core/notification_mailer.php')) {
+            require_once __DIR__ . '/../core/notification_mailer.php';
+            if (function_exists('notifyTaskAssigned')) notifyTaskAssigned($conn, $task_id, $added_notify);
+        }
         if (function_exists('recordTaskStatusTimestamp')) {
             recordTaskStatusTimestamp($conn, $task_id, $status);
         } elseif (function_exists('applyTaskDelayPenalty')) {
             applyTaskDelayPenalty($conn, $task_id);
         }
-        echo json_encode(['success' => true, 'message' => 'Task updated successfully']);
+        echo json_encode(['success' => true, 'is_group' => $sync_res['is_group'], 'message' => 'Task updated successfully']);
     } else {
         echo json_encode(['success' => false, 'message' => $conn->error]);
     }
+    exit;
+
+} elseif ($action === 'update_task_assignees') {
+    if (!$task_id || !$t) {
+        echo json_encode(['success' => false, 'message' => 'Task not found']); exit;
+    }
+    if (!$is_admin && $t['created_by'] != $user_id) {
+        echo json_encode(['success' => false, 'message' => 'Only Admins, PMs, or the task creator can manage task members']); exit;
+    }
+    $assignee_ids = parseAssigneeIdsInput($_POST['assignees'] ?? null, 0);
+    if (empty($assignee_ids)) {
+        echo json_encode(['success' => false, 'message' => 'Please select at least one team member']); exit;
+    }
+    $sync_res = syncTaskAssignees($conn, $task_id, $assignee_ids, $user_id);
+    $added_notify = array_values(array_filter($sync_res['added_ids'], function($id) use ($user_id) { return $id != $user_id; }));
+    if (!empty($added_notify) && file_exists(__DIR__ . '/../core/notification_mailer.php')) {
+        require_once __DIR__ . '/../core/notification_mailer.php';
+        if (function_exists('notifyTaskAssigned')) notifyTaskAssigned($conn, $task_id, $added_notify);
+    }
+    $members = getTaskAssignees($conn, $task_id);
+    echo json_encode([
+        'success'   => true,
+        'assignees' => $members,
+        'is_group'  => $sync_res['is_group'],
+        'message'   => 'Task members updated (' . count($members) . ' assigned)'
+    ]);
     exit;
 
 } elseif ($action === 'get_task') {
@@ -142,7 +178,9 @@ if ($action === 'create_task') {
     $stmt->bind_param("i", $task_id);
     $stmt->execute();
     $task_data = $stmt->get_result()->fetch_assoc();
-    echo json_encode(['success' => true, 'task' => $task_data]);
+    $assignees = getTaskAssignees($conn, $task_id);
+    $assignee_ids = array_map(function($m) { return intval($m['user_id']); }, $assignees);
+    echo json_encode(['success' => true, 'task' => $task_data, 'assignees' => $assignees, 'assignee_ids' => $assignee_ids]);
     exit;
 
 } elseif ($action === 'update_status') {

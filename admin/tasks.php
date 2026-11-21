@@ -24,7 +24,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['ajax_action']
         $check->execute();
         $t = $check->get_result()->fetch_assoc();
 
-        if (!$t || (!$is_admin && $t['assigned_to'] != $user_id && $t['created_by'] != $user_id)) {
+        $is_member = ($t && ($t['assigned_to'] == $user_id || $t['created_by'] == $user_id || isUserAssignedToTask($conn, $task_id, $user_id)));
+        if (!$t || (!$is_admin && !$is_member)) {
             echo json_encode(['success' => false, 'message' => 'Unauthorized']); exit;
         }
     }
@@ -81,7 +82,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['ajax_action']
         $priority        = $_POST['priority'] ?? 'Medium';
         $status          = $_POST['status'] ?? 'Pending';
         $due_date        = !empty($_POST['due_date']) ? $_POST['due_date'] : date('Y-m-d', strtotime('+3 days'));
-        $assigned_to     = intval($_POST['assigned_to'] ?? 0) ?: $user_id;
+        $assignee_ids    = parseAssigneeIdsInput($_POST['assignees'] ?? null, intval($_POST['assigned_to'] ?? 0) ?: $user_id);
+        $assigned_to     = !empty($assignee_ids) ? $assignee_ids[0] : $user_id;
         $project_id      = intval($_POST['project_id'] ?? 0) ?: null;
         $task_type       = trim($_POST['task_type'] ?? 'Design');
         $estimated_hours = floatval($_POST['estimated_hours'] ?? 0);
@@ -98,14 +100,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['ajax_action']
         
         if ($stmt->execute()) {
             $new_id = $conn->insert_id;
+            $sync_res = syncTaskAssignees($conn, $new_id, $assignee_ids, $user_id);
             if (function_exists('logActivity')) {
                 logActivity($conn, 'create_task', "Created task: '$title'", 'task', $new_id);
             }
-            if ($assigned_to && $assigned_to != $user_id && file_exists(__DIR__ . '/../core/notification_mailer.php')) {
+            $notify_ids = array_values(array_filter($sync_res['all_ids'], function($id) use ($user_id) { return $id != $user_id; }));
+            if (!empty($notify_ids) && file_exists(__DIR__ . '/../core/notification_mailer.php')) {
                 require_once __DIR__ . '/../core/notification_mailer.php';
-                if (function_exists('notifyTaskAssigned')) notifyTaskAssigned($conn, $new_id);
+                if (function_exists('notifyTaskAssigned')) notifyTaskAssigned($conn, $new_id, $notify_ids);
             }
-            echo json_encode(['success' => true, 'task_id' => $new_id, 'message' => 'Task created successfully']);
+            echo json_encode(['success' => true, 'task_id' => $new_id, 'is_group' => $sync_res['is_group'], 'message' => $sync_res['is_group'] ? ('Grouped task created with ' . count($sync_res['all_ids']) . ' members') : 'Task created successfully']);
         } else {
             echo json_encode(['success' => false, 'message' => $conn->error]);
         }
@@ -119,7 +123,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['ajax_action']
         $stmt->bind_param("i", $task_id);
         $stmt->execute();
         $task_data = $stmt->get_result()->fetch_assoc();
-        echo json_encode(['success' => true, 'task' => $task_data]);
+        $t_assignees = getTaskAssignees($conn, $task_id);
+        $t_assignee_ids = array_map(function($m) { return intval($m['user_id']); }, $t_assignees);
+        echo json_encode(['success' => true, 'task' => $task_data, 'assignees' => $t_assignees, 'assignee_ids' => $t_assignee_ids]);
         exit;
 
     } elseif ($action === 'edit_task') {
@@ -132,7 +138,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['ajax_action']
         $priority        = $_POST['priority'] ?? 'Medium';
         $status          = $_POST['status'] ?? 'Pending';
         $due_date        = !empty($_POST['due_date']) ? $_POST['due_date'] : date('Y-m-d');
-        $assigned_to     = intval($_POST['assigned_to'] ?? 0) ?: $user_id;
+        $assignee_ids    = parseAssigneeIdsInput($_POST['assignees'] ?? null, intval($_POST['assigned_to'] ?? 0) ?: $user_id);
+        $assigned_to     = !empty($assignee_ids) ? $assignee_ids[0] : $user_id;
         $project_id      = intval($_POST['project_id'] ?? 0) ?: null;
         $task_type       = trim($_POST['task_type'] ?? 'Design');
         $estimated_hours = floatval($_POST['estimated_hours'] ?? 0);
@@ -149,10 +156,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['ajax_action']
             $status = 'In Review';
         }
 
-        $stmt = $conn->prepare("UPDATE tasks SET title=?, description=?, priority=?, status=?, due_date=?, assigned_to=?, project_id=?, task_type=?, estimated_hours=?, logged_hours=?, updated_at=NOW() WHERE id=?");
-        $stmt->bind_param("sssssiisddi", $title, $description, $priority, $status, $due_date, $assigned_to, $project_id, $task_type, $estimated_hours, $logged_hours, $task_id);
+        $stmt = $conn->prepare("UPDATE tasks SET title=?, description=?, priority=?, status=?, due_date=?, project_id=?, task_type=?, estimated_hours=?, logged_hours=?, updated_at=NOW() WHERE id=?");
+        $stmt->bind_param("sssssisddi", $title, $description, $priority, $status, $due_date, $project_id, $task_type, $estimated_hours, $logged_hours, $task_id);
         
         if ($stmt->execute()) {
+            $sync_res = syncTaskAssignees($conn, $task_id, $assignee_ids, $user_id);
+            $added_notify = array_values(array_filter($sync_res['added_ids'], function($id) use ($user_id) { return $id != $user_id; }));
+            if (!empty($added_notify) && file_exists(__DIR__ . '/../core/notification_mailer.php')) {
+                require_once __DIR__ . '/../core/notification_mailer.php';
+                if (function_exists('notifyTaskAssigned')) notifyTaskAssigned($conn, $task_id, $added_notify);
+            }
             if (file_exists(__DIR__ . '/../core/task_delay_helper.php')) {
                 require_once __DIR__ . '/../core/task_delay_helper.php';
                 if (function_exists('recordTaskStatusTimestamp')) {
@@ -162,7 +175,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['ajax_action']
             if (function_exists('logActivity')) {
                 logActivity($conn, 'edit_task', "Updated task: '$title'", 'task', $task_id);
             }
-            echo json_encode(['success' => true, 'message' => 'Task updated successfully']);
+            echo json_encode(['success' => true, 'is_group' => $sync_res['is_group'], 'message' => 'Task updated successfully']);
         } else {
             echo json_encode(['success' => false, 'message' => $conn->error]);
         }
@@ -189,7 +202,7 @@ $is_admin        = $can_create_task;
 // â”€â”€ Build Base WHERE clause based on Role & Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $where_parts = [];
 if (!$is_admin) {
-    $where_parts[] = "(t.assigned_to = $user_id OR t.created_by = $user_id)";
+    $where_parts[] = userTaskAccessSql($user_id, 't');
 }
 
 // Search Filter
@@ -199,10 +212,16 @@ if ($filter_q !== '') {
     $where_parts[] = "(t.title LIKE '%$safe_q%' OR t.description LIKE '%$safe_q%' OR t.task_type LIKE '%$safe_q%')";
 }
 
-// Assignee Filter
+// Assignee Filter (includes both lead and group members)
 $filter_assignee = intval($_GET['assignee'] ?? 0);
 if ($filter_assignee > 0) {
-    $where_parts[] = "t.assigned_to = $filter_assignee";
+    $where_parts[] = assigneeFilterSql($filter_assignee, 't');
+}
+
+// Grouped Tasks Only Filter
+$filter_grouped = intval($_GET['grouped'] ?? 0);
+if ($filter_grouped === 1) {
+    $where_parts[] = groupedTasksOnlySql('t');
 }
 
 // Priority Filter
@@ -252,7 +271,20 @@ $tasks_by_column = [
 
 $all_tasks_list = [];
 
+$raw_tasks = [];
 while ($task = $tasks_result->fetch_assoc()) {
+    $raw_tasks[] = $task;
+}
+$assignees_map = getAssigneesMapForTasks($conn, array_column($raw_tasks, 'id'));
+$grouped_tasks_count = 0;
+foreach ($raw_tasks as $task) {
+    $t_assignees = $assignees_map[intval($task['id'])] ?? [];
+    $task['assignees'] = $t_assignees;
+    $task['is_group']  = count($t_assignees) > 1;
+    $task['assignees_names'] = !empty($t_assignees)
+        ? implode(', ', array_map(function($m) { return $m['name']; }, $t_assignees))
+        : ($task['assignee_name'] ?: 'Unassigned');
+    if ($task['is_group']) $grouped_tasks_count++;
     $s = $task['status'];
     if ($s === 'Pending Review') $s = 'In Review';
     if (!isset($tasks_by_column[$s])) $s = 'Pending';
@@ -371,6 +403,22 @@ function getUserInitials($name) {
 
 .kanban-cards-list { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden !important; width: 100% !important; box-sizing: border-box !important; }
 .kanban-task-card { width: 100% !important; max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; overflow: hidden; }
+.task-group-chip { display:inline-flex; align-items:center; gap:4px; background:#e6f4f2; color:#024442; border:1px solid #b5ded9; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:6px; white-space:nowrap; }
+.task-group-chip i { font-size:9.5px; color:#024442 !important; }
+.tm-picker-wrap { border:1px solid #dbe2ea; border-radius:10px; background:#f8fafc; padding:10px; }
+.tm-selected-pills { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px; min-height:24px; }
+.tm-pill { display:inline-flex; align-items:center; gap:5px; background:#024442; color:#fff; padding:3px 9px; border-radius:14px; font-size:11.5px; font-weight:700; }
+.tm-pill .tm-lead-tag { background:rgba(255,255,255,0.22); font-size:9.5px; padding:1px 5px; border-radius:6px; text-transform:uppercase; }
+.tm-pill button { background:none; border:none; color:rgba(255,255,255,0.85); cursor:pointer; font-size:13px; line-height:1; padding:0; }
+.tm-member-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(175px, 1fr)); gap:6px; max-height:165px; overflow-y:auto; margin-top:6px; }
+.tm-member-opt { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; background:#fff; border:1.5px solid #e2e8f0; cursor:pointer; transition:all .14s ease; margin:0; }
+.tm-member-opt input { display:none; }
+.tm-member-opt:hover { border-color:#94a3b8; }
+.tm-member-opt.selected { border-color:#024442; background:#eff9f7; }
+.tm-member-opt strong { font-size:12px; color:#0f172a; display:block; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tm-member-opt small { font-size:10.5px; color:#64748b; display:block; }
+.tm-check { margin-left:auto; font-size:11px; color:#024442 !important; opacity:0; }
+.tm-member-opt.selected .tm-check { opacity:1; }
 </style>
 
 <div class="height-100 workspace-wrapper">
@@ -398,6 +446,12 @@ function getUserInitials($name) {
         </div>
 
         <div class="header-right-col">
+            <!-- Grouped Tasks Quick Filter -->
+            <a href="tasks.php<?= $filter_grouped ? '' : '?grouped=1' ?>" class="btn-ctrl-action <?= $filter_grouped ? 'active-filter' : '' ?>" style="text-decoration:none;" title="Show grouped multi-member tasks">
+                <i class="fas fa-users"></i>
+                <span>Grouped<?= $grouped_tasks_count > 0 ? ' (' . $grouped_tasks_count . ')' : '' ?></span>
+            </a>
+
             <!-- Share button -->
             <button type="button" class="btn-ctrl-action" id="btnShareWorkspace" onclick="copyShareLink()">
                 <i class="fas fa-share-alt"></i>
@@ -564,16 +618,21 @@ function getUserInitials($name) {
                             $log_str = formatDuration($task['logged_hours']);
                         ?>
                         <div class="kanban-task-card" draggable="true" data-id="<?= $task['id'] ?>" data-status="<?= $status_key ?>">
-                            <!-- Card Top: Tag + Assignee Avatar -->
+                            <!-- Card Top: Tag + Group Badge + Assignee Avatar Stack -->
                             <div class="card-top-row">
-                                <span class="task-tag-chip" style="background: <?= $badge['bg'] ?>; color: <?= $badge['color'] ?>; border: 1px solid <?= $badge['border'] ?>;">
-                                    <?= htmlspecialchars($badge['label']) ?>
-                                </span>
+                                <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap; min-width:0;">
+                                    <span class="task-tag-chip" style="background: <?= $badge['bg'] ?>; color: <?= $badge['color'] ?>; border: 1px solid <?= $badge['border'] ?>;">
+                                        <?= htmlspecialchars($badge['label']) ?>
+                                    </span>
+                                    <?php if (!empty($task['is_group'])): ?>
+                                    <span class="task-group-chip" title="Grouped Task: <?= htmlspecialchars($task['assignees_names']) ?>">
+                                        <i class="fas fa-users"></i> <?= count($task['assignees']) ?>
+                                    </span>
+                                    <?php endif; ?>
+                                </div>
 
                                 <div class="card-top-right">
-                                    <div class="task-avatar-circle" style="background: <?= $avatar['bg'] ?>; color: <?= $avatar['color'] ?>;" title="<?= htmlspecialchars($task['assignee_name'] ?: 'Unassigned') ?>">
-                                        <?= $initials ?>
-                                    </div>
+                                    <?= renderTaskAvatarStackHtml($task['assignees'], 3, 26) ?>
                                     <div class="dropdown d-inline-block">
                                         <button type="button" class="btn-card-more" data-bs-toggle="dropdown" aria-expanded="false" onclick="event.stopPropagation();">
                                             <i class="fas fa-ellipsis-v"></i>
@@ -718,11 +777,18 @@ function getUserInitials($name) {
                                     <span class="list-project-name"><?= htmlspecialchars($t['project_name'] ?: 'â€”') ?></span>
                                 </td>
                                 <td>
-                                    <div class="list-assignee-cell">
-                                        <div class="task-avatar-circle small" style="background: <?= $avatar['bg'] ?>; color: <?= $avatar['color'] ?>;">
-                                            <?= $initials ?>
-                                        </div>
-                                        <span><?= htmlspecialchars($t['assignee_name'] ?: 'Unassigned') ?></span>
+                                    <div class="list-assignee-cell" style="gap:8px;">
+                                        <?= renderTaskAvatarStackHtml($t['assignees'], 3, 24) ?>
+                                        <span style="font-size:12.5px;" title="<?= htmlspecialchars($t['assignees_names']) ?>">
+                                            <?php
+                                            $a_cnt = count($t['assignees']);
+                                            if ($a_cnt > 1) {
+                                                echo htmlspecialchars($t['assignees'][0]['name']) . ' <span class="task-group-chip" style="margin-left:3px;">+' . ($a_cnt - 1) . '</span>';
+                                            } else {
+                                                echo htmlspecialchars($t['assignees_names']);
+                                            }
+                                            ?>
+                                        </span>
                                     </div>
                                 </td>
                                 <td>
@@ -826,8 +892,8 @@ function getUserInitials($name) {
                             <?php foreach ($cell_tasks as $ct): 
                                 $badge = getTaskTypeBadge($ct['task_type'], $ct['priority']);
                             ?>
-                            <a href="task_details.php?id=<?= $ct['id'] ?>" class="cal-task-pill" title="<?= htmlspecialchars($ct['title']) ?>" style="background: <?= $badge['bg'] ?>; color: <?= $badge['color'] ?>; display:block; text-decoration:none;">
-                                <?= htmlspecialchars(mb_strimwidth($ct['title'], 0, 18, '..')) ?>
+                            <a href="task_details.php?id=<?= $ct['id'] ?>" class="cal-task-pill" title="<?= htmlspecialchars($ct['title'] . (!empty($ct['is_group']) ? ' (Group: ' . $ct['assignees_names'] . ')' : '')) ?>" style="background: <?= $badge['bg'] ?>; color: <?= $badge['color'] ?>; display:block; text-decoration:none;">
+                                <?php if (!empty($ct['is_group'])): ?><i class="fas fa-users" style="font-size:9px;margin-right:3px;color:inherit !important;"></i><?php endif; ?><?= htmlspecialchars(mb_strimwidth($ct['title'], 0, 18, '..')) ?>
                             </a>
                             <?php endforeach; ?>
                         </div>
@@ -869,7 +935,7 @@ function getUserInitials($name) {
                                 <td><a href="task_details.php?id=<?= $t['id'] ?>" style="color:#0f172a; text-decoration:none; font-weight:700;" onmouseover="this.style.color='#024442'" onmouseout="this.style.color='#0f172a'"><?= htmlspecialchars($t['title']) ?></a></td>
                                 <td><?= htmlspecialchars($t['task_type'] ?: 'General') ?></td>
                                 <td><?= htmlspecialchars($t['project_name'] ?: 'None') ?></td>
-                                <td><?= htmlspecialchars($t['assignee_name'] ?: 'Unassigned') ?></td>
+                                <td><?= htmlspecialchars($t['assignees_names']) ?><?php if (!empty($t['is_group'])): ?> <span class="task-group-chip">Group</span><?php endif; ?></td>
                                 <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($t['status']) ?></span></td>
                                 <td><?= ucfirst($t['priority']) ?></td>
                                 <td><?= !empty($t['due_date']) ? $t['due_date'] : 'â€”' ?></td>
@@ -939,18 +1005,37 @@ function getUserInitials($name) {
                         </div>
                     </div>
 
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
+                            <label class="form-label-custom mb-0">
+                                Assigned Members <span class="text-danger">*</span>
+                                <span id="modalGroupBadge" class="task-group-chip ms-1" style="display:none;"><i class="fas fa-users"></i> Grouped (<span id="modalGroupCount">0</span>)</span>
+                            </label>
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="text" id="modalMemberSearch" oninput="filterModalMembers(this.value)" placeholder="Filter team..." style="padding:3px 8px;font-size:12px;border:1px solid #cbd5e1;border-radius:6px;width:140px;">
+                                <button type="button" onclick="clearModalMembers()" style="background:none;border:none;font-size:11.5px;color:#dc2626;font-weight:700;cursor:pointer;">Clear</button>
+                            </div>
+                        </div>
+                        <div class="tm-picker-wrap">
+                            <div id="modalSelectedPills" class="tm-selected-pills"></div>
+                            <div class="tm-member-grid" id="modalMemberGrid">
+                                <?php foreach ($users_list as $u): $avm = getTaskMemberAvatarMeta($u['name']); ?>
+                                <label class="tm-member-opt" data-search="<?= htmlspecialchars(strtolower($u['name'] . ' ' . ($u['role'] ?? ''))) ?>">
+                                    <input type="checkbox" name="assignees[]" value="<?= intval($u['id']) ?>" onchange="syncModalMemberPicker()">
+                                    <span class="task-avatar-circle" style="width:26px;height:26px;font-size:10px;background:<?= $avm['bg'] ?>;color:<?= $avm['color'] ?>;flex-shrink:0;"><?= $avm['initials'] ?></span>
+                                    <span style="min-width:0;flex:1;">
+                                        <strong><?= htmlspecialchars($u['name']) ?></strong>
+                                        <small><?= htmlspecialchars(ucfirst($u['role'] ?? 'Staff')) ?></small>
+                                    </span>
+                                    <i class="fas fa-check tm-check"></i>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label-custom">Assignee</label>
-                            <select name="assigned_to" id="modalTaskAssignee" class="form-select modern-input">
-                                <?php foreach ($users_list as $u): ?>
-                                <option value="<?= $u['id'] ?>" <?= $u['id'] == $user_id ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($u['name']) ?> (<?= htmlspecialchars($u['role']) ?>)
-                                </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
                             <label class="form-label-custom">Priority</label>
                             <select name="priority" id="modalTaskPriority" class="form-select modern-input">
                                 <option value="Low">Low</option>
@@ -958,7 +1043,7 @@ function getUserInitials($name) {
                                 <option value="High">High</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-6">
                             <label class="form-label-custom">Column / Status</label>
                             <select name="status" id="modalTaskStatus" class="form-select modern-input">
                                 <option value="Pending">To-do</option>
@@ -1352,6 +1437,72 @@ function getModalInstance() {
     return bsModal;
 }
 
+let modalSelectedOrder = [];
+
+function setModalAssignees(ids) {
+    modalSelectedOrder = (ids || []).map(x => String(x));
+    document.querySelectorAll('#modalMemberGrid input[type="checkbox"]').forEach(cb => {
+        cb.checked = modalSelectedOrder.includes(String(cb.value));
+    });
+    syncModalMemberPicker();
+}
+
+function syncModalMemberPicker() {
+    const grid = document.getElementById('modalMemberGrid');
+    if (!grid) return;
+    const checkedMap = {};
+    grid.querySelectorAll('.tm-member-opt').forEach(opt => {
+        const cb = opt.querySelector('input[type="checkbox"]');
+        opt.classList.toggle('selected', cb.checked);
+        if (cb.checked) {
+            const id = String(cb.value);
+            checkedMap[id] = opt.querySelector('strong').textContent;
+            if (!modalSelectedOrder.includes(id)) modalSelectedOrder.push(id);
+        }
+    });
+    modalSelectedOrder = modalSelectedOrder.filter(id => !!checkedMap[id]);
+
+    const badge = document.getElementById('modalGroupBadge');
+    const cntEl = document.getElementById('modalGroupCount');
+    if (modalSelectedOrder.length > 1) {
+        badge.style.display = 'inline-flex';
+        cntEl.textContent = modalSelectedOrder.length;
+    } else {
+        badge.style.display = 'none';
+    }
+
+    const pills = document.getElementById('modalSelectedPills');
+    if (modalSelectedOrder.length === 0) {
+        pills.innerHTML = '<span style="font-size:11.5px;color:#94a3b8;">Select 1 member (individual) or 2+ members (Grouped Task)</span>';
+    } else {
+        pills.innerHTML = modalSelectedOrder.map((id, idx) => `
+            <span class="tm-pill">
+                <span>${checkedMap[id]}</span>
+                ${idx === 0 && modalSelectedOrder.length > 1 ? '<span class="tm-lead-tag">Lead</span>' : ''}
+                <button type="button" onclick="removeModalMember('${id}')">&times;</button>
+            </span>
+        `).join('');
+    }
+}
+
+function removeModalMember(id) {
+    const cb = document.querySelector(`#modalMemberGrid input[value="${id}"]`);
+    if (cb) { cb.checked = false; syncModalMemberPicker(); }
+}
+
+function clearModalMembers() {
+    modalSelectedOrder = [];
+    document.querySelectorAll('#modalMemberGrid input[type="checkbox"]').forEach(cb => cb.checked = false);
+    syncModalMemberPicker();
+}
+
+function filterModalMembers(q) {
+    const term = q.trim().toLowerCase();
+    document.querySelectorAll('#modalMemberGrid .tm-member-opt').forEach(opt => {
+        opt.style.display = (!term || (opt.dataset.search || '').includes(term)) ? 'flex' : 'none';
+    });
+}
+
 function openAddTaskModal(preselectedStatus = 'Pending') {
     if (!window.CAN_CREATE_TASK) {
         showToast('Restricted: Only Super Admins, Admins, and Project Managers can create tasks.', 'error');
@@ -1362,6 +1513,9 @@ function openAddTaskModal(preselectedStatus = 'Pending') {
     document.getElementById('modalAjaxAction').value = 'create_task';
     document.getElementById('taskModalLabel').textContent = 'Create New Task';
     document.getElementById('modalTaskStatus').value = preselectedStatus;
+    const srch = document.getElementById('modalMemberSearch');
+    if (srch) { srch.value = ''; filterModalMembers(''); }
+    setModalAssignees([<?= intval($user_id) ?>]);
     getModalInstance().show();
 }
 
@@ -1376,13 +1530,16 @@ function openEditTaskModal(taskId) {
                 document.getElementById('modalTaskTitle').value = t.title || '';
                 document.getElementById('modalTaskType').value = t.task_type || '';
                 document.getElementById('modalTaskProject').value = t.project_id || '';
-                document.getElementById('modalTaskAssignee').value = t.assigned_to || '';
                 document.getElementById('modalTaskPriority').value = t.priority || 'Medium';
                 document.getElementById('modalTaskStatus').value = t.status || 'Pending';
                 document.getElementById('modalTaskDueDate').value = t.due_date || '';
                 document.getElementById('modalTaskEstHours').value = t.estimated_hours || 0;
                 document.getElementById('modalTaskLogHours').value = t.logged_hours || 0;
                 document.getElementById('modalTaskDesc').value = t.description || '';
+                const srch = document.getElementById('modalMemberSearch');
+                if (srch) { srch.value = ''; filterModalMembers(''); }
+                const ids = (res.assignee_ids && res.assignee_ids.length) ? res.assignee_ids : (t.assigned_to ? [t.assigned_to] : []);
+                setModalAssignees(ids);
                 getModalInstance().show();
             } else {
                 showToast(res.message || 'Could not load task details', 'error');
@@ -1395,9 +1552,16 @@ function openEditTaskModal(taskId) {
 
 function handleTaskFormSubmit(e) {
     e.preventDefault();
+    if (modalSelectedOrder.length === 0) {
+        showToast('Please select at least one team member.', 'error');
+        return;
+    }
     const form = e.target;
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
+    delete data['assignees[]'];
+    data.assignees = modalSelectedOrder.join(',');
+    data.assigned_to = modalSelectedOrder[0] || '';
 
     postTaskAction(data)
         .then(res => {

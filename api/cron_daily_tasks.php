@@ -22,12 +22,17 @@ if (!$is_cli && $provided_token !== $expected_token) {
 }
 
 // Adjust this path if this script is moved
-require_once __DIR__ . '/../core/config.php'; 
+require_once __DIR__ . '/../core/config.php';
+require_once __DIR__ . '/../core/task_assignees_helper.php';
+ensureTaskUserSchema($conn);
 
-// Fetch tasks for staff members
-$sql = "SELECT u.user_id, u.name, u.email, t.title, t.priority, t.status, t.due_date 
+// Fetch tasks for staff members (supports both single and grouped tasks via task_user)
+$sql = "SELECT DISTINCT u.user_id, u.name, u.email, t.id AS task_id, t.title, t.priority, t.status, t.due_date 
         FROM users u
-        JOIN tasks t ON u.user_id = t.assigned_to
+        JOIN tasks t ON (
+            u.user_id = t.assigned_to
+            OR EXISTS (SELECT 1 FROM task_user tu WHERE tu.task_id = t.id AND tu.user_id = u.user_id)
+        )
         WHERE u.role != 'student' AND u.role NOT IN ('client', 'client_sub') 
         AND (u.status = 'active' OR u.status IS NULL)
         AND t.status IN ('Pending', 'In Progress')

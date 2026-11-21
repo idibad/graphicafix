@@ -73,68 +73,118 @@ if (!function_exists('sendNotificationEmail')) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 if (!function_exists('notifyTaskAssigned')) {
-    function notifyTaskAssigned($conn, $task_id) {
+    function notifyTaskAssigned($conn, $task_id, $specific_user_ids = null) {
         $task_id = intval($task_id);
         if ($task_id <= 0 || !$conn) return false;
 
+        require_once __DIR__ . '/task_assignees_helper.php';
+
         $stmt = $conn->prepare("
             SELECT t.title, t.priority, t.due_date, t.description, t.assigned_to,
-                   u.name as assignee_name, u.email as assignee_email,
                    c.name as creator_name, p.project_name
             FROM tasks t
-            JOIN users u ON t.assigned_to = u.user_id
             LEFT JOIN users c ON t.created_by = c.user_id
             LEFT JOIN projects p ON t.project_id = p.id
-            WHERE t.id = ? AND (u.status = 'active' OR u.status IS NULL)
+            WHERE t.id = ?
+            LIMIT 1
         ");
         $stmt->bind_param("i", $task_id);
         $stmt->execute();
         $task = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        if (!$task || empty($task['assignee_email'])) return false;
+        if (!$task) return false;
+
+        $all_assignees = getTaskAssignees($conn, $task_id);
+        if (empty($all_assignees)) return false;
+
+        $is_group = count($all_assignees) > 1;
+        $team_names = implode(', ', array_map(function($m) { return $m['name'] ?? ''; }, $all_assignees));
+
+        $target_list = $all_assignees;
+        if (is_array($specific_user_ids)) {
+            $filter_set = array_map('intval', $specific_user_ids);
+            $target_list = array_values(array_filter($all_assignees, function($m) use ($filter_set) {
+                return in_array(intval($m['user_id']), $filter_set, true);
+            }));
+        }
+        if (empty($target_list)) return false;
 
         $siteUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'https://graphicafix.com';
         $ctaUrl  = $siteUrl . '/admin/task_details.php?id=' . $task_id;
 
-        $subject = "Task Assigned: " . $task['title'];
-        $heading = "New Task Assigned to You";
+        $subject = ($is_group ? "Grouped Task Assigned: " : "Task Assigned: ") . $task['title'];
+        $heading = $is_group ? "New Grouped Task Assigned to Your Team" : "New Task Assigned to You";
 
         $dueDate = !empty($task['due_date']) ? date('M d, Y', strtotime($task['due_date'])) : 'No due date';
         $projName = !empty($task['project_name']) ? htmlspecialchars($task['project_name']) : 'General Task';
         $creatorName = !empty($task['creator_name']) ? htmlspecialchars($task['creator_name']) : 'Management';
 
-        $body = "
-        <p style='margin:0 0 16px 0;'>Hello <strong>" . htmlspecialchars($task['assignee_name']) . "</strong>,</p>
-        <p style='margin:0 0 20px 0;'>You have been assigned a new task by <strong>{$creatorName}</strong>:</p>
-        
-        <table style='width:100%; border-collapse:collapse; margin-bottom:20px; font-size:14px;'>
-            <tr>
-                <td style='padding:8px 0; color:#64748b; font-weight:600; width:130px; border-bottom:1px solid #f1f5f9;'>Task Title:</td>
-                <td style='padding:8px 0; color:#0f172a; font-weight:700; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($task['title']) . "</td>
-            </tr>
-            <tr>
-                <td style='padding:8px 0; color:#64748b; font-weight:600; border-bottom:1px solid #f1f5f9;'>Project:</td>
-                <td style='padding:8px 0; color:#0f172a; font-weight:600; border-bottom:1px solid #f1f5f9;'>{$projName}</td>
-            </tr>
-            <tr>
-                <td style='padding:8px 0; color:#64748b; font-weight:600; border-bottom:1px solid #f1f5f9;'>Priority:</td>
-                <td style='padding:8px 0; color:#0f172a; font-weight:600; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($task['priority']) . "</td>
-            </tr>
-            <tr>
-                <td style='padding:8px 0; color:#64748b; font-weight:600;'>Due Date:</td>
-                <td style='padding:8px 0; color:#024442; font-weight:700;'>{$dueDate}</td>
-            </tr>
-        </table>";
+        $sent_any = false;
+        foreach ($target_list as $member) {
+            $m_uid   = intval($member['user_id']);
+            $m_name  = $member['name'] ?? 'Team Member';
+            $m_email = trim($member['email'] ?? '');
 
-        if (!empty($task['description'])) {
-            $body .= "
-            <div style='background:#f8fafc; border-left:3px solid #024442; padding:12px 16px; margin-bottom:20px; color:#475569;'>
-                " . nl2br(htmlspecialchars($task['description'])) . "
-            </div>";
+            // In-app notification for every assigned member
+            try {
+                $notif_title = ($is_group ? "Grouped Task: " : "Task Assigned: ") . $task['title'];
+                $notif_msg   = $is_group
+                    ? "Assigned by {$creatorName} with team: {$team_names}. Due: {$dueDate}"
+                    : "Assigned by {$creatorName}. Priority: {$task['priority']} · Due: {$dueDate}";
+                $notif_link  = "task_details.php?id={$task_id}";
+                $ins_n = @$conn->prepare("INSERT INTO notifications (type, title, message, link, reference_id, user_id, created_at) VALUES ('task_assigned', ?, ?, ?, ?, ?, NOW())");
+                if ($ins_n) {
+                    $ins_n->bind_param("sssii", $notif_title, $notif_msg, $notif_link, $task_id, $m_uid);
+                    $ins_n->execute();
+                    $ins_n->close();
+                }
+            } catch (Throwable $e) {}
+
+            if (empty($m_email)) continue;
+
+            $team_row = $is_group ? "
+            <tr>
+                <td style='padding:8px 0; color:#64748b; font-weight:600; border-bottom:1px solid #f1f5f9;'>Team Members:</td>
+                <td style='padding:8px 0; color:#024442; font-weight:700; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($team_names) . " (" . count($all_assignees) . " members)</td>
+            </tr>" : "";
+
+            $body = "
+            <p style='margin:0 0 16px 0;'>Hello <strong>" . htmlspecialchars($m_name) . "</strong>,</p>
+            <p style='margin:0 0 20px 0;'>You have been assigned to a " . ($is_group ? "<strong>grouped team task</strong>" : "new task") . " by <strong>{$creatorName}</strong>:</p>
+
+            <table style='width:100%; border-collapse:collapse; margin-bottom:20px; font-size:14px;'>
+                <tr>
+                    <td style='padding:8px 0; color:#64748b; font-weight:600; width:130px; border-bottom:1px solid #f1f5f9;'>Task Title:</td>
+                    <td style='padding:8px 0; color:#0f172a; font-weight:700; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($task['title']) . "</td>
+                </tr>
+                {$team_row}
+                <tr>
+                    <td style='padding:8px 0; color:#64748b; font-weight:600; border-bottom:1px solid #f1f5f9;'>Project:</td>
+                    <td style='padding:8px 0; color:#0f172a; font-weight:600; border-bottom:1px solid #f1f5f9;'>{$projName}</td>
+                </tr>
+                <tr>
+                    <td style='padding:8px 0; color:#64748b; font-weight:600; border-bottom:1px solid #f1f5f9;'>Priority:</td>
+                    <td style='padding:8px 0; color:#0f172a; font-weight:600; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($task['priority']) . "</td>
+                </tr>
+                <tr>
+                    <td style='padding:8px 0; color:#64748b; font-weight:600;'>Due Date:</td>
+                    <td style='padding:8px 0; color:#024442; font-weight:700;'>{$dueDate}</td>
+                </tr>
+            </table>";
+
+            if (!empty($task['description'])) {
+                $body .= "
+                <div style='background:#f8fafc; border-left:3px solid #024442; padding:12px 16px; margin-bottom:20px; color:#475569;'>
+                    " . nl2br(htmlspecialchars($task['description'])) . "
+                </div>";
+            }
+
+            if (sendNotificationEmail($m_email, $subject, $heading, $body, "Open Task Details", $ctaUrl)) {
+                $sent_any = true;
+            }
         }
-
-        return sendNotificationEmail($task['assignee_email'], $subject, $heading, $body, "Open Task Details", $ctaUrl);
+        return $sent_any;
     }
 }
 
@@ -144,6 +194,8 @@ if (!function_exists('notifyTaskStatusChanged')) {
         $changed_by_user_id = intval($changed_by_user_id);
         if ($task_id <= 0 || !$conn) return false;
 
+        require_once __DIR__ . '/task_assignees_helper.php';
+
         $stmt = $conn->prepare("
             SELECT t.title, t.created_by, t.assigned_to, t.project_id,
                    c.name as creator_name, c.email as creator_email, c.status as creator_status,
@@ -152,7 +204,7 @@ if (!function_exists('notifyTaskStatusChanged')) {
             LEFT JOIN users c ON t.created_by = c.user_id
             LEFT JOIN users u ON u.user_id = ?
             LEFT JOIN projects p ON t.project_id = p.id
-            WHERE t.id = ? AND (c.status = 'active' OR c.status IS NULL)
+            WHERE t.id = ?
         ");
         $stmt->bind_param("ii", $changed_by_user_id, $task_id);
         $stmt->execute();
@@ -161,15 +213,25 @@ if (!function_exists('notifyTaskStatusChanged')) {
 
         if (!$task) return false;
 
-        // Notify the task creator if different from the updater
-        $targetEmail = '';
-        $targetName  = '';
+        // Collect recipients: task creator + all assigned group members (excluding updater)
+        $recipients = [];
         if ($task['created_by'] != $changed_by_user_id && !empty($task['creator_email'])) {
-            $targetEmail = $task['creator_email'];
-            $targetName  = $task['creator_name'];
+            $recipients[strtolower($task['creator_email'])] = [
+                'name'  => $task['creator_name'] ?: 'Manager',
+                'email' => $task['creator_email']
+            ];
+        }
+        $members = getTaskAssignees($conn, $task_id);
+        foreach ($members as $m) {
+            if (intval($m['user_id']) !== $changed_by_user_id && !empty($m['email'])) {
+                $recipients[strtolower($m['email'])] = [
+                    'name'  => $m['name'] ?: 'Team Member',
+                    'email' => $m['email']
+                ];
+            }
         }
 
-        if (empty($targetEmail)) return false;
+        if (empty($recipients)) return false;
 
         $siteUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'https://graphicafix.com';
         $ctaUrl  = $siteUrl . '/admin/task_details.php?id=' . $task_id;
@@ -178,26 +240,32 @@ if (!function_exists('notifyTaskStatusChanged')) {
         $subject = "Task Updated: " . $task['title'] . " is now " . $new_status;
         $heading = "Task Status Updated";
 
-        $body = "
-        <p style='margin:0 0 16px 0;'>Hello <strong>" . htmlspecialchars($targetName) . "</strong>,</p>
-        <p style='margin:0 0 20px 0;'><strong>{$updaterName}</strong> updated the status of a task you created:</p>
-        
-        <table style='width:100%; border-collapse:collapse; margin-bottom:20px; font-size:14px;'>
-            <tr>
-                <td style='padding:8px 0; color:#64748b; font-weight:600; width:130px; border-bottom:1px solid #f1f5f9;'>Task Title:</td>
-                <td style='padding:8px 0; color:#0f172a; font-weight:700; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($task['title']) . "</td>
-            </tr>
-            <tr>
-                <td style='padding:8px 0; color:#64748b; font-weight:600; border-bottom:1px solid #f1f5f9;'>New Status:</td>
-                <td style='padding:8px 0; color:#024442; font-weight:700; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($new_status) . "</td>
-            </tr>
-            <tr>
-                <td style='padding:8px 0; color:#64748b; font-weight:600;'>Updated By:</td>
-                <td style='padding:8px 0; color:#0f172a; font-weight:600;'>{$updaterName}</td>
-            </tr>
-        </table>";
+        $sent = false;
+        foreach ($recipients as $rec) {
+            $body = "
+            <p style='margin:0 0 16px 0;'>Hello <strong>" . htmlspecialchars($rec['name']) . "</strong>,</p>
+            <p style='margin:0 0 20px 0;'><strong>{$updaterName}</strong> updated the status of a task:</p>
 
-        return sendNotificationEmail($targetEmail, $subject, $heading, $body, "Review Task", $ctaUrl);
+            <table style='width:100%; border-collapse:collapse; margin-bottom:20px; font-size:14px;'>
+                <tr>
+                    <td style='padding:8px 0; color:#64748b; font-weight:600; width:130px; border-bottom:1px solid #f1f5f9;'>Task Title:</td>
+                    <td style='padding:8px 0; color:#0f172a; font-weight:700; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($task['title']) . "</td>
+                </tr>
+                <tr>
+                    <td style='padding:8px 0; color:#64748b; font-weight:600; border-bottom:1px solid #f1f5f9;'>New Status:</td>
+                    <td style='padding:8px 0; color:#024442; font-weight:700; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($new_status) . "</td>
+                </tr>
+                <tr>
+                    <td style='padding:8px 0; color:#64748b; font-weight:600;'>Updated By:</td>
+                    <td style='padding:8px 0; color:#0f172a; font-weight:600;'>{$updaterName}</td>
+                </tr>
+            </table>";
+
+            if (sendNotificationEmail($rec['email'], $subject, $heading, $body, "Review Task", $ctaUrl)) {
+                $sent = true;
+            }
+        }
+        return $sent;
     }
 }
 
@@ -810,52 +878,79 @@ if (!function_exists('notifyTaskDelayWarning')) {
         if ($task_id <= 0 || !$conn) return false;
 
         $stmt = $conn->prepare("
-            SELECT t.title, t.priority, t.due_date, t.assigned_to,
-                   u.name as assignee_name, u.email as assignee_email,
-                   p.project_name
+            SELECT t.title, t.priority, t.due_date, t.assigned_to, p.project_name
             FROM tasks t
-            JOIN users u ON t.assigned_to = u.user_id
             LEFT JOIN projects p ON t.project_id = p.id
-            WHERE t.id = ? AND (u.status = 'active' OR u.status IS NULL)
+            WHERE t.id = ?
         ");
         $stmt->bind_param("i", $task_id);
         $stmt->execute();
         $task = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        if (!$task || empty($task['assignee_email'])) return false;
+        if (!$task) return false;
+
+        // Collect all active assignees (primary + group members)
+        $recipients = [];
+        if (file_exists(__DIR__ . '/task_assignees_helper.php')) {
+            require_once __DIR__ . '/task_assignees_helper.php';
+            $members = getTaskAssignees($conn, $task_id);
+            foreach ($members as $m) {
+                if (!empty($m['email'])) {
+                    $recipients[intval($m['user_id'])] = ['name' => $m['name'], 'email' => $m['email']];
+                }
+            }
+        }
+        if (empty($recipients) && !empty($task['assigned_to'])) {
+            $uStmt = $conn->prepare("SELECT user_id, name, email FROM users WHERE user_id = ? AND (status = 'active' OR status IS NULL)");
+            if ($uStmt) {
+                $aid = intval($task['assigned_to']);
+                $uStmt->bind_param("i", $aid);
+                $uStmt->execute();
+                if ($uRow = $uStmt->get_result()->fetch_assoc()) {
+                    if (!empty($uRow['email'])) $recipients[intval($uRow['user_id'])] = $uRow;
+                }
+                $uStmt->close();
+            }
+        }
+        if (empty($recipients)) return false;
 
         $siteUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'https://graphicafix.com';
         $ctaUrl  = $siteUrl . '/admin/task_details.php?id=' . $task_id;
-
         $dueDate = !empty($task['due_date']) ? date('M d, Y', strtotime($task['due_date'])) : 'Today';
         $subject = "Task Deadline Notice: " . $task['title'];
         $heading = "Task Deadline Alert (24 Hours Remaining)";
 
-        $body = "
-        <p style='margin:0 0 16px 0;'>Hello <strong>" . htmlspecialchars($task['assignee_name']) . "</strong>,</p>
-        <p style='margin:0 0 20px 0;'>This is an automated reminder that your assigned task is due by <strong>{$dueDate}</strong>:</p>
-        
-        <table style='width:100%; border-collapse:collapse; margin-bottom:20px; font-size:14px;'>
-            <tr>
-                <td style='padding:8px 0; color:#64748b; font-weight:600; width:130px; border-bottom:1px solid #f1f5f9;'>Task Title:</td>
-                <td style='padding:8px 0; color:#0f172a; font-weight:700; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($task['title']) . "</td>
-            </tr>
-            <tr>
-                <td style='padding:8px 0; color:#64748b; font-weight:600; border-bottom:1px solid #f1f5f9;'>Priority:</td>
-                <td style='padding:8px 0; color:#0f172a; font-weight:600; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($task['priority']) . "</td>
-            </tr>
-            <tr>
-                <td style='padding:8px 0; color:#64748b; font-weight:600;'>Due Date:</td>
-                <td style='padding:8px 0; color:#dc2626; font-weight:700;'>{$dueDate}</td>
-            </tr>
-        </table>
-        
-        <p style='margin:0 0 16px 0; color:#475569; font-size:13px;'>
-            <em>Need more time due to client blockers or technical constraints? You can request a deadline extension directly from the task details page.</em>
-        </p>";
+        $sentAny = false;
+        foreach ($recipients as $rcp) {
+            $body = "
+            <p style='margin:0 0 16px 0;'>Hello <strong>" . htmlspecialchars($rcp['name']) . "</strong>,</p>
+            <p style='margin:0 0 20px 0;'>This is an automated reminder that your assigned task is due by <strong>{$dueDate}</strong>:</p>
+            
+            <table style='width:100%; border-collapse:collapse; margin-bottom:20px; font-size:14px;'>
+                <tr>
+                    <td style='padding:8px 0; color:#64748b; font-weight:600; width:130px; border-bottom:1px solid #f1f5f9;'>Task Title:</td>
+                    <td style='padding:8px 0; color:#0f172a; font-weight:700; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($task['title']) . "</td>
+                </tr>
+                <tr>
+                    <td style='padding:8px 0; color:#64748b; font-weight:600; border-bottom:1px solid #f1f5f9;'>Priority:</td>
+                    <td style='padding:8px 0; color:#0f172a; font-weight:600; border-bottom:1px solid #f1f5f9;'>" . htmlspecialchars($task['priority']) . "</td>
+                </tr>
+                <tr>
+                    <td style='padding:8px 0; color:#64748b; font-weight:600;'>Due Date:</td>
+                    <td style='padding:8px 0; color:#dc2626; font-weight:700;'>{$dueDate}</td>
+                </tr>
+            </table>
+            
+            <p style='margin:0 0 16px 0; color:#475569; font-size:13px;'>
+                <em>Need more time due to client blockers or technical constraints? You can request a deadline extension directly from the task details page.</em>
+            </p>";
 
-        return sendNotificationEmail($task['assignee_email'], $subject, $heading, $body, "View Task & Submit / Extend", $ctaUrl);
+            if (sendNotificationEmail($rcp['email'], $subject, $heading, $body, "View Task & Submit / Extend", $ctaUrl)) {
+                $sentAny = true;
+            }
+        }
+        return $sentAny;
     }
 }
 
@@ -919,18 +1014,39 @@ if (!function_exists('notifyTaskExtensionDecision')) {
         if ($task_id <= 0 || !$conn) return false;
 
         $stmt = $conn->prepare("
-            SELECT t.title, t.due_date, t.extension_requested_date,
-                   u.name as assignee_name, u.email as assignee_email
+            SELECT t.title, t.due_date, t.extension_requested_date, t.assigned_to
             FROM tasks t
-            JOIN users u ON t.assigned_to = u.user_id
-            WHERE t.id = ? AND (u.status = 'active' OR u.status IS NULL)
+            WHERE t.id = ?
         ");
         $stmt->bind_param("i", $task_id);
         $stmt->execute();
         $task = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        if (!$task || empty($task['assignee_email'])) return false;
+        if (!$task) return false;
+
+        $recipients = [];
+        if (file_exists(__DIR__ . '/task_assignees_helper.php')) {
+            require_once __DIR__ . '/task_assignees_helper.php';
+            foreach (getTaskAssignees($conn, $task_id) as $m) {
+                if (!empty($m['email'])) {
+                    $recipients[intval($m['user_id'])] = ['name' => $m['name'], 'email' => $m['email']];
+                }
+            }
+        }
+        if (empty($recipients) && !empty($task['assigned_to'])) {
+            $uStmt = $conn->prepare("SELECT user_id, name, email FROM users WHERE user_id = ? AND (status = 'active' OR status IS NULL)");
+            if ($uStmt) {
+                $aid = intval($task['assigned_to']);
+                $uStmt->bind_param("i", $aid);
+                $uStmt->execute();
+                if ($uRow = $uStmt->get_result()->fetch_assoc()) {
+                    if (!empty($uRow['email'])) $recipients[intval($uRow['user_id'])] = $uRow;
+                }
+                $uStmt->close();
+            }
+        }
+        if (empty($recipients)) return false;
 
         $siteUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'https://graphicafix.com';
         $ctaUrl  = $siteUrl . '/admin/task_details.php?id=' . $task_id;
@@ -942,27 +1058,33 @@ if (!function_exists('notifyTaskExtensionDecision')) {
         $color = $isApproved ? "#16a34a" : "#dc2626";
         $bg = $isApproved ? "#f0fdf4" : "#fef2f2";
 
-        $body = "
-        <p style='margin:0 0 16px 0;'>Hello <strong>" . htmlspecialchars($task['assignee_name']) . "</strong>,</p>
-        <p style='margin:0 0 20px 0;'>Your deadline extension request for <strong>" . htmlspecialchars($task['title']) . "</strong> has been reviewed:</p>
-        
-        <div style='background:{$bg}; border:1px solid {$color}; border-radius:8px; padding:16px; margin-bottom:20px;'>
-            <div style='font-size:16px; font-weight:700; color:{$color}; margin-bottom:8px;'>
-                Decision: " . strtoupper($decision) . "
-            </div>
-            <div style='font-size:14px; color:#334155;'>
-                <strong>New Due Date:</strong> " . date('M d, Y', strtotime($task['due_date'])) . "
-            </div>";
+        $sentAny = false;
+        foreach ($recipients as $rcp) {
+            $body = "
+            <p style='margin:0 0 16px 0;'>Hello <strong>" . htmlspecialchars($rcp['name']) . "</strong>,</p>
+            <p style='margin:0 0 20px 0;'>Your deadline extension request for <strong>" . htmlspecialchars($task['title']) . "</strong> has been reviewed:</p>
+            
+            <div style='background:{$bg}; border:1px solid {$color}; border-radius:8px; padding:16px; margin-bottom:20px;'>
+                <div style='font-size:16px; font-weight:700; color:{$color}; margin-bottom:8px;'>
+                    Decision: " . strtoupper($decision) . "
+                </div>
+                <div style='font-size:14px; color:#334155;'>
+                    <strong>New Due Date:</strong> " . date('M d, Y', strtotime($task['due_date'])) . "
+                </div>";
 
-        if (!empty($admin_notes)) {
-            $body .= "
-            <div style='margin-top:10px; font-size:13px; color:#475569;'>
-                <strong>Remarks:</strong> " . htmlspecialchars($admin_notes) . "
-            </div>";
+            if (!empty($admin_notes)) {
+                $body .= "
+                <div style='margin-top:10px; font-size:13px; color:#475569;'>
+                    <strong>Remarks:</strong> " . htmlspecialchars($admin_notes) . "
+                </div>";
+            }
+
+            $body .= "</div>";
+
+            if (sendNotificationEmail($rcp['email'], $subject, $heading, $body, "View Task", $ctaUrl)) {
+                $sentAny = true;
+            }
         }
-
-        $body .= "</div>";
-
-        return sendNotificationEmail($task['assignee_email'], $subject, $heading, $body, "View Task", $ctaUrl);
+        return $sentAny;
     }
 }

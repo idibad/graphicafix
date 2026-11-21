@@ -7,12 +7,14 @@
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/task_delay_schema.php';
+require_once __DIR__ . '/task_assignees_helper.php';
 require_once __DIR__ . '/attendance_schema.php';
 require_once __DIR__ . '/attendance_helper.php';
 
 // Ensure required tables & columns exist
 if (isset($conn) && ($conn instanceof mysqli)) {
     ensure_task_delay_schema($conn);
+    ensureTaskUserSchema($conn);
     ensure_attendance_schema($conn);
 }
 

@@ -2,6 +2,8 @@
 include 'dashboard_header.php';
 require_once __DIR__ . '/../core/project_pm_schema.php';
 require_once __DIR__ . '/../core/project_pm_helper.php';
+require_once __DIR__ . '/../core/task_assignees_helper.php';
+ensureTaskUserSchema($conn);
 
 // Check permissions
 if (!in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'teacher', 'user', 'manager', 'sales'])) {
@@ -292,7 +294,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_project_task']
     $task_desc = trim($_POST['task_desc'] ?? '');
     $priority = $_POST['task_priority'] ?? 'Medium';
     $due_date = !empty($_POST['task_due_date']) ? $_POST['task_due_date'] : null;
-    $assigned_to = !empty($_POST['task_assigned_to']) ? intval($_POST['task_assigned_to']) : null;
+    $assigned_ids = parseAssigneeIdsInput($_POST['task_assignees'] ?? ($_POST['assignees'] ?? null), $_POST['task_assigned_to'] ?? null);
+    $assigned_to = !empty($assigned_ids) ? $assigned_ids[0] : null;
     $milestone_id = !empty($_POST['task_milestone_id']) ? intval($_POST['task_milestone_id']) : null;
     $estimated_hours = floatval($_POST['task_estimated_hours'] ?? 0);
 
@@ -300,18 +303,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_project_task']
         $stmt_task = $conn->prepare("INSERT INTO tasks (title, description, priority, status, due_date, assigned_to, created_by, project_id, milestone_id, estimated_hours) VALUES (?, ?, ?, 'Pending', ?, ?, ?, ?, ?, ?)");
         $stmt_task->bind_param("ssssiiiid", $task_title, $task_desc, $priority, $due_date, $assigned_to, $user_id, $project_id, $milestone_id, $estimated_hours);
         if ($stmt_task->execute()) {
+            $new_task_id = $stmt_task->insert_id;
             $stmt_task->close();
-            if ($assigned_to > 0) {
-                $u_stmt = $conn->query("SELECT name, email FROM users WHERE user_id = $assigned_to AND (status = 'active' OR status IS NULL)");
-                if ($u_row = $u_stmt->fetch_assoc()) {
-                    if (!empty($u_row['email'])) {
-                        require_once __DIR__ . '/../core/task_email_helper.php';
-                        $heading = "New Task Assigned: " . $task_title;
-                        $body = "<p>Hello " . htmlspecialchars($u_row['name']) . ",</p>
-                                 <p>You have been assigned a task under project <strong>" . htmlspecialchars($project['project_name']) . "</strong>.</p>";
-                        sendTaskEmail($u_row['email'], $heading, $heading, $body, 0);
-                    }
-                }
+            if (!empty($assigned_ids)) {
+                syncTaskAssignees($conn, $new_task_id, $assigned_ids, $user_id);
+                require_once __DIR__ . '/../core/notification_mailer.php';
+                notifyTaskAssigned($conn, $new_task_id, $assigned_ids);
             }
             echo "<script>alert('Task added successfully.'); window.location='project_details.php?id={$project_id}&tab=tasks';</script>";
             exit;
@@ -426,6 +423,26 @@ $stmt_tasks->bind_param("i", $project_id);
 $stmt_tasks->execute();
 $all_project_tasks = $stmt_tasks->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt_tasks->close();
+
+// Bulk-load all assignees (including grouped tasks) for project tasks
+$proj_assignees_map = getAssigneesMapForTasks($conn, array_column($all_project_tasks, 'id'));
+foreach ($all_project_tasks as &$tk_ref) {
+    $tid = intval($tk_ref['id']);
+    $members = $proj_assignees_map[$tid] ?? [];
+    if (empty($members) && !empty($tk_ref['assigned_to'])) {
+        $members = [[
+            'user_id' => intval($tk_ref['assigned_to']),
+            'name'    => $tk_ref['assigned_name'] ?: ('User #' . $tk_ref['assigned_to']),
+            'role'    => $tk_ref['assigned_role'] ?? '',
+            'task_role' => 'primary_assignee'
+        ]];
+    }
+    $tk_ref['assignees'] = $members;
+    $tk_ref['is_group'] = count($members) > 1;
+    $tk_ref['assignee_ids_csv'] = implode(',', array_map(function($m) { return intval($m['user_id']); }, $members));
+    $tk_ref['assignees_names'] = implode(', ', array_map(function($m) { return $m['name']; }, $members));
+}
+unset($tk_ref);
 
 // Tasks grouped for Kanban board
 $kanban_tasks = [
@@ -1165,17 +1182,22 @@ if (!function_exists('getUserInitials')) {
                                 $est_str = ($tk['estimated_hours'] > 0) ? formatDuration($tk['estimated_hours']) : '3h';
                                 $log_str = formatDuration($tk['logged_hours'] ?? 0);
                             ?>
-                            <div class="kanban-task-card" draggable="true" data-id="<?= $tk['id'] ?>" data-status="<?= $status_key ?>" data-priority="<?= htmlspecialchars($tk['priority'] ?? 'Medium') ?>" data-assignee="<?= intval($tk['assigned_to'] ?? 0) ?>" data-milestone="<?= intval($tk['milestone_id'] ?? 0) ?>">
+                            <div class="kanban-task-card" draggable="true" data-id="<?= $tk['id'] ?>" data-status="<?= $status_key ?>" data-priority="<?= htmlspecialchars($tk['priority'] ?? 'Medium') ?>" data-assignee="<?= intval($tk['assigned_to'] ?? 0) ?>" data-assignees="<?= htmlspecialchars($tk['assignee_ids_csv'] ?? '') ?>" data-group="<?= !empty($tk['is_group']) ? '1' : '0' ?>" data-milestone="<?= intval($tk['milestone_id'] ?? 0) ?>">
                                 <!-- Card Top: Tag + Assignee Avatar -->
                                 <div class="card-top-row">
-                                    <span class="task-tag-chip" style="background: <?= $badge['bg'] ?>; color: <?= $badge['color'] ?>; border: 1px solid <?= $badge['border'] ?>;">
-                                        <?= htmlspecialchars($badge['label']) ?>
-                                    </span>
+                                    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                                        <span class="task-tag-chip" style="background: <?= $badge['bg'] ?>; color: <?= $badge['color'] ?>; border: 1px solid <?= $badge['border'] ?>;">
+                                            <?= htmlspecialchars($badge['label']) ?>
+                                        </span>
+                                        <?php if (!empty($tk['is_group'])): ?>
+                                        <span title="Grouped Task (<?= count($tk['assignees']) ?> members): <?= htmlspecialchars($tk['assignees_names']) ?>" style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;">
+                                            <i class="fas fa-users" style="font-size:9.5px;color:#0369a1 !important;"></i> Group (<?= count($tk['assignees']) ?>)
+                                        </span>
+                                        <?php endif; ?>
+                                    </div>
 
                                     <div class="card-top-right">
-                                        <div class="task-avatar-circle" style="background: <?= $avatar['bg'] ?>; color: <?= $avatar['color'] ?>;" title="<?= htmlspecialchars($tk['assigned_name'] ?: 'Unassigned') ?>">
-                                            <?= $initials ?>
-                                        </div>
+                                        <?= renderTaskAvatarStackHtml($tk['assignees'] ?? [], 3, 26) ?>
                                         <div class="dropdown d-inline-block">
                                             <button type="button" class="btn-card-more" data-bs-toggle="dropdown" aria-expanded="false" onclick="event.stopPropagation();">
                                                 <i class="fas fa-ellipsis-v"></i>
@@ -1283,7 +1305,7 @@ if (!function_exists('getUserInitials')) {
                                     $initials = getUserInitials($tk['assigned_name'] ?? '');
                                     $is_overdue = (!empty($tk['due_date']) && strtotime($tk['due_date']) < strtotime(date('Y-m-d')) && $tk['status'] !== 'Completed');
                                 ?>
-                                <tr class="list-row <?= $tk['status'] === 'Completed' ? 'task-completed-row' : '' ?>" data-id="<?= $tk['id'] ?>" data-priority="<?= htmlspecialchars($tk['priority'] ?? 'Medium') ?>" data-assignee="<?= intval($tk['assigned_to'] ?? 0) ?>" data-milestone="<?= intval($tk['milestone_id'] ?? 0) ?>">
+                                <tr class="list-row <?= $tk['status'] === 'Completed' ? 'task-completed-row' : '' ?>" data-id="<?= $tk['id'] ?>" data-priority="<?= htmlspecialchars($tk['priority'] ?? 'Medium') ?>" data-assignee="<?= intval($tk['assigned_to'] ?? 0) ?>" data-assignees="<?= htmlspecialchars($tk['assignee_ids_csv'] ?? '') ?>" data-group="<?= !empty($tk['is_group']) ? '1' : '0' ?>" data-milestone="<?= intval($tk['milestone_id'] ?? 0) ?>">
                                     <td>
                                         <input type="checkbox" class="task-checkbox" <?= $tk['status'] === 'Completed' ? 'checked' : '' ?> <?= !$can_edit ? 'disabled title="Only Admins or PMs can mark as Completed"' : '' ?> onchange="quickToggleProjComplete(<?= $tk['id'] ?>, this.checked)">
                                     </td>
@@ -1303,11 +1325,13 @@ if (!function_exists('getUserInitials')) {
                                         </span>
                                     </td>
                                     <td>
-                                        <div class="list-assignee-cell">
-                                            <div class="task-avatar-circle small" style="background: <?= $avatar['bg'] ?>; color: <?= $avatar['color'] ?>;">
-                                                <?= $initials ?>
-                                            </div>
-                                            <span><?= htmlspecialchars($tk['assigned_name'] ?: 'Unassigned') ?></span>
+                                        <div class="list-assignee-cell" title="<?= htmlspecialchars($tk['assignees_names'] ?: 'Unassigned') ?>" style="display:flex;align-items:center;gap:8px;">
+                                            <?= renderTaskAvatarStackHtml($tk['assignees'] ?? [], 3, 24) ?>
+                                            <?php if (!empty($tk['is_group'])): ?>
+                                                <span><?= htmlspecialchars($tk['assignees'][0]['name']) ?> <strong style="color:#0369a1;font-size:11px;">+<?= count($tk['assignees']) - 1 ?></strong></span>
+                                            <?php else: ?>
+                                                <span><?= htmlspecialchars($tk['assigned_name'] ?: 'Unassigned') ?></span>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                     <td>
@@ -2044,19 +2068,34 @@ if (!function_exists('getUserInitials')) {
                         </div>
                     </div>
 
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin:0;">
+                                Assignees <span style="font-weight:400; color:#64748b;">(Select 1 or multiple for a Grouped Task)</span>
+                            </label>
+                            <span id="projModalGroupBadge" style="display:none; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;">
+                                <i class="fas fa-users" style="font-size:10px; color:#0369a1 !important; margin-right:3px;"></i> Grouped Task (<span id="projModalGroupCount">0</span>)
+                            </span>
+                        </div>
+                        <input type="hidden" name="assigned_to" id="projModalTaskAssignee" value="">
+                        <div style="border:1px solid #e2e8f0; border-radius:10px; padding:8px 10px; background:#f8fafc;">
+                            <div id="projModalSelectedPills" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; min-height:24px; align-items:center;">
+                                <span style="font-size:12px; color:#94a3b8;">No members selected yet</span>
+                            </div>
+                            <input type="text" id="projModalMemberSearch" class="form-control form-control-sm mb-2" placeholder="Search team member..." oninput="filterProjModalMembers(this.value)" style="border-radius:7px; font-size:12.5px;">
+                            <div id="projModalMemberGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:6px; max-height:135px; overflow-y:auto;">
+                                <?php foreach ($active_task_users as $u): ?>
+                                <label class="proj-member-opt" data-name="<?= htmlspecialchars(strtolower($u['name'])) ?>" style="display:flex; align-items:center; gap:7px; padding:5px 8px; border-radius:7px; border:1px solid #e2e8f0; background:#fff; cursor:pointer; font-size:12px; margin:0;">
+                                    <input type="checkbox" class="proj-member-cb" value="<?= intval($u['user_id']) ?>" data-name="<?= htmlspecialchars($u['name']) ?>" onchange="onProjMemberToggle(this)" style="accent-color:#024442;">
+                                    <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500; color:#1e293b;"><?= htmlspecialchars($u['name']) ?></span>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:6px; display:block;">Assignee</label>
-                            <select name="assigned_to" id="projModalTaskAssignee" class="form-select" style="border-radius:8px; font-size:13px;">
-                                <option value="">Unassigned</option>
-                                <?php foreach ($active_task_users as $u): ?>
-                                <option value="<?= $u['user_id'] ?>">
-                                    <?= htmlspecialchars($u['name']) ?> (<?= ucfirst($u['role']) ?>)
-                                </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
                             <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:6px; display:block;">Priority</label>
                             <select name="priority" id="projModalTaskPriority" class="form-select" style="border-radius:8px; font-size:13px;">
                                 <option value="Low">Low</option>
@@ -2064,7 +2103,7 @@ if (!function_exists('getUserInitials')) {
                                 <option value="High">High</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-6">
                             <label style="font-size:12.5px; font-weight:600; color:#334155; margin-bottom:6px; display:block;">Column / Status</label>
                             <select name="status" id="projModalTaskStatus" class="form-select" style="border-radius:8px; font-size:13px;">
                                 <option value="Pending">To-do</option>
@@ -2131,6 +2170,82 @@ function getProjModalInstance() {
     return bsProjModal;
 }
 
+let projSelectedOrder = [];
+
+function setProjModalAssignees(ids) {
+    projSelectedOrder = [];
+    (ids || []).forEach(id => {
+        const n = parseInt(id, 10);
+        if (n > 0 && !projSelectedOrder.includes(n)) projSelectedOrder.push(n);
+    });
+    syncProjModalMemberPicker();
+}
+
+function onProjMemberToggle(cb) {
+    const uid = parseInt(cb.value, 10);
+    if (cb.checked) {
+        if (!projSelectedOrder.includes(uid)) projSelectedOrder.push(uid);
+    } else {
+        projSelectedOrder = projSelectedOrder.filter(x => x !== uid);
+    }
+    syncProjModalMemberPicker();
+}
+
+function removeProjModalMember(uid) {
+    projSelectedOrder = projSelectedOrder.filter(x => x !== uid);
+    syncProjModalMemberPicker();
+}
+
+function filterProjModalMembers(q) {
+    const term = (q || '').toLowerCase().trim();
+    document.querySelectorAll('#projModalMemberGrid .proj-member-opt').forEach(lbl => {
+        const name = lbl.getAttribute('data-name') || '';
+        lbl.style.display = (term === '' || name.includes(term)) ? 'flex' : 'none';
+    });
+}
+
+function syncProjModalMemberPicker() {
+    const nameMap = {};
+    document.querySelectorAll('#projModalMemberGrid .proj-member-cb').forEach(cb => {
+        const uid = parseInt(cb.value, 10);
+        nameMap[uid] = cb.getAttribute('data-name') || ('User #' + uid);
+        const isSel = projSelectedOrder.includes(uid);
+        cb.checked = isSel;
+        const lbl = cb.closest('.proj-member-opt');
+        if (lbl) {
+            lbl.style.borderColor = isSel ? '#024442' : '#e2e8f0';
+            lbl.style.background = isSel ? '#f0fdfa' : '#fff';
+        }
+    });
+
+    const hiddenLead = document.getElementById('projModalTaskAssignee');
+    if (hiddenLead) hiddenLead.value = projSelectedOrder[0] || '';
+
+    const pills = document.getElementById('projModalSelectedPills');
+    if (pills) {
+        if (projSelectedOrder.length === 0) {
+            pills.innerHTML = '<span style="font-size:12px; color:#94a3b8;">No members selected yet</span>';
+        } else {
+            pills.innerHTML = projSelectedOrder.map((uid, idx) => {
+                const nm = (nameMap[uid] || ('User #' + uid)).replace(/</g, '&lt;');
+                const leadTag = idx === 0 ? '<span style="background:#024442;color:#fff;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:700;">LEAD</span>' : '';
+                return `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;background:#e6f4f3;color:#024442;font-size:11.5px;font-weight:600;border:1px solid #b5dedb;">${nm} ${leadTag}<button type="button" onclick="removeProjModalMember(${uid})" style="border:none;background:none;color:#024442;cursor:pointer;font-size:13px;line-height:1;padding:0 0 0 2px;">&times;</button></span>`;
+            }).join('');
+        }
+    }
+
+    const badge = document.getElementById('projModalGroupBadge');
+    const countEl = document.getElementById('projModalGroupCount');
+    if (badge && countEl) {
+        if (projSelectedOrder.length > 1) {
+            countEl.textContent = projSelectedOrder.length;
+            badge.style.display = 'inline-flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
 function openProjectAddTaskModal(preselectedStatus = 'Pending') {
     if (!window.CAN_CREATE_TASK) {
         showToast('Restricted: Only Super Admins, Admins, and Project Managers can create tasks.', 'error');
@@ -2142,6 +2257,9 @@ function openProjectAddTaskModal(preselectedStatus = 'Pending') {
     document.getElementById('projModalAjaxAction').value = 'create_task';
     document.getElementById('taskModalProjectLabel').textContent = 'Add Project Task';
     document.getElementById('projModalTaskStatus').value = preselectedStatus;
+    const searchEl = document.getElementById('projModalMemberSearch');
+    if (searchEl) { searchEl.value = ''; filterProjModalMembers(''); }
+    setProjModalAssignees([]);
     const modal = getProjModalInstance();
     if (modal) modal.show();
 }
@@ -2157,7 +2275,12 @@ function openProjectEditTaskModal(taskId) {
                 document.getElementById('projModalTaskTitle').value = t.title || '';
                 document.getElementById('projModalTaskType').value = t.task_type || '';
                 document.getElementById('projModalTaskMilestone').value = t.milestone_id || '';
-                document.getElementById('projModalTaskAssignee').value = t.assigned_to || '';
+                const ids = (Array.isArray(res.assignee_ids) && res.assignee_ids.length)
+                    ? res.assignee_ids
+                    : (t.assigned_to ? [t.assigned_to] : []);
+                const searchEl = document.getElementById('projModalMemberSearch');
+                if (searchEl) { searchEl.value = ''; filterProjModalMembers(''); }
+                setProjModalAssignees(ids);
                 document.getElementById('projModalTaskPriority').value = t.priority || 'Medium';
                 document.getElementById('projModalTaskStatus').value = t.status || 'Pending';
                 document.getElementById('projModalTaskDueDate').value = t.due_date || '';
@@ -2180,6 +2303,8 @@ function handleProjTaskFormSubmit(e) {
     const form = e.target;
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
+    data.assignees = projSelectedOrder.join(',');
+    data.assigned_to = projSelectedOrder[0] || '';
 
     postTaskAction(data)
         .then(res => {
@@ -2302,11 +2427,12 @@ function applyProjClientFilters() {
         const title = (card.querySelector('.task-title-text')?.textContent || '').toLowerCase();
         const tag = (card.querySelector('.task-tag-chip')?.textContent || '').toLowerCase();
         const cardAssignee = card.dataset.assignee || '';
+        const cardAssignees = (card.dataset.assignees || cardAssignee).split(',').filter(Boolean);
         const cardPriority = card.dataset.priority || '';
         const cardMilestone = card.dataset.milestone || '';
 
         const matchQ = (q === '' || title.includes(q) || tag.includes(q));
-        const matchAssignee = (assignee === '' || cardAssignee === assignee);
+        const matchAssignee = (assignee === '' || cardAssignee === assignee || cardAssignees.includes(assignee));
         const matchPriority = (priority === '' || cardPriority === priority);
         const matchMilestone = (milestone === '' || cardMilestone === milestone);
 
@@ -2318,11 +2444,12 @@ function applyProjClientFilters() {
         const title = (row.querySelector('.list-title')?.textContent || '').toLowerCase();
         const tag = (row.querySelector('.task-tag-chip')?.textContent || '').toLowerCase();
         const rowAssignee = row.dataset.assignee || '';
+        const rowAssignees = (row.dataset.assignees || rowAssignee).split(',').filter(Boolean);
         const rowPriority = row.dataset.priority || '';
         const rowMilestone = row.dataset.milestone || '';
 
         const matchQ = (q === '' || title.includes(q) || tag.includes(q));
-        const matchAssignee = (assignee === '' || rowAssignee === assignee);
+        const matchAssignee = (assignee === '' || rowAssignee === assignee || rowAssignees.includes(assignee));
         const matchPriority = (priority === '' || rowPriority === priority);
         const matchMilestone = (milestone === '' || rowMilestone === milestone);
 
