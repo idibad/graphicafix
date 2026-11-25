@@ -1088,3 +1088,151 @@ if (!function_exists('notifyTaskExtensionDecision')) {
         return $sentAny;
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 13. TEAM MEMBER OF THE MONTH (GRAPHICAFIX FAMILY SPOTLIGHT)
+// ─────────────────────────────────────────────────────────────────────────────
+
+if (!function_exists('notifyMemberOfMonthSelected')) {
+    /**
+     * Sends celebratory in-app notifications and emails to the honored team member
+     * and the entire active Graphicafix Family when a Team Member of the Month is selected.
+     *
+     * @param mysqli $conn
+     * @param array  $motm       Row from getActiveMemberOfMonth($conn)
+     * @param bool   $send_email Whether to also send email notifications (default true)
+     * @return array ['notified_in_app' => int, 'emails_sent' => int]
+     */
+    function notifyMemberOfMonthSelected($conn, $motm, $send_email = true) {
+        $stats = ['notified_in_app' => 0, 'emails_sent' => 0];
+        if (!$conn || empty($motm)) return $stats;
+
+        $motm_id    = intval($motm['id'] ?? 0);
+        $honoree    = trim($motm['display_name'] ?? $motm['member_name'] ?? '');
+        $role_lbl   = trim($motm['display_role'] ?? $motm['member_role'] ?? '');
+        $dept_lbl   = trim($motm['display_department'] ?? $motm['member_department'] ?? '');
+        $hon_email  = strtolower(trim($motm['display_email'] ?? $motm['member_email'] ?? ''));
+        $month_lbl  = trim($motm['month_display'] ?? date('F Y'));
+        $badge_lbl  = trim($motm['badge_title'] ?? '') ?: 'Team Member of the Month';
+        $note_txt   = trim($motm['appreciation_note'] ?? '');
+        if ($honoree === '') return $stats;
+
+        $role_line = implode(' • ', array_filter([$role_lbl, $dept_lbl]));
+        $default_note = "Celebrating outstanding dedication, creativity, and the team spirit that makes the Graphicafix Family shine!";
+        $display_note = ($note_txt !== '') ? $note_txt : $default_note;
+
+        $siteUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'https://graphicafix.com';
+        $ctaUrl  = $siteUrl . '/admin/index.php';
+
+        // Ensure notifications table has user_id column defensively
+        try {
+            @$conn->query("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS user_id INT(11) DEFAULT NULL");
+        } catch (Throwable $e) {}
+
+        // Fetch all active internal Graphicafix Family users (exclude clients & students)
+        $usersRes = @$conn->query("
+            SELECT user_id, name, email, role
+            FROM users
+            WHERE (status = 'active' OR status IS NULL OR status = '')
+              AND role NOT IN ('client', 'client_sub', 'student')
+        ");
+
+        $emailed_set = [];
+        $ins_notif = @$conn->prepare("
+            INSERT INTO notifications (type, title, message, link, reference_id, user_id, created_at)
+            VALUES ('member_of_month', ?, ?, 'index.php', ?, ?, NOW())
+        ");
+
+        if ($usersRes && $usersRes->num_rows > 0) {
+            while ($u = $usersRes->fetch_assoc()) {
+                $uid    = intval($u['user_id']);
+                $u_name = trim($u['name'] ?? 'Family Member');
+                $u_mail = strtolower(trim($u['email'] ?? ''));
+
+                $is_honoree = (
+                    ($hon_email !== '' && $u_mail === $hon_email)
+                    || (strtolower($u_name) === strtolower($honoree))
+                );
+
+                // 1. In-app dashboard notification
+                if ($ins_notif && $uid > 0) {
+                    if ($is_honoree) {
+                        $n_title = "Congratulations! {$badge_lbl} ({$month_lbl})";
+                        $n_msg   = "You are featured as our {$badge_lbl} for {$month_lbl} in the Graphicafix Family! " . mb_strimwidth($display_note, 0, 120, '...');
+                    } else {
+                        $n_title = "{$badge_lbl}: {$honoree}";
+                        $n_msg   = "Join the Graphicafix Family in celebrating {$honoree}" . ($role_lbl ? " ({$role_lbl})" : "") . " for {$month_lbl}!";
+                    }
+                    try {
+                        $ins_notif->bind_param("ssii", $n_title, $n_msg, $motm_id, $uid);
+                        if ($ins_notif->execute()) {
+                            $stats['notified_in_app']++;
+                        }
+                    } catch (Throwable $e) {}
+                }
+
+                // 2. Email notification
+                if ($send_email && $u_mail !== '' && strpos($u_mail, '@') !== false && !isset($emailed_set[$u_mail])) {
+                    $emailed_set[$u_mail] = true;
+
+                    if ($is_honoree) {
+                        $subject = "Congratulations, {$honoree}! You're our {$badge_lbl} ({$month_lbl})";
+                        $heading = "Congratulations, {$honoree}!";
+                        $body = "
+                        <p style='margin:0 0 16px 0;'>Dear <strong>" . htmlspecialchars($honoree) . "</strong>,</p>
+                        <p style='margin:0 0 18px 0;'>We are thrilled to celebrate you as our <strong>" . htmlspecialchars($badge_lbl) . "</strong> for <strong>" . htmlspecialchars($month_lbl) . "</strong> in the <strong>Graphicafix Family</strong>!</p>
+                        <div style='background:#f7fee7; border:1px solid #d4f48c; border-left:4px solid #b8f35a; border-radius:10px; padding:16px 18px; margin-bottom:20px;'>
+                            <div style='font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:#3f6212; margin-bottom:6px;'>" . htmlspecialchars($badge_lbl) . " &bull; " . htmlspecialchars($month_lbl) . "</div>
+                            <div style='font-size:18px; font-weight:800; color:#0f172a; margin-bottom:4px;'>" . htmlspecialchars($honoree) . "</div>" .
+                            ($role_line !== '' ? "<div style='font-size:13px; color:#475569; margin-bottom:10px;'>" . htmlspecialchars($role_line) . "</div>" : "") . "
+                            <div style='font-size:14px; color:#334155; font-style:italic; line-height:1.6;'>&ldquo;" . htmlspecialchars($display_note) . "&rdquo;</div>
+                        </div>
+                        <p style='margin:0; color:#475569; font-size:14px;'>Thank you for making the Graphicafix Family stronger every single day. Your spotlight is now live on the Dashboard Overview!</p>";
+                    } else {
+                        $subject = "{$badge_lbl} ({$month_lbl}): Celebrating {$honoree}!";
+                        $heading = "Graphicafix Family Spotlight — {$month_lbl}";
+                        $body = "
+                        <p style='margin:0 0 16px 0;'>Hello <strong>" . htmlspecialchars($u_name) . "</strong>,</p>
+                        <p style='margin:0 0 18px 0;'>Join us in celebrating our <strong>" . htmlspecialchars($badge_lbl) . "</strong> for <strong>" . htmlspecialchars($month_lbl) . "</strong> from the <strong>Graphicafix Family</strong>:</p>
+                        <div style='background:#f7fee7; border:1px solid #d4f48c; border-left:4px solid #b8f35a; border-radius:10px; padding:16px 18px; margin-bottom:20px;'>
+                            <div style='font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:#3f6212; margin-bottom:6px;'>" . htmlspecialchars($badge_lbl) . " &bull; " . htmlspecialchars($month_lbl) . "</div>
+                            <div style='font-size:18px; font-weight:800; color:#0f172a; margin-bottom:4px;'>" . htmlspecialchars($honoree) . "</div>" .
+                            ($role_line !== '' ? "<div style='font-size:13px; color:#475569; margin-bottom:10px;'>" . htmlspecialchars($role_line) . "</div>" : "") . "
+                            <div style='font-size:14px; color:#334155; font-style:italic; line-height:1.6;'>&ldquo;" . htmlspecialchars($display_note) . "&rdquo;</div>
+                        </div>
+                        <p style='margin:0; color:#475569; font-size:14px;'>Visit the Dashboard Overview to see the spotlight and celebrate with the Graphicafix Family!</p>";
+                    }
+
+                    if (@sendNotificationEmail($u_mail, $subject, $heading, $body, "View Spotlight on Overview", $ctaUrl)) {
+                        $stats['emails_sent']++;
+                    }
+                }
+            }
+        }
+
+        if ($ins_notif) {
+            $ins_notif->close();
+        }
+
+        // Fallback: if the honored member's team email wasn't among users table emails, still email them!
+        if ($send_email && $hon_email !== '' && strpos($hon_email, '@') !== false && !isset($emailed_set[$hon_email])) {
+            $subject = "Congratulations, {$honoree}! You're our {$badge_lbl} ({$month_lbl})";
+            $heading = "Congratulations, {$honoree}!";
+            $body = "
+            <p style='margin:0 0 16px 0;'>Dear <strong>" . htmlspecialchars($honoree) . "</strong>,</p>
+            <p style='margin:0 0 18px 0;'>We are thrilled to celebrate you as our <strong>" . htmlspecialchars($badge_lbl) . "</strong> for <strong>" . htmlspecialchars($month_lbl) . "</strong> in the <strong>Graphicafix Family</strong>!</p>
+            <div style='background:#f7fee7; border:1px solid #d4f48c; border-left:4px solid #b8f35a; border-radius:10px; padding:16px 18px; margin-bottom:20px;'>
+                <div style='font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:#3f6212; margin-bottom:6px;'>" . htmlspecialchars($badge_lbl) . " &bull; " . htmlspecialchars($month_lbl) . "</div>
+                <div style='font-size:18px; font-weight:800; color:#0f172a; margin-bottom:4px;'>" . htmlspecialchars($honoree) . "</div>" .
+                ($role_line !== '' ? "<div style='font-size:13px; color:#475569; margin-bottom:10px;'>" . htmlspecialchars($role_line) . "</div>" : "") . "
+                <div style='font-size:14px; color:#334155; font-style:italic; line-height:1.6;'>&ldquo;" . htmlspecialchars($display_note) . "&rdquo;</div>
+            </div>
+            <p style='margin:0; color:#475569; font-size:14px;'>Thank you for making the Graphicafix Family stronger every single day!</p>";
+            if (@sendNotificationEmail($hon_email, $subject, $heading, $body, "View Spotlight on Overview", $ctaUrl)) {
+                $stats['emails_sent']++;
+            }
+        }
+
+        return $stats;
+    }
+}

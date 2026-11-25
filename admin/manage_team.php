@@ -339,9 +339,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $motm_month     = trim($_POST['month_year'] ?? date('Y-m'));
         $motm_title     = trim($_POST['badge_title'] ?? 'Team Member of the Month');
         $motm_note      = trim($_POST['appreciation_note'] ?? '');
+        $send_notif     = isset($_POST['send_notifications']);
         $res_motm = setMemberOfMonth($conn, $motm_member_id, $motm_month, $motm_note, $motm_title, $user_id ?? 0);
         $alert_msg  = $res_motm['message'];
         $alert_type = $res_motm['success'] ? 'success' : 'danger';
+
+        if ($res_motm['success'] && $send_notif && file_exists(__DIR__ . '/../core/notification_mailer.php')) {
+            require_once __DIR__ . '/../core/notification_mailer.php';
+            $fresh_motm = getActiveMemberOfMonth($conn);
+            if ($fresh_motm && function_exists('notifyMemberOfMonthSelected')) {
+                $nstats = notifyMemberOfMonthSelected($conn, $fresh_motm, true);
+                $in_app = intval($nstats['notified_in_app'] ?? 0);
+                $emails = intval($nstats['emails_sent'] ?? 0);
+                if ($in_app > 0 || $emails > 0) {
+                    $alert_msg .= " Sent {$in_app} dashboard notification(s) & {$emails} email(s) to the Graphicafix Family.";
+                }
+            }
+        }
     }
 
     // 6. CLEAR / HIDE TEAM MEMBER OF THE MONTH
@@ -616,13 +630,14 @@ if (typeof QRCode === 'undefined') {
         color: #d97706 !important;
     }
 
-    /* ── Team Member of the Month Control Banner ── */
+    /* ── Team Member of the Month Control Banner (Clean Light + Accent Green) ── */
     .motm-admin-banner {
-        background: linear-gradient(125deg, #024442 0%, #055d59 60%, #084c49 100%);
-        border: 1px solid rgba(184, 243, 90, 0.28);
+        background: linear-gradient(125deg, #ffffff 0%, #f9fef0 65%, #f1fcd9 100%);
+        border: 1.5px solid #d4f48c;
+        border-left: 5px solid #b8f35a;
         border-radius: 14px;
         padding: 18px 22px;
-        color: #ffffff;
+        color: #0f172a;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -630,7 +645,7 @@ if (typeof QRCode === 'undefined') {
         flex-wrap: wrap;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 8px 24px rgba(2, 68, 66, 0.12);
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
     }
     .motm-admin-banner::after {
         content: "";
@@ -639,7 +654,7 @@ if (typeof QRCode === 'undefined') {
         top: -50px;
         width: 190px;
         height: 190px;
-        background: radial-gradient(circle, rgba(184, 243, 90, 0.16) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(184, 243, 90, 0.28) 0%, transparent 70%);
         pointer-events: none;
     }
     .motm-admin-left {
@@ -655,14 +670,14 @@ if (typeof QRCode === 'undefined') {
         height: 56px;
         border-radius: 50%;
         border: 2.5px solid #b8f35a;
-        background: rgba(255, 255, 255, 0.12);
+        background: #f7fee7;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
         overflow: hidden;
         position: relative;
-        box-shadow: 0 0 0 4px rgba(184, 243, 90, 0.14);
+        box-shadow: 0 0 0 4px rgba(184, 243, 90, 0.2);
     }
     .motm-admin-avatar img {
         width: 100%;
@@ -672,7 +687,7 @@ if (typeof QRCode === 'undefined') {
     .motm-admin-avatar-init {
         font-size: 1.25rem;
         font-weight: 800;
-        color: #b8f35a;
+        color: #3f6212;
     }
     .motm-kicker {
         display: inline-flex;
@@ -682,14 +697,14 @@ if (typeof QRCode === 'undefined') {
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.8px;
-        color: #024442;
+        color: #1a2e05;
         background: #b8f35a;
         padding: 3px 10px;
         border-radius: 999px;
         margin-bottom: 6px;
     }
     .motm-kicker i {
-        color: #024442 !important;
+        color: #1a2e05 !important;
         font-size: 0.72rem;
     }
     .motm-row-badge {
@@ -832,18 +847,18 @@ if (typeof QRCode === 'undefined') {
                 <div class="motm-kicker">
                     <i class="fas fa-trophy"></i> <?= $motm_badge ?> &middot; <?= $motm_month_disp ?>
                 </div>
-                <div style="font-size:1.18rem; font-weight:800; line-height:1.25; color:#ffffff;">
+                <div style="font-size:1.18rem; font-weight:800; line-height:1.25; color:#0f172a;">
                     <?= $motm_name ?>
-                    <span style="font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.78); margin-left:6px;">
+                    <span style="font-size:0.82rem; font-weight:600; color:#475569; margin-left:6px;">
                         <?= $motm_role ?><?= $motm_dept ? ' &bull; ' . $motm_dept : '' ?>
                     </span>
                 </div>
                 <?php if ($motm_note !== ''): ?>
-                <div style="font-size:0.82rem; color:rgba(255,255,255,0.85); margin-top:4px; font-style:italic;">
+                <div style="font-size:0.82rem; color:#334155; margin-top:4px; font-style:italic;">
                     &ldquo;<?= htmlspecialchars(mb_strimwidth($motm_note, 0, 140, '...')) ?>&rdquo;
                 </div>
                 <?php else: ?>
-                <div style="font-size:0.8rem; color:rgba(255,255,255,0.72); margin-top:4px;">
+                <div style="font-size:0.8rem; color:#475569; margin-top:4px;">
                     Currently live on the Dashboard Overview for the entire Graphicafix Family.
                 </div>
                 <?php endif; ?>
@@ -851,33 +866,33 @@ if (typeof QRCode === 'undefined') {
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap" style="z-index:1;">
             <button type="button" class="btn btn-sm" onclick="openMotmModal()"
-                    style="background:#b8f35a; color:#024442; border:none; font-weight:800; border-radius:8px; padding:8px 14px; font-size:0.82rem;">
-                <i class="fas fa-pen me-1" style="color:#024442 !important;"></i> Change Spotlight
+                    style="background:#b8f35a; color:#1a2e05; border:1px solid #a3e635; font-weight:800; border-radius:8px; padding:8px 14px; font-size:0.82rem;">
+                <i class="fas fa-pen me-1" style="color:#1a2e05 !important;"></i> Change Spotlight
             </button>
             <button type="button" class="btn btn-sm" onclick="confirmClearMotm()"
-                    style="background:rgba(255,255,255,0.12); color:#ffffff; border:1px solid rgba(255,255,255,0.24); font-weight:600; border-radius:8px; padding:8px 12px; font-size:0.82rem;">
-                <i class="fas fa-eye-slash me-1" style="color:#ffffff !important;"></i> Hide
+                    style="background:#ffffff; color:#475569; border:1px solid #cbd5e1; font-weight:600; border-radius:8px; padding:8px 12px; font-size:0.82rem;">
+                <i class="fas fa-eye-slash me-1" style="color:#475569 !important;"></i> Hide
             </button>
         </div>
         <?php else: ?>
         <div class="motm-admin-left">
             <div class="motm-admin-avatar" style="border-style:dashed;">
-                <i class="fas fa-trophy" style="font-size:1.35rem; color:#b8f35a !important;"></i>
+                <i class="fas fa-trophy" style="font-size:1.35rem; color:#4d7c0f !important;"></i>
             </div>
             <div>
                 <div class="motm-kicker">
-                    <i class="fas fa-sparkles"></i> Graphicafix Family Spotlight
+                    <i class="fas fa-star"></i> Graphicafix Family Spotlight
                 </div>
-                <div style="font-size:1.05rem; font-weight:700; color:#ffffff;">No Team Member of the Month selected yet</div>
-                <div style="font-size:0.82rem; color:rgba(255,255,255,0.78); margin-top:2px;">
+                <div style="font-size:1.05rem; font-weight:700; color:#0f172a;">No Team Member of the Month selected yet</div>
+                <div style="font-size:0.82rem; color:#475569; margin-top:2px;">
                     Recognize a shining star from the Graphicafix Family — they&rsquo;ll be featured in a full-width card on everyone&rsquo;s Overview dashboard.
                 </div>
             </div>
         </div>
         <div style="z-index:1;">
             <button type="button" class="btn btn-sm" onclick="openMotmModal()"
-                    style="background:#b8f35a; color:#024442; border:none; font-weight:800; border-radius:8px; padding:9px 16px; font-size:0.84rem;">
-                <i class="fas fa-trophy me-1" style="color:#024442 !important;"></i> Select Team Member
+                    style="background:#b8f35a; color:#1a2e05; border:1px solid #a3e635; font-weight:800; border-radius:8px; padding:9px 16px; font-size:0.84rem;">
+                <i class="fas fa-trophy me-1" style="color:#1a2e05 !important;"></i> Select Team Member
             </button>
         </div>
         <?php endif; ?>
@@ -1368,17 +1383,20 @@ if (typeof QRCode === 'undefined') {
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <div class="modal fade" id="motmModal" tabindex="-1" aria-labelledby="motmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius:18px; border:none; box-shadow:0 20px 60px rgba(0,0,0,0.18);">
-            <div class="modal-header" style="background:linear-gradient(125deg, #024442, #075f5b); color:#ffffff; border-radius:18px 18px 0 0; padding:18px 24px;">
+        <div class="modal-content" style="border-radius:18px; border:1px solid #d4f48c; box-shadow:0 20px 60px rgba(0,0,0,0.14);">
+            <div class="modal-header" style="background:linear-gradient(125deg, #ffffff 0%, #f7fee7 100%); color:#0f172a; border-bottom:1.5px solid #e2f5b8; border-radius:18px 18px 0 0; padding:18px 24px;">
                 <div>
-                    <h5 class="modal-title fw-bold mb-0" id="motmModalLabel" style="color:#b8f35a;">
-                        <i class="fas fa-trophy me-2" style="color:#b8f35a !important;"></i> Team Member of the Month
+                    <h5 class="modal-title fw-bold mb-0" id="motmModalLabel" style="color:#0f172a;">
+                        <span style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; background:#b8f35a; margin-right:8px; vertical-align:middle;">
+                            <i class="fas fa-trophy" style="color:#1a2e05 !important; font-size:0.85rem;"></i>
+                        </span>
+                        Team Member of the Month
                     </h5>
-                    <div style="font-size:0.78rem; color:rgba(255,255,255,0.8); margin-top:2px;">
+                    <div style="font-size:0.78rem; color:#475569; margin-top:4px;">
                         Celebrate a standout member of the Graphicafix Family on the Overview dashboard
                     </div>
                 </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="manage_team.php" method="POST">
                 <input type="hidden" name="action" value="set_member_of_month">
@@ -1416,11 +1434,23 @@ if (typeof QRCode === 'undefined') {
                         <span class="motm-preset-chip" onclick="document.getElementById('motmTitleInput').value='Graphicafix Family Spotlight'">Graphicafix Family Spotlight</span>
                     </div>
 
-                    <div class="mb-2">
+                    <div class="mb-3">
                         <label class="form-label fw-bold" style="font-size:0.85rem; color:#334155;">Appreciation Message <span class="text-muted fw-normal">(Optional)</span></label>
                         <textarea name="appreciation_note" id="motmNoteInput" rows="3" class="form-control"
                                   placeholder="e.g., Thank you for your incredible creativity, teamwork, and dedication to the Graphicafix Family this month!"
                                   style="border-radius:10px; font-size:0.88rem;"><?= htmlspecialchars($active_motm['appreciation_note'] ?? '') ?></textarea>
+                    </div>
+
+                    <div class="mb-2" style="background:#f7fee7; border:1px solid #d4f48c; border-radius:10px; padding:10px 14px;">
+                        <div class="form-check m-0">
+                            <input class="form-check-input" type="checkbox" name="send_notifications" id="motmSendNotif" value="1" checked style="accent-color:#65a30d;">
+                            <label class="form-check-label" for="motmSendNotif" style="font-size:0.84rem; font-weight:600; color:#1a2e05; cursor:pointer;">
+                                Notify the Graphicafix Family via Email &amp; Dashboard Notification
+                            </label>
+                            <div style="font-size:0.75rem; color:#4d7c0f;">
+                                Sends a personal congratulations to the selected member and announces it to the whole team.
+                            </div>
+                        </div>
                     </div>
 
                     <?php if (!empty($motm_history)): ?>
@@ -1442,8 +1472,8 @@ if (typeof QRCode === 'undefined') {
                 </div>
                 <div class="modal-footer border-0 px-4 pb-4 pt-0">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600;">Cancel</button>
-                    <button type="submit" class="btn" style="background:var(--primary); color:var(--accent); font-weight:800; border-radius:10px; padding:9px 20px;">
-                        <i class="fas fa-check-circle me-1" style="color:var(--accent) !important;"></i> Feature on Dashboard
+                    <button type="submit" class="btn" style="background:#b8f35a; color:#1a2e05; border:1px solid #a3e635; font-weight:800; border-radius:10px; padding:9px 20px;">
+                        <i class="fas fa-check-circle me-1" style="color:#1a2e05 !important;"></i> Feature &amp; Notify
                     </button>
                 </div>
             </form>

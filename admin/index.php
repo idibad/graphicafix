@@ -591,7 +591,7 @@ a.stat-card:active {
 .form-input-custom { width:100%; padding:12px 14px; border:1.5px solid #e0e0e0; border-radius:10px; margin-bottom:18px; font-size:.9rem; background:#f9fbfc; transition:all 0.2s; outline:none;}
 .form-input-custom:focus { border-color:var(--primary); background:#fff; box-shadow:0 0 0 3px rgba(2,68,66,0.1);}
 
-/* ── Full-Width Team Member of the Month Card (Graphicafix Family Spotlight) ── */
+/* ── Full-Width Team Member of the Month Card (Clean Light + Accent Green) ── */
 .motm-hero-card {
     width: 100%;
     position: relative;
@@ -599,10 +599,11 @@ a.stat-card:active {
     border-radius: 18px;
     padding: 24px 28px;
     margin: 0 0 28px 0;
-    background: linear-gradient(125deg, #023735 0%, #024442 52%, #07645f 100%);
-    border: 1px solid rgba(184, 243, 90, 0.28);
-    box-shadow: 0 12px 32px rgba(2, 68, 66, 0.16);
-    color: #ffffff;
+    background: linear-gradient(125deg, #ffffff 0%, #f9fef0 62%, #f1fcd9 100%);
+    border: 1.5px solid #d4f48c;
+    border-left: 5px solid #b8f35a;
+    box-shadow: 0 6px 24px rgba(15, 23, 42, 0.05);
+    color: #0f172a;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -611,21 +612,21 @@ a.stat-card:active {
 .motm-hero-card::before {
     content: "";
     position: absolute;
-    left: -80px;
+    left: -70px;
     bottom: -90px;
-    width: 260px;
-    height: 260px;
-    background: radial-gradient(circle, rgba(245, 158, 11, 0.16) 0%, transparent 70%);
+    width: 240px;
+    height: 240px;
+    background: radial-gradient(circle, rgba(184, 243, 90, 0.22) 0%, transparent 70%);
     pointer-events: none;
 }
 .motm-hero-card::after {
     content: "";
     position: absolute;
-    right: -60px;
-    top: -80px;
-    width: 320px;
-    height: 320px;
-    background: radial-gradient(circle, rgba(184, 243, 90, 0.18) 0%, transparent 68%);
+    right: -50px;
+    top: -70px;
+    width: 290px;
+    height: 290px;
+    background: radial-gradient(circle, rgba(184, 243, 90, 0.32) 0%, transparent 68%);
     pointer-events: none;
 }
 .motm-hero-main {
@@ -639,24 +640,24 @@ a.stat-card:active {
 }
 .motm-avatar-frame {
     position: relative;
-    width: 86px;
-    height: 86px;
+    width: 84px;
+    height: 84px;
     border-radius: 50%;
-    padding: 3px;
-    background: linear-gradient(135deg, #b8f35a 0%, #f59e0b 100%);
+    padding: 3.5px;
+    background: linear-gradient(135deg, #b8f35a 0%, #84cc16 100%);
     flex-shrink: 0;
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 6px 18px rgba(132, 204, 22, 0.22);
 }
 .motm-avatar-inner {
     width: 100%;
     height: 100%;
     border-radius: 50%;
     overflow: hidden;
-    background: #023735;
+    background: #f7fee7;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #024442;
+    border: 2.5px solid #ffffff;
 }
 .motm-avatar-inner img {
     width: 100%;
@@ -665,9 +666,9 @@ a.stat-card:active {
     display: block;
 }
 .motm-avatar-initials {
-    font-size: 1.75rem;
+    font-size: 1.7rem;
     font-weight: 800;
-    color: #b8f35a;
+    color: #3f6212;
     letter-spacing: 0.5px;
 }
 .motm-avatar-crown {
@@ -677,15 +678,15 @@ a.stat-card:active {
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    border: 2.5px solid #024442;
+    background: #b8f35a;
+    border: 2.5px solid #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.14);
 }
 .motm-avatar-crown i {
-    color: #ffffff !important;
+    color: #1a2e05 !important;
     font-size: 0.72rem;
 }
 .motm-hero-body {
@@ -704,25 +705,25 @@ a.stat-card:active {
     align-items: center;
     gap: 6px;
     background: #b8f35a;
-    color: #024442;
+    color: #1a2e05;
     font-size: 0.72rem;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.7px;
+    letter-spacing: 0.65px;
     padding: 4px 12px;
     border-radius: 999px;
 }
 .motm-pill-primary i {
-    color: #024442 !important;
+    color: #1a2e05 !important;
     font-size: 0.72rem;
 }
 .motm-pill-month {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    background: rgba(255, 255, 255, 0.13);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #f8fafc;
+    background: #ffffff;
+    border: 1px solid #d9e8c5;
+    color: #334155;
     font-size: 0.72rem;
     font-weight: 700;
     padding: 4px 11px;
@@ -732,41 +733,42 @@ a.stat-card:active {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    background: rgba(251, 191, 36, 0.16);
-    border: 1px solid rgba(251, 191, 36, 0.35);
-    color: #fde68a;
+    background: #ecfccb;
+    border: 1px solid #bef264;
+    color: #3f6212;
     font-size: 0.72rem;
     font-weight: 700;
     padding: 4px 11px;
     border-radius: 999px;
 }
 .motm-pill-family i {
-    color: #fbbf24 !important;
+    color: #4d7c0f !important;
     font-size: 0.7rem;
 }
 .motm-member-name {
     margin: 0;
-    font-size: 1.65rem;
+    font-size: 1.6rem;
     font-weight: 800;
-    color: #ffffff;
+    color: #0f172a;
     letter-spacing: -0.4px;
     line-height: 1.2;
 }
 .motm-member-meta {
     margin: 4px 0 0 0;
     font-size: 0.88rem;
-    color: rgba(255, 255, 255, 0.82);
-    font-weight: 500;
+    color: #475569;
+    font-weight: 600;
 }
 .motm-quote-box {
     margin-top: 12px;
     padding: 10px 14px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.08);
-    border-left: 3px solid #b8f35a;
+    background: #ffffff;
+    border: 1px solid #e6f4cc;
+    border-left: 3.5px solid #b8f35a;
     font-size: 0.86rem;
     line-height: 1.5;
-    color: rgba(255, 255, 255, 0.92);
+    color: #334155;
 }
 .motm-hero-right {
     display: flex;
@@ -778,28 +780,28 @@ a.stat-card:active {
     z-index: 1;
 }
 .motm-crest-box {
-    background: rgba(255, 255, 255, 0.09);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: #ffffff;
+    border: 1px solid #d9f2a6;
     border-radius: 14px;
     padding: 14px 18px;
     text-align: center;
     min-width: 158px;
-    backdrop-filter: blur(4px);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
 }
 .motm-crest-icon {
     width: 42px;
     height: 42px;
     border-radius: 12px;
     margin: 0 auto 8px auto;
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(184, 243, 90, 0.2));
-    border: 1px solid rgba(251, 191, 36, 0.4);
+    background: #b8f35a;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 4px 12px rgba(184, 243, 90, 0.45);
 }
 .motm-crest-icon i {
-    font-size: 1.15rem;
-    color: #fbbf24 !important;
+    font-size: 1.12rem;
+    color: #1a2e05 !important;
 }
 .motm-manage-link {
     display: inline-flex;
@@ -807,18 +809,18 @@ a.stat-card:active {
     gap: 6px;
     font-size: 0.76rem;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.82);
+    color: #334155;
     text-decoration: none;
-    padding: 5px 11px;
+    padding: 6px 12px;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: #ffffff;
+    border: 1px solid #d9e8c5;
     transition: all 0.15s ease;
 }
 .motm-manage-link:hover {
     background: #b8f35a;
-    color: #024442;
-    border-color: #b8f35a;
+    color: #1a2e05;
+    border-color: #a3e635;
 }
 .motm-manage-link i {
     color: inherit !important;
@@ -928,8 +930,8 @@ a.stat-card:active {
                         <i class="fas fa-heart"></i> Graphicafix Family
                     </span>
                     <?php if ($is_current_user_honoree): ?>
-                    <span class="motm-pill-family" style="background:rgba(184,243,90,0.22); border-color:rgba(184,243,90,0.5); color:#d9f99d;">
-                        <i class="fas fa-award" style="color:#b8f35a !important;"></i> That&rsquo;s You! Congratulations!
+                    <span class="motm-pill-family" style="background:#b8f35a; border-color:#84cc16; color:#1a2e05;">
+                        <i class="fas fa-award" style="color:#1a2e05 !important;"></i> That&rsquo;s You! Congratulations!
                     </span>
                     <?php endif; ?>
                 </div>
@@ -955,10 +957,10 @@ a.stat-card:active {
                     <i class="fas fa-trophy"></i>
                 </div>
                 <div>
-                    <div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; color:#b8f35a;">
+                    <div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; color:#3f6212;">
                         Graphicafix Family
                     </div>
-                    <div style="font-size:0.78rem; color:rgba(255,255,255,0.82); font-weight:600; margin-top:2px;">
+                    <div style="font-size:0.78rem; color:#475569; font-weight:600; margin-top:2px;">
                         Spotlight Honor
                     </div>
                 </div>

@@ -354,6 +354,7 @@ if (!function_exists('notifIcon')) {
             'review'             => '<i class="fas fa-star"></i>',
             'course_registration'=> '<i class="fas fa-graduation-cap"></i>',
             'sales_visit'        => '<i class="fas fa-street-view"></i>',
+            'member_of_month'    => '<i class="fas fa-trophy"></i>',
             default              => '<i class="fas fa-bell"></i>',
         };
     }
@@ -370,6 +371,7 @@ if (!function_exists('notifColor')) {
             'contact'            => '#0ea5e9',
             'review'             => '#d97706',
             'course_registration'=> '#10b981',
+            'member_of_month'    => '#65a30d',
             default              => '#6b7280',
         };
     }
@@ -386,6 +388,7 @@ if (!function_exists('notifLabel')) {
             'contact'            => 'Message',
             'review'             => 'Review',
             'course_registration'=> 'Registration',
+            'member_of_month'    => 'Graphicafix Family',
             default              => 'Notification',
         };
     }
