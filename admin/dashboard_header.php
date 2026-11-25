@@ -673,11 +673,157 @@ $notifications_html = ob_get_clean();
         }
 
         /* ── Header right ── */
-        .header-right { display: flex; align-items: center; gap: 8px; }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: nowrap;
+            min-width: 0;
+        }
+        .header-right .notif-bell {
+            width: 38px;
+            height: 38px;
+            padding: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            color: #ffffff;
+        }
+        .header-right .notif-bell i {
+            color: #ffffff !important;
+            font-size: 16px;
+        }
+        .header-right .notif-bell:hover {
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        /* ── Unified Attendance Pill Control (Check-In / Sign-In Time / Check-Out) ── */
+        .header-attendance-widget {
+            display: inline-flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .att-header-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            height: 38px;
+            padding: 3px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.11);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-sizing: border-box;
+        }
+        .att-time-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            height: 30px;
+            padding: 0 11px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #ffffff;
+            white-space: nowrap;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+        .att-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: #b8f35a;
+            box-shadow: 0 0 0 3px rgba(184, 243, 90, 0.25);
+        }
+        .att-status-dot.is-late {
+            background: #f87171;
+            box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.28);
+        }
+        .att-loc-tag {
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.72);
+            padding-left: 2px;
+        }
+        .att-checkout-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            height: 30px;
+            padding: 0 13px;
+            border-radius: 999px;
+            background: #ffffff;
+            color: #0f172a;
+            border: none;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+        }
+        .att-checkout-btn i {
+            color: #475569 !important;
+            font-size: 11.5px;
+            transition: color 0.16s ease;
+        }
+        .att-checkout-btn:hover {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        .att-checkout-btn:hover i {
+            color: #b91c1c !important;
+        }
+        .att-out-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            height: 30px;
+            padding: 0 11px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.16);
+            color: #f8fafc;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+        .att-checkin-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            height: 38px;
+            padding: 0 16px;
+            border-radius: 999px;
+            background: #b8f35a;
+            color: #142600;
+            border: 1px solid #a3e635;
+            font-family: inherit;
+            font-size: 12.5px;
+            font-weight: 800;
+            line-height: 1;
+            white-space: nowrap;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(184, 243, 90, 0.32);
+            transition: background 0.16s ease, transform 0.16s ease;
+        }
+        .att-checkin-btn i {
+            color: #142600 !important;
+            font-size: 12px;
+        }
+        .att-checkin-btn:hover {
+            background: #a8e846;
+            transform: translateY(-1px);
+        }
 
         /* ── Profile button ── */
-        .header-profile-wrap  { position: relative; }
-        .header-profile-btn   { display: flex; align-items: center; gap: 8px; background: #f4f6f8; border: 1.5px solid #e8eaed; border-radius: 50px; padding: 4px 12px 4px 4px; cursor: pointer; transition: background .2s, border-color .2s; font-family: inherit; font-size: 13.5px; font-weight: 600; color: #333; }
+        .header-profile-wrap  { position: relative; flex-shrink: 0; }
+        .header-profile-btn   { display: inline-flex; align-items: center; gap: 8px; height: 38px; background: #f4f6f8; border: 1.5px solid #e8eaed; border-radius: 50px; padding: 3px 12px 3px 4px; cursor: pointer; transition: background .2s, border-color .2s; font-family: inherit; font-size: 13.5px; font-weight: 600; color: #333; box-sizing: border-box; }
         .header-profile-btn:hover,
         .header-profile-wrap.open .header-profile-btn { background: #fff; border-color: var(--accent); }
         .header-avatar        { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--accent, #b8f35a) 0%, #87bd0aff 100%); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #1a1a1a; flex-shrink: 0; }
@@ -685,9 +831,25 @@ $notifications_html = ob_get_clean();
         .header-chevron       { color: #888; flex-shrink: 0; transition: transform .25s; pointer-events: none; }
         .header-profile-wrap.open .header-chevron { transform: rotate(180deg); }
 
+        @media (max-width: 767px) {
+            .header-right { gap: 6px; }
+            .header-right .notif-bell { width: 34px; height: 34px; }
+            .att-header-pill { height: 34px; padding: 2px; }
+            .att-time-chip { height: 28px; padding: 0 9px; font-size: 11.5px; gap: 5px; }
+            .att-checkout-btn, .att-out-chip { height: 28px; padding: 0 10px; font-size: 11.5px; }
+            .att-checkin-btn { height: 34px; padding: 0 12px; font-size: 12px; }
+            .header-profile-btn { height: 34px; }
+            .header-avatar { width: 26px; height: 26px; font-size: 12px; }
+        }
+        @media (max-width: 640px) {
+            .att-loc-tag { display: none; }
+        }
         @media (max-width: 480px) {
             .header-name { display: none; }
-            .header-profile-btn { padding: 4px; border-radius: 50%; }
+            .header-profile-btn { padding: 3px; width: 34px; justify-content: center; border-radius: 50%; }
+            .header-chevron { display: none; }
+            .att-checkout-label { display: none; }
+            .att-checkout-btn { padding: 0 9px; }
         }
 
         /* ── Dropdown panel ── */
@@ -733,26 +895,30 @@ $notifications_html = ob_get_clean();
             $att_is_checked_out = (!empty($today_attendance) && !empty($today_attendance['check_out_time']));
             $att_loc_display = (!empty($today_attendance['location_denied']) && $user_work_mode === 'onsite') ? 'Denied Loc' : ucfirst($today_attendance['location_type'] ?? ($user_work_mode === 'onsite' ? 'Onsite' : 'Remote'));
         ?>
-        <div class="header-attendance-widget" id="headerAttWidget" style="display:flex; align-items:center; gap:8px;">
+        <div class="header-attendance-widget" id="headerAttWidget">
             <?php if (!$att_is_checked_in): ?>
-                <button type="button" class="btn btn-sm" onclick="openDailyCheckInModal()" style="background:linear-gradient(135deg, var(--accent, #b8f35a), #87bd0a); color:var(--primary, #024442); font-weight:800; font-size:12px; padding:6px 12px; border-radius:8px; border:none; display:inline-flex; align-items:center; gap:6px; cursor:pointer; box-shadow:0 2px 6px rgba(184,243,90,0.3);">
-                    <i class="fas fa-map-marker-alt"></i> Check In Today
+                <button type="button" class="att-checkin-btn" onclick="openDailyCheckInModal()">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Check In Today</span>
                 </button>
             <?php else: ?>
-                <div style="background:<?= $today_attendance['is_late'] ? '#fee2e2' : '#f0fdf4' ?>; border:1px solid <?= $today_attendance['is_late'] ? '#fecaca' : '#bbf7d0' ?>; padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; color:<?= $today_attendance['is_late'] ? '#dc2626' : '#15803d' ?>; display:flex; align-items:center; gap:6px;">
-                    <span style="width:8px; height:8px; border-radius:50%; background:<?= $today_attendance['is_late'] ? '#dc2626' : '#16a34a' ?>; display:inline-block;"></span>
-                    <span>In: <?= date('h:i A', strtotime($today_attendance['check_in_time'])) ?></span>
-                    <small style="color:#64748b; font-weight:600;">(<?= htmlspecialchars($att_loc_display) ?>)</small>
-                </div>
-                <?php if (!$att_is_checked_out): ?>
-                    <button type="button" class="btn btn-sm" onclick="doHeaderCheckOut()" id="headerCheckoutBtn" style="background:#fff; border:1.5px solid #cbd5e1; color:#475569; font-weight:700; font-size:11.5px; padding:5px 10px; border-radius:8px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;" title="Sign out / Check out for today">
-                        <i class="fas fa-sign-out-alt"></i> Check Out
-                    </button>
-                <?php else: ?>
-                    <div style="background:#f1f5f9; border:1px solid #e2e8f0; padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; color:#475569;">
-                        Out: <?= date('h:i A', strtotime($today_attendance['check_out_time'])) ?>
+                <div class="att-header-pill">
+                    <div class="att-time-chip" title="Checked in at <?= date('h:i A', strtotime($today_attendance['check_in_time'])) ?> (<?= htmlspecialchars($att_loc_display) ?>)">
+                        <span class="att-status-dot <?= !empty($today_attendance['is_late']) ? 'is-late' : '' ?>"></span>
+                        <span>In: <?= date('h:i A', strtotime($today_attendance['check_in_time'])) ?></span>
+                        <span class="att-loc-tag">&middot; <?= htmlspecialchars($att_loc_display) ?></span>
                     </div>
-                <?php endif; ?>
+                    <?php if (!$att_is_checked_out): ?>
+                        <button type="button" class="att-checkout-btn" onclick="doHeaderCheckOut()" id="headerCheckoutBtn" title="Sign out / Check out for today">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span class="att-checkout-label">Check Out</span>
+                        </button>
+                    <?php else: ?>
+                        <div class="att-out-chip" title="Checked out at <?= date('h:i A', strtotime($today_attendance['check_out_time'])) ?>">
+                            Out: <?= date('h:i A', strtotime($today_attendance['check_out_time'])) ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
             <?php endif; ?>
         </div>
         <?php endif; ?>
