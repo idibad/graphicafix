@@ -993,7 +993,48 @@ a.stat-card:active {
 .form-input-custom { width:100%; padding:12px 14px; border:1.5px solid #e0e0e0; border-radius:10px; margin-bottom:18px; font-size:.9rem; background:#f9fbfc; transition:all 0.2s; outline:none;}
 .form-input-custom:focus { border-color:var(--primary); background:#fff; box-shadow:0 0 0 3px rgba(2,68,66,0.1);}
 
-/* ── Full-Width Team Member of the Month Card (Minimal White + Accent Green #b8f35a) ── */
+/* ── Full-Width Team Member of the Month Card (Minimal White + Accent Green #b8f35a + Pop Animations) ── */
+@keyframes motmCardPop {
+    0%   { opacity: 0; transform: translateY(10px) scale(0.985); }
+    65%  { opacity: 1; transform: translateY(-2px) scale(1.005); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes motmRingPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(184, 243, 90, 0.55); }
+    60%      { box-shadow: 0 0 0 9px rgba(184, 243, 90, 0); }
+}
+@keyframes motmFloatA {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50%      { transform: translateY(-7px) rotate(12deg); }
+}
+@keyframes motmFloatB {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50%      { transform: translateY(6px) rotate(-14deg); }
+}
+@keyframes motmCrownWiggle {
+    0%, 82%, 100% { transform: rotate(0deg) scale(1); }
+    86%           { transform: rotate(-12deg) scale(1.12); }
+    91%           { transform: rotate(10deg) scale(1.12); }
+    95%           { transform: rotate(-6deg) scale(1.05); }
+}
+@keyframes motmPillShimmer {
+    0%   { left: -75%; }
+    40%  { left: 135%; }
+    100% { left: 135%; }
+}
+@keyframes motmCheerFloat {
+    0%   { opacity: 0; transform: translate(-50%, 6px) scale(0.88); }
+    18%  { opacity: 1; transform: translate(-50%, -6px) scale(1.03); }
+    80%  { opacity: 1; transform: translate(-50%, -18px) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -28px) scale(0.96); }
+}
+@keyframes motmBtnPop {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(0.92); }
+    70%  { transform: scale(1.08); }
+    100% { transform: scale(1); }
+}
+
 .motm-hero-card {
     width: 100%;
     position: relative;
@@ -1002,25 +1043,45 @@ a.stat-card:active {
     padding: 20px 24px;
     margin: 0 0 22px 0;
     background: #ffffff;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #d9f2a6;
     border-left: 4px solid #b8f35a;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.045);
     color: #0f172a;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 20px;
+    animation: motmCardPop 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .motm-hero-card::after {
     content: "";
     position: absolute;
     right: -40px;
     top: -60px;
-    width: 240px;
-    height: 240px;
-    background: radial-gradient(circle, rgba(184, 243, 90, 0.22) 0%, transparent 70%);
+    width: 260px;
+    height: 260px;
+    background: radial-gradient(circle, rgba(184, 243, 90, 0.26) 0%, transparent 70%);
     pointer-events: none;
 }
+.motm-sparkles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+}
+.motm-sp {
+    position: absolute;
+    opacity: 0.72;
+}
+.motm-sp.s1 { right: 24%; top: 14px; color: #84cc16; font-size: 11px; animation: motmFloatA 3.4s ease-in-out infinite; }
+.motm-sp.s2 { right: 16%; bottom: 14px; color: #f59e0b; font-size: 10px; animation: motmFloatB 3.9s ease-in-out infinite; }
+.motm-sp.s3 { right: 31%; bottom: 18px; width: 7px; height: 7px; border-radius: 50%; background: #b8f35a; animation: motmFloatA 4.2s ease-in-out infinite; }
+.motm-sp.s4 { right: 9%; top: 12px; width: 6px; height: 12px; border-radius: 3px; background: #fbbf24; transform: rotate(24deg); animation: motmFloatB 3.6s ease-in-out infinite; }
+.motm-sp.s5 { left: 104px; top: 10px; width: 6px; height: 6px; border-radius: 2px; background: #b8f35a; transform: rotate(45deg); animation: motmFloatA 4.5s ease-in-out infinite; }
+.motm-sp.s6 { right: 28%; top: 48%; width: 5px; height: 5px; border-radius: 50%; background: #38bdf8; animation: motmFloatB 3.2s ease-in-out infinite; }
+.motm-sp i  { color: inherit !important; }
+
 .motm-hero-main {
     display: flex;
     align-items: center;
@@ -1032,12 +1093,13 @@ a.stat-card:active {
 }
 .motm-avatar-frame {
     position: relative;
-    width: 70px;
-    height: 70px;
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
     padding: 3px;
-    background: #b8f35a;
+    background: linear-gradient(135deg, #b8f35a 0%, #84cc16 100%);
     flex-shrink: 0;
+    animation: motmRingPulse 2.8s ease-out infinite;
 }
 .motm-avatar-inner {
     width: 100%;
@@ -1074,6 +1136,7 @@ a.stat-card:active {
     display: flex;
     align-items: center;
     justify-content: center;
+    animation: motmCrownWiggle 4.2s ease-in-out infinite;
 }
 .motm-avatar-crown i {
     color: #142600 !important;
@@ -1091,6 +1154,8 @@ a.stat-card:active {
     margin-bottom: 5px;
 }
 .motm-pill-primary {
+    position: relative;
+    overflow: hidden;
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -1102,6 +1167,18 @@ a.stat-card:active {
     letter-spacing: 0.6px;
     padding: 3px 10px;
     border-radius: 999px;
+}
+.motm-pill-primary::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -75%;
+    width: 45%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+    transform: skewX(-22deg);
+    animation: motmPillShimmer 4.5s ease-in-out infinite;
+    pointer-events: none;
 }
 .motm-pill-primary i {
     color: #142600 !important;
@@ -1144,7 +1221,50 @@ a.stat-card:active {
     gap: 10px;
     flex-shrink: 0;
     position: relative;
-    z-index: 1;
+    z-index: 2;
+}
+.motm-celebrate-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 15px;
+    border-radius: 11px;
+    background: #b8f35a;
+    border: 1px solid #a3e635;
+    color: #142600;
+    font-size: 0.8rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 3px 12px rgba(184, 243, 90, 0.42);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+    font-family: inherit;
+}
+.motm-celebrate-btn:hover {
+    background: #a8e846;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(184, 243, 90, 0.55);
+}
+.motm-celebrate-btn.is-popping {
+    animation: motmBtnPop 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.motm-celebrate-btn i {
+    color: #142600 !important;
+    font-size: 0.84rem;
+}
+.motm-cheer-pill {
+    position: fixed;
+    z-index: 10050;
+    pointer-events: none;
+    background: #0f172a;
+    color: #b8f35a;
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 7px 14px;
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
+    white-space: nowrap;
+    animation: motmCheerFloat 1.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 .motm-trophy-badge {
     display: inline-flex;
@@ -1177,20 +1297,33 @@ a.stat-card:active {
     font-weight: 700;
     color: #475569;
     text-decoration: none;
-    padding: 8px 12px;
+    padding: 9px 12px;
     border-radius: 10px;
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     transition: all 0.15s ease;
 }
 .motm-manage-link:hover {
-    background: #b8f35a;
+    background: #f7fee7;
     color: #142600;
-    border-color: #a3e635;
+    border-color: #b8f35a;
 }
 .motm-manage-link i {
     color: inherit !important;
     font-size: 0.72rem;
+}
+#motmConfettiCanvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 10040;
+}
+@media (prefers-reduced-motion: reduce) {
+    .motm-hero-card, .motm-avatar-frame, .motm-avatar-crown, .motm-sp, .motm-pill-primary::after {
+        animation: none !important;
+    }
 }
 
 @media (max-width: 992px) {
@@ -1271,7 +1404,17 @@ a.stat-card:active {
         $meta_bits = array_filter([$motm_disp_role, $motm_disp_dept]);
     ?>
     <!-- Full-Width Graphicafix Family Spotlight Card -->
-    <div class="motm-hero-card" aria-label="Team Member of the Month">
+    <div class="motm-hero-card" id="motmSpotlightCard" data-honoree="<?= htmlspecialchars($motm_disp_name) ?>" aria-label="Team Member of the Month">
+        <!-- Floating ambient pop accents -->
+        <div class="motm-sparkles" aria-hidden="true">
+            <span class="motm-sp s1"><i class="fas fa-star"></i></span>
+            <span class="motm-sp s2"><i class="fas fa-star"></i></span>
+            <span class="motm-sp s3"></span>
+            <span class="motm-sp s4"></span>
+            <span class="motm-sp s5"></span>
+            <span class="motm-sp s6"></span>
+        </div>
+
         <div class="motm-hero-main">
             <div class="motm-avatar-frame">
                 <div class="motm-avatar-inner">
@@ -1316,19 +1459,10 @@ a.stat-card:active {
         </div>
 
         <div class="motm-hero-right">
-            <div class="motm-trophy-badge">
-                <div class="motm-trophy-icon">
-                    <i class="fas fa-trophy"></i>
-                </div>
-                <div>
-                    <div style="font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:#365314; line-height:1.15;">
-                        Graphicafix Family
-                    </div>
-                    <div style="font-size:0.74rem; color:#64748b; font-weight:600; margin-top:2px;">
-                        <?= htmlspecialchars($motm_month_lbl) ?>
-                    </div>
-                </div>
-            </div>
+            <button type="button" class="motm-celebrate-btn" onclick="triggerMotmCelebrate(this)" title="Pop confetti to celebrate <?= htmlspecialchars($motm_disp_name) ?>!">
+                <i class="fas fa-trophy"></i>
+                <span>Celebrate</span>
+            </button>
             <?php if ($can_manage_spotlight): ?>
             <a href="manage_team.php" class="motm-manage-link" title="Update Team Member of the Month">
                 <i class="fas fa-sliders-h"></i> Manage
@@ -2550,6 +2684,155 @@ $(document).ready(function () {
         });
     });
 });
+
+// ── Team Member of the Month Confetti Pop & Cheer Micro-Interaction ──
+(function () {
+    const COLORS = ['#b8f35a', '#84cc16', '#fbbf24', '#34d399', '#38bdf8', '#fb7185', '#a78bfa'];
+    let particles = [];
+    let rafId = null;
+    let canvas = null;
+    let ctx = null;
+    let cheerIdx = 0;
+
+    function ensureCanvas() {
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            canvas.id = 'motmConfettiCanvas';
+            document.body.appendChild(canvas);
+            ctx = canvas.getContext('2d');
+        }
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function spawnBurst(originX, originY, count, spread) {
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        ensureCanvas();
+        for (let i = 0; i < count; i++) {
+            const angle = -Math.PI / 2 + (Math.random() - 0.5) * spread;
+            const speed = 4.5 + Math.random() * 8.5;
+            const shape = Math.random() < 0.35 ? 'circle' : (Math.random() < 0.7 ? 'rect' : 'star');
+            particles.push({
+                x: originX + (Math.random() - 0.5) * 18,
+                y: originY + (Math.random() - 0.5) * 10,
+                vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 2.2,
+                vy: Math.sin(angle) * speed - Math.random() * 2.5,
+                size: 5 + Math.random() * 5,
+                color: COLORS[Math.floor(Math.random() * COLORS.length)],
+                rot: Math.random() * Math.PI * 2,
+                vrot: (Math.random() - 0.5) * 0.25,
+                shape: shape,
+                alpha: 1,
+                decay: 0.011 + Math.random() * 0.008
+            });
+        }
+        if (!rafId) tick();
+    }
+
+    function drawStar(c, x, y, r) {
+        c.beginPath();
+        for (let i = 0; i < 5; i++) {
+            const a1 = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+            const a2 = a1 + Math.PI / 5;
+            if (i === 0) c.moveTo(x + Math.cos(a1) * r, y + Math.sin(a1) * r);
+            else c.lineTo(x + Math.cos(a1) * r, y + Math.sin(a1) * r);
+            c.lineTo(x + Math.cos(a2) * (r * 0.45), y + Math.sin(a2) * (r * 0.45));
+        }
+        c.closePath();
+        c.fill();
+    }
+
+    function tick() {
+        if (!ctx || !canvas) return;
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.24; // smooth gravity
+            p.vx *= 0.985; // air drag
+            p.rot += p.vrot;
+            p.alpha -= p.decay;
+            if (p.alpha <= 0 || p.y > window.innerHeight + 30) {
+                particles.splice(i, 1);
+                continue;
+            }
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, p.alpha);
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            if (p.shape === 'circle') {
+                ctx.beginPath();
+                ctx.arc(0, 0, p.size * 0.48, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (p.shape === 'star') {
+                drawStar(ctx, 0, 0, p.size * 0.65);
+            } else {
+                ctx.fillRect(-p.size * 0.5, -p.size * 0.28, p.size, p.size * 0.56);
+            }
+            ctx.restore();
+        }
+        if (particles.length > 0) {
+            rafId = requestAnimationFrame(tick);
+        } else {
+            rafId = null;
+            ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        }
+    }
+
+    window.triggerMotmCelebrate = function (btn) {
+        const card = document.getElementById('motmSpotlightCard');
+        const honoree = (card && card.getAttribute('data-honoree')) || 'our star';
+        if (btn) {
+            btn.classList.remove('is-popping');
+            void btn.offsetWidth;
+            btn.classList.add('is-popping');
+            const rect = btn.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            spawnBurst(cx, cy, 46, Math.PI * 1.15);
+
+            // Also pop a secondary burst from the portrait
+            const avatar = card ? card.querySelector('.motm-avatar-frame') : null;
+            if (avatar) {
+                const ar = avatar.getBoundingClientRect();
+                spawnBurst(ar.left + ar.width / 2, ar.top + ar.height / 2, 24, Math.PI * 1.35);
+            }
+
+            // Floating Graphicafix Family cheer pill
+            const cheers = [
+                `Cheers to ${honoree}!`,
+                `Graphicafix Family pride!`,
+                `Way to shine, ${honoree}!`,
+                `Well deserved, ${honoree}!`
+            ];
+            const pill = document.createElement('div');
+            pill.className = 'motm-cheer-pill';
+            pill.textContent = cheers[cheerIdx % cheers.length];
+            cheerIdx++;
+            pill.style.left = Math.min(Math.max(cx, 110), window.innerWidth - 110) + 'px';
+            pill.style.top = Math.max(rect.top - 12, 24) + 'px';
+            document.body.appendChild(pill);
+            setTimeout(() => pill.remove(), 1800);
+        }
+    };
+
+    // Subtle welcome pop burst when the spotlight card loads
+    window.addEventListener('load', function () {
+        const card = document.getElementById('motmSpotlightCard');
+        if (!card) return;
+        setTimeout(function () {
+            const rect = card.getBoundingClientRect();
+            if (rect.top < window.innerHeight && rect.bottom > 0) {
+                spawnBurst(rect.left + 70, rect.top + rect.height * 0.45, 28, Math.PI * 1.1);
+                spawnBurst(rect.right - 90, rect.top + rect.height * 0.45, 28, Math.PI * 1.1);
+            }
+        }, 380);
+    });
+})();
 </script>
 
 <?php include('dashboard_footer.php'); ?>
