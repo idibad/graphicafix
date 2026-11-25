@@ -332,6 +332,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode(['success' => true]);
         exit;
     }
+
+    // 5. SET TEAM MEMBER OF THE MONTH (GRAPHICAFIX FAMILY SPOTLIGHT)
+    elseif ($action === 'set_member_of_month') {
+        $motm_member_id = intval($_POST['team_member_id'] ?? 0);
+        $motm_month     = trim($_POST['month_year'] ?? date('Y-m'));
+        $motm_title     = trim($_POST['badge_title'] ?? 'Team Member of the Month');
+        $motm_note      = trim($_POST['appreciation_note'] ?? '');
+        $res_motm = setMemberOfMonth($conn, $motm_member_id, $motm_month, $motm_note, $motm_title, $user_id ?? 0);
+        $alert_msg  = $res_motm['message'];
+        $alert_type = $res_motm['success'] ? 'success' : 'danger';
+    }
+
+    // 6. CLEAR / HIDE TEAM MEMBER OF THE MONTH
+    elseif ($action === 'clear_member_of_month') {
+        if (clearMemberOfMonth($conn)) {
+            $alert_msg  = 'Team Member of the Month spotlight has been hidden from the dashboard.';
+            $alert_type = 'success';
+        } else {
+            $alert_msg  = 'Could not update spotlight visibility.';
+            $alert_type = 'danger';
+        }
+    }
 }
 
 // ── GET Actions (e.g. quick toggle from link) ──
@@ -416,6 +438,20 @@ if (isset($existing_cols['department'])) {
         $dept_rows = $conn->query("SELECT DISTINCT department FROM team WHERE department IS NOT NULL AND department != '' ORDER BY department ASC");
     } catch (Throwable $e) {}
 }
+
+// Fetch Team Member of the Month spotlight & all selectable team members
+$active_motm = function_exists('getActiveMemberOfMonth') ? getActiveMemberOfMonth($conn) : null;
+$motm_history = function_exists('getMemberOfMonthHistory') ? getMemberOfMonthHistory($conn, 6) : [];
+$all_motm_candidates = [];
+try {
+    $cand_res = $conn->query("SELECT id, member_name, role, department, status FROM team ORDER BY (status = 'active') DESC, member_name ASC");
+    if ($cand_res) {
+        while ($c = $cand_res->fetch_assoc()) {
+            $all_motm_candidates[] = $c;
+        }
+    }
+} catch (Throwable $e) {}
+$active_motm_member_id = $active_motm ? intval($active_motm['team_member_id']) : 0;
 ?>
 
 <script src="<?= BASE_URL ?>assets/js/qrcode.min.js"></script>
@@ -570,6 +606,127 @@ if (typeof QRCode === 'undefined') {
         border-color: #dc2626;
         background: #fef2f2;
     }
+    .act-btn.motm-btn:hover,
+    .act-btn.motm-btn.is-crowned {
+        color: #b45309;
+        border-color: #f59e0b;
+        background: #fffbeb;
+    }
+    .act-btn.motm-btn.is-crowned i {
+        color: #d97706 !important;
+    }
+
+    /* ── Team Member of the Month Control Banner ── */
+    .motm-admin-banner {
+        background: linear-gradient(125deg, #024442 0%, #055d59 60%, #084c49 100%);
+        border: 1px solid rgba(184, 243, 90, 0.28);
+        border-radius: 14px;
+        padding: 18px 22px;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        flex-wrap: wrap;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(2, 68, 66, 0.12);
+    }
+    .motm-admin-banner::after {
+        content: "";
+        position: absolute;
+        right: -50px;
+        top: -50px;
+        width: 190px;
+        height: 190px;
+        background: radial-gradient(circle, rgba(184, 243, 90, 0.16) 0%, transparent 70%);
+        pointer-events: none;
+    }
+    .motm-admin-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-width: 260px;
+        flex: 1;
+        z-index: 1;
+    }
+    .motm-admin-avatar {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        border: 2.5px solid #b8f35a;
+        background: rgba(255, 255, 255, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        overflow: hidden;
+        position: relative;
+        box-shadow: 0 0 0 4px rgba(184, 243, 90, 0.14);
+    }
+    .motm-admin-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .motm-admin-avatar-init {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #b8f35a;
+    }
+    .motm-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: #024442;
+        background: #b8f35a;
+        padding: 3px 10px;
+        border-radius: 999px;
+        margin-bottom: 6px;
+    }
+    .motm-kicker i {
+        color: #024442 !important;
+        font-size: 0.72rem;
+    }
+    .motm-row-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.68rem;
+        font-weight: 800;
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fde68a;
+        padding: 2px 8px;
+        border-radius: 999px;
+        margin-left: 6px;
+        vertical-align: middle;
+    }
+    .motm-row-badge i {
+        color: #d97706 !important;
+        font-size: 0.65rem;
+    }
+    .motm-preset-chip {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: #f1f5f9;
+        color: #334155;
+        border: 1px solid #e2e8f0;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .motm-preset-chip:hover {
+        background: #e6f4f3;
+        color: #024442;
+        border-color: #024442;
+    }
 
     /* Toggle Switch */
     .switch {
@@ -621,12 +778,16 @@ if (typeof QRCode === 'undefined') {
     <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div>
             <h2 class="fw-bold mb-1" style="color:var(--primary); font-size:1.55rem;">Team Management</h2>
-            <p class="text-muted mb-0" style="font-size:0.88rem;">Manage employee records and QR verification credentials</p>
+            <p class="text-muted mb-0" style="font-size:0.88rem;">Manage Graphicafix Family profiles, spotlights, and QR verification credentials</p>
         </div>
-        <div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button type="button" class="btn" onclick="openMotmModal()"
+                    style="background:#fffbeb; border:1px solid #fcd34d; color:#92400e; font-weight:700; border-radius:8px; padding:9px 16px; font-size:0.88rem;">
+                <i class="fas fa-trophy me-1" style="color:#d97706 !important;"></i> Team Member of the Month
+            </button>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEmployeeModal"
                     style="background:var(--primary); border-color:var(--primary); color:var(--accent); font-weight:700; border-radius:8px; padding:9px 18px; font-size:0.88rem;">
-                <i class="fas fa-plus me-1"></i> Add Member
+                <i class="fas fa-plus me-1" style="color:var(--accent) !important;"></i> Add Member
             </button>
         </div>
     </div>
@@ -639,12 +800,87 @@ if (typeof QRCode === 'undefined') {
         </div>
         <div style="background:#ffffff; border:1px solid var(--border); border-radius:12px; padding:16px 20px;">
             <div style="font-size:1.6rem; font-weight:800; color:#10b981;"><?= intval($stats['active_count'] ?? 0) ?></div>
-            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-top:2px;">Active Staff</div>
+            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-top:2px;">Active Family</div>
         </div>
         <div style="background:#ffffff; border:1px solid var(--border); border-radius:12px; padding:16px 20px;">
             <div style="font-size:1.6rem; font-weight:800; color:var(--text-dark);"><?= intval($stats['about_count'] ?? 0) ?></div>
             <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-top:2px;">On About Page</div>
         </div>
+    </div>
+
+    <!-- ── Team Member of the Month Control Spotlight ── -->
+    <div class="motm-admin-banner mb-4">
+        <?php if ($active_motm):
+            $motm_name  = htmlspecialchars($active_motm['display_name'] ?? $active_motm['member_name']);
+            $motm_role  = htmlspecialchars($active_motm['display_role'] ?? $active_motm['member_role'] ?? 'Graphicafix Family');
+            $motm_dept  = htmlspecialchars($active_motm['display_department'] ?? $active_motm['member_department'] ?? '');
+            $motm_photo = !empty($active_motm['display_photo']) ? BASE_URL . ltrim($active_motm['display_photo'], '/') : '';
+            $motm_month_disp = htmlspecialchars($active_motm['month_display'] ?? date('F Y'));
+            $motm_badge = htmlspecialchars($active_motm['badge_title'] ?: 'Team Member of the Month');
+            $motm_note  = trim($active_motm['appreciation_note'] ?? '');
+        ?>
+        <div class="motm-admin-left">
+            <div class="motm-admin-avatar">
+                <?php if (!empty($motm_photo)): ?>
+                    <img src="<?= $motm_photo ?>" alt="<?= $motm_name ?>" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="motm-admin-avatar-init" style="display:none;"><?= strtoupper(substr($motm_name, 0, 1)) ?></div>
+                <?php else: ?>
+                    <div class="motm-admin-avatar-init"><?= strtoupper(substr($motm_name, 0, 1)) ?></div>
+                <?php endif; ?>
+            </div>
+            <div>
+                <div class="motm-kicker">
+                    <i class="fas fa-trophy"></i> <?= $motm_badge ?> &middot; <?= $motm_month_disp ?>
+                </div>
+                <div style="font-size:1.18rem; font-weight:800; line-height:1.25; color:#ffffff;">
+                    <?= $motm_name ?>
+                    <span style="font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.78); margin-left:6px;">
+                        <?= $motm_role ?><?= $motm_dept ? ' &bull; ' . $motm_dept : '' ?>
+                    </span>
+                </div>
+                <?php if ($motm_note !== ''): ?>
+                <div style="font-size:0.82rem; color:rgba(255,255,255,0.85); margin-top:4px; font-style:italic;">
+                    &ldquo;<?= htmlspecialchars(mb_strimwidth($motm_note, 0, 140, '...')) ?>&rdquo;
+                </div>
+                <?php else: ?>
+                <div style="font-size:0.8rem; color:rgba(255,255,255,0.72); margin-top:4px;">
+                    Currently live on the Dashboard Overview for the entire Graphicafix Family.
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap" style="z-index:1;">
+            <button type="button" class="btn btn-sm" onclick="openMotmModal()"
+                    style="background:#b8f35a; color:#024442; border:none; font-weight:800; border-radius:8px; padding:8px 14px; font-size:0.82rem;">
+                <i class="fas fa-pen me-1" style="color:#024442 !important;"></i> Change Spotlight
+            </button>
+            <button type="button" class="btn btn-sm" onclick="confirmClearMotm()"
+                    style="background:rgba(255,255,255,0.12); color:#ffffff; border:1px solid rgba(255,255,255,0.24); font-weight:600; border-radius:8px; padding:8px 12px; font-size:0.82rem;">
+                <i class="fas fa-eye-slash me-1" style="color:#ffffff !important;"></i> Hide
+            </button>
+        </div>
+        <?php else: ?>
+        <div class="motm-admin-left">
+            <div class="motm-admin-avatar" style="border-style:dashed;">
+                <i class="fas fa-trophy" style="font-size:1.35rem; color:#b8f35a !important;"></i>
+            </div>
+            <div>
+                <div class="motm-kicker">
+                    <i class="fas fa-sparkles"></i> Graphicafix Family Spotlight
+                </div>
+                <div style="font-size:1.05rem; font-weight:700; color:#ffffff;">No Team Member of the Month selected yet</div>
+                <div style="font-size:0.82rem; color:rgba(255,255,255,0.78); margin-top:2px;">
+                    Recognize a shining star from the Graphicafix Family — they&rsquo;ll be featured in a full-width card on everyone&rsquo;s Overview dashboard.
+                </div>
+            </div>
+        </div>
+        <div style="z-index:1;">
+            <button type="button" class="btn btn-sm" onclick="openMotmModal()"
+                    style="background:#b8f35a; color:#024442; border:none; font-weight:800; border-radius:8px; padding:9px 16px; font-size:0.84rem;">
+                <i class="fas fa-trophy me-1" style="color:#024442 !important;"></i> Select Team Member
+            </button>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- ── Filter & Search Toolbar ── -->
@@ -723,7 +959,14 @@ if (typeof QRCode === 'undefined') {
                                         <?php endif; ?>
                                     </div>
                                     <div>
-                                        <div class="member-name-text"><?= $mname ?></div>
+                                        <div class="member-name-text">
+                                            <?= $mname ?>
+                                            <?php if ($active_motm_member_id > 0 && intval($row['id']) === $active_motm_member_id): ?>
+                                                <span class="motm-row-badge" title="Currently featured on Dashboard Overview">
+                                                    <i class="fas fa-trophy"></i> Member of the Month
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
                                         <span class="member-id-tag"><?= $eid ?></span>
                                     </div>
                                 </div>
@@ -760,6 +1003,10 @@ if (typeof QRCode === 'undefined') {
 
                             <td style="text-align: right;">
                                 <div class="action-btn-group" style="justify-content: flex-end;">
+                                    <?php $is_crowned_row = ($active_motm_member_id > 0 && intval($row['id']) === $active_motm_member_id); ?>
+                                    <button type="button" class="act-btn motm-btn <?= $is_crowned_row ? 'is-crowned' : '' ?>" title="<?= $is_crowned_row ? 'Featured Team Member of the Month (Click to edit)' : 'Feature as Team Member of the Month' ?>" onclick="openMotmModal(<?= intval($row['id']) ?>)">
+                                        <i class="fas fa-trophy"></i>
+                                    </button>
                                     <button type="button" class="act-btn id-badge-btn" title="QR Code" onclick='openQrModal(<?= $row_json ?>)'>
                                         <i class="fas fa-qrcode"></i>
                                     </button>
@@ -1117,6 +1364,99 @@ if (typeof QRCode === 'undefined') {
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL 4: TEAM MEMBER OF THE MONTH (GRAPHICAFIX FAMILY SPOTLIGHT)       -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="motmModal" tabindex="-1" aria-labelledby="motmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:18px; border:none; box-shadow:0 20px 60px rgba(0,0,0,0.18);">
+            <div class="modal-header" style="background:linear-gradient(125deg, #024442, #075f5b); color:#ffffff; border-radius:18px 18px 0 0; padding:18px 24px;">
+                <div>
+                    <h5 class="modal-title fw-bold mb-0" id="motmModalLabel" style="color:#b8f35a;">
+                        <i class="fas fa-trophy me-2" style="color:#b8f35a !important;"></i> Team Member of the Month
+                    </h5>
+                    <div style="font-size:0.78rem; color:rgba(255,255,255,0.8); margin-top:2px;">
+                        Celebrate a standout member of the Graphicafix Family on the Overview dashboard
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="manage_team.php" method="POST">
+                <input type="hidden" name="action" value="set_member_of_month">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold" style="font-size:0.85rem; color:#334155;">Select Team Member <span class="text-danger">*</span></label>
+                        <select name="team_member_id" id="motmMemberSelect" class="form-select" required style="border-radius:10px; font-size:0.9rem;">
+                            <option value="">-- Choose from Graphicafix Family --</option>
+                            <?php foreach ($all_motm_candidates as $cand): ?>
+                                <option value="<?= intval($cand['id']) ?>" <?= ($active_motm_member_id === intval($cand['id'])) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($cand['member_name']) ?><?= !empty($cand['role']) ? ' — ' . htmlspecialchars($cand['role']) : '' ?><?= !empty($cand['department']) ? ' (' . htmlspecialchars($cand['department']) . ')' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold" style="font-size:0.85rem; color:#334155;">Month</label>
+                            <input type="month" name="month_year" id="motmMonthInput" class="form-control"
+                                   value="<?= htmlspecialchars($active_motm['month_year'] ?? date('Y-m')) ?>"
+                                   required style="border-radius:10px; font-size:0.88rem;">
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label fw-bold" style="font-size:0.85rem; color:#334155;">Spotlight Title</label>
+                            <input type="text" name="badge_title" id="motmTitleInput" class="form-control"
+                                   value="<?= htmlspecialchars($active_motm['badge_title'] ?? 'Team Member of the Month') ?>"
+                                   placeholder="Team Member of the Month" maxlength="120" style="border-radius:10px; font-size:0.88rem;">
+                        </div>
+                    </div>
+
+                    <div class="mb-3 d-flex flex-wrap gap-1">
+                        <span class="motm-preset-chip" onclick="document.getElementById('motmTitleInput').value='Team Member of the Month'">Team Member of the Month</span>
+                        <span class="motm-preset-chip" onclick="document.getElementById('motmTitleInput').value='Star of the Graphicafix Family'">Star of the Graphicafix Family</span>
+                        <span class="motm-preset-chip" onclick="document.getElementById('motmTitleInput').value='Graphicafix Family Spotlight'">Graphicafix Family Spotlight</span>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label fw-bold" style="font-size:0.85rem; color:#334155;">Appreciation Message <span class="text-muted fw-normal">(Optional)</span></label>
+                        <textarea name="appreciation_note" id="motmNoteInput" rows="3" class="form-control"
+                                  placeholder="e.g., Thank you for your incredible creativity, teamwork, and dedication to the Graphicafix Family this month!"
+                                  style="border-radius:10px; font-size:0.88rem;"><?= htmlspecialchars($active_motm['appreciation_note'] ?? '') ?></textarea>
+                    </div>
+
+                    <?php if (!empty($motm_history)): ?>
+                    <div class="mt-3 pt-3" style="border-top:1px solid #f1f5f9;">
+                        <div style="font-size:0.74rem; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:#64748b; margin-bottom:8px;">
+                            Recent Honorees
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <?php foreach ($motm_history as $h): ?>
+                            <span style="display:inline-flex; align-items:center; gap:6px; font-size:0.76rem; padding:4px 10px; border-radius:999px; background:<?= intval($h['is_active']) === 1 ? '#fef3c7' : '#f8fafc' ?>; color:<?= intval($h['is_active']) === 1 ? '#92400e' : '#475569' ?>; border:1px solid <?= intval($h['is_active']) === 1 ? '#fde68a' : '#e2e8f0' ?>;">
+                                <i class="fas fa-award" style="color:<?= intval($h['is_active']) === 1 ? '#d97706' : '#94a3b8' ?> !important;"></i>
+                                <strong><?= htmlspecialchars($h['display_name'] ?? $h['member_name']) ?></strong>
+                                <span style="opacity:0.75;">&middot; <?= htmlspecialchars($h['month_display']) ?></span>
+                            </span>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600;">Cancel</button>
+                    <button type="submit" class="btn" style="background:var(--primary); color:var(--accent); font-weight:800; border-radius:10px; padding:9px 20px;">
+                        <i class="fas fa-check-circle me-1" style="color:var(--accent) !important;"></i> Feature on Dashboard
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- CLEAR SPOTLIGHT FORM -->
+<form id="clearMotmForm" action="manage_team.php" method="POST" style="display:none;">
+    <input type="hidden" name="action" value="clear_member_of_month">
+</form>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
 <!-- DELETE CONFIRMATION FORM                                               -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <form id="deleteForm" action="manage_team.php" method="POST" style="display:none;">
@@ -1125,6 +1465,24 @@ if (typeof QRCode === 'undefined') {
 </form>
 
 <script>
+// ── Team Member of the Month Modal ──
+function openMotmModal(preselectId = 0) {
+    const sel = document.getElementById('motmMemberSelect');
+    if (sel && preselectId > 0) {
+        sel.value = String(preselectId);
+    }
+    const modalEl = document.getElementById('motmModal');
+    if (modalEl) {
+        new bootstrap.Modal(modalEl).show();
+    }
+}
+
+function confirmClearMotm() {
+    if (confirm('Hide the Team Member of the Month card from the Dashboard Overview?')) {
+        document.getElementById('clearMotmForm').submit();
+    }
+}
+
 // ── Quick Toggle Show on About ──
 function toggleAbout(id, val) {
     const fd = new FormData();

@@ -3,6 +3,15 @@ include 'dashboard_header.php';
 require_once __DIR__ . '/../core/task_assignees_helper.php';
 ensureTaskUserSchema($conn);
 
+// Fetch active Team Member of the Month for the Graphicafix Family overview
+$member_of_month = null;
+if (!in_array($role, ['client', 'client_sub', 'student']) && file_exists(__DIR__ . '/../core/team_schema.php')) {
+    require_once __DIR__ . '/../core/team_schema.php';
+    if (function_exists('getActiveMemberOfMonth')) {
+        $member_of_month = getActiveMemberOfMonth($conn);
+    }
+}
+
 // ── 1. Ensure Teacher/Student/Blogs Tables Exist ──
 $conn->query("CREATE TABLE IF NOT EXISTS live_sessions (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -582,9 +591,273 @@ a.stat-card:active {
 .form-input-custom { width:100%; padding:12px 14px; border:1.5px solid #e0e0e0; border-radius:10px; margin-bottom:18px; font-size:.9rem; background:#f9fbfc; transition:all 0.2s; outline:none;}
 .form-input-custom:focus { border-color:var(--primary); background:#fff; box-shadow:0 0 0 3px rgba(2,68,66,0.1);}
 
+/* ── Full-Width Team Member of the Month Card (Graphicafix Family Spotlight) ── */
+.motm-hero-card {
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    border-radius: 18px;
+    padding: 24px 28px;
+    margin: 0 0 28px 0;
+    background: linear-gradient(125deg, #023735 0%, #024442 52%, #07645f 100%);
+    border: 1px solid rgba(184, 243, 90, 0.28);
+    box-shadow: 0 12px 32px rgba(2, 68, 66, 0.16);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+.motm-hero-card::before {
+    content: "";
+    position: absolute;
+    left: -80px;
+    bottom: -90px;
+    width: 260px;
+    height: 260px;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.16) 0%, transparent 70%);
+    pointer-events: none;
+}
+.motm-hero-card::after {
+    content: "";
+    position: absolute;
+    right: -60px;
+    top: -80px;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(184, 243, 90, 0.18) 0%, transparent 68%);
+    pointer-events: none;
+}
+.motm-hero-main {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+}
+.motm-avatar-frame {
+    position: relative;
+    width: 86px;
+    height: 86px;
+    border-radius: 50%;
+    padding: 3px;
+    background: linear-gradient(135deg, #b8f35a 0%, #f59e0b 100%);
+    flex-shrink: 0;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+}
+.motm-avatar-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #023735;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #024442;
+}
+.motm-avatar-inner img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.motm-avatar-initials {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #b8f35a;
+    letter-spacing: 0.5px;
+}
+.motm-avatar-crown {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    border: 2.5px solid #024442;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+.motm-avatar-crown i {
+    color: #ffffff !important;
+    font-size: 0.72rem;
+}
+.motm-hero-body {
+    flex: 1;
+    min-width: 0;
+}
+.motm-badges-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.motm-pill-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #b8f35a;
+    color: #024442;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    padding: 4px 12px;
+    border-radius: 999px;
+}
+.motm-pill-primary i {
+    color: #024442 !important;
+    font-size: 0.72rem;
+}
+.motm-pill-month {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.13);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #f8fafc;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 4px 11px;
+    border-radius: 999px;
+}
+.motm-pill-family {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(251, 191, 36, 0.16);
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    color: #fde68a;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 4px 11px;
+    border-radius: 999px;
+}
+.motm-pill-family i {
+    color: #fbbf24 !important;
+    font-size: 0.7rem;
+}
+.motm-member-name {
+    margin: 0;
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.4px;
+    line-height: 1.2;
+}
+.motm-member-meta {
+    margin: 4px 0 0 0;
+    font-size: 0.88rem;
+    color: rgba(255, 255, 255, 0.82);
+    font-weight: 500;
+}
+.motm-quote-box {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border-left: 3px solid #b8f35a;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.92);
+}
+.motm-hero-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+.motm-crest-box {
+    background: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 14px;
+    padding: 14px 18px;
+    text-align: center;
+    min-width: 158px;
+    backdrop-filter: blur(4px);
+}
+.motm-crest-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    margin: 0 auto 8px auto;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(184, 243, 90, 0.2));
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.motm-crest-icon i {
+    font-size: 1.15rem;
+    color: #fbbf24 !important;
+}
+.motm-manage-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.82);
+    text-decoration: none;
+    padding: 5px 11px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    transition: all 0.15s ease;
+}
+.motm-manage-link:hover {
+    background: #b8f35a;
+    color: #024442;
+    border-color: #b8f35a;
+}
+.motm-manage-link i {
+    color: inherit !important;
+    font-size: 0.72rem;
+}
+
 @media (max-width: 768px) {
     .admin-stats-grid   { grid-template-columns: repeat(2, 1fr); }
     .quick-actions-grid { grid-template-columns: repeat(3, 1fr); }
+    .motm-hero-card {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 20px;
+    }
+    .motm-hero-main {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+    }
+    .motm-hero-right {
+        width: 100%;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .motm-crest-box {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-align: left;
+        padding: 10px 14px;
+        min-width: 0;
+    }
+    .motm-crest-icon {
+        margin: 0;
+        width: 34px;
+        height: 34px;
+    }
+    .motm-member-name { font-size: 1.35rem; }
 }
 </style>
 
@@ -605,6 +878,99 @@ a.stat-card:active {
             else echo "Your daily workspace — track your assigned tasks, attendance &amp; project deliverables."; 
         ?></p>
     </div>
+
+    <?php if (!empty($member_of_month)):
+        $motm_disp_name  = trim($member_of_month['display_name'] ?? $member_of_month['member_name'] ?? '');
+        $motm_disp_role  = trim($member_of_month['display_role'] ?? $member_of_month['member_role'] ?? '');
+        $motm_disp_dept  = trim($member_of_month['display_department'] ?? $member_of_month['member_department'] ?? '');
+        $motm_disp_photo = !empty($member_of_month['display_photo']) ? BASE_URL . ltrim($member_of_month['display_photo'], '/') : '';
+        $motm_disp_email = strtolower(trim($member_of_month['display_email'] ?? $member_of_month['member_email'] ?? ''));
+        $motm_month_lbl  = $member_of_month['month_display'] ?? date('F Y');
+        $motm_badge_lbl  = trim($member_of_month['badge_title'] ?? '') ?: 'Team Member of the Month';
+        $motm_note_txt   = trim($member_of_month['appreciation_note'] ?? '');
+        if ($motm_note_txt === '') {
+            $motm_note_txt = 'Celebrating outstanding dedication, creativity, and the team spirit that makes the Graphicafix Family shine!';
+        }
+        $motm_parts = preg_split('/\s+/', $motm_disp_name);
+        $motm_initials = strtoupper(substr($motm_parts[0] ?? 'G', 0, 1) . (isset($motm_parts[1]) ? substr($motm_parts[1], 0, 1) : ''));
+        $is_current_user_honoree = (
+            ($motm_disp_email !== '' && isset($email) && strtolower(trim($email)) === $motm_disp_email)
+            || ($motm_disp_name !== '' && strtolower(trim($name ?? '')) === strtolower($motm_disp_name))
+        );
+        $can_manage_spotlight = in_array($role, ['super_admin', 'superadmin', 'admin', 'manager', 'hrm', 'pm']);
+    ?>
+    <!-- Full-Width Graphicafix Family Spotlight Card -->
+    <div class="motm-hero-card" aria-label="Team Member of the Month">
+        <div class="motm-hero-main">
+            <div class="motm-avatar-frame">
+                <div class="motm-avatar-inner">
+                    <?php if (!empty($motm_disp_photo)): ?>
+                        <img src="<?= htmlspecialchars($motm_disp_photo) ?>" alt="<?= htmlspecialchars($motm_disp_name) ?>" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <span class="motm-avatar-initials" style="display:none;"><?= htmlspecialchars($motm_initials) ?></span>
+                    <?php else: ?>
+                        <span class="motm-avatar-initials"><?= htmlspecialchars($motm_initials) ?></span>
+                    <?php endif; ?>
+                </div>
+                <span class="motm-avatar-crown" title="Team Member of the Month">
+                    <i class="fas fa-trophy"></i>
+                </span>
+            </div>
+
+            <div class="motm-hero-body">
+                <div class="motm-badges-row">
+                    <span class="motm-pill-primary">
+                        <i class="fas fa-star"></i> <?= htmlspecialchars($motm_badge_lbl) ?>
+                    </span>
+                    <span class="motm-pill-month">
+                        <?= htmlspecialchars($motm_month_lbl) ?>
+                    </span>
+                    <span class="motm-pill-family">
+                        <i class="fas fa-heart"></i> Graphicafix Family
+                    </span>
+                    <?php if ($is_current_user_honoree): ?>
+                    <span class="motm-pill-family" style="background:rgba(184,243,90,0.22); border-color:rgba(184,243,90,0.5); color:#d9f99d;">
+                        <i class="fas fa-award" style="color:#b8f35a !important;"></i> That&rsquo;s You! Congratulations!
+                    </span>
+                    <?php endif; ?>
+                </div>
+
+                <h2 class="motm-member-name"><?= htmlspecialchars($motm_disp_name) ?></h2>
+
+                <p class="motm-member-meta">
+                    <?php
+                        $meta_bits = array_filter([$motm_disp_role, $motm_disp_dept]);
+                        echo htmlspecialchars(!empty($meta_bits) ? implode(' • ', $meta_bits) : 'Valued Member of the Graphicafix Family');
+                    ?>
+                </p>
+
+                <div class="motm-quote-box">
+                    &ldquo;<?= htmlspecialchars($motm_note_txt) ?>&rdquo;
+                </div>
+            </div>
+        </div>
+
+        <div class="motm-hero-right">
+            <div class="motm-crest-box">
+                <div class="motm-crest-icon">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <div>
+                    <div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; color:#b8f35a;">
+                        Graphicafix Family
+                    </div>
+                    <div style="font-size:0.78rem; color:rgba(255,255,255,0.82); font-weight:600; margin-top:2px;">
+                        Spotlight Honor
+                    </div>
+                </div>
+            </div>
+            <?php if ($can_manage_spotlight): ?>
+            <a href="manage_team.php" class="motm-manage-link" title="Update Team Member of the Month in Team Management">
+                <i class="fas fa-sliders-h"></i> Manage Spotlight
+            </a>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <?php if ($role === 'super_admin' || $role === 'superadmin' || $role === 'admin' || $role === 'pm' || $role === 'manager' || $role === 'sales'): ?>
 
