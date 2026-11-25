@@ -363,14 +363,416 @@ elseif ($role === 'student') {
 ?>
 
 <style>
-/* ── Only styles NOT already in dashboard.css ── */
+/* ── Overview Tab Unified Modern Design System (Clean White + Accent Green #b8f35a) ── */
+.dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 28px 48px !important;
+}
+
+/* Override legacy dashboard.css high-clutter / low-contrast rules on Overview */
+.dashboard-container .tasks-card,
+.dashboard-container .resources-card,
+.dashboard-container .main-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 16px !important;
+    padding: 22px 24px !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+.dashboard-container .card-header-custom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px !important;
+    padding-bottom: 14px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+.dashboard-container .card-header-custom h3 {
+    font-size: 0.98rem !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    letter-spacing: -0.01em;
+}
+.dashboard-container .card-header-custom h3 i {
+    font-size: 0.92rem;
+}
+.dashboard-container .badge-count {
+    background: #ecfccb !important;
+    color: #365314 !important;
+    border: 1px solid #d9f99d !important;
+    padding: 3px 10px !important;
+    border-radius: 999px !important;
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
+}
+.dashboard-container .view-all-link {
+    font-size: 0.78rem !important;
+    color: #475569 !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    transition: all 0.15s ease;
+}
+.dashboard-container .view-all-link:hover {
+    background: #b8f35a !important;
+    color: #142600 !important;
+    border-color: #a3e635 !important;
+    text-decoration: none !important;
+}
+.dashboard-container .notices-body {
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+}
+.dashboard-container .notice-item {
+    display: block;
+    padding: 12px 14px !important;
+    margin-bottom: 8px !important;
+    border-radius: 10px !important;
+    background: #f8fafc !important;
+    border: 1px solid #f1f5f9 !important;
+    border-left: 3px solid #b8f35a !important;
+    transition: all 0.15s ease !important;
+    text-decoration: none !important;
+}
+.dashboard-container .notice-item:last-child { margin-bottom: 0 !important; }
+.dashboard-container .notice-item:hover {
+    background: #f7fee7 !important;
+    border-color: #d9f99d !important;
+    border-left-color: #84cc16 !important;
+    transform: translateX(2px) !important;
+}
+.dashboard-container .notice-title {
+    font-size: 0.86rem !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    margin-bottom: 2px !important;
+    line-height: 1.35;
+}
+.dashboard-container .resources-list {
+    padding: 0 !important;
+    max-height: 320px;
+}
+.dashboard-container .resource-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 10px 12px !important;
+    margin-bottom: 8px !important;
+    background: #f8fafc !important;
+    border: 1px solid #f1f5f9 !important;
+    border-radius: 10px !important;
+    transition: all 0.15s ease !important;
+    text-decoration: none !important;
+}
+.dashboard-container .resource-item:last-child { margin-bottom: 0 !important; }
+.dashboard-container .resource-item:hover {
+    background: #f7fee7 !important;
+    border-color: #d9f99d !important;
+    transform: translateX(2px) !important;
+    box-shadow: none !important;
+}
+.dashboard-container .resource-icon {
+    width: 36px !important;
+    height: 36px !important;
+    margin-right: 0 !important;
+    border-radius: 10px !important;
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #365314 !important;
+    font-size: 0.88rem !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+.dashboard-container .resource-icon i {
+    color: #365314 !important;
+}
+.dashboard-container .resource-item:hover .resource-icon {
+    background: #b8f35a !important;
+    border-color: #a3e635 !important;
+}
+.dashboard-container .resource-title {
+    font-size: 0.85rem !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    margin-bottom: 0 !important;
+}
+.dashboard-container .resource-link-icon {
+    color: #94a3b8 !important;
+    font-size: 0.85rem !important;
+}
+
+/* ── Top Welcome Bar ── */
+.ov-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+}
+.ov-topbar-title h1 {
+    font-size: 1.6rem !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    letter-spacing: -0.025em;
+    margin: 0 0 4px 0 !important;
+    line-height: 1.2;
+}
+.ov-topbar-title p {
+    margin: 0 !important;
+    font-size: 0.88rem !important;
+    color: #64748b !important;
+    font-weight: 500;
+}
+.ov-topbar-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.ov-date-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+.ov-date-pill i {
+    color: #65a30d !important;
+    font-size: 0.82rem;
+}
+.ov-primary-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    background: #b8f35a;
+    border: 1px solid #a3e635;
+    color: #142600 !important;
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-decoration: none !important;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 8px rgba(184, 243, 90, 0.35);
+}
+.ov-primary-cta:hover {
+    background: #a8e846;
+    transform: translateY(-1px);
+    color: #142600 !important;
+}
+.ov-primary-cta i {
+    color: #142600 !important;
+    font-size: 0.8rem;
+}
 
 /* Admin stat cards — extended from .stat-card */
 .admin-stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+/* Balanced 3-column horizontal KPI grid for Staff/User Overview */
+.ov-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+}
+.ov-kpi-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    text-decoration: none !important;
+    color: inherit !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    transition: all 0.18s ease;
+}
+.ov-kpi-card:hover {
+    border-color: #b8f35a;
+    background: #fcfef8;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -6px rgba(15, 23, 42, 0.07);
+}
+.ov-kpi-card.is-accent {
+    border-color: #d9f99d;
+    background: linear-gradient(135deg, #ffffff 0%, #f9fef0 100%);
+}
+.ov-kpi-left {
+    min-width: 0;
+}
+.ov-kpi-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.55px;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+.ov-kpi-value {
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    font-variant-numeric: tabular-nums;
+}
+.ov-kpi-sub {
+    font-size: 0.74rem;
+    color: #94a3b8;
+    font-weight: 600;
+    margin-top: 4px;
+}
+.ov-kpi-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    flex-shrink: 0;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+}
+.ov-kpi-icon.accent { background: #ecfccb; border-color: #d9f99d; }
+.ov-kpi-icon.accent i { color: #3f6212 !important; }
+.ov-kpi-icon.blue   { background: #eff6ff; border-color: #dbeafe; }
+.ov-kpi-icon.blue i { color: #2563eb !important; }
+.ov-kpi-icon.red    { background: #fef2f2; border-color: #fee2e2; }
+.ov-kpi-icon.red i  { color: #dc2626 !important; }
+.ov-kpi-icon.green  { background: #ecfdf5; border-color: #d1fae5; }
+.ov-kpi-icon.green i { color: #059669 !important; }
+.ov-kpi-icon.purple { background: #f5f3ff; border-color: #ede9fe; }
+.ov-kpi-icon.purple i { color: #7c3aed !important; }
+.ov-kpi-icon.amber  { background: #fffbeb; border-color: #fef3c7; }
+.ov-kpi-icon.amber i { color: #d97706 !important; }
+
+/* Compact Quick Actions Strip */
+.ov-actions-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-bottom: 22px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+}
+.ov-actions-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+.ov-actions-header span {
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.65px;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+.ov-actions-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+    gap: 10px;
+}
+.ov-action-tile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 13px;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 11px;
+    text-decoration: none !important;
+    color: #1e293b !important;
+    font-size: 0.81rem;
+    font-weight: 700;
+    transition: all 0.16s ease;
+}
+.ov-action-tile:hover {
+    background: #f7fee7;
+    border-color: #b8f35a;
+    color: #142600 !important;
+    transform: translateY(-1px);
+}
+.ov-action-ico {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+    transition: all 0.16s ease;
+}
+.ov-action-tile:hover .ov-action-ico {
+    background: #b8f35a;
+    border-color: #a3e635;
+}
+.ov-action-tile:hover .ov-action-ico i {
+    color: #142600 !important;
+}
+
+/* Asymmetric Clean Workspace Split (Tasks left, Notices/Resources right) */
+.ov-workspace-grid {
+    display: grid;
+    grid-template-columns: 1.45fr 1fr;
     gap: 20px;
-    margin-bottom: 30px;
+    align-items: start;
+}
+.ov-task-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 13px 12px;
+    border-radius: 11px;
+    border: 1px solid transparent;
+    border-bottom: 1px solid #f1f5f9;
+    transition: all 0.15s ease;
+}
+.ov-task-row:last-child { border-bottom-color: transparent; }
+.ov-task-row:hover {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+.ov-task-check {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    cursor: pointer;
+    accent-color: #65a30d;
+    flex-shrink: 0;
 }
 
 /* Interactive clickable stat cards matching modern clean aesthetics */
@@ -525,17 +927,17 @@ a.stat-card:active {
 /* Quick actions */
 .quick-actions-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+    gap: 12px;
 }
 .quick-action-btn {
-    display: flex; flex-direction: column; align-items: center; gap: 10px;
-    padding: 20px 12px; background: #f8f9fa; border: 2px solid transparent;
-    border-radius: 12px; text-decoration: none; color: #333;
-    font-weight: 600; font-size: 13px; text-align: center; transition: all 0.3s ease;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 16px 12px; background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 12px; text-decoration: none; color: #1e293b;
+    font-weight: 700; font-size: 12.5px; text-align: center; transition: all 0.18s ease;
 }
-.quick-action-btn:hover { background: #fcfff5ff; border-color: var(--accent); color: var(--accent); transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-.quick-action-btn .qa-icon { font-size: 1.6rem; }
+.quick-action-btn:hover { background: #f7fee7; border-color: #b8f35a; color: #142600; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(15,23,42,0.05); }
+.quick-action-btn .qa-icon { font-size: 1.35rem; color: #365314; }
 
 /* Two-column admin panels */
 .admin-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
@@ -591,48 +993,38 @@ a.stat-card:active {
 .form-input-custom { width:100%; padding:12px 14px; border:1.5px solid #e0e0e0; border-radius:10px; margin-bottom:18px; font-size:.9rem; background:#f9fbfc; transition:all 0.2s; outline:none;}
 .form-input-custom:focus { border-color:var(--primary); background:#fff; box-shadow:0 0 0 3px rgba(2,68,66,0.1);}
 
-/* ── Full-Width Team Member of the Month Card (Clean Light + Accent Green) ── */
+/* ── Full-Width Team Member of the Month Card (Minimal White + Accent Green #b8f35a) ── */
 .motm-hero-card {
     width: 100%;
     position: relative;
     overflow: hidden;
-    border-radius: 18px;
-    padding: 24px 28px;
-    margin: 0 0 28px 0;
-    background: linear-gradient(125deg, #ffffff 0%, #f9fef0 62%, #f1fcd9 100%);
-    border: 1.5px solid #d4f48c;
-    border-left: 5px solid #b8f35a;
-    box-shadow: 0 6px 24px rgba(15, 23, 42, 0.05);
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin: 0 0 22px 0;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #b8f35a;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
     color: #0f172a;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 24px;
+    gap: 20px;
 }
-.motm-hero-card::before {
+.motm-hero-card::after {
     content: "";
     position: absolute;
-    left: -70px;
-    bottom: -90px;
+    right: -40px;
+    top: -60px;
     width: 240px;
     height: 240px;
     background: radial-gradient(circle, rgba(184, 243, 90, 0.22) 0%, transparent 70%);
     pointer-events: none;
 }
-.motm-hero-card::after {
-    content: "";
-    position: absolute;
-    right: -50px;
-    top: -70px;
-    width: 290px;
-    height: 290px;
-    background: radial-gradient(circle, rgba(184, 243, 90, 0.32) 0%, transparent 68%);
-    pointer-events: none;
-}
 .motm-hero-main {
     display: flex;
     align-items: center;
-    gap: 22px;
+    gap: 18px;
     flex: 1;
     min-width: 0;
     position: relative;
@@ -640,13 +1032,12 @@ a.stat-card:active {
 }
 .motm-avatar-frame {
     position: relative;
-    width: 84px;
-    height: 84px;
+    width: 70px;
+    height: 70px;
     border-radius: 50%;
-    padding: 3.5px;
-    background: linear-gradient(135deg, #b8f35a 0%, #84cc16 100%);
+    padding: 3px;
+    background: #b8f35a;
     flex-shrink: 0;
-    box-shadow: 0 6px 18px rgba(132, 204, 22, 0.22);
 }
 .motm-avatar-inner {
     width: 100%;
@@ -657,7 +1048,7 @@ a.stat-card:active {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2.5px solid #ffffff;
+    border: 2px solid #ffffff;
 }
 .motm-avatar-inner img {
     width: 100%;
@@ -666,28 +1057,27 @@ a.stat-card:active {
     display: block;
 }
 .motm-avatar-initials {
-    font-size: 1.7rem;
+    font-size: 1.45rem;
     font-weight: 800;
-    color: #3f6212;
+    color: #365314;
     letter-spacing: 0.5px;
 }
 .motm-avatar-crown {
     position: absolute;
     right: -2px;
     bottom: -2px;
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     background: #b8f35a;
-    border: 2.5px solid #ffffff;
+    border: 2px solid #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.14);
 }
 .motm-avatar-crown i {
-    color: #1a2e05 !important;
-    font-size: 0.72rem;
+    color: #142600 !important;
+    font-size: 0.65rem;
 }
 .motm-hero-body {
     flex: 1;
@@ -698,128 +1088,104 @@ a.stat-card:active {
     align-items: center;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
 }
 .motm-pill-primary {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     background: #b8f35a;
-    color: #1a2e05;
-    font-size: 0.72rem;
+    color: #142600;
+    font-size: 0.68rem;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.65px;
-    padding: 4px 12px;
+    letter-spacing: 0.6px;
+    padding: 3px 10px;
     border-radius: 999px;
 }
 .motm-pill-primary i {
-    color: #1a2e05 !important;
-    font-size: 0.72rem;
+    color: #142600 !important;
+    font-size: 0.66rem;
 }
-.motm-pill-month {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: #ffffff;
-    border: 1px solid #d9e8c5;
-    color: #334155;
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 4px 11px;
-    border-radius: 999px;
+.motm-meta-sep {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #64748b;
 }
-.motm-pill-family {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: #ecfccb;
-    border: 1px solid #bef264;
-    color: #3f6212;
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 4px 11px;
-    border-radius: 999px;
-}
-.motm-pill-family i {
-    color: #4d7c0f !important;
-    font-size: 0.7rem;
+.motm-name-row {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 .motm-member-name {
     margin: 0;
-    font-size: 1.6rem;
+    font-size: 1.35rem;
     font-weight: 800;
     color: #0f172a;
-    letter-spacing: -0.4px;
+    letter-spacing: -0.025em;
     line-height: 1.2;
 }
 .motm-member-meta {
-    margin: 4px 0 0 0;
-    font-size: 0.88rem;
-    color: #475569;
+    margin: 0;
+    font-size: 0.84rem;
+    color: #64748b;
     font-weight: 600;
 }
-.motm-quote-box {
-    margin-top: 12px;
-    padding: 10px 14px;
-    border-radius: 10px;
-    background: #ffffff;
-    border: 1px solid #e6f4cc;
-    border-left: 3.5px solid #b8f35a;
-    font-size: 0.86rem;
-    line-height: 1.5;
-    color: #334155;
+.motm-quote-line {
+    margin-top: 6px;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: #475569;
 }
 .motm-hero-right {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
+    align-items: center;
     gap: 10px;
     flex-shrink: 0;
     position: relative;
     z-index: 1;
 }
-.motm-crest-box {
-    background: #ffffff;
-    border: 1px solid #d9f2a6;
-    border-radius: 14px;
-    padding: 14px 18px;
-    text-align: center;
-    min-width: 158px;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
-}
-.motm-crest-icon {
-    width: 42px;
-    height: 42px;
+.motm-trophy-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 14px;
     border-radius: 12px;
-    margin: 0 auto 8px auto;
+    background: #f7fee7;
+    border: 1px solid #d9f99d;
+}
+.motm-trophy-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
     background: #b8f35a;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(184, 243, 90, 0.45);
+    flex-shrink: 0;
 }
-.motm-crest-icon i {
-    font-size: 1.12rem;
-    color: #1a2e05 !important;
+.motm-trophy-icon i {
+    font-size: 0.9rem;
+    color: #142600 !important;
 }
 .motm-manage-link {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     font-size: 0.76rem;
     font-weight: 700;
-    color: #334155;
+    color: #475569;
     text-decoration: none;
-    padding: 6px 12px;
-    border-radius: 8px;
-    background: #ffffff;
-    border: 1px solid #d9e8c5;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     transition: all 0.15s ease;
 }
 .motm-manage-link:hover {
     background: #b8f35a;
-    color: #1a2e05;
+    color: #142600;
     border-color: #a3e635;
 }
 .motm-manage-link i {
@@ -827,58 +1193,60 @@ a.stat-card:active {
     font-size: 0.72rem;
 }
 
+@media (max-width: 992px) {
+    .ov-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ov-workspace-grid { grid-template-columns: 1fr; }
+}
 @media (max-width: 768px) {
+    .dashboard-container { padding: 16px 14px 36px !important; }
     .admin-stats-grid   { grid-template-columns: repeat(2, 1fr); }
     .quick-actions-grid { grid-template-columns: repeat(3, 1fr); }
+    .ov-actions-strip   { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .motm-hero-card {
         flex-direction: column;
         align-items: flex-start;
-        padding: 20px;
+        padding: 18px;
     }
     .motm-hero-main {
-        flex-direction: column;
         align-items: flex-start;
         gap: 14px;
     }
     .motm-hero-right {
         width: 100%;
-        flex-direction: row;
-        align-items: center;
         justify-content: space-between;
     }
-    .motm-crest-box {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        text-align: left;
-        padding: 10px 14px;
-        min-width: 0;
-    }
-    .motm-crest-icon {
-        margin: 0;
-        width: 34px;
-        height: 34px;
-    }
-    .motm-member-name { font-size: 1.35rem; }
+    .motm-member-name { font-size: 1.2rem; }
 }
 </style>
 
 <div class="dashboard-container">
 
-    <div class="welcome-text">
-        <h1>Welcome back, <?php echo htmlspecialchars($name); ?> <?php 
-            if ($role === 'super_admin' || $role === 'superadmin') echo '<i class="fas fa-crown" style="color:#f59e0b;"></i>';
-            elseif ($role === 'admin') echo '<i class="fas fa-user-shield" style="color:var(--primary);"></i>';
-            else echo '👋'; 
-        ?></h1>
-        <p><?php 
-            if ($role === 'super_admin' || $role === 'superadmin') echo "Executive dashboard &amp; agency operations overview.";
-            elseif ($role === 'admin') echo "Here's your administrative and operational overview for today.";
-            elseif ($role === 'client' || $role === 'client_sub') echo "Welcome to your client workspace — track your project deliverables and invoices.";
-            elseif ($role === 'teacher') echo "Manage your assigned courses, students, and live teaching sessions.";
-            elseif ($role === 'student') echo "Continue learning and track your course progress.";
-            else echo "Your daily workspace — track your assigned tasks, attendance &amp; project deliverables."; 
-        ?></p>
+    <div class="ov-topbar">
+        <div class="ov-topbar-title">
+            <h1>Welcome back, <?= htmlspecialchars($name) ?></h1>
+            <p><?php
+                if ($role === 'super_admin' || $role === 'superadmin') echo "Executive dashboard &amp; agency operations overview.";
+                elseif ($role === 'admin') echo "Administrative and operational overview for today.";
+                elseif ($role === 'client' || $role === 'client_sub') echo "Welcome to your client workspace — track your project deliverables and invoices.";
+                elseif ($role === 'teacher') echo "Manage your assigned courses, students, and live teaching sessions.";
+                elseif ($role === 'student') echo "Continue learning and track your course progress.";
+                else echo "Your daily Graphicafix Family workspace — tasks, attendance &amp; updates.";
+            ?></p>
+        </div>
+        <div class="ov-topbar-meta">
+            <span class="ov-date-pill">
+                <i class="far fa-calendar-alt"></i> <?= date('l, M j, Y') ?>
+            </span>
+            <?php if (in_array($role, ['user', 'hrm'])): ?>
+            <a href="dpr.php" class="ov-primary-cta">
+                <i class="fas fa-plus-circle"></i> <?= !empty($has_submitted_dpr) ? 'View Today\'s DPR' : 'Submit DPR' ?>
+            </a>
+            <?php elseif (in_array($role, ['super_admin', 'superadmin', 'admin', 'pm', 'manager'])): ?>
+            <a href="tasks.php" class="ov-primary-cta">
+                <i class="fas fa-columns"></i> Task Board
+            </a>
+            <?php endif; ?>
+        </div>
     </div>
 
     <?php if (!empty($member_of_month)):
@@ -891,7 +1259,7 @@ a.stat-card:active {
         $motm_badge_lbl  = trim($member_of_month['badge_title'] ?? '') ?: 'Team Member of the Month';
         $motm_note_txt   = trim($member_of_month['appreciation_note'] ?? '');
         if ($motm_note_txt === '') {
-            $motm_note_txt = 'Celebrating outstanding dedication, creativity, and the team spirit that makes the Graphicafix Family shine!';
+            $motm_note_txt = 'Celebrating outstanding dedication, creativity, and the team spirit that makes the Graphicafix Family shine.';
         }
         $motm_parts = preg_split('/\s+/', $motm_disp_name);
         $motm_initials = strtoupper(substr($motm_parts[0] ?? 'G', 0, 1) . (isset($motm_parts[1]) ? substr($motm_parts[1], 0, 1) : ''));
@@ -900,6 +1268,7 @@ a.stat-card:active {
             || ($motm_disp_name !== '' && strtolower(trim($name ?? '')) === strtolower($motm_disp_name))
         );
         $can_manage_spotlight = in_array($role, ['super_admin', 'superadmin', 'admin', 'manager', 'hrm', 'pm']);
+        $meta_bits = array_filter([$motm_disp_role, $motm_disp_dept]);
     ?>
     <!-- Full-Width Graphicafix Family Spotlight Card -->
     <div class="motm-hero-card" aria-label="Team Member of the Month">
@@ -923,51 +1292,46 @@ a.stat-card:active {
                     <span class="motm-pill-primary">
                         <i class="fas fa-star"></i> <?= htmlspecialchars($motm_badge_lbl) ?>
                     </span>
-                    <span class="motm-pill-month">
-                        <?= htmlspecialchars($motm_month_lbl) ?>
-                    </span>
-                    <span class="motm-pill-family">
-                        <i class="fas fa-heart"></i> Graphicafix Family
+                    <span class="motm-meta-sep">
+                        <?= htmlspecialchars($motm_month_lbl) ?> &middot; Graphicafix Family
                     </span>
                     <?php if ($is_current_user_honoree): ?>
-                    <span class="motm-pill-family" style="background:#b8f35a; border-color:#84cc16; color:#1a2e05;">
-                        <i class="fas fa-award" style="color:#1a2e05 !important;"></i> That&rsquo;s You! Congratulations!
+                    <span class="motm-pill-primary" style="background:#ecfccb; border:1px solid #bef264;">
+                        <i class="fas fa-award"></i> That&rsquo;s You!
                     </span>
                     <?php endif; ?>
                 </div>
 
-                <h2 class="motm-member-name"><?= htmlspecialchars($motm_disp_name) ?></h2>
+                <div class="motm-name-row">
+                    <h2 class="motm-member-name"><?= htmlspecialchars($motm_disp_name) ?></h2>
+                    <?php if (!empty($meta_bits)): ?>
+                    <span class="motm-member-meta"><?= htmlspecialchars(implode(' · ', $meta_bits)) ?></span>
+                    <?php endif; ?>
+                </div>
 
-                <p class="motm-member-meta">
-                    <?php
-                        $meta_bits = array_filter([$motm_disp_role, $motm_disp_dept]);
-                        echo htmlspecialchars(!empty($meta_bits) ? implode(' • ', $meta_bits) : 'Valued Member of the Graphicafix Family');
-                    ?>
-                </p>
-
-                <div class="motm-quote-box">
+                <div class="motm-quote-line">
                     &ldquo;<?= htmlspecialchars($motm_note_txt) ?>&rdquo;
                 </div>
             </div>
         </div>
 
         <div class="motm-hero-right">
-            <div class="motm-crest-box">
-                <div class="motm-crest-icon">
+            <div class="motm-trophy-badge">
+                <div class="motm-trophy-icon">
                     <i class="fas fa-trophy"></i>
                 </div>
                 <div>
-                    <div style="font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; color:#3f6212;">
+                    <div style="font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:#365314; line-height:1.15;">
                         Graphicafix Family
                     </div>
-                    <div style="font-size:0.78rem; color:#475569; font-weight:600; margin-top:2px;">
-                        Spotlight Honor
+                    <div style="font-size:0.74rem; color:#64748b; font-weight:600; margin-top:2px;">
+                        <?= htmlspecialchars($motm_month_lbl) ?>
                     </div>
                 </div>
             </div>
             <?php if ($can_manage_spotlight): ?>
-            <a href="manage_team.php" class="motm-manage-link" title="Update Team Member of the Month in Team Management">
-                <i class="fas fa-sliders-h"></i> Manage Spotlight
+            <a href="manage_team.php" class="motm-manage-link" title="Update Team Member of the Month">
+                <i class="fas fa-sliders-h"></i> Manage
             </a>
             <?php endif; ?>
         </div>
@@ -1281,12 +1645,12 @@ a.stat-card:active {
             <div class="stat-label">Completed</div>
         </a>
         <a href="tasks.php" class="stat-card orange" title="View pending tasks">
-            <div class="stat-icon">⏳</div>
+            <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
             <div class="stat-value"><?= $pending_tasks ?></div>
             <div class="stat-label">Pending Tasks</div>
         </a>
         <a href="tasks.php" class="stat-card red" title="View overdue tasks">
-            <div class="stat-icon">🚨</div>
+            <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
             <div class="stat-value"><?= $overdue_tasks ?></div>
             <div class="stat-label">Overdue</div>
         </a>
@@ -1313,7 +1677,7 @@ a.stat-card:active {
             <a href="correspondence.php"                   class="quick-action-btn"><span class="qa-icon"><i class="fas fa-envelope"></i></span> Letters / Docs</a>
             <a href="attendance.php"                       class="quick-action-btn"><span class="qa-icon"><i class="fas fa-clock"></i></span> Attendance</a>
             <?php endif; ?>
-            <a href="profile.php"                          class="quick-action-btn"><span class="qa-icon">⚙️</span> Settings</a>
+            <a href="profile.php"                          class="quick-action-btn"><span class="qa-icon"><i class="fas fa-cog"></i></span> Settings</a>
         </div>
     </div>
 
@@ -1412,7 +1776,7 @@ a.stat-card:active {
                     <span style="color:#aaa;font-size:13px;">—</span>
                     <?php endif; ?>
                 </span>
-                <span data-label="Due" style="font-size:13px;color:#888;">⏰ <?= !empty($task['due_date']) ? date('M d, Y', strtotime($task['due_date'])) : 'No date' ?></span>
+                <span data-label="Due" style="font-size:12.5px;color:#64748b;font-weight:600;"><i class="far fa-calendar-alt" style="margin-right:4px;color:#94a3b8 !important;"></i><?= !empty($task['due_date']) ? date('M d, Y', strtotime($task['due_date'])) : 'No date' ?></span>
                 <span>
                     <input type="checkbox" class="task-status"
                         data-task-id="<?= $task['id'] ?>"
@@ -1917,97 +2281,149 @@ a.stat-card:active {
             </div>
         </div>
 
-    <?php else: // Standard Employee / Staff Dashboard (role === 'user' or 'hrm') ?>
+    <?php else: // Standard Graphicafix Family Member Overview (role === 'user' or 'hrm') ?>
 
-    <!-- 1. Personal Work KPIs (Interactive Buttons, Scoped Strictly to Permitted Rights) -->
-    <div class="section-kpi-header">
-        <h4><i class="fas fa-clipboard-check" style="color:var(--primary);"></i> My Work Overview</h4>
+    <!-- 1. Balanced 3x2 Personal Work KPIs -->
+    <div class="ov-kpi-grid">
+        <a href="tasks.php" class="ov-kpi-card is-accent" title="View my active tasks">
+            <div class="ov-kpi-left">
+                <div class="ov-kpi-label">Active Tasks</div>
+                <div class="ov-kpi-value"><?= number_format($pending_tasks ?? 0) ?></div>
+                <div class="ov-kpi-sub">Currently on your plate</div>
+            </div>
+            <div class="ov-kpi-icon accent"><i class="fas fa-clipboard-list"></i></div>
+        </a>
+
+        <a href="tasks.php" class="ov-kpi-card" title="View my high priority tasks">
+            <div class="ov-kpi-left">
+                <div class="ov-kpi-label">High Priority</div>
+                <div class="ov-kpi-value"><?= number_format($high_priority_tasks ?? 0) ?></div>
+                <div class="ov-kpi-sub">Needs focus first</div>
+            </div>
+            <div class="ov-kpi-icon blue"><i class="fas fa-fire"></i></div>
+        </a>
+
+        <a href="tasks.php" class="ov-kpi-card" title="View my overdue tasks">
+            <div class="ov-kpi-left">
+                <div class="ov-kpi-label">Overdue Tasks</div>
+                <div class="ov-kpi-value" style="<?= intval($overdue_tasks ?? 0) > 0 ? 'color:#dc2626;' : '' ?>"><?= number_format($overdue_tasks ?? 0) ?></div>
+                <div class="ov-kpi-sub"><?= intval($overdue_tasks ?? 0) > 0 ? 'Action needed' : 'All on schedule' ?></div>
+            </div>
+            <div class="ov-kpi-icon red"><i class="fas fa-exclamation-triangle"></i></div>
+        </a>
+
+        <a href="tasks.php" class="ov-kpi-card" title="View my completed tasks">
+            <div class="ov-kpi-left">
+                <div class="ov-kpi-label">Completed</div>
+                <div class="ov-kpi-value"><?= number_format($completed_tasks ?? 0) ?></div>
+                <div class="ov-kpi-sub">Tasks delivered</div>
+            </div>
+            <div class="ov-kpi-icon green"><i class="fas fa-check-circle"></i></div>
+        </a>
+
+        <a href="manage_projects.php" class="ov-kpi-card" title="View my assigned projects">
+            <div class="ov-kpi-left">
+                <div class="ov-kpi-label">My Projects</div>
+                <div class="ov-kpi-value"><?= number_format($user_projects_count ?? 0) ?></div>
+                <div class="ov-kpi-sub">Active collaborations</div>
+            </div>
+            <div class="ov-kpi-icon purple"><i class="fas fa-folder-open"></i></div>
+        </a>
+
+        <a href="dpr.php" class="ov-kpi-card <?= !empty($has_submitted_dpr) ? 'is-accent' : '' ?>" title="Submit or review today's Daily Progress Report">
+            <div class="ov-kpi-left">
+                <div class="ov-kpi-label">Today&rsquo;s DPR</div>
+                <div class="ov-kpi-value" style="font-size:1.35rem; color:<?= !empty($has_submitted_dpr) ? '#365314' : '#d97706' ?>;"><?= !empty($has_submitted_dpr) ? 'Submitted' : 'Pending' ?></div>
+                <div class="ov-kpi-sub"><?= !empty($has_submitted_dpr) ? 'Logged for today' : 'Click to log update' ?></div>
+            </div>
+            <div class="ov-kpi-icon <?= !empty($has_submitted_dpr) ? 'accent' : 'amber' ?>"><i class="fas fa-calendar-check"></i></div>
+        </a>
     </div>
 
-    <div class="admin-stats-grid" style="grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); margin-bottom: 24px;">
-        <a href="tasks.php" class="stat-card" title="View my active tasks">
-            <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
-            <div class="stat-value"><?= number_format($pending_tasks ?? 0) ?></div>
-            <div class="stat-label">Active Tasks</div>
-        </a>
-        <a href="tasks.php" class="stat-card blue" title="View my high priority tasks">
-            <div class="stat-icon" style="color:#0984e3;"><i class="fas fa-fire"></i></div>
-            <div class="stat-value"><?= number_format($high_priority_tasks ?? 0) ?></div>
-            <div class="stat-label">High Priority</div>
-        </a>
-        <a href="tasks.php" class="stat-card red" title="View my overdue tasks">
-            <div class="stat-icon" style="color:#d63031;"><i class="fas fa-exclamation-triangle"></i></div>
-            <div class="stat-value"><?= number_format($overdue_tasks ?? 0) ?></div>
-            <div class="stat-label">Overdue Tasks</div>
-        </a>
-        <a href="tasks.php" class="stat-card green" title="View my completed tasks">
-            <div class="stat-icon" style="color:#00b894;"><i class="fas fa-check-circle"></i></div>
-            <div class="stat-value"><?= number_format($completed_tasks ?? 0) ?></div>
-            <div class="stat-label">Completed</div>
-        </a>
-        <a href="manage_projects.php" class="stat-card purple" title="View my assigned projects">
-            <div class="stat-icon" style="color:#8b5cf6;"><i class="fas fa-folder-open"></i></div>
-            <div class="stat-value"><?= number_format($user_projects_count ?? 0) ?></div>
-            <div class="stat-label">My Projects</div>
-        </a>
-        <a href="dpr.php" class="stat-card <?= !empty($has_submitted_dpr) ? 'green' : 'orange' ?>" title="Submit or review today's Daily Progress Report">
-            <div class="stat-icon" style="color:<?= !empty($has_submitted_dpr) ? '#00b894' : '#e17055' ?>;"><i class="fas fa-calendar-check"></i></div>
-            <div class="stat-value" style="font-size:1.5rem;"><?= !empty($has_submitted_dpr) ? 'Submitted' : 'Pending' ?></div>
-            <div class="stat-label">Today's DPR</div>
-        </a>
-    </div>
-
-    <!-- 2. Self-Service Quick Actions (Strictly Scoped to Rights) -->
-    <div class="tasks-card" style="margin-bottom:30px;">
-        <div class="card-header-custom">
-            <h3><i class="fas fa-bolt" style="color:#f59e0b;"></i> Quick Actions</h3>
+    <!-- 2. Compact Quick Actions Strip -->
+    <div class="ov-actions-card">
+        <div class="ov-actions-header">
+            <span><i class="fas fa-bolt" style="color:#65a30d !important;"></i> Quick Shortcuts</span>
         </div>
-        <div class="quick-actions-grid">
-            <a href="dpr.php"               class="quick-action-btn"><span class="qa-icon" style="color:#e17055;"><i class="fas fa-calendar-check"></i></span> Submit DPR</a>
-            <a href="attendance.php"        class="quick-action-btn"><span class="qa-icon" style="color:#0f766e;"><i class="fas fa-clock"></i></span> Attendance</a>
-            <a href="tasks.php"             class="quick-action-btn"><span class="qa-icon"><i class="fas fa-clipboard"></i></span> My Tasks</a>
-            <a href="manage_projects.php"   class="quick-action-btn"><span class="qa-icon" style="color:#8b5cf6;"><i class="fas fa-folder-open"></i></span> My Projects</a>
-            <a href="my_salary.php"         class="quick-action-btn"><span class="qa-icon" style="color:#10b981;"><i class="fas fa-receipt"></i></span> Salary Slips</a>
-            <a href="deduction_tickets.php" class="quick-action-btn"><span class="qa-icon" style="color:#ef4444;"><i class="fas fa-ticket-alt"></i></span> Dispute Ticket</a>
-            <a href="price_calculator.php"  class="quick-action-btn"><span class="qa-icon" style="color:#0284c7;"><i class="fas fa-calculator"></i></span> Price Calc</a>
-            <a href="entertainment.php"     class="quick-action-btn"><span class="qa-icon" style="color:#ec4899;"><i class="fas fa-gamepad"></i></span> Entertainment</a>
-            <a href="profile.php"           class="quick-action-btn"><span class="qa-icon">⚙️</span> Settings</a>
+        <div class="ov-actions-strip">
+            <a href="dpr.php" class="ov-action-tile">
+                <span class="ov-action-ico"><i class="fas fa-calendar-check" style="color:#d97706 !important;"></i></span>
+                <span>Submit DPR</span>
+            </a>
+            <a href="attendance.php" class="ov-action-tile">
+                <span class="ov-action-ico"><i class="fas fa-clock" style="color:#0d9488 !important;"></i></span>
+                <span>Attendance</span>
+            </a>
+            <a href="tasks.php" class="ov-action-tile">
+                <span class="ov-action-ico"><i class="fas fa-tasks" style="color:#365314 !important;"></i></span>
+                <span>My Tasks</span>
+            </a>
+            <a href="manage_projects.php" class="ov-action-tile">
+                <span class="ov-action-ico"><i class="fas fa-folder-open" style="color:#7c3aed !important;"></i></span>
+                <span>My Projects</span>
+            </a>
+            <a href="my_salary.php" class="ov-action-tile">
+                <span class="ov-action-ico"><i class="fas fa-receipt" style="color:#059669 !important;"></i></span>
+                <span>Salary Slips</span>
+            </a>
+            <a href="deduction_tickets.php" class="ov-action-tile">
+                <span class="ov-action-ico"><i class="fas fa-ticket-alt" style="color:#dc2626 !important;"></i></span>
+                <span>Dispute Ticket</span>
+            </a>
+            <a href="price_calculator.php" class="ov-action-tile">
+                <span class="ov-action-ico"><i class="fas fa-calculator" style="color:#0284c7 !important;"></i></span>
+                <span>Price Calc</span>
+            </a>
+            <a href="entertainment.php" class="ov-action-tile">
+                <span class="ov-action-ico"><i class="fas fa-gamepad" style="color:#db2777 !important;"></i></span>
+                <span>Entertainment</span>
+            </a>
+            <a href="profile.php" class="ov-action-tile">
+                <span class="ov-action-ico"><i class="fas fa-cog" style="color:#475569 !important;"></i></span>
+                <span>Settings</span>
+            </a>
         </div>
     </div>
 
-    <!-- 3. Two-Column Workspace: Active Tasks & Company Notices -->
-    <div class="admin-panels">
-        <!-- My Assigned Tasks -->
+    <!-- 3. Asymmetric Two-Column Workspace: Active Tasks & Notices/Resources -->
+    <div class="ov-workspace-grid">
+        <!-- Left: My Active Tasks -->
         <div class="tasks-card">
             <div class="card-header-custom">
-                <h3><i class="fas fa-check-circle" style="color:var(--primary);"></i> My Active Tasks</h3>
-                <a href="tasks.php" class="view-all-link">Full Task Board &rarr;</a>
+                <h3><i class="fas fa-check-circle" style="color:#65a30d !important;"></i> My Active Tasks</h3>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="badge-count"><?= $task_count ?></span>
+                    <a href="tasks.php" class="view-all-link">Task Board &rarr;</a>
+                </div>
             </div>
             <?php if ($task_count > 0): ?>
+                <div>
                 <?php foreach($dashboard_tasks as $task):
                     $t_members = $dashboard_assignees_map[intval($task['id'])] ?? [];
                     $t_is_group = count($t_members) > 1;
                     $t_names_title = implode(', ', array_map(function($m) { return $m['name']; }, $t_members));
+                    $t_is_overdue = (!empty($task['due_date']) && strtotime($task['due_date']) < strtotime(date('Y-m-d')) && $task['status'] !== 'Completed');
                 ?>
-                <div class="task-item" style="padding:14px 16px; border-bottom:1px solid #f1f5f9; display:flex; align-items:flex-start; gap:12px;">
-                    <div class="task-checkbox" style="padding-top:2px;">
-                        <input type="checkbox" class="task-status" data-task-id="<?= $task['id'] ?>" <?= $task['status'] === 'Completed' ? 'checked' : '' ?> style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent);">
-                    </div>
-                    <div class="task-content" style="flex:1;">
-                        <div class="task-title" style="font-weight:700; color:#1e293b; font-size:14px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                            <a href="task_details.php?id=<?= $task['id'] ?>" style="color:inherit;text-decoration:none;"><?= htmlspecialchars($task['title']) ?></a>
+                <div class="ov-task-row">
+                    <input type="checkbox" class="task-status ov-task-check" data-task-id="<?= $task['id'] ?>" <?= $task['status'] === 'Completed' ? 'checked' : '' ?>>
+                    <div style="flex:1; min-width:0;">
+                        <div class="task-title" style="font-weight:700; color:#0f172a; font-size:0.9rem; display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-bottom:2px;">
+                            <a href="task_details.php?id=<?= $task['id'] ?>" style="color:inherit; text-decoration:none;"><?= htmlspecialchars($task['title']) ?></a>
                             <?php if ($t_is_group): ?>
-                            <span title="Grouped Task (<?= count($t_members) ?> members): <?= htmlspecialchars($t_names_title) ?>" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;">
-                                <i class="fas fa-users" style="font-size:9px;color:#0369a1 !important;"></i> Group (<?= count($t_members) ?>)
+                            <span title="Grouped Task (<?= count($t_members) ?> members): <?= htmlspecialchars($t_names_title) ?>" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;background:#ecfccb;color:#365314;border:1px solid #d9f99d;">
+                                <i class="fas fa-users" style="font-size:9px;color:#365314 !important;"></i> Group (<?= count($t_members) ?>)
                             </span>
                             <?php endif; ?>
                         </div>
                         <?php if (!empty($task['description'])): ?>
-                        <div class="task-description" style="font-size:12.5px; color:#64748b; margin-top:3px;"><?= htmlspecialchars(mb_strimwidth($task['description'], 0, 95, '...')) ?></div>
+                        <div style="font-size:0.8rem; color:#64748b; margin-top:2px; line-height:1.4;"><?= htmlspecialchars(mb_strimwidth($task['description'], 0, 95, '...')) ?></div>
                         <?php endif; ?>
-                        <div class="task-meta" style="margin-top:6px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <div style="margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                             <span class="status-pill <?= strtolower($task['priority'] ?? 'low') ?>"><?= htmlspecialchars($task['priority'] ?? 'Normal') ?></span>
-                            <span style="font-size:11.5px; color:#94a3b8;"><i class="fas fa-clock"></i> Due: <?= !empty($task['due_date']) ? date('M d, Y', strtotime($task['due_date'])) : 'No date' ?></span>
+                            <span style="font-size:0.75rem; font-weight:600; color:<?= $t_is_overdue ? '#dc2626' : '#64748b' ?>;">
+                                <i class="far fa-calendar-alt" style="margin-right:3px; color:<?= $t_is_overdue ? '#dc2626' : '#94a3b8' ?> !important;"></i>
+                                <?= !empty($task['due_date']) ? date('M d, Y', strtotime($task['due_date'])) : 'No due date' ?>
+                            </span>
                             <?php if ($t_is_group): ?>
                             <span title="<?= htmlspecialchars($t_names_title) ?>" style="display:inline-flex;align-items:center;gap:4px;">
                                 <?= renderTaskAvatarStackHtml($t_members, 3, 20) ?>
@@ -2017,61 +2433,73 @@ a.stat-card:active {
                     </div>
                 </div>
                 <?php endforeach; ?>
+                </div>
             <?php else: ?>
-                <div style="text-align:center; padding:35px 20px; color:#94a3b8;">
-                    <i class="fas fa-check-double" style="font-size:2rem; margin-bottom:8px; display:block; color:#10b981;"></i>
-                    All caught up! You have no pending tasks assigned right now.
+                <div style="text-align:center; padding:42px 20px; color:#64748b;">
+                    <div style="width:48px; height:48px; border-radius:14px; background:#ecfccb; display:inline-flex; align-items:center; justify-content:center; margin-bottom:10px;">
+                        <i class="fas fa-check-double" style="font-size:1.2rem; color:#365314 !important;"></i>
+                    </div>
+                    <div style="font-weight:700; color:#0f172a; font-size:0.92rem;">All caught up!</div>
+                    <div style="font-size:0.82rem; color:#94a3b8; margin-top:3px;">You have no pending tasks assigned right now.</div>
                 </div>
             <?php endif; ?>
         </div>
 
-        <!-- Right Side: Notices & Resources -->
-        <div>
-            <!-- Notice Board -->
-            <div class="tasks-card" style="margin-bottom:20px;">
+        <!-- Right: Notices & Resources -->
+        <div style="display:flex; flex-direction:column; gap:20px;">
+            <!-- Company Notices -->
+            <div class="tasks-card">
                 <div class="card-header-custom">
-                    <h3><i class="fas fa-bullhorn" style="color:#e17055;"></i> Company Notices</h3>
+                    <h3><i class="fas fa-bullhorn" style="color:#d97706 !important;"></i> Company Notices</h3>
                     <span class="badge-count"><?= $notice_count ?></span>
                 </div>
                 <div class="notices-body">
-                    <?php 
-                    mysqli_data_seek($notice_result, 0); 
+                    <?php
+                    mysqli_data_seek($notice_result, 0);
                     $nc = 0;
-                    while($notice = mysqli_fetch_assoc($notice_result)): 
+                    while($notice = mysqli_fetch_assoc($notice_result)):
                         if ($nc >= 4) break; $nc++;
                         $notice_time = isset($notice['created_at']) ? date('M d, g:i A', strtotime($notice['created_at'])) : '';
                     ?>
-                    <a href="notice_details.php?id=<?= $notice['notice_id'] ?>" class="notice-item" style="display:block; text-decoration:none; padding:12px 14px; border-bottom:1px solid #f1f5f9;">
-                        <div class="notice-title" style="font-weight:700; color:#1e293b; font-size:13.5px;"><?= htmlspecialchars($notice['notice_title']) ?></div>
+                    <a href="notice_details.php?id=<?= $notice['notice_id'] ?>" class="notice-item">
+                        <div class="notice-title"><?= htmlspecialchars($notice['notice_title']) ?></div>
                         <?php if ($notice_time): ?>
-                        <div style="font-size:11.5px; color:#94a3b8; margin-top:3px;"><i class="fas fa-clock"></i> <?= $notice_time ?></div>
+                        <div style="font-size:0.74rem; color:#64748b; margin-top:3px;">
+                            <i class="far fa-clock" style="margin-right:3px; color:#94a3b8 !important;"></i><?= $notice_time ?>
+                        </div>
                         <?php endif; ?>
                     </a>
                     <?php endwhile; ?>
+                    <?php if ($nc === 0): ?>
+                    <div style="text-align:center; padding:20px 10px; font-size:0.84rem; color:#94a3b8;">No company notices yet.</div>
+                    <?php endif; ?>
                 </div>
             </div>
 
             <!-- Resources & Guidelines -->
             <div class="resources-card">
                 <div class="card-header-custom">
-                    <h3><i class="fas fa-book" style="color:var(--primary);"></i> Resources &amp; Guides</h3>
+                    <h3><i class="fas fa-book-open" style="color:#365314 !important;"></i> Resources &amp; Guides</h3>
                     <span class="badge-count"><?= $resource_count ?></span>
                 </div>
-                <div class="resources-list" style="padding:10px 14px;">
-                    <?php 
-                    mysqli_data_seek($resource_result, 0); 
+                <div class="resources-list">
+                    <?php
+                    mysqli_data_seek($resource_result, 0);
                     $rc = 0;
-                    while($resource = mysqli_fetch_assoc($resource_result)): 
+                    while($resource = mysqli_fetch_assoc($resource_result)):
                         if ($rc >= 4) break; $rc++;
                     ?>
-                    <a href="<?= htmlspecialchars($resource['link']) ?>" class="resource-item" target="_blank" style="display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid #f8fafc; text-decoration:none;">
-                        <div class="resource-icon" style="color:var(--primary); font-size:14px;"><i class="fas fa-file-alt"></i></div>
-                        <div class="resource-info" style="flex:1;">
-                            <div class="resource-title" style="font-weight:600; font-size:13px; color:#334155;"><?= htmlspecialchars($resource['title']) ?></div>
+                    <a href="<?= htmlspecialchars($resource['link']) ?>" class="resource-item" target="_blank">
+                        <div class="resource-icon"><i class="fas fa-file-alt"></i></div>
+                        <div class="resource-info">
+                            <div class="resource-title"><?= htmlspecialchars($resource['title']) ?></div>
                         </div>
-                        <i class="fas fa-external-link-alt" style="font-size:11px; color:#cbd5e1;"></i>
+                        <i class="fas fa-external-link-alt resource-link-icon"></i>
                     </a>
                     <?php endwhile; ?>
+                    <?php if ($rc === 0): ?>
+                    <div style="text-align:center; padding:20px 10px; font-size:0.84rem; color:#94a3b8;">No resources shared yet.</div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -2089,7 +2517,7 @@ $(document).ready(function () {
         var taskId    = $checkbox.data('task-id');
         var isChecked = $checkbox.is(':checked');
         var status    = isChecked ? 'Completed' : 'Pending';
-        var $taskItem = $checkbox.closest('.task-item, .table-row');
+        var $taskItem = $checkbox.closest('.ov-task-row, .task-item, .table-row');
 
         if (isChecked) {
             $taskItem.css('opacity', '0.5');
