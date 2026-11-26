@@ -164,11 +164,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_reset'])) {
 <head>
 <meta charset="UTF-8">
 <title>Login | Graphicafix</title>
+<meta name="theme-color" content="#024442">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Graphicafix">
+<link rel="manifest" href="<?= BASE_URL ?>manifest.json">
+<link rel="icon" type="image/png" href="<?= BASE_URL ?>assets/images/pwa/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="<?= BASE_URL ?>assets/images/pwa/apple-touch-icon-180.png">
 <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/bootstrap.css">
 <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/all.css">
 <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script defer src="<?= BASE_URL ?>assets/js/pwa-install.js?v=1"></script>
 <style>
     /* Top Navigation Links */
     .login-nav {

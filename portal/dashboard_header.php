@@ -349,8 +349,16 @@ $notifications_html = ob_get_clean();
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Graphicafix Education Portal</title>
+    <meta name="theme-color" content="#024442">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Graphicafix">
+    <link rel="manifest" href="<?= MAIN_SITE_URL ?>manifest.json">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= MAIN_SITE_URL ?>assets/images/pwa/apple-touch-icon-180.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
-    <link rel="icon" type="image/png" href="<?= MAIN_SITE_URL ?>assets/images/icon.png">
+    <link rel="icon" type="image/png" href="<?= MAIN_SITE_URL ?>assets/images/pwa/icon-192.png">
+    <script defer src="<?= MAIN_SITE_URL ?>assets/js/pwa-install.js?v=1"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>

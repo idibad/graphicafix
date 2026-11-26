@@ -649,10 +649,18 @@ $notifications_html = ob_get_clean();
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>
     <title>Graphicafix - Dashboard</title>
+    <meta name="theme-color" content="#024442">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Graphicafix">
+    <link rel="manifest" href="<?= BASE_URL ?>manifest.json">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= BASE_URL ?>assets/images/pwa/apple-touch-icon-180.png">
     <link href="<?= BASE_URL ?>assets/css/bootstrap.css" rel="stylesheet">
     <link href="<?= BASE_URL ?>assets/css/style.css?v=<?= time() ?>" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" referrerpolicy="no-referrer" />
-    <link rel="icon" type="image/png" href="<?= BASE_URL ?>assets/images/icon.png">
+    <link rel="icon" type="image/png" href="<?= BASE_URL ?>assets/images/pwa/icon-192.png">
+    <script defer src="<?= BASE_URL ?>assets/js/pwa-install.js?v=1"></script>
     <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css' rel='stylesheet'>
     <link href='https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css' rel='stylesheet'>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
@@ -964,6 +972,9 @@ $notifications_html = ob_get_clean();
                 <?php if (!empty($is_admin) || !empty($is_super_admin) || !empty($is_manager)): ?>
                 <a class="header-dropdown-item" href="activity_logs.php"><i class="fas fa-clipboard-list"></i> Activity Logs</a>
                 <?php endif; ?>
+                <a class="header-dropdown-item" href="javascript:void(0)" data-pwa-install data-pwa-display="flex" onclick="triggerGfxPwaInstall()" style="display:none; color:#365314; font-weight:700;">
+                    <i class="fas fa-download" style="color:#65a30d !important;"></i> Install App
+                </a>
                 <div class="header-dropdown-divider"></div>
                 <a class="header-dropdown-item header-dropdown-logout" href="logout.php">🚪 Logout</a>
             </div>

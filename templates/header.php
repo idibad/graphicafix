@@ -162,11 +162,15 @@ if (isset($conn) && $conn instanceof mysqli) {
     <meta name="twitter:description" content="<?= htmlspecialchars($resolved_tw_desc) ?>">
     <meta name="twitter:image" content="<?= htmlspecialchars($resolved_tw_image) ?>">
 
-    <!-- Theme & Mobile Settings -->
+    <!-- Theme & Mobile / PWA Settings -->
     <meta name="theme-color" content="#024442">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Graphicafix">
+    <link rel="manifest" href="<?= BASE_URL ?>manifest.json">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= BASE_URL ?>assets/images/pwa/apple-touch-icon-180.png">
+    <script defer src="<?= BASE_URL ?>assets/js/pwa-install.js?v=1"></script>
 
     <!-- Structured Data (Schema.org JSON-LD) -->
     <script type="application/ld+json">
