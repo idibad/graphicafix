@@ -5,7 +5,7 @@
  * - Falls back to offline.html (with inline logo) only for unvisited pages
  * - Automatically clears cached private pages on logout
  */
-const SHELL_CACHE = 'graphicafix-shell-v2';
+const SHELL_CACHE = 'graphicafix-shell-v3';
 const PAGES_CACHE = 'graphicafix-pages-v2';
 const MAX_CACHED_PAGES = 35;
 
@@ -22,7 +22,8 @@ const PRECACHE_SHELL = [
   './assets/css/style.css',
   './assets/css/dashboard.css',
   './assets/css/tasks_workspace.css',
-  './assets/js/pwa-install.js'
+  './assets/js/pwa-install.js',
+  './assets/js/offline-sync.js'
 ];
 
 const TRUSTED_CDN_HOSTS = [

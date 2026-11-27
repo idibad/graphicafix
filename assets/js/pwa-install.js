@@ -175,6 +175,11 @@
   }
 
   function showOfflineStatus(isOffline) {
+    // Defer to offline-sync.js unified sync pill when loaded on dashboard pages
+    if (window.GFX_OFFLINE_SYNC) {
+      removeOfflineBanner();
+      return;
+    }
     removeOfflineBanner();
     const pill = document.createElement('div');
     pill.id = 'gfxOfflineStatusPill';
