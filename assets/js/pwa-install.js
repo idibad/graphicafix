@@ -167,4 +167,65 @@
       removeFloatingBanner();
     });
   }
+
+  // 3. Offline / Reconnected Banner for Cached Pages
+  function removeOfflineBanner() {
+    const el = document.getElementById('gfxOfflineStatusPill');
+    if (el) el.remove();
+  }
+
+  function showOfflineStatus(isOffline) {
+    removeOfflineBanner();
+    const pill = document.createElement('div');
+    pill.id = 'gfxOfflineStatusPill';
+    pill.setAttribute('role', 'status');
+    pill.style.cssText = [
+      'position:fixed',
+      'bottom:16px',
+      'left:50%',
+      'transform:translateX(-50%)',
+      'z-index:10070',
+      'display:inline-flex',
+      'align-items:center',
+      'gap:10px',
+      'padding:9px 14px',
+      'border-radius:999px',
+      'font-family:inherit',
+      'font-size:12.5px',
+      'font-weight:700',
+      'box-shadow:0 10px 28px rgba(15,23,42,0.22)',
+      'max-width:calc(100vw - 24px)',
+      'white-space:nowrap',
+      isOffline
+        ? 'background:#0f172a;color:#f8fafc;border:1px solid rgba(184,243,90,0.4)'
+        : 'background:#ecfccb;color:#142600;border:1px solid #a3e635'
+    ].join(';');
+
+    if (isOffline) {
+      pill.innerHTML =
+        '<span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></span>' +
+        '<span>Offline &middot; Viewing cached version</span>' +
+        '<button type="button" onclick="window.location.reload()" style="background:#b8f35a;color:#142600;border:none;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:800;cursor:pointer;">Retry</button>';
+      document.body.appendChild(pill);
+    } else {
+      pill.innerHTML =
+        '<span style="width:8px;height:8px;border-radius:50%;background:#16a34a;flex-shrink:0;"></span>' +
+        '<span>Back online!</span>' +
+        '<button type="button" onclick="window.location.reload()" style="background:#142600;color:#b8f35a;border:none;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:800;cursor:pointer;">Refresh</button>';
+      document.body.appendChild(pill);
+      setTimeout(removeOfflineBanner, 5000);
+    }
+  }
+
+  window.addEventListener('offline', function () {
+    showOfflineStatus(true);
+  });
+  window.addEventListener('online', function () {
+    showOfflineStatus(false);
+  });
+  document.addEventListener('DOMContentLoaded', function () {
+    if (navigator.onLine === false) {
+      showOfflineStatus(true);
+    }
+  });
 })();
